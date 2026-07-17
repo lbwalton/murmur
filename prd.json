@@ -103,7 +103,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "Implemented with AbortSignal timeouts and friendly 401/429/offline messages; Test connection wired in Settings and onboarding. Needs a real Groq API key to verify end to end (labroi: paste key, hit Test, dictate once)."
+      "notes": "Verified 2026-07-17 with Labroi's real key: synthesized voice clip transcribed exactly ('Testing 1 2 3 Murmur end to end test'); Test connection returned OK in the onboarding UI; invalid key returns the friendly 401 message; whisper-large-v3-turbo confirmed live on Groq's model list; timeouts implemented via AbortSignal."
     },
     {
       "id": "US-007",
@@ -148,7 +148,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Implemented fail-open: any error, empty output, or output 3x longer than input (a chatty model) falls back to the raw transcript. Dictionary feeds both the Whisper prompt and the formatter system prompt. Quality needs real dictations with a key to verify."
+      "notes": "Verified 2026-07-17 with the real key: 'um so uh what time is it you know' formatted to 'What time is it?', fillers removed, punctuation fixed, and the question was not answered. llama-3.1-8b-instant confirmed live on Groq. Fail-open guards (error, empty, or 3x-length output falls back to raw) implemented; dictionary feeds both Whisper prompt and formatter."
     },
     {
       "id": "US-010",
@@ -176,7 +176,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Implemented: onboarded flag gates a three-step welcome card (key + test, mic privacy note, try-it with live hotkey labels); settings renderer hosting it boots clean in smoke. Walk the flow once on first real launch to flip."
+      "notes": "Verified 2026-07-17 on Labroi's first real launch: card appeared, key test showed 'OK, Connected', and the onboarded flag persisted. Found and fixed a bug where 'Start using Murmur' saved but the card stayed visible (.onboard's display:grid overrode the hidden attribute; global [hidden] { display:none !important } added). Dismissal is now a permanent smoke check (onboardDismiss)."
     },
     {
       "id": "US-012",

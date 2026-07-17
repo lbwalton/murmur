@@ -353,6 +353,19 @@ async function runSmoke() {
         const wired = await win.webContents.executeJavaScript(
           "!!window.murmur && !!document.getElementById('nav') && document.getElementById('verLine').textContent !== 'v0.0.0'"
         );
+        // Regression check: clicking "Start using Murmur" must actually
+        // dismiss the welcome card (visually, not just the hidden attribute).
+        checks.onboardDismiss = await win.webContents.executeJavaScript(`(async () => {
+          const ob = document.getElementById('onboard');
+          ob.hidden = false;
+          await new Promise((r) => setTimeout(r, 50));
+          const shown = getComputedStyle(ob).display !== 'none';
+          document.getElementById('obDone').click();
+          await new Promise((r) => setTimeout(r, 500));
+          const dismissed = getComputedStyle(ob).display === 'none';
+          const { settings } = await window.murmur.getSettings();
+          return shown && dismissed && settings.onboarded === true;
+        })()`);
         if (errors.length) checks.settingsRendererErrors = errors;
         win.destroy();
         resolve(wired && errors.length === 0);
@@ -364,7 +377,7 @@ async function runSmoke() {
     });
     setTimeout(() => resolve(false), 15000);
   });
-  const required = ['iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals', 'injectHelper', 'overlayLoaded', 'sendKeysEscape', 'settingsRenderer'];
+  const required = ['iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals', 'injectHelper', 'overlayLoaded', 'sendKeysEscape', 'settingsRenderer', 'onboardDismiss'];
   const ok = required.every((k) => checks[k] === true);
   console.log('SMOKE_RESULT ' + JSON.stringify({ ok, checks }));
   inject.dispose();

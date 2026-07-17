@@ -21,6 +21,11 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* The hidden attribute must always win, even over rules like
+   .onboard { display: grid } (author display rules beat the UA's
+   [hidden] { display: none }, which once kept the welcome card stuck). */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   background: var(--ink);
