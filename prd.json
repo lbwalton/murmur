@@ -72,7 +72,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "Implemented: globalShortcut toggle, temporary global Esc while recording, max-duration auto-stop, live rebinding with revert + toast when registration fails, cancel-during-processing guarded by a generation counter. Needs one live run with a microphone to flip to passing."
+      "notes": "Recording pipeline live-verified 2026-07-17 via the hold path (mic capture, webm upload, insertion, focus preserved). Remaining before passing: one toggle-shortcut dictation (Ctrl+Shift+Space start and stop), one Esc cancel confirming nothing inserts, and optionally the max-duration auto-stop with maxSeconds set to 60."
     },
     {
       "id": "US-005",
@@ -87,8 +87,8 @@
         "Overlay is click-through, never steals focus, and respects prefers-reduced-motion"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Implemented: focusable:false + setIgnoreMouseEvents + showInactive, display-nearest-cursor positioning, four states with reduced-motion fallbacks. Overlay renderer verified loading in smoke. Live waveform and state transitions need a real dictation to verify."
+      "passes": true,
+      "notes": "Verified 2026-07-17 during Labroi's live dictations: waveform, listening/processing/inserted states, and word count all observed; the error state was observed earlier with a readable message (the elseif bug pill). Focus never left the target app, proven by the paste landing where the cursor was. Reduced-motion handled in CSS."
     },
     {
       "id": "US-006",
@@ -118,7 +118,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "Labroi's first live dictation caught a real bug here: the helper script was joined into one line with semicolons, which breaks if/elseif in PowerShell, so every paste failed with a 'term elseif is not recognized' error (ping alone passed, masking it). Fixed 2026-07-17: script is now true multi-line via -EncodedCommand, and a new required smoke check (injectChain) exercises the full command chain. Ping, chain, and SendKeys escaping machine-verified; the paste landing in a real app still needs the next live dictation."
+      "notes": "Live-verified 2026-07-17: after fixing the semicolon-joined elseif bug (script now multi-line via -EncodedCommand, guarded by the required injectChain smoke check), Labroi dictated three times and text landed at the cursor each time. Remaining before passing: confirm clipboard restore (copy something, dictate, Ctrl+V should give the original) and one dictation with Insertion method set to Type."
     },
     {
       "id": "US-008",
@@ -133,7 +133,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "uiohook-napi prebuilt binary loads on this machine (smoke holdAvailable=true); repeat suppression, sub-350ms tap cancel, and press-to-capture rebinding implemented; fallback path renders the limitation note in Settings. Hold/release feel needs a live keypress to verify."
+      "notes": "Core interaction live-verified 2026-07-17: Labroi confirmed hold Right Ctrl, speak, release, insert works (three real dictations, 2 to 8 seconds each, no repeat retriggers). Remaining before passing: a quick tap should cancel silently, and the press-to-capture rebind UI needs one try."
     },
     {
       "id": "US-009",
@@ -162,7 +162,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Implemented: 200-item cap, copy/delete/clear in the History tab, historyEnabled gate checked in main before any write, live refresh via history-changed. Needs a first real dictation to watch an item flow through."
+      "notes": "Write path verified 2026-07-17: three live dictations present in history.json with timestamp, word count, and recording duration. Remaining before passing: open the History tab once and try Copy and delete."
     },
     {
       "id": "US-011",
