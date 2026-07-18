@@ -61,7 +61,7 @@ Two layers keep names, brands, and jargon spelled right:
 
 **General**: hold-to-talk key or chord; toggle shortcut; insertion method (Paste is instant, Type is slower but works in paste-hostile apps); restore clipboard after pasting; audio cues; launch at login; max recording length (1 minute to 1 hour, or No limit, which warns you because the mic stays hot and very long takes can hit the API's 25 MB upload cap).
 
-**Voice & model**: API key with a Test button; microphone picker with a live level check; transcription model dropdown with prices inline; Smart formatting toggle and its model dropdown; language pin; Base URL under Advanced for local or alternate endpoints.
+**Voice & model**: API key with a Test button; microphone picker with a live level check; Keep mic warm (holds the mic open briefly after a dictation so the next one starts instantly; the mic-in-use indicator stays lit for that window, so it's a setting and can be Off); transcription model dropdown with prices inline; Smart formatting toggle and its model dropdown; language pin; Base URL under Advanced for local or alternate endpoints.
 
 **Dictionary**: your terms plus everything Murmur has learned from your fixes.
 

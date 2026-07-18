@@ -41,6 +41,7 @@ function render() {
   $('launchAtLogin').checked = S.launchAtLogin;
   $('maxSeconds').value = String(S.maxSeconds);
   $('noLimitWarning').hidden = S.maxSeconds !== 0;
+  $('warmMicSeconds').value = String(S.warmMicSeconds);
   if (document.activeElement !== $('apiKey')) $('apiKey').value = S.apiKey;
   if (document.activeElement !== $('baseUrl')) $('baseUrl').value = S.baseUrl;
   if ($('model').options.length) $('model').value = S.model;
@@ -90,6 +91,7 @@ bindCheck('smartFormat', 'smartFormat');
 bindCheck('historyEnabled', 'historyEnabled');
 bindValue('insertMethod', 'insertMethod');
 bindValue('maxSeconds', 'maxSeconds', Number);
+bindValue('warmMicSeconds', 'warmMicSeconds', Number);
 bindValue('language', 'language');
 bindValue('apiKey', 'apiKey', (v) => v.trim());
 bindValue('micSelect', 'micDeviceId');

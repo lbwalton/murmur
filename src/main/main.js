@@ -140,7 +140,7 @@ function startDictation(source) {
   positionOverlay();
   overlayWin.showInactive();
   sendOverlay('state', { state: 'listening' });
-  sendOverlay('rec-start', { deviceId: s.micDeviceId, sounds: s.sounds });
+  sendOverlay('rec-start', { deviceId: s.micDeviceId, sounds: s.sounds, warmSeconds: s.warmMicSeconds });
   if (tray && trayRec) tray.setImage(trayRec);
   bindEsc();
   if (s.maxSeconds > 0) maxTimer = setTimeout(() => stopDictation(), Math.max(10, s.maxSeconds) * 1000);

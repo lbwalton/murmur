@@ -19,6 +19,7 @@ const DEFAULTS = {
   corrections: [], // learned {from, to, count, ts} pairs from History edits
   // input
   micDeviceId: 'default',
+  warmMicSeconds: 8, // 0 disables; see the note in Settings for the tradeoff
   toggleShortcut: 'Control+Shift+Space',
   holdEnabled: true,
   holdKeycodes: [3613], // uiohook VC_CONTROL_R (Right Ctrl); chords hold multiple codes

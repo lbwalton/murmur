@@ -155,6 +155,24 @@
 
         <div class="row">
           <div class="row-text">
+            <div class="row-title">Keep mic warm</div>
+            <div class="row-desc">Windows takes a moment to open the microphone, so Murmur holds it open briefly after each dictation to make the next one start instantly.</div>
+          </div>
+          <div class="row-ctl">
+            <select id="warmMicSeconds">
+              <option value="0">Off</option>
+              <option value="3">3 seconds</option>
+              <option value="8">8 seconds (recommended)</option>
+              <option value="15">15 seconds</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-note">
+          Why this is a setting: while the mic is warm, the Windows mic-in-use indicator stays lit even though nothing is recorded or sent. Choose Off if you want the indicator dark the instant a dictation ends; the tradeoff is a short delay before each one starts.
+        </div>
+
+        <div class="row">
+          <div class="row-text">
             <div class="row-title">Transcription model</div>
             <div class="row-desc">Prices are pay-as-you-go rates per hour of speech. On Groq's free tier, every model is $0 within generous daily limits.</div>
           </div>

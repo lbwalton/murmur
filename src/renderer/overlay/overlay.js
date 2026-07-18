@@ -21,7 +21,7 @@ const AMBER = [240, 164, 75];
 const BAR_COUNT = 44;
 const BAR_W = 3;
 const GAP = 2;
-const WARM_STREAM_MS = 8000;
+let warmStreamMs = 8000; // set per dictation from the Keep mic warm setting
 
 let stream = null;
 let lastDeviceId = null;
@@ -147,7 +147,11 @@ function releaseStream() {
 
 function scheduleStreamRelease() {
   clearTimeout(releaseTimer);
-  releaseTimer = setTimeout(releaseStream, WARM_STREAM_MS);
+  if (warmStreamMs <= 0) {
+    releaseStream();
+    return;
+  }
+  releaseTimer = setTimeout(releaseStream, warmStreamMs);
 }
 
 function streamIsWarm(deviceId) {
@@ -161,8 +165,9 @@ function streamIsWarm(deviceId) {
 
 // ---------------------------------------------------------------- recording
 
-async function startCapture({ deviceId, sounds }) {
+async function startCapture({ deviceId, sounds, warmSeconds }) {
   soundsOn = sounds !== false;
+  warmStreamMs = (typeof warmSeconds === 'number' ? warmSeconds : 8) * 1000;
   bars = [];
   chunks = [];
   clearTimeout(releaseTimer);
