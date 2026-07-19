@@ -357,7 +357,7 @@ window.murmur.on('rec-cancel', () => {
   stopCapture(true);
   mode = 'idle';
   stopDrawing();
-  pill.dataset.state = 'hidden';
+  pill.dataset.state = 'hidden'; // main hides the window after the exit plays
 });
 
 window.murmur.on('state', ({ state, words, message }) => {
@@ -383,6 +383,12 @@ window.murmur.on('state', ({ state, words, message }) => {
     mode = 'idle';
     stopDrawing();
     blip('error');
+  } else if (state === 'hidden') {
+    // Exit: the CSS falls the pill away; main hides the window right after.
+    stopTimer();
+    mode = 'idle';
+    stopDrawing();
+    ctx.clearRect(0, 0, 220, 36);
   }
   // An errored or finished take can leave the stream released; Always mode
   // quietly re-warms so the next start is still instant.

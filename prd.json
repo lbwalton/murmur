@@ -362,7 +362,7 @@
       ],
       "priority": 4,
       "passes": false,
-      "notes": "Added at Labroi's request during the port planning session."
+      "notes": "Added at Labroi's request during the port planning session. Built 2026-07-19: entrance is a 230ms rise-and-settle with a slight scale plus a badge pop 70ms behind so the mic reads first; exit is a 150ms fall, with main hiding the window 240ms after sending the hidden state so the animation is actually visible instead of a hard vanish. Esc cancel uses the same graceful exit. Reduced motion collapses everything to opacity fades with transform stripped. Window flags untouched: still focusable false and click-through. Needs Labroi's eyes on a live dictation to confirm the feel."
     }
   ]
 }

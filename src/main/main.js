@@ -188,7 +188,7 @@ function cancelDictation() {
   clearTimeout(maxTimer);
   sendOverlay('rec-cancel');
   finishCycle();
-  overlayWin.hide();
+  hideOverlayIfIdle();
 }
 
 function finishCycle() {
@@ -198,8 +198,14 @@ function finishCycle() {
   unbindEsc();
 }
 
+// The pill animates out (state hidden), then the window actually hides a
+// beat later so the exit is visible instead of a hard vanish (US-023).
 function hideOverlayIfIdle() {
-  if (state === 'idle' && overlayWin && !overlayWin.isDestroyed()) overlayWin.hide();
+  if (state !== 'idle' || !overlayWin || overlayWin.isDestroyed()) return;
+  sendOverlay('state', { state: 'hidden' });
+  setTimeout(() => {
+    if (state === 'idle' && overlayWin && !overlayWin.isDestroyed()) overlayWin.hide();
+  }, 240);
 }
 
 async function handleAudio(arrayBuffer, meta) {

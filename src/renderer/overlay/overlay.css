@@ -44,9 +44,13 @@ body {
   box-shadow:
     0 14px 44px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  /* Fly-in: rise from below the work area edge with a slight settle
+     (US-023). Entrance stays under 250ms; the exit is faster and falls
+     away so the pill never outstays the dictation. */
   opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 160ms ease-out, transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform: translateY(30px) scale(0.92);
+  transition: opacity 150ms ease-in, transform 150ms ease-in;
+  will-change: transform, opacity;
 }
 
 .pill[data-state="listening"],
@@ -54,10 +58,12 @@ body {
 .pill[data-state="done"],
 .pill[data-state="error"] {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+  transition: opacity 140ms ease-out, transform 230ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
-/* status badge: red breathing dot, amber spinner, green check, red cross */
+/* status badge: red breathing dot, amber spinner, green check, red cross.
+   Pops in just behind the pill body so the entrance reads mic-first. */
 .badge {
   position: relative;
   width: 22px;
@@ -65,6 +71,15 @@ body {
   display: grid;
   place-items: center;
   flex: none;
+  transform: scale(0);
+  transition: transform 190ms cubic-bezier(0.3, 1.4, 0.4, 1) 70ms;
+}
+
+.pill[data-state="listening"] .badge,
+.pill[data-state="processing"] .badge,
+.pill[data-state="done"] .badge,
+.pill[data-state="error"] .badge {
+  transform: scale(1);
 }
 
 .dot {
@@ -162,6 +177,6 @@ canvas {
 .pill[data-state="listening"] ~ .hint { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pill { transition: opacity 120ms linear; transform: none; }
+  .pill, .badge { transition: opacity 120ms linear; transform: none !important; }
   .dot { animation: none; }
 }
