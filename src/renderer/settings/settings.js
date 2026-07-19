@@ -554,6 +554,9 @@ window.murmur.on('settings-changed', (settings) => {
   META = meta;
   render();
   applyPlatform();
+  $('keyStorageNote').textContent = META.keyEncrypted
+    ? ' Encrypted with the OS keystore.'
+    : ' Heads up: no OS keystore here, so it is stored in plain text.';
   populateMics();
   populateModels();
   if (!S.onboarded) $('onboard').hidden = false;

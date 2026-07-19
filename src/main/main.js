@@ -291,6 +291,7 @@ function registerIpc() {
       holdAvailable: hotkeys.available(),
       userDataPath: app.getPath('userData'),
       platform: process.platform,
+      keyEncrypted: settings.keystoreAvailable(),
     },
   }));
 
@@ -424,6 +425,25 @@ async function runSmoke() {
   }
   checks.correctionDiff = JSON.stringify(corrections.diffPairs('open cloud code now', 'open Claude Code now'))
     === JSON.stringify([{ from: 'cloud code', to: 'Claude Code' }]);
+  // Key at rest: when the OS keystore is available, a set key must roundtrip
+  // and must not appear in plaintext on disk. When it is not available the
+  // documented fallback is plaintext, so the check passes vacuously.
+  checks.keyEncryptionAvailable = settings.keystoreAvailable();
+  if (checks.keyEncryptionAvailable) {
+    const prevKey = settings.get().apiKey;
+    try {
+      settings.set({ apiKey: 'gsk_smoke_probe_secret' });
+      const onDisk = fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8');
+      checks.keyStorage = !onDisk.includes('gsk_smoke_probe_secret') && settings.get().apiKey === 'gsk_smoke_probe_secret';
+    } catch (err) {
+      checks.keyStorage = false;
+      checks.keyStorageError = err.message;
+    } finally {
+      settings.set({ apiKey: prevKey });
+    }
+  } else {
+    checks.keyStorage = true;
+  }
   checks.correctionApply = corrections.applyCorrections('i use cloud code daily', [{ from: 'cloud code', to: 'Claude Code' }])
     === 'i use Claude Code daily';
   // Boot the settings renderer hidden and make sure it wires up cleanly.
@@ -479,7 +499,7 @@ async function runSmoke() {
   const required = [
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff',
-    'correctionApply', 'settingsRenderer', 'onboardDismiss',
+    'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);

@@ -34,7 +34,7 @@ First launch opens a three-step setup: paste a key, allow the mic, try it. That'
 2. Open **API Keys**, create a key, copy it.
 3. Paste it into Murmur's setup screen, or later under Settings, Voice & model.
 
-The key is stored only on your machine, in `%APPDATA%\murmur\settings.json`, and is sent only as the auth header to the API you configure.
+The key is stored only on your machine, encrypted with the OS keystore (DPAPI on Windows, Keychain on macOS), and is sent only as the auth header to the API you configure.
 
 ## Using it
 
@@ -94,7 +94,7 @@ Settings, Voice & model has dropdowns for both models, listing whatever your end
 ## Privacy
 
 - Audio is sent only to the API you configured, only while you are dictating, and is not stored by Murmur anywhere.
-- History and settings live in `%APPDATA%\murmur\` and never leave your machine. History can be turned off.
+- History and settings live in `%APPDATA%\murmur\` on Windows and `~/Library/Application Support/murmur/` on macOS, and never leave your machine. History can be turned off. The API key inside settings is encrypted with the OS keystore.
 - Insertion uses the clipboard for a moment. Note that Windows Clipboard History (Win + V), if you have it enabled, may keep a copy of transcripts like anything else you copy.
 - No analytics, no telemetry, no accounts.
 

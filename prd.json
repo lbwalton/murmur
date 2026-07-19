@@ -331,8 +331,8 @@
         "Encrypt and decrypt roundtrip covered by a required smoke check"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified 2026-07-19 on macOS: required keyStorage smoke check sets a probe key, confirms it never appears in plaintext on disk, roundtrips in memory, and restores the previous key. Migration tested live: a plaintext key seeded into settings.json came out as apiKeyEnc with no plaintext secret after one boot. The keystore-unavailable fallback branch is review-verified only (this Mac's Keychain is always available); it is the pre-2026-07-19 plaintext write plus a Settings note driven by meta.keyEncrypted."
     },
     {
       "id": "US-022",
