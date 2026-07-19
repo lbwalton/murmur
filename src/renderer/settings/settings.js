@@ -704,7 +704,31 @@ async function refreshPermStatus() {
   el.classList.toggle('status-ok', !!st.accessibility);
   el.classList.toggle('status-err', !st.accessibility);
   $('axGrantBtn').hidden = !!st.accessibility;
+  const mic = $('micStatus');
+  if (st.microphone) {
+    const granted = st.microphone === 'granted';
+    mic.textContent = granted ? '· GRANTED' : st.microphone === 'not-determined' ? '· NOT ASKED YET' : '· BLOCKED';
+    mic.classList.toggle('status-ok', granted);
+    mic.classList.toggle('status-err', !granted && st.microphone !== 'not-determined');
+  }
 }
+
+// Input Monitoring has no query API, so the only honest status is a live
+// test: capture one real keystroke through the same hook the hold key uses.
+$('imTestBtn').addEventListener('click', async () => {
+  const el = $('imStatus');
+  el.className = 'mono';
+  el.textContent = '· PRESS ANY KEY...';
+  try {
+    await window.murmur.captureHoldKey();
+    el.textContent = '· WORKING';
+    el.classList.add('status-ok');
+  } catch {
+    el.textContent = '· NO SIGNAL';
+    el.classList.add('status-err');
+    toast('No key events arrived. Turn Murmur on under Input Monitoring, then quit and reopen Murmur.');
+  }
+});
 
 // ---------------------------------------------------------------- misc
 

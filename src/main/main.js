@@ -36,6 +36,12 @@ function recapDeps() {
 }
 
 const SMOKE = process.argv.includes('--smoke');
+// Smoke gets its own disposable profile. Two Electron instances sharing one
+// Chromium profile deadlock (found when smoke hung while the installed app
+// was running), and isolation also keeps test probes away from real user
+// data: the keyStorage check now exercises a scratch settings.json, never
+// the user's actual key.
+if (SMOKE) app.setPath('userData', app.getPath('userData') + '-smoke');
 const ASSETS = path.join(__dirname, '..', '..', 'assets', 'generated');
 const OVERLAY_SIZE = { width: 420, height: 120 };
 

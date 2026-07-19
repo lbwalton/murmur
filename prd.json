@@ -363,6 +363,37 @@
       "priority": 4,
       "passes": false,
       "notes": "Added at Labroi's request during the port planning session. Built 2026-07-19: entrance is a 230ms rise-and-settle with a slight scale plus a badge pop 70ms behind so the mic reads first; exit is a 150ms fall, with main hiding the window 240ms after sending the hidden state so the animation is actually visible instead of a hard vanish. Esc cancel uses the same graceful exit. Reduced motion collapses everything to opacity fades with transform stripped. Window flags untouched: still focusable false and click-through. Needs Labroi's eyes on a live dictation to confirm the feel."
+    },
+    {
+      "id": "US-024",
+      "title": "Signed and notarized macOS build",
+      "description": "As a user downloading Murmur, the app opens with no unidentified-developer warnings because it is Developer ID signed and notarized, using Labroi's Apple Developer Program membership.",
+      "acceptanceCriteria": [
+        "electron-builder signs with the Developer ID Application certificate and notarizes via notarytool credentials kept outside the repo (env vars or keychain profile, documented in the README)",
+        "A fresh download of the dmg opens on another Mac with no Gatekeeper right-click dance",
+        "spctl --assess and stapler validate pass on the built app",
+        "An unsigned local build still works for contributors without certificates (signing is opt-in, never required for npm start or a local dist)",
+        "No certificates, keys, or Apple credentials ever enter the repo"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Unblocked by Labroi's Apple Developer Program membership, confirmed 2026-07-19. Prerequisite for US-025 on macOS."
+    },
+    {
+      "id": "US-025",
+      "title": "Auto-update from GitHub Releases",
+      "description": "As a user, Murmur updates itself: it checks GitHub Releases, downloads the new version in the background, and applies it on next launch, no manual reinstall.",
+      "acceptanceCriteria": [
+        "electron-updater checks the public GitHub Releases feed on launch and then periodically",
+        "macOS updates apply automatically (requires US-024 signing); a failed or unavailable update never breaks the running app",
+        "Windows NSIS build updates through the same feed",
+        "Settings, About shows the current version, a Check for updates button, and an update-ready state",
+        "Running from source never triggers the updater",
+        "Update check failures are silent to the user and logged, never a blocking dialog"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Depends on US-024 for macOS. Strategy decided 2026-07-19: sell signed builds outside the Mac App Store (MAS sandbox would break hold-to-talk and auto-insert); open source stays the free path."
     }
   ]
 }

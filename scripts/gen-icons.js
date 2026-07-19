@@ -135,6 +135,45 @@ function appIcon(size) {
   return c;
 }
 
+// At list sizes (System Settings, Finder small views) five thin bars on ink
+// collapse into a dark blob, so 16 and 32 px get three bolder bars instead.
+function smallAppIcon(size) {
+  const c = makeCanvas(size, size);
+  const pad = Math.max(1, Math.round(size * 0.03));
+  fillRoundedRect(c, pad, pad, size - pad * 2, size - pad * 2, size * 0.24, INK);
+  const ratios = [0.55, 1.0, 0.45];
+  const unit = size * 0.56;
+  const bw = Math.max(3, Math.round(size * 0.13));
+  const gap = Math.max(2, Math.round(bw * 0.7));
+  const totalW = ratios.length * bw + (ratios.length - 1) * gap;
+  let x = size / 2 - totalW / 2;
+  for (const r of ratios) {
+    const bh = Math.max(bw, unit * r);
+    fillRoundedRect(c, x, size / 2 - bh / 2, bw, bh, bw / 2, AMBER);
+    x += bw + gap;
+  }
+  return c;
+}
+
+// ---------------------------------------------------------------- ICNS writer
+
+// Modern ICNS: each chunk is an OSType plus a PNG blob. Writing it here, per
+// size, keeps small icons legible; electron-builder's auto-conversion just
+// downscales one 512 and loses the mark.
+function encodeIcns(entries) {
+  const chunks = entries.map(({ type, buf }) => {
+    const h = Buffer.alloc(8);
+    h.write(type, 0, 'ascii');
+    h.writeUInt32BE(buf.length + 8, 4);
+    return Buffer.concat([h, buf]);
+  });
+  const body = Buffer.concat(chunks);
+  const head = Buffer.alloc(8);
+  head.write('icns', 0, 'ascii');
+  head.writeUInt32BE(body.length + 8, 4);
+  return Buffer.concat([head, body]);
+}
+
 // ---------------------------------------------------------------- ICO writer
 
 // Modern ICO: each entry is a PNG blob (valid since Windows Vista).
@@ -197,7 +236,22 @@ fs.writeFileSync(
   ])
 );
 
-// electron-builder converts a 512px build/icon.png to .icns for the dmg/zip.
+// macOS app icon: per-size renders, bolder mark at 16/32 so it reads in
+// System Settings lists and the Dock. icon.png stays as a fallback.
 fs.writeFileSync(path.join(BUILD, 'icon.png'), files['icon-512.png']);
+fs.writeFileSync(
+  path.join(BUILD, 'icon.icns'),
+  encodeIcns([
+    { type: 'icp4', buf: encodePng(smallAppIcon(16)) },  // 16
+    { type: 'ic11', buf: encodePng(smallAppIcon(32)) },  // 16@2x
+    { type: 'icp5', buf: encodePng(smallAppIcon(32)) },  // 32
+    { type: 'ic12', buf: encodePng(appIcon(64)) },       // 32@2x
+    { type: 'ic07', buf: encodePng(appIcon(128)) },      // 128
+    { type: 'ic13', buf: encodePng(appIcon(256)) },      // 128@2x
+    { type: 'ic08', buf: encodePng(appIcon(256)) },      // 256
+    { type: 'ic14', buf: encodePng(appIcon(512)) },      // 256@2x
+    { type: 'ic09', buf: encodePng(appIcon(512)) },      // 512
+  ])
+);
 
-console.log('icons written to assets/generated, build/icon.ico, and build/icon.png');
+console.log('icons written to assets/generated, build/icon.ico, build/icon.png, and build/icon.icns');

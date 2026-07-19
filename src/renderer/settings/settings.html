@@ -144,7 +144,7 @@
 
         <div class="row">
           <div class="row-text">
-            <div class="row-title">Microphone</div>
+            <div class="row-title">Microphone <span class="mono" id="micStatus"></span></div>
             <div class="row-desc" id="micDesc">Windows must allow desktop apps to use the microphone.</div>
           </div>
           <div class="row-ctl grow">
@@ -168,10 +168,11 @@
           </div>
           <div class="row">
             <div class="row-text">
-              <div class="row-title">Input Monitoring</div>
-              <div class="row-desc">Lets the hold key work everywhere. If pressing the keycap in General times out, System Settings, Privacy &amp; Security, Input Monitoring: turn Murmur on, then relaunch.</div>
+              <div class="row-title">Input Monitoring <span class="mono" id="imStatus"></span></div>
+              <div class="row-desc">Lets the hold key work everywhere. macOS offers no way to ask, so Test is the truth: click it, then press any key. If nothing arrives, System Settings, Privacy &amp; Security, Input Monitoring: turn Murmur on, then quit and reopen Murmur.</div>
             </div>
             <div class="row-ctl">
+              <button class="btn" id="imTestBtn">Test</button>
               <button class="btn" id="imOpenBtn">Open Settings</button>
             </div>
           </div>
