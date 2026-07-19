@@ -460,6 +460,14 @@ async function runSmoke() {
       && !p('medium', 'conversation').includes('developer')
       && p('bogus', 'bogus') === p('medium', 'conversation');
   })();
+  // Auto structure rules ride every level except None, which promises exact
+  // words: lists, topic-pivot paragraphs, headings, and the comma guard.
+  checks.structurePrompt = (() => {
+    const p = (formatLevel) => transcribe.buildFormatPrompt({ formatLevel, formatStyle: 'conversation' });
+    const structured = ['structure', 'soft', 'medium', 'high'].every((lvl) =>
+      p(lvl).includes('format it as a list') && p(lvl).includes('heading line') && p(lvl).includes('new topic') && p(lvl).includes('Never turn an ordinary comma-separated phrase'));
+    return structured && !p('none').includes('format it as a list');
+  })();
   // Boot the settings renderer hidden and make sure it wires up cleanly.
   checks.settingsRenderer = await new Promise((resolve) => {
     const win = new BrowserWindow({
@@ -513,7 +521,7 @@ async function runSmoke() {
   const required = [
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff',
-    'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt',
+    'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt', 'structurePrompt',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);

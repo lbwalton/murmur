@@ -273,7 +273,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": ""
+      "notes": "Built 2026-07-19. Required structurePrompt smoke check verifies the rules ride every level except None: spoken-cue lists (numbered when counted, dashes otherwise), topic-pivot paragraph breaks, header/section headings, and the explicit guard against bulletizing ordinary comma phrases. Needs Labroi's key for the live half: dictate a counted list, a topic pivot, a 'header' command, and one sentence with a plain comma enumeration that must stay a sentence."
     },
     {
       "id": "US-018",
