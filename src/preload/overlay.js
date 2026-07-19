@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const LISTEN_CHANNELS = ['state', 'rec-start', 'rec-stop', 'rec-cancel'];
+const LISTEN_CHANNELS = ['state', 'rec-start', 'rec-stop', 'rec-cancel', 'warm-config'];
 
 contextBridge.exposeInMainWorld('murmur', {
   on(channel, cb) {

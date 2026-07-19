@@ -38,6 +38,13 @@ let escBound = false;
 
 // ---------------------------------------------------------------- windows
 
+// Tells the overlay the current warm policy so Always mode can hold the mic
+// open from launch, not just after the first dictation.
+function broadcastWarmConfig() {
+  const s = settings.get();
+  sendOverlay('warm-config', { deviceId: s.micDeviceId, warmSeconds: s.warmMicSeconds, platform: process.platform });
+}
+
 function createOverlay() {
   overlayWin = new BrowserWindow({
     ...OVERLAY_SIZE,
@@ -144,7 +151,7 @@ function startDictation(source) {
   positionOverlay();
   overlayWin.showInactive();
   sendOverlay('state', { state: 'listening' });
-  sendOverlay('rec-start', { deviceId: s.micDeviceId, sounds: s.sounds, warmSeconds: s.warmMicSeconds });
+  sendOverlay('rec-start', { deviceId: s.micDeviceId, sounds: s.sounds, warmSeconds: s.warmMicSeconds, platform: process.platform });
   if (tray && trayRec) tray.setImage(trayRec);
   bindEsc();
   if (s.maxSeconds > 0) maxTimer = setTimeout(() => stopDictation(), Math.max(10, s.maxSeconds) * 1000);
@@ -602,6 +609,10 @@ if (!gotLock && !SMOKE) {
     analytics.init();
     createTray();
     createOverlay();
+    overlayWin.webContents.once('did-finish-load', broadcastWarmConfig);
+    settings.onChange((next, changed) => {
+      if ('micDeviceId' in changed || 'warmMicSeconds' in changed) broadcastWarmConfig();
+    });
     registerIpc();
     if (SMOKE) {
       await runSmoke();

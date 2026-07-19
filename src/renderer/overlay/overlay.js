@@ -21,7 +21,10 @@ const AMBER = [240, 164, 75];
 const BAR_COUNT = 44;
 const BAR_W = 3;
 const GAP = 2;
-let warmStreamMs = 8000; // set per dictation from the Keep mic warm setting
+let warmStreamMs = 8000; // from the Keep mic warm setting; -1 means Always
+let alwaysWarm = false;
+let warmDeviceId = 'default';
+let platform = 'win32';
 
 let stream = null;
 let lastDeviceId = null;
@@ -147,11 +150,56 @@ function releaseStream() {
 
 function scheduleStreamRelease() {
   clearTimeout(releaseTimer);
-  if (warmStreamMs <= 0) {
+  if (warmStreamMs < 0) return; // Always warm: never release
+  if (warmStreamMs === 0) {
     releaseStream();
     return;
   }
   releaseTimer = setTimeout(releaseStream, warmStreamMs);
+}
+
+// Warm-from-launch (US-022): open the stream and analyser without recording
+// so the very first dictation of the day starts as fast as a back-to-back
+// one. Fails silently; a cold dictation still opens the mic and reports
+// real errors through the normal path.
+async function warmStream(deviceId) {
+  if (streamIsWarm(deviceId)) return;
+  const gen = captureGen;
+  releaseStream();
+  let acquired;
+  try {
+    const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    if (deviceId && deviceId !== 'default') audio.deviceId = { exact: deviceId };
+    acquired = await navigator.mediaDevices.getUserMedia({ audio });
+  } catch {
+    return;
+  }
+  // A real capture started while the warm stream was opening; get out of
+  // its way instead of clobbering the stream it owns.
+  if (gen !== captureGen || stream) {
+    acquired.getTracks().forEach((t) => t.stop());
+    return;
+  }
+  stream = acquired;
+  lastDeviceId = deviceId || 'default';
+  audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  watchStreamEnd();
+}
+
+// Re-warm when the device disappears (unplugged headset, changed default).
+function watchStreamEnd() {
+  if (!stream) return;
+  for (const t of stream.getTracks()) {
+    t.onended = () => {
+      if (alwaysWarm && mode === 'idle') {
+        releaseStream();
+        setTimeout(() => warmStream(warmDeviceId), 1000);
+      }
+    };
+  }
 }
 
 function streamIsWarm(deviceId) {
@@ -165,9 +213,12 @@ function streamIsWarm(deviceId) {
 
 // ---------------------------------------------------------------- recording
 
-async function startCapture({ deviceId, sounds, warmSeconds }) {
+async function startCapture({ deviceId, sounds, warmSeconds, platform: plat }) {
   soundsOn = sounds !== false;
-  warmStreamMs = (typeof warmSeconds === 'number' ? warmSeconds : 8) * 1000;
+  if (plat) platform = plat;
+  const ws = typeof warmSeconds === 'number' ? warmSeconds : 8;
+  alwaysWarm = ws === -1;
+  warmStreamMs = ws < 0 ? -1 : ws * 1000;
   bars = [];
   chunks = [];
   clearTimeout(releaseTimer);
@@ -209,6 +260,7 @@ async function startCapture({ deviceId, sounds, warmSeconds }) {
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 1024;
     audioCtx.createMediaStreamSource(stream).connect(analyser);
+    watchStreamEnd();
   }
 
   mode = 'live';
@@ -228,7 +280,9 @@ async function startCapture({ deviceId, sounds, warmSeconds }) {
 function micErrorMessage(err) {
   const name = err && err.name;
   if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-    return 'Microphone blocked. Windows Settings, Privacy, Microphone: allow desktop apps.';
+    return platform === 'darwin'
+      ? 'Microphone blocked. System Settings, Privacy & Security, Microphone: allow Murmur.'
+      : 'Microphone blocked. Windows Settings, Privacy, Microphone: allow desktop apps.';
   }
   if (name === 'NotFoundError' || name === 'OverconstrainedError') {
     return 'Selected microphone not found. Pick another one in Settings.';
@@ -289,6 +343,15 @@ function stopTimer() {
 }
 
 window.murmur.on('rec-start', startCapture);
+window.murmur.on('warm-config', ({ deviceId, warmSeconds, platform: plat }) => {
+  if (plat) platform = plat;
+  alwaysWarm = warmSeconds === -1;
+  warmDeviceId = deviceId || 'default';
+  warmStreamMs = alwaysWarm ? -1 : (typeof warmSeconds === 'number' ? warmSeconds : 8) * 1000;
+  if (mode !== 'idle') return; // a live take applies the new policy when it ends
+  if (alwaysWarm) warmStream(warmDeviceId);
+  else if (stream) scheduleStreamRelease();
+});
 window.murmur.on('rec-stop', () => stopCapture(false));
 window.murmur.on('rec-cancel', () => {
   stopCapture(true);
@@ -320,5 +383,10 @@ window.murmur.on('state', ({ state, words, message }) => {
     mode = 'idle';
     stopDrawing();
     blip('error');
+  }
+  // An errored or finished take can leave the stream released; Always mode
+  // quietly re-warms so the next start is still instant.
+  if ((state === 'done' || state === 'error') && alwaysWarm && !stream) {
+    warmStream(warmDeviceId);
   }
 });

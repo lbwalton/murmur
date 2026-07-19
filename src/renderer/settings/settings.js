@@ -645,7 +645,7 @@ function applyPlatform() {
   $('launchDesc').textContent = 'Start Murmur in the menu bar when you log in.';
   $('micDesc').textContent = 'macOS asks for microphone access the first time. Manage it in System Settings, Privacy & Security, Microphone.';
   $('warmDesc').textContent = 'macOS takes a moment to open the microphone, so Murmur holds it open briefly after each dictation to make the next one start instantly.';
-  $('warmNote').textContent = 'Why this is a setting: while the mic is warm, the macOS mic-in-use indicator stays on even though nothing is recorded or sent. Choose Off if you want the indicator gone the instant a dictation ends; the tradeoff is a short delay before each one starts.';
+  $('warmNote').textContent = 'Why this is a setting: while the mic is warm, the macOS mic-in-use indicator stays on even though nothing is recorded or sent. Choose Off if you want the indicator gone the instant a dictation ends; the tradeoff is a short delay before each one starts. Always holds the mic open from launch so even your first dictation of the day starts instantly, with the indicator on the whole time.';
   $('aboutLede').textContent = 'Push to talk dictation. Hold a key anywhere, speak, release, and clean text lands at your cursor.';
   $('obMicDesc').textContent = 'macOS asks the first time Murmur uses the microphone. Also grant Accessibility in System Settings, Privacy & Security, so Murmur can insert text.';
   $('macPerms').hidden = false;
