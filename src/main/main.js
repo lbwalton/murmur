@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const {
   app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain,
-  screen, nativeImage, shell, session, systemPreferences,
+  screen, nativeImage, shell, session, systemPreferences, Notification,
 } = require('electron');
 
 const IS_MAC = process.platform === 'darwin';
@@ -17,6 +17,23 @@ const hotkeys = require('./hotkeys');
 const corrections = require('./corrections');
 const expansions = require('./expansions');
 const analytics = require('./analytics');
+const recaps = require('./recaps');
+
+// Everything the recap scheduler needs, injected so recaps.js stays pure
+// enough for the smoke test to pin its logic down.
+function recapDeps() {
+  return {
+    getSettings: () => settings.get(),
+    setSettings: (p) => settings.set(p),
+    listEvents: () => analytics.list(),
+    notify: (title, body) => {
+      if (!Notification.isSupported()) return;
+      const n = new Notification({ title, body });
+      n.on('click', () => openSettings('analytics'));
+      n.show();
+    },
+  };
+}
 
 const SMOKE = process.argv.includes('--smoke');
 const ASSETS = path.join(__dirname, '..', '..', 'assets', 'generated');
@@ -379,6 +396,7 @@ function registerIpc() {
   });
   ipcMain.handle('analytics:list', () => analytics.list());
   ipcMain.handle('analytics:clear', () => { analytics.clear(); return []; });
+  ipcMain.on('recaps:test', () => recaps.fire('weekly', recapDeps()));
   ipcMain.handle('history:list', () => history.list());
   ipcMain.handle('history:update', (e, id, newText) => {
     const prev = history.update(id, newText);
@@ -467,6 +485,25 @@ async function runSmoke() {
   }
   checks.correctionApply = corrections.applyCorrections('i use cloud code daily', [{ from: 'cloud code', to: 'Claude Code' }])
     === 'i use Claude Code daily';
+  // Recaps: once-per-period scheduling logic on fixed timestamps. Wednesday
+  // 2026-07-15 noon: all three cadences overdue against an empty lastFired,
+  // none after stamping, and toggles gate correctly.
+  checks.recapSchedule = (() => {
+    const cfg = {
+      enabled: true,
+      weekly: { enabled: true, dayOfWeek: 1, hour: 9 },
+      monthly: { enabled: true, dayOfMonth: 1, hour: 9 },
+      yearly: { enabled: true, dayOfMonth: 1, hour: 9 },
+      lastFired: {},
+    };
+    const now = new Date(2026, 6, 15, 12, 0, 0).getTime();
+    const wSched = new Date(recaps.lastScheduled('weekly', cfg.weekly, now));
+    return recaps.computeDue(cfg, now).length === 3
+      && wSched.getDay() === 1 && wSched.getHours() === 9
+      && recaps.computeDue({ ...cfg, lastFired: { weekly: now, monthly: now, yearly: now } }, now).length === 0
+      && recaps.computeDue({ ...cfg, enabled: false }, now).length === 0
+      && recaps.computeDue({ ...cfg, weekly: { ...cfg.weekly, enabled: false } }, now).join(',') === 'monthly,yearly';
+  })();
   // Analytics: event write, read, and clear against a probe file so real
   // usage data is never touched, plus cost math against the verified rates.
   checks.analyticsEvents = (() => {
@@ -579,7 +616,7 @@ async function runSmoke() {
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff',
     'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt', 'structurePrompt',
-    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost',
+    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);
@@ -619,6 +656,7 @@ if (!gotLock && !SMOKE) {
       return;
     }
     applyHotkeys();
+    recaps.start(recapDeps());
     if (!IS_MAC || app.isPackaged) app.setLoginItemSettings({ openAtLogin: s.launchAtLogin });
     if (!s.onboarded) openSettings();
   });
@@ -630,6 +668,7 @@ if (!gotLock && !SMOKE) {
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     hotkeys.stop();
+    recaps.stop();
     inject.dispose();
   });
 }

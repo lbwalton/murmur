@@ -53,6 +53,7 @@ function render() {
   $('historyEnabled').checked = S.historyEnabled;
   $('analyticsEnabled').checked = S.analyticsEnabled;
   $('baselineWpm').value = S.baselineWpm;
+  renderRecaps();
   renderChips();
   renderExpansions();
   renderCorrections();
@@ -635,6 +636,42 @@ $('anaClear').addEventListener('click', async () => {
   await window.murmur.analyticsClear();
   refreshAnalytics();
 });
+
+// Recaps: one nested settings object, updated wholesale.
+function saveRecaps(mutate) {
+  const next = JSON.parse(JSON.stringify(S.recaps));
+  mutate(next);
+  save({ recaps: next });
+}
+
+function renderRecaps() {
+  if (!$('recapHour').options.length) {
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement('option');
+      opt.value = String(h);
+      opt.textContent = `${((h + 11) % 12) + 1}:00 ${h < 12 ? 'AM' : 'PM'}`;
+      $('recapHour').appendChild(opt);
+    }
+  }
+  const r = S.recaps;
+  $('recapsEnabled').checked = r.enabled;
+  $('recapWeekly').checked = r.weekly.enabled;
+  $('recapMonthly').checked = r.monthly.enabled;
+  $('recapYearly').checked = r.yearly.enabled;
+  $('recapDay').value = String(r.weekly.dayOfWeek);
+  $('recapHour').value = String(r.weekly.hour);
+}
+
+$('recapsEnabled').addEventListener('change', (e) => saveRecaps((r) => { r.enabled = e.target.checked; }));
+$('recapWeekly').addEventListener('change', (e) => saveRecaps((r) => { r.weekly.enabled = e.target.checked; }));
+$('recapMonthly').addEventListener('change', (e) => saveRecaps((r) => { r.monthly.enabled = e.target.checked; }));
+$('recapYearly').addEventListener('change', (e) => saveRecaps((r) => { r.yearly.enabled = e.target.checked; }));
+$('recapDay').addEventListener('change', (e) => saveRecaps((r) => { r.weekly.dayOfWeek = Number(e.target.value); }));
+$('recapHour').addEventListener('change', (e) => saveRecaps((r) => {
+  const hour = Number(e.target.value);
+  r.weekly.hour = hour; r.monthly.hour = hour; r.yearly.hour = hour;
+}));
+$('recapTest').addEventListener('click', () => window.murmur.recapsTest());
 
 // ---------------------------------------------------------------- platform
 

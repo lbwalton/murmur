@@ -318,7 +318,7 @@
       ],
       "priority": 4,
       "passes": false,
-      "notes": "Depends on US-019."
+      "notes": "Depends on US-019. Built 2026-07-19. Required recapSchedule smoke check pins the pure scheduling logic on fixed timestamps: all cadences overdue against an empty lastFired, none after stamping, master and per-cadence toggles gate, and the weekly schedule lands on the configured day and hour. Missed windows fire once, late, on the next 5-minute check. Fresh installs stamp a baseline so nobody gets three recaps at first launch. Needs Labroi live: click Test and see the notification, click it, land on Analytics."
     },
     {
       "id": "US-021",

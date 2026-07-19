@@ -390,6 +390,63 @@
             <input type="number" id="baselineWpm" min="10" max="200" step="5" class="num-input" />
           </div>
         </div>
+
+        <div class="eyebrow mono subhead">RECAPS</div>
+        <div class="row">
+          <div class="row-text">
+            <div class="row-title">Recap notifications</div>
+            <div class="row-desc">A wrap-up notification with your minutes, words, and time saved. Click one to land here.</div>
+          </div>
+          <div class="row-ctl">
+            <button class="btn subtle" id="recapTest">Test</button>
+            <label class="switch"><input type="checkbox" id="recapsEnabled" /><span></span></label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <div class="row-title">Weekly</div>
+            <div class="row-desc">Fires on your chosen day.</div>
+          </div>
+          <div class="row-ctl">
+            <select id="recapDay">
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+            <label class="switch"><input type="checkbox" id="recapWeekly" /><span></span></label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <div class="row-title">Monthly</div>
+            <div class="row-desc">Fires on the 1st.</div>
+          </div>
+          <div class="row-ctl">
+            <label class="switch"><input type="checkbox" id="recapMonthly" /><span></span></label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <div class="row-title">Yearly</div>
+            <div class="row-desc">Fires on January 1.</div>
+          </div>
+          <div class="row-ctl">
+            <label class="switch"><input type="checkbox" id="recapYearly" /><span></span></label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <div class="row-title">Recap time</div>
+            <div class="row-desc">The hour recaps fire, for all three.</div>
+          </div>
+          <div class="row-ctl">
+            <select id="recapHour"></select>
+          </div>
+        </div>
       </section>
 
       <!-- ============================================== About -->

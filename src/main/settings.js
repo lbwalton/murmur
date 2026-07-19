@@ -36,6 +36,13 @@ const DEFAULTS = {
   historyEnabled: true,
   analyticsEnabled: true,
   baselineWpm: 40, // typing speed the time-saved math compares against
+  recaps: {
+    enabled: true,
+    weekly: { enabled: true, dayOfWeek: 1, hour: 9 }, // Monday 9:00
+    monthly: { enabled: true, dayOfMonth: 1, hour: 9 },
+    yearly: { enabled: true, dayOfMonth: 1, hour: 9 }, // January 1
+    lastFired: {},
+  },
   sounds: true,
   launchAtLogin: false,
   maxSeconds: 300,

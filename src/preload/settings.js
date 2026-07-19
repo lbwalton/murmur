@@ -26,4 +26,5 @@ contextBridge.exposeInMainWorld('murmur', {
   permRequestAccessibility: () => ipcRenderer.invoke('perm:requestAccessibility'),
   permRequestMic: () => ipcRenderer.invoke('perm:requestMic'),
   permOpenPane: (pane) => ipcRenderer.send('perm:openPane', pane),
+  recapsTest: () => ipcRenderer.send('recaps:test'),
 });
