@@ -1,6 +1,6 @@
 # Murmur Roadmap
 
-> Generated from prd.json (15/26 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (17/26 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -16,8 +16,10 @@
 - [x] **US-011** First-run onboarding
 - [x] **US-012** Polish: sounds, autostart, resilience
 - [x] **US-013** Packaging and coworker docs
+- [x] **US-014** Correction learning loop
 - [x] **US-018** Text expansions
 - [x] **US-021** API key encrypted at rest
+- [x] **US-022** Instant-start mic
 - [x] **US-026** Number formatting option
 
 ## Built, awaiting live verification
@@ -25,13 +27,11 @@
 Each of these works in the required smoke checks; the remaining step is a human loop noted in prd.json.
 
 - [ ] **US-009** Smart formatting and custom dictionary
-- [ ] **US-014** Correction learning loop
 - [ ] **US-015** macOS platform support
 - [ ] **US-016** Formatting styles and levels
 - [ ] **US-017** Auto structure formatting
 - [ ] **US-019** Local usage analytics
 - [ ] **US-020** Recap notifications
-- [ ] **US-022** Instant-start mic
 - [ ] **US-023** Overlay fly-in animation
 
 ## Planned

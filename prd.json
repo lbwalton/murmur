@@ -222,8 +222,8 @@
         "Diff and apply logic covered by required smoke checks"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Built 2026-07-17 at Labroi's request after real slips (cloud code for Claude Code, inequality for in quality). Smoke verifies diff extraction and deterministic apply. Needs one live loop to flip: dictate something it mishears, tray, Fix last dictation, save the fix, dictate the same phrase again and see it come out right."
+      "passes": true,
+      "notes": "Built 2026-07-17 at Labroi's request after real slips (cloud code for Claude Code, inequality for in quality). Smoke verifies diff extraction and deterministic apply. Needs one live loop to flip: dictate something it mishears, tray, Fix last dictation, save the fix, dictate the same phrase again and see it come out right. Live loop closed 2026-07-20: Whisper heard Tinuiti as Tenuity, Labroi fixed it via Fix last dictation, and the correction now applies. US-014 verified end to end."
     },
     {
       "id": "US-015",
@@ -346,8 +346,8 @@
         "Cold start (warm off) continues to work exactly as before"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Built 2026-07-19. Keep mic warm gains Always (-1): main broadcasts warm-config to the overlay on launch and on mic or warm setting changes, the overlay opens the stream idle with generation guards so a warm-open can never clobber a live capture, releases are skipped while Always, ended tracks re-warm after a second, and an errored take re-warms quietly. Notes in Settings explain the persistent mic indicator on both platforms. Pre-roll-by-buffer was evaluated and rejected: webm/opus chunks cannot be prepended across a container boundary; the warm stream plus instant recorder start achieves the same outcome. Needs Labroi live: set Always, relaunch, speak at the same moment as the first key press of the session, confirm the first word is intact."
+      "passes": true,
+      "notes": "Built 2026-07-19. Keep mic warm gains Always (-1): main broadcasts warm-config to the overlay on launch and on mic or warm setting changes, the overlay opens the stream idle with generation guards so a warm-open can never clobber a live capture, releases are skipped while Always, ended tracks re-warm after a second, and an errored take re-warms quietly. Notes in Settings explain the persistent mic indicator on both platforms. Pre-roll-by-buffer was evaluated and rejected: webm/opus chunks cannot be prepended across a container boundary; the warm stream plus instant recorder start achieves the same outcome. Needs Labroi live: set Always, relaunch, speak at the same moment as the first key press of the session, confirm the first word is intact. Live-verified by Labroi 2026-07-20 with Always warm: first word intact when speaking at the moment of the key press. His earlier inconclusive test was on the 8 second setting and its transcript showed no clipping either, only a vocabulary miss (Tenuity), which the US-014 loop resolved."
     },
     {
       "id": "US-023",
