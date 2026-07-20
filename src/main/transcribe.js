@@ -100,13 +100,27 @@ const STYLE_RULES = {
   ],
 };
 
+// Spoken numbers, requested by Labroi: auto leaves it to the model, digits
+// forces 1, 2, 3, words forces one, two, three. Idioms stay untouched.
+const NUMBER_RULES = {
+  auto: [],
+  digits: [
+    '- Write numbers as digits (3, 42, 2026), not spelled out, except inside idioms where digits would be wrong (one of a kind, back to square one).',
+  ],
+  words: [
+    '- Spell numbers out as words (three, forty-two), not digits, except where digits are the convention (years, times, versions).',
+  ],
+};
+
 function buildFormatPrompt(s) {
   const level = LEVEL_RULES[s.formatLevel] ? s.formatLevel : 'medium';
   const style = STYLE_RULES[s.formatStyle] ? s.formatStyle : 'conversation';
+  const numbers = NUMBER_RULES[s.numberStyle] ? s.numberStyle : 'auto';
   return [
     'You clean up dictated speech into written text.',
     'Rules:',
     ...LEVEL_RULES[level],
+    ...NUMBER_RULES[numbers],
     ...(level === 'none' ? [] : [
       '- Apply spoken formatting commands: "new line" means a line break, "new paragraph" means a paragraph break, "period", "comma", "question mark" mean the punctuation itself when clearly spoken as a command.',
       ...STRUCTURE_RULES,

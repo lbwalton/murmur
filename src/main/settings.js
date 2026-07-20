@@ -17,6 +17,7 @@ const DEFAULTS = {
   formatModel: 'llama-3.1-8b-instant',
   formatStyle: 'conversation', // 'conversation' | 'vibe-coding'
   formatLevel: 'medium', // 'none' | 'structure' | 'soft' | 'medium' | 'high'
+  numberStyle: 'auto', // 'auto' | 'digits' | 'words'
   dictionary: [],
   corrections: [], // learned {from, to, count, ts} pairs from History edits
   expansions: [], // {trigger, value, enabled} applied after all API calls; values never leave the machine

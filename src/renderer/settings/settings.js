@@ -49,6 +49,7 @@ function render() {
   $('smartFormat').checked = S.smartFormat;
   $('formatStyle').value = S.formatStyle;
   $('formatLevel').value = S.formatLevel;
+  $('numberStyle').value = S.numberStyle;
   $('language').value = S.language;
   $('historyEnabled').checked = S.historyEnabled;
   $('analyticsEnabled').checked = S.analyticsEnabled;
@@ -101,6 +102,7 @@ bindValue('baselineWpm', 'baselineWpm', (v) => Math.min(200, Math.max(10, Number
 bindValue('insertMethod', 'insertMethod');
 bindValue('formatStyle', 'formatStyle');
 bindValue('formatLevel', 'formatLevel');
+bindValue('numberStyle', 'numberStyle');
 bindValue('maxSeconds', 'maxSeconds', Number);
 bindValue('warmMicSeconds', 'warmMicSeconds', Number);
 bindValue('language', 'language');

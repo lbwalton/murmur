@@ -566,6 +566,15 @@ async function runSmoke() {
       && !p('medium', 'conversation').includes('developer')
       && p('bogus', 'bogus') === p('medium', 'conversation');
   })();
+  // Numbers: digits mode adds the digit rule, words mode the word rule,
+  // auto adds neither, unknown values fall back to auto.
+  checks.numberPrompt = (() => {
+    const p = (numberStyle) => transcribe.buildFormatPrompt({ formatLevel: 'medium', formatStyle: 'conversation', numberStyle });
+    return p('digits').includes('as digits')
+      && p('words').includes('as words')
+      && !p('auto').includes('as digits') && !p('auto').includes('as words')
+      && p('bogus') === p('auto');
+  })();
   // Auto structure rules ride every level except None, which promises exact
   // words: lists, topic-pivot paragraphs, headings, and the comma guard.
   checks.structurePrompt = (() => {
@@ -628,7 +637,7 @@ async function runSmoke() {
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff',
     'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt', 'structurePrompt',
-    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule',
+    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule', 'numberPrompt',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);

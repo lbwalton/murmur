@@ -394,6 +394,21 @@
       "priority": 5,
       "passes": false,
       "notes": "Depends on US-024 for macOS. Strategy decided 2026-07-19: sell signed builds outside the Mac App Store (MAS sandbox would break hold-to-talk and auto-insert); open source stays the free path."
+    },
+    {
+      "id": "US-026",
+      "title": "Number formatting option",
+      "description": "As a user, I choose how spoken numbers land: as the model hears them, always digits (say two, get 2), or always words.",
+      "acceptanceCriteria": [
+        "A Numbers setting in Voice & model: As the model hears it (default), Always digits, Always words",
+        "Digits mode writes numbers as digits but leaves idioms alone (one of a kind stays words)",
+        "Words mode spells numbers out but leaves conventional digits alone (years, times, versions)",
+        "Applies through the formatter, so it requires Smart formatting on, and the setting copy says so",
+        "Prompt mapping covered by a required smoke check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Requested by Labroi 2026-07-20 during live testing. Prompt mapping machine-verified via the required numberPrompt smoke check. Needs his key live: dictate 'send two copies at three PM' in digits mode and see 2 and 3 PM."
     }
   ]
 }
