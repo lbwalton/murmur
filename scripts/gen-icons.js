@@ -219,8 +219,10 @@ const files = {
   'tray-idle-mac-32.png': encodePng(trayIcon(32, BLACK)),
   'tray-rec-mac-16.png': encodePng(trayIcon(16, AMBER)),
   'tray-rec-mac-32.png': encodePng(trayIcon(32, AMBER)),
-  'icon-16.png': encodePng(appIcon(16)),
-  'icon-32.png': encodePng(appIcon(32)),
+  // Small sizes use the bold three-bar variant on Windows too, so Explorer
+  // lists and the taskbar stay legible, matching the macOS icns.
+  'icon-16.png': encodePng(smallAppIcon(16)),
+  'icon-32.png': encodePng(smallAppIcon(32)),
   'icon-48.png': encodePng(appIcon(48)),
   'icon-256.png': encodePng(appIcon(256)),
   'icon-512.png': encodePng(appIcon(512)),

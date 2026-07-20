@@ -10,6 +10,7 @@
     "start": "electron .",
     "smoke": "electron . --smoke",
     "icons": "node scripts/gen-icons.js",
+    "roadmap": "node scripts/gen-roadmap.js",
     "postinstall": "node scripts/gen-icons.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",

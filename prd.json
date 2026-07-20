@@ -241,7 +241,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "Built 2026-07-19 on Labroi's Mac. Machine-verified: npm run smoke green on macOS (injectHelper and injectChain hit the real osascript JXA helper; macTrayTemplate confirms template idle + amber non-template rec), uiohook darwin-arm64 prebuild loads, Right Cmd default with Cmd labels, 8s live launch clean, dmg and zip built with NSMicrophoneUsageDescription, NSAppleEventsUsageDescription, and LSUIElement confirmed in the packaged Info.plist. Helper protocol prototyped standalone first: first reply 84ms including osascript boot, later replies single-digit ms. Awaiting Labroi's live loop to flip: grant Accessibility, dictate into a real app on both paste and type paths, hold Right Cmd with Input Monitoring granted, Esc cancel, and one launch from the dmg."
+      "notes": "Built 2026-07-19 on Labroi's Mac. Machine-verified: npm run smoke green on macOS (injectHelper and injectChain hit the real osascript JXA helper; macTrayTemplate confirms template idle + amber non-template rec), uiohook darwin-arm64 prebuild loads, Right Cmd default with Cmd labels, dmg and zip built with the mic, Apple Events, and LSUIElement plist keys confirmed. Live-verified by Labroi 2026-07-20 on the installed dmg build: permission grant flow (Accessibility, Input Monitoring, mic), toggle dictation with paste insertion, and hold Right Cmd end to end. One criterion still open before this flips: a single dictation with Insertion method set to Type it out, exercising the mac keystroke-typing path live."
     },
     {
       "id": "US-016",
@@ -287,8 +287,8 @@
         "Expansion apply logic covered by required smoke checks"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Built 2026-07-19. Required expansionApply smoke check covers case-insensitive whole-phrase matching, punctuation-adjacent triggers, partial-word non-matches, and disabled entries; expansionPrivacy proves the formatter prompt never contains expansion values. Applied as the final pipeline step in handleAudio, after transcription, corrections, and formatting, so it works with Smart formatting off by construction. Needs one live loop from Labroi: add an expansion, dictate the trigger, see the value land."
+      "passes": true,
+      "notes": "Built 2026-07-19. Required expansionApply smoke check covers case-insensitive whole-phrase matching, punctuation-adjacent triggers, partial-word non-matches, and disabled entries; expansionPrivacy proves the formatter prompt never contains expansion values. Applied as the final pipeline step in handleAudio so it works with Smart formatting off by construction. Live-verified by Labroi 2026-07-20: added an expansion, dictated the trigger, value landed."
     },
     {
       "id": "US-019",
@@ -407,8 +407,8 @@
         "Prompt mapping covered by a required smoke check"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Requested by Labroi 2026-07-20 during live testing. Prompt mapping machine-verified via the required numberPrompt smoke check. Needs his key live: dictate 'send two copies at three PM' in digits mode and see 2 and 3 PM."
+      "passes": true,
+      "notes": "Requested by Labroi 2026-07-20 during live testing. Live-verified the same day: digits mode confirmed on real dictation. Words mode is machine-verified through the required numberPrompt smoke check (same prompt mechanism, symmetric rule)."
     }
   ]
 }
