@@ -222,10 +222,12 @@ async function handleAudio(arrayBuffer, meta) {
     const raw = Buffer.from(arrayBuffer);
     if (raw.length < 1200) throw new Error('No speech detected');
     // Whisper hallucinates plausible words ("You're welcome.") on silence, so
-    // a take whose loudest analyser frame never left the noise floor is
-    // refused before it can reach the API. Speech peaks land well above 0.05
-    // with autoGainControl on; only vetoes when the overlay actually sampled.
-    if (meta && typeof meta.peakRms === 'number' && meta.rmsSamples >= 5 && meta.peakRms < 0.01) {
+    // a take with no voice-like bursts is refused before it can reach the
+    // API. Fewer than 3 frames above the take's own noise floor means no one
+    // spoke: a key click or breath spikes one or two, speech spans hundreds.
+    // Only vetoes when the overlay actually sampled frames, so a throttled
+    // renderer can never eat real speech.
+    if (meta && typeof meta.voicedFrames === 'number' && meta.rmsSamples >= 5 && meta.voicedFrames < 3) {
       throw new Error('No speech detected');
     }
     let text = await transcribe.transcribe(raw, s);
@@ -597,6 +599,17 @@ async function runSmoke() {
       && g('what time is it', 'What time is it?') === 'What time is it?'
       && g('some text', '') === 'some text';
   })();
+  // US-028 segment filter: near-certain non-speech segments (silence
+  // hallucinations) drop, real and mixed segments survive, endpoints
+  // without segment data fall through to plain text.
+  checks.silenceSegments = (() => {
+    const x = transcribe.extractTranscript;
+    return x({ text: 'Thank you.', segments: [{ text: ' Thank you.', no_speech_prob: 0.97 }] }) === ''
+      && x({ text: 'Real words here. Thank you.', segments: [{ text: ' Real words here.', no_speech_prob: 0.02 }, { text: ' Thank you.', no_speech_prob: 0.93 }] }) === 'Real words here.'
+      && x({ text: 'whispered but real', segments: [{ text: ' whispered but real', no_speech_prob: 0.55 }] }) === 'whispered but real'
+      && x({ text: 'plain endpoint' }) === 'plain endpoint'
+      && x({ text: 'no probs', segments: [{ text: ' no probs' }] }) === 'no probs';
+  })();
   // Numbers: digits mode adds the digit rule, words mode the word rule,
   // auto adds neither, unknown values fall back to auto.
   checks.numberPrompt = (() => {
@@ -674,7 +687,7 @@ async function runSmoke() {
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff', 'clipboardMain',
     'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt', 'structurePrompt',
-    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule', 'numberPrompt', 'formatChatGuard',
+    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule', 'numberPrompt', 'formatChatGuard', 'silenceSegments',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);

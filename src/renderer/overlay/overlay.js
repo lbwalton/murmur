@@ -41,13 +41,13 @@ let timerInterval = 0;
 let mode = 'idle'; // idle | live | processing
 let processT = 0;
 let soundsOn = true;
-// Loudest frame of the current take, from the same analyser that drives the
-// waveform. Silence hallucination guard: Whisper invents words ("You're
-// welcome.") when handed a take that never rose above the noise floor, so
-// main refuses to transcribe one. Sample count rides along so a throttled
-// renderer that never sampled can never veto real speech.
-let peakRms = 0;
-let rmsSamples = 0;
+// Per-frame level series of the current take, from the same analyser that
+// drives the waveform. Silence hallucination guard: main refuses to
+// transcribe a take with no voice-like bursts, because Whisper invents
+// words ("Thank you.", dictionary echoes) when handed silence. Peak alone
+// proved useless live (a key click or AGC room tone crosses any fixed
+// peak), so the stats below measure burstiness against the take's own floor.
+let rmsFrames = [];
 
 // ---------------------------------------------------------------- audio cues
 
@@ -95,8 +95,7 @@ function draw() {
       sum += v * v;
     }
     const rms = Math.sqrt(sum / data.length);
-    if (rms > peakRms) peakRms = rms;
-    rmsSamples += 1;
+    if (rmsFrames.length < 20000) rmsFrames.push(rms);
     bars.push(Math.min(1, rms * 3.2));
     if (bars.length > BAR_COUNT) bars.shift();
   } else if (mode === 'processing') {
@@ -241,8 +240,7 @@ async function startCapture({ deviceId, sounds, warmSeconds, platform: plat }) {
   warmStreamMs = ws < 0 ? -1 : ws * 1000;
   bars = [];
   chunks = [];
-  peakRms = 0;
-  rmsSamples = 0;
+  rmsFrames = [];
   clearTimeout(releaseTimer);
   const gen = ++captureGen;
 
@@ -315,6 +313,24 @@ function micErrorMessage(err) {
   return `Microphone error: ${err && err.message ? err.message : name || 'unknown'}`;
 }
 
+// Speech is bursty: frames rise well above the take's own noise floor. A
+// take with almost no such frames is silence no matter the room, and the
+// adaptive floor (20th percentile of the take) keeps AGC-boosted room tone
+// or a key click from counting as voice.
+function takeAudioStats() {
+  const n = rmsFrames.length;
+  if (!n) return { rmsSamples: 0, peakRms: 0, voicedFrames: 0, floorRms: 0 };
+  const sorted = rmsFrames.slice().sort((a, b) => a - b);
+  const floorRms = sorted[Math.floor(n * 0.2)];
+  const gate = Math.max(0.02, floorRms * 3);
+  return {
+    rmsSamples: n,
+    peakRms: sorted[n - 1],
+    voicedFrames: rmsFrames.filter((v) => v > gate).length,
+    floorRms,
+  };
+}
+
 function stopCapture(discard) {
   stopTimer();
   const ms = Date.now() - startedAt;
@@ -335,7 +351,7 @@ function stopCapture(discard) {
       mode = 'processing';
       const blob = new Blob(chunks, { type: 'audio/webm' });
       const buf = await blob.arrayBuffer();
-      window.murmur.recData(buf, { ms, peakRms, rmsSamples });
+      window.murmur.recData(buf, { ms, ...takeAudioStats() });
     } else {
       mode = 'idle';
       stopDrawing();

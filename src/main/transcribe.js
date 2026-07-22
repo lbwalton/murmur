@@ -34,7 +34,9 @@ async function transcribe(audioBuffer, s) {
   form.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), 'dictation.webm');
   form.append('model', s.model);
   form.append('temperature', '0');
-  form.append('response_format', 'json');
+  // verbose_json returns per-segment no_speech_prob, Whisper's own signal
+  // for silence hallucinations that no audio or text guard can catch.
+  form.append('response_format', 'verbose_json');
   if (s.language && s.language !== 'auto') form.append('language', s.language);
   if (Array.isArray(s.dictionary) && s.dictionary.length) {
     form.append('prompt', `Vocabulary that may appear: ${s.dictionary.join(', ')}.`);
@@ -52,8 +54,23 @@ async function transcribe(audioBuffer, s) {
     throw friendlyNetworkError(err);
   }
   if (!res.ok) throw apiError(res.status, await res.text().catch(() => ''));
-  const json = await res.json();
-  return (json.text || '').trim();
+  return extractTranscript(await res.json());
+}
+
+// Whisper marks segments it doubted were speech at all via no_speech_prob.
+// Silence hallucinations ("Thank you.", vocabulary-prompt echoes) ride in
+// near-certain (0.9+); real speech, even whispered, stays far lower, so only
+// near-certain non-speech is dropped. Endpoints that return no segment data
+// fall through to the plain text untouched (fail open).
+function extractTranscript(json) {
+  if (Array.isArray(json.segments) && json.segments.length) {
+    return json.segments
+      .filter((seg) => !(typeof seg.no_speech_prob === 'number' && seg.no_speech_prob > 0.85))
+      .map((seg) => String(seg.text || ''))
+      .join('')
+      .trim();
+  }
+  return String(json.text || '').trim();
 }
 
 // Style and level compose the system prompt, a VFlow idea ported here.
@@ -238,4 +255,4 @@ async function testConnection(s) {
   }
 }
 
-module.exports = { transcribe, smartFormat, testConnection, listModels, buildFormatPrompt, guardFormatOutput };
+module.exports = { transcribe, smartFormat, testConnection, listModels, buildFormatPrompt, guardFormatOutput, extractTranscript };

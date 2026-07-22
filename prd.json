@@ -431,16 +431,18 @@
       "title": "Silence never inserts text",
       "description": "As a user, if I trigger a dictation and say nothing, Murmur tells me no speech was detected; it never inserts hallucinated text like You're welcome. or a lone period.",
       "acceptanceCriteria": [
-        "The overlay tracks the take's peak analyser level (the same signal driving the waveform) and sends it with the audio",
-        "A take whose peak level never left the noise floor is refused with No speech detected before any API call",
+        "The overlay records the take's per-frame analyser levels and sends burstiness stats (voiced frames above an adaptive noise floor) with the audio",
+        "A take with fewer than 3 voiced frames is refused with No speech detected before any API call; a key click or breath cannot count as voice",
         "The veto only applies when the overlay actually sampled frames, so a throttled renderer can never eat real speech",
+        "Transcription requests verbose_json and drops segments Whisper itself marks near-certain non-speech (no_speech_prob above 0.85), failing open when segment data is absent",
         "A transcript with no letters or digits raises No speech detected instead of being inserted",
-        "Quiet but real speech still transcribes normally, verified live",
+        "Segment filtering covered by a required smoke check",
+        "Quiet and whispered speech still transcribes normally, verified live",
         "A silent take inserts nothing and shows No speech detected, verified live"
       ],
       "priority": 2,
       "passes": false,
-      "notes": "Driven by live failures 2026-07-22: silence hallucination chain hit three ways in one day (a lone '.' inserted, the formatter chatting about a silence artifact, and Whisper inventing 'You're welcome.' from a silent take, which no text-level guard can safely catch because Thank you and You're welcome are legitimate dictations). Built 2026-07-22: overlay accumulates peakRms and rmsSamples per take from the existing analyser and ships them in the rec-data meta; handleAudio refuses a take with rmsSamples >= 5 and peakRms < 0.01 (speech peaks sit well above 0.05 with autoGainControl on) before spending an API call; punctuation-only transcripts also refuse. Complements the US-009 chat guard, whose overlap floor now applies to any non-empty output so a two-word chat reply fails open too. Needs Labroi live: a silent take must show No speech detected, and normal plus deliberately quiet speech must still land."
+      "notes": "Driven by live failures 2026-07-22: silence hallucination chain hit three ways in one day (a lone '.' inserted, the formatter chatting about a silence artifact, and Whisper inventing 'You're welcome.' from a silent take, which no text-level guard can safely catch because Thank you and You're welcome are legitimate dictations). First attempt (refuse when peak RMS under 0.01) FAILED live the same day: four silent takes still inserted Okay, VyStar UPPAbaby (the vocabulary prompt echoed back), and Thank you twice; a key click, breath, or AGC-boosted room tone pushes a single frame past any fixed peak threshold. Rebuilt the same day on burstiness: the overlay keeps the take's full per-frame RMS series (capped 20000), floor is the 20th percentile, voiced means above max(0.02, 3x floor), and handleAudio refuses takes with rmsSamples >= 5 and voicedFrames < 3. Second layer: response_format verbose_json and extractTranscript drops segments with no_speech_prob > 0.85 (silence hallucinations ride in at 0.9+, real speech even whispered stays far lower), failing open without segment data; required silenceSegments smoke check covers drop, mixed, whisper-level, and fail-open cases. Punctuation-only transcripts also refuse. Needs Labroi live: silent takes must show No speech detected, and normal, quiet, and whispered speech must still land (whisper test passed live on the earlier build)."
     }
   ]
 }
