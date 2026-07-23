@@ -118,7 +118,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": ""
+      "notes": "Built 2026-07-23, xcodebuild test green (9 suites). Dictation-first layout: big mic key with the generated glyph, mono status line, bottom row globe, space, delete, return. Mic key writes a pending session (UUID token) to the App Group store then opens murmur://dictate?session=<token> via extensionContext.open with the responder-chain openURL fallback; tapping again while waiting cancels. The pending token lives in the store, not memory, because iOS tears the keyboard down during the bounce; on reappear the keyboard consumes a matching result exactly once and inserts (consume-once, stale-expiry 120s, token mismatch, and new-session-clears-old-result all unit-tested in AppGroupStoreTests). Without Full Access the keyboard shows the explainer with the exact Settings path instead of failing silently. numberPad, decimalPad, phonePad, numbersAndPunctuation, and emailAddress fields get the hand-off layout with a big globe. No-networking-no-audio verified by review: keyboard target sources import only UIKit, Foundation, SwiftUI; grep for URLSession, AVFoundation, AVAudio, CFNetwork, NWConnection, URLRequest finds nothing. Remaining for Labroi on his iPhone: enable the keyboard in Settings and see it render in a host app, tap the mic key end to end, and an Instruments memory pass; flip passes then."
     },
     {
       "id": "US-107",

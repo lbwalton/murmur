@@ -11,7 +11,9 @@
 		2A000000000000000000000F /* format-spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000001 /* format-spec.json */; };
 		2A0000000000000000000010 /* test-vectors.json in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000002 /* test-vectors.json */; };
 		2A0000000000000000000011 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000004 /* DesignTokens.swift */; };
+		2A0000000000000000000012 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000006 /* AppGroupStore.swift */; };
 		3A000000000000000000000B /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000004 /* DesignTokens.swift */; };
+		3A000000000000000000000C /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000006 /* AppGroupStore.swift */; };
 		4A000000000000000000000C /* format-spec.json in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000001 /* format-spec.json */; };
 		4A000000000000000000000D /* test-vectors.json in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000002 /* test-vectors.json */; };
 /* End PBXBuildFile section */
@@ -54,6 +56,7 @@
 		5A0000000000000000000001 /* format-spec.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "format-spec.json"; sourceTree = "<group>"; };
 		5A0000000000000000000002 /* test-vectors.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "test-vectors.json"; sourceTree = "<group>"; };
 		5A0000000000000000000004 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		5A0000000000000000000006 /* AppGroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -162,6 +165,7 @@
 			isa = PBXGroup;
 			children = (
 				5A0000000000000000000004 /* DesignTokens.swift */,
+				5A0000000000000000000006 /* AppGroupStore.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -306,6 +310,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2A0000000000000000000011 /* DesignTokens.swift in Sources */,
+				2A0000000000000000000012 /* AppGroupStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +319,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3A000000000000000000000B /* DesignTokens.swift in Sources */,
+				3A000000000000000000000C /* AppGroupStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
