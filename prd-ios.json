@@ -180,7 +180,7 @@
       ],
       "priority": 5,
       "passes": false,
-      "notes": ""
+      "notes": "Scriptable half done 2026-07-23. docs/ios-testflight.md documents the whole loop step by step with every Labroi-hands step marked: Team ID into both targets, App Store Connect app record, archive, ExportOptions upload, processing, export compliance, internal tester install, plus the honest privacy nutrition answers and the both-targets-signed gotcha. Version bumps are one command, node scripts/bump-ios-version.js <version> [build], rewriting MARKETING_VERSION and CURRENT_PROJECT_VERSION for every target in lockstep (verified idempotent). PrivacyInfo.xcprivacy added to both bundles (no tracking, no collected data, UserDefaults required-reason CA92.1 app, 1C8F.1 keyboard). README gained the iOS section: keyboard-detour reality, setup, gate command, TestFlight pointer. Remaining, all Labroi: Apple Developer Team ID (session needs it to set DEVELOPMENT_TEAM), the App Store Connect record, first archive and upload, TestFlight install with the keyboard enabled and the bounce working end to end, ASC validation of the labels and entitlements; flip passes then."
     }
   ]
 }
