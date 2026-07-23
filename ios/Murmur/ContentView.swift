@@ -6,6 +6,7 @@ import SwiftUI
 struct ContentView: View {
     @Binding var route: MurmurRoute?
     @State private var showSettings = false
+    @ObservedObject private var intentBroker = IntentDictationBroker.shared
 
     var body: some View {
         ZStack {
@@ -41,6 +42,10 @@ struct ContentView: View {
             set: { shown in if !shown { route = nil } }
         )) {
             BounceView(session: bounceSession ?? "") { route = nil }
+        }
+        // The Action Button and Siri Shortcut land here (US-108).
+        .fullScreenCover(isPresented: $intentBroker.active) {
+            IntentDictationView()
         }
         .preferredColorScheme(.dark)
     }

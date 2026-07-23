@@ -1,11 +1,10 @@
 import Foundation
 import Combine
 
-// The app half of the bounce: recording starts the moment the murmur://
-// dictate route lands, no taps, and whatever happens, a result lands in
-// the App Group store so the keyboard never waits on silence. iOS has no
-// public way to return to the previous app, so the finished state shows
-// the swipe-back hint instead.
+// The instant-take engine: recording starts the moment begin() runs, no
+// taps, auto-stops at the configurable cap, and every exit path reports a
+// result through the completion. The keyboard bounce wires completion to
+// the App Group store; the Action Button intent wires it to the clipboard.
 @MainActor
 final class BounceController: ObservableObject {
 
@@ -22,7 +21,10 @@ final class BounceController: ObservableObject {
     let recorder = Recorder()
     private var levelSink: AnyCancellable?
     private var maxTimer: Timer?
-    private let store = AppGroupStore()
+    private var settings: PipelineSettings?
+    private var spec: FormatSpec?
+    private var history: HistoryStore?
+    private var completion: ((Bool, String) -> Void)?
 
     init() {
         levelSink = recorder.$level.sink { [weak self] level in
@@ -32,12 +34,16 @@ final class BounceController: ObservableObject {
         }
     }
 
-    func begin(session: String, settings: PipelineSettings, spec: FormatSpec?, history: HistoryStore) {
+    func begin(settings: PipelineSettings, spec: FormatSpec?, history: HistoryStore,
+               completion: @escaping (Bool, String) -> Void) {
         guard case .starting = phase else { return }
+        self.settings = settings
+        self.spec = spec
+        self.history = history
+        self.completion = completion
         Task {
             guard await recorder.requestPermission() else {
-                finish(session: session, ok: false,
-                       text: "Microphone access is off. Enable it in Settings, Murmur, Microphone.")
+                finish(ok: false, text: "Microphone access is off. Enable it in Settings, Murmur, Microphone.")
                 return
             }
             do {
@@ -45,32 +51,29 @@ final class BounceController: ObservableObject {
                 phase = .recording
                 let cap = TimeInterval(max(10, settings.maxSeconds))
                 maxTimer = Timer.scheduledTimer(withTimeInterval: cap, repeats: false) { [weak self] _ in
-                    Task { @MainActor [weak self] in
-                        self?.stop(session: session, settings: settings, spec: spec, history: history)
-                    }
+                    Task { @MainActor [weak self] in self?.stop() }
                 }
             } catch {
-                finish(session: session, ok: false,
-                       text: "Could not start recording: \(error.localizedDescription)")
+                finish(ok: false, text: "Could not start recording: \(error.localizedDescription)")
             }
         }
     }
 
-    func stop(session: String, settings: PipelineSettings, spec: FormatSpec?, history: HistoryStore) {
-        guard case .recording = phase else { return }
+    func stop() {
+        guard case .recording = phase, let settings else { return }
         maxTimer?.invalidate()
         maxTimer = nil
         guard let audio = recorder.stop(), audio.count >= 1200 else {
             recorder.discard()
-            finish(session: session, ok: false, text: "No speech detected")
+            finish(ok: false, text: "No speech detected")
             return
         }
         guard let spec else {
-            finish(session: session, ok: false, text: "format-spec.json is missing from the app bundle.")
+            finish(ok: false, text: "format-spec.json is missing from the app bundle.")
             return
         }
         guard !settings.apiKey.isEmpty else {
-            finish(session: session, ok: false, text: "No API key yet. Add your free Groq key in Murmur Settings.")
+            finish(ok: false, text: "No API key yet. Add your free Groq key in Murmur Settings.")
             return
         }
         phase = .processing
@@ -78,22 +81,18 @@ final class BounceController: ObservableObject {
             do {
                 let text = try await Pipeline.run(audio: audio, settings: settings, spec: spec)
                 if settings.historyEnabled {
-                    history.add(text: text, model: settings.model)
+                    history?.add(text: text, model: settings.model)
                 }
-                finish(session: session, ok: true, text: text)
+                finish(ok: true, text: text)
             } catch {
-                finish(session: session, ok: false, text: Transcriber.friendlyMessage(for: error))
+                finish(ok: false, text: Transcriber.friendlyMessage(for: error))
             }
         }
     }
 
-    // Whatever happened, the keyboard hears about it: ok carries the
-    // transcript, error carries the readable message.
-    private func finish(session: String, ok: Bool, text: String) {
-        store.writeResult(BounceResult(token: session,
-                                       status: ok ? .ok : .error,
-                                       text: text,
-                                       createdAt: Date()))
+    private func finish(ok: Bool, text: String) {
+        completion?(ok, text)
+        completion = nil
         phase = .finished(ok: ok, message: text)
     }
 }

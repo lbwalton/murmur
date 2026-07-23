@@ -150,7 +150,7 @@
       ],
       "priority": 4,
       "passes": false,
-      "notes": ""
+      "notes": "Built 2026-07-23, xcodebuild test green (9 suites). DictateIntent (AppIntents) with openAppWhenRun: perform awaits the take through IntentDictationBroker, copies the transcript to the clipboard, and returns .result(value: text) with a Copied dialog so Shortcuts can chain the text. MurmurShortcuts AppShortcutsProvider registers the Dictate with Murmur phrase; intent presence verified in the built bundle (Metadata.appintents/extract.actionsdata lists Murmur.DictateIntent). The take screen reuses the US-107 instant-recording engine (BounceController refactored destination-agnostic: keyboard bounce writes the App Group store, intent resumes Shortcuts). Failure and dismissal both resume the intent with a readable error so Shortcuts never hangs. Lock-screen reality documented in the intent description: iOS requires unlock before the app can open; recording starts after unlock. Remaining for Labroi: assign to the Action Button on his iPhone, invoke, paste; flip passes then."
     },
     {
       "id": "US-109",

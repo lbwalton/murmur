@@ -1,14 +1,12 @@
 import SwiftUI
 
-// The screen the keyboard bounces into: already recording when it appears,
-// live waveform, one big stop control, then the swipe-back hint. Amber
-// while live, red only on the stop control and errors.
-struct BounceView: View {
-    let session: String
-    let onDone: () -> Void
-
+// The Action Button take: same instant-recording engine as the keyboard
+// bounce, but the destination is the clipboard and Shortcuts. Confirmation
+// stays on screen briefly so the copy is visible even without the dialog.
+struct IntentDictationView: View {
     @EnvironmentObject private var store: SettingsStore
     @EnvironmentObject private var history: HistoryStore
+    @ObservedObject private var broker = IntentDictationBroker.shared
     @StateObject private var controller = BounceController()
 
     private static let spec = try? FormatSpec.load()
@@ -29,28 +27,43 @@ struct BounceView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
                     .accessibilityLabel("Status: \(statusLine)")
-                mainControl
-                if case .finished = controller.phase {
-                    Button("Done") { onDone() }
-                        .buttonStyle(.bordered)
-                        .tint(NightStudio.text.opacity(0.6))
-                        .accessibilityLabel("Close and return to Murmur home")
+                if case .recording = controller.phase {
+                    stopButton
+                } else if case .starting = controller.phase {
+                    stopButton
+                } else if case .processing = controller.phase {
+                    ProgressView().tint(NightStudio.text)
                 }
                 Spacer()
             }
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            let token = session
             controller.begin(settings: store.pipelineSettings, spec: Self.spec, history: history) { ok, text in
-                // The keyboard hears about every outcome: ok carries the
-                // transcript, error carries the readable message.
-                AppGroupStore().writeResult(BounceResult(token: token,
-                                                         status: ok ? .ok : .error,
-                                                         text: text,
-                                                         createdAt: Date()))
+                IntentDictationBroker.shared.complete(ok: ok, text: text)
             }
         }
+        // Shortcuts must never hang: any dismissal resumes the intent.
+        // A no-op when the take already completed (continuation is nil).
+        .onDisappear {
+            IntentDictationBroker.shared.complete(ok: false, text: "Dictation was dismissed.")
+        }
+    }
+
+    private var stopButton: some View {
+        Button {
+            controller.stop()
+        } label: {
+            ZStack {
+                Circle()
+                    .stroke(NightStudio.red, lineWidth: 2.5)
+                    .frame(width: 96, height: 96)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(NightStudio.red)
+                    .frame(width: 30, height: 30)
+            }
+        }
+        .accessibilityLabel("Stop recording")
     }
 
     private var waveform: some View {
@@ -66,40 +79,13 @@ struct BounceView: View {
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder
-    private var mainControl: some View {
-        switch controller.phase {
-        case .starting, .recording:
-            Button {
-                controller.stop()
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(NightStudio.red, lineWidth: 2.5)
-                        .frame(width: 96, height: 96)
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(NightStudio.red)
-                        .frame(width: 30, height: 30)
-                }
-            }
-            .accessibilityLabel("Stop recording")
-        case .processing:
-            ProgressView()
-                .tint(NightStudio.text)
-        case .finished:
-            EmptyView()
-        }
-    }
-
     private var statusLine: String {
         switch controller.phase {
         case .starting: return "starting"
         case .recording: return "listening. tap to stop."
         case .processing: return "processing"
         case .finished(let ok, let message):
-            return ok
-                ? "done. swipe back to where you were typing."
-                : "\(message) swipe back to return."
+            return ok ? "copied to your clipboard" : message
         }
     }
 

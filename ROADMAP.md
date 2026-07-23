@@ -50,7 +50,7 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-105** In-app dictation · built, live check pending
 - [ ] **US-106** Keyboard extension · built, live check pending
 - [ ] **US-107** The bounce: record, return, insert · built, live check pending
-- [ ] **US-108** Action Button and Siri Shortcut dictation
+- [ ] **US-108** Action Button and Siri Shortcut dictation · built, live check pending
 - [ ] **US-109** Dictionary, corrections, and expansions on iOS
 - [ ] **US-110** TestFlight on Labroi's iPhone
 
