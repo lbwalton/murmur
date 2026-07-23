@@ -135,7 +135,7 @@
       ],
       "priority": 4,
       "passes": false,
-      "notes": ""
+      "notes": "App half built and live-verified in the simulator 2026-07-23, xcodebuild test green (9 suites). murmur://dictate?session=<token> presents BounceView full screen and recording starts on appear, zero taps (screenshot: amber LISTENING with red stop control, no confirmation friction on repeat opens). Auto-stop verified with the configurable cap: maxSeconds set to 10 via defaults, recording auto-stopped and the App Group store then contained murmur.bounce.result keyed by the exact token autostop9 with status error and the readable no-key message (payload decoded from the group container plist and confirmed). Failure paths leave readable state: every exit (mic denied, silence, missing key, pipeline error) writes an error result the keyboard displays, and abandoned bounces expire via the store's 120s stale rule (unit-tested). Max take length picker (1/2/5/10 min) added to Settings and round-trip tested. Finished state shows the swipe-back hint; iOS offers no public auto-return API, documented honestly in the UI copy. Keyboard insert half already unit-tested (consume-once) in US-106. Remaining for Labroi: the real loop on his iPhone, Messages and Notes, under 10 seconds with his key; flip passes then."
     },
     {
       "id": "US-108",

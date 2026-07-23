@@ -28,20 +28,27 @@ struct ContentView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
 
-                if case .dictate(let session) = route {
-                    Text("bounce received \(session ?? "no session")")
-                        .font(NightStudio.mono(11))
-                        .textCase(.uppercase)
-                        .foregroundStyle(NightStudio.text.opacity(0.45))
-                        .padding(.top, 6)
-                }
-
                 DictationView()
             }
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+        // The keyboard's mic key lands here: recording starts on appear,
+        // no taps (US-107).
+        .fullScreenCover(isPresented: .init(
+            get: { bounceSession != nil },
+            set: { shown in if !shown { route = nil } }
+        )) {
+            BounceView(session: bounceSession ?? "") { route = nil }
+        }
         .preferredColorScheme(.dark)
+    }
+
+    private var bounceSession: String? {
+        if case .dictate(let session) = route, let session, !session.isEmpty {
+            return session
+        }
+        return nil
     }
 }

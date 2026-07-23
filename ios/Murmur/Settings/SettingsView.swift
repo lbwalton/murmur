@@ -96,6 +96,13 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Max take length", selection: $store.maxSeconds) {
+                        Text("1 minute").tag(60)
+                        Text("2 minutes").tag(120)
+                        Text("5 minutes").tag(300)
+                        Text("10 minutes").tag(600)
+                    }
+                    .accessibilityLabel("Maximum recording length")
                     LabeledContent("Base URL") {
                         TextField("https://api.groq.com/openai/v1", text: $store.baseUrl)
                             .multilineTextAlignment(.trailing)

@@ -41,6 +41,7 @@ final class SettingsStore: ObservableObject {
     @Published var formatLevel: String { didSet { defaults.set(formatLevel, forKey: Keys.formatLevel) } }
     @Published var numberStyle: String { didSet { defaults.set(numberStyle, forKey: Keys.numberStyle) } }
     @Published var historyEnabled: Bool { didSet { defaults.set(historyEnabled, forKey: Keys.historyEnabled) } }
+    @Published var maxSeconds: Int { didSet { defaults.set(maxSeconds, forKey: Keys.maxSeconds) } }
     @Published var onboarded: Bool { didSet { defaults.set(onboarded, forKey: Keys.onboarded) } }
 
     // The key never touches UserDefaults: reads and writes go straight to
@@ -62,6 +63,7 @@ final class SettingsStore: ObservableObject {
         static let formatLevel = "murmur.formatLevel"
         static let numberStyle = "murmur.numberStyle"
         static let historyEnabled = "murmur.historyEnabled"
+        static let maxSeconds = "murmur.maxSeconds"
         static let onboarded = "murmur.onboarded"
     }
 
@@ -78,6 +80,7 @@ final class SettingsStore: ObservableObject {
         formatLevel = defaults.string(forKey: Keys.formatLevel) ?? fallback.formatLevel
         numberStyle = defaults.string(forKey: Keys.numberStyle) ?? fallback.numberStyle
         historyEnabled = defaults.object(forKey: Keys.historyEnabled) as? Bool ?? fallback.historyEnabled
+        maxSeconds = defaults.object(forKey: Keys.maxSeconds) as? Int ?? fallback.maxSeconds
         onboarded = defaults.bool(forKey: Keys.onboarded)
         apiKey = Keychain.get(account: keychainAccount) ?? ""
     }
@@ -95,6 +98,7 @@ final class SettingsStore: ObservableObject {
         s.formatLevel = formatLevel
         s.numberStyle = numberStyle
         s.historyEnabled = historyEnabled
+        s.maxSeconds = maxSeconds
         return s
     }
 }

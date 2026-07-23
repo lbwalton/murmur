@@ -46,6 +46,7 @@ final class SettingsStoreTests: XCTestCase {
         store.numberStyle = "digits"
         store.language = "en"
         store.smartFormat = false
+        store.maxSeconds = 120
         store.onboarded = true
         // A second instance over the same defaults is a relaunch.
         let reborn = makeStore()
@@ -53,6 +54,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reborn.numberStyle, "digits")
         XCTAssertEqual(reborn.language, "en")
         XCTAssertFalse(reborn.smartFormat)
+        XCTAssertEqual(reborn.maxSeconds, 120)
         XCTAssertTrue(reborn.onboarded, "onboarding must never show again after completion")
     }
 
