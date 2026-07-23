@@ -41,10 +41,10 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-024** Signed and notarized macOS build
 - [ ] **US-025** Auto-update from GitHub Releases
 
-## iOS (prd-ios.json, 1/10 verified)
+## iOS (prd-ios.json, 2/10 verified)
 
 - [x] **US-101** Shared formatter spec
-- [ ] **US-102** Xcode project, app shell, and project law
+- [x] **US-102** Xcode project, app shell, and project law
 - [ ] **US-103** Transcription and formatting pipeline in Swift
 - [ ] **US-104** API key, settings, and onboarding
 - [ ] **US-105** In-app dictation

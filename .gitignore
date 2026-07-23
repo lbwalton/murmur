@@ -6,3 +6,9 @@ build/
 .DS_Store
 Thumbs.db
 .env
+
+# iOS: generated icons (scripts/gen-ios-icons.js) and Xcode residue
+ios/**/*.png
+ios/build/
+xcuserdata/
+DerivedData/

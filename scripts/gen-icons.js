@@ -206,6 +206,7 @@ function encodeIco(pngs) {
 
 // ---------------------------------------------------------------- main
 
+function main() {
 fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(BUILD, { recursive: true });
 
@@ -261,3 +262,10 @@ fs.writeFileSync(
 );
 
 console.log('icons written to assets/generated, build/icon.ico, build/icon.png, and build/icon.icns');
+}
+
+if (require.main === module) main();
+
+// The PNG writer, canvas, and glyph are shared with scripts/gen-ios-icons.js
+// so both platforms draw the identical mark from one implementation.
+module.exports = { encodePng, makeCanvas, blendPx, fillRoundedRect, drawBars, appIcon, smallAppIcon, BAR_RATIOS, INK, AMBER, WHITE };

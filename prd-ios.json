@@ -54,8 +54,8 @@
         "The murmur:// URL scheme is registered and routes into the app"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified 2026-07-23 on Xcode 26.6, iOS 26.5 simulator. Hand-authored pbxproj (objectVersion 77, synchronized folder groups) with three targets: Murmur app, MurmurKeyboard extension, MurmurTests hosted unit tests. xcodebuild -scheme Murmur -destination iPhone 17 build succeeds with the appex embedded and validated; xcodebuild test runs 10 tests, all pass (spec and vector bundles, defaults, thresholds, murmur:// route parsing, App Group container resolution). Gate documented in CLAUDE.md, device name updated to a simulator that exists (iPhone 16 does not ship with Xcode 26). Bundle ids com.labroi.murmur.ios, .keyboard, .tests; both entitlements files carry group.com.labroi.murmur.ios and the hosted test resolves the container. scripts/gen-ios-icons.js reuses the desktop PNG writer: opaque RGB 1024 app icon (App Store rejects alpha) plus KeyboardGlyph 1x/2x/3x, wired into postinstall and npm run icons:ios, PNGs gitignored, generation documented in CLAUDE.md. Night studio tokens defined once in ios/Shared/DesignTokens.swift, compiled into both app and keyboard targets, used by the shell and keyboard placeholder. Live-verified in the simulator: app installed, launched, xcrun simctl openurl murmur://dictate?session=smoke1 raised the OS Open in Murmur confirmation (scheme registered) and after accepting, the shell shows BOUNCE RECEIVED SMOKE1 (routed through onOpenURL, screenshot verified). Desktop npm run smoke green after the gen-icons.js helper export refactor."
     },
     {
       "id": "US-103",
