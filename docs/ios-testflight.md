@@ -7,10 +7,9 @@ scriptable. All commands run from `ios/`.
 ## One-time setup
 
 1. **[Labroi]** An Apple Developer Program membership ($99/yr) on his Apple ID.
-2. **[Labroi]** Tell the session the Team ID (Apple Developer site, Membership
-   page, ten characters like `A1B2C3D4E5`). It goes into the two target build
-   settings as `DEVELOPMENT_TEAM` with `CODE_SIGN_STYLE = Automatic`; Xcode
-   then creates the App ID, the App Group, and profiles on first archive.
+2. Done 2026-07-24: the Team ID `4B55ZVBVKN` is set as `DEVELOPMENT_TEAM` on
+   all three targets with `CODE_SIGN_STYLE = Automatic`; Xcode creates the
+   App ID, the App Group, and profiles on first archive.
 3. **[Labroi]** In [App Store Connect](https://appstoreconnect.apple.com),
    Apps, plus button, New App:
    - Platform iOS, Name `Murmur`, primary language English.

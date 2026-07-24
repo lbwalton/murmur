@@ -414,6 +414,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Murmur/Murmur.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Murmur/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -436,6 +437,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Murmur/Murmur.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Murmur/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -457,6 +459,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MurmurKeyboard/MurmurKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MurmurKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Murmur;
@@ -477,6 +480,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MurmurKeyboard/MurmurKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MurmurKeyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Murmur;
@@ -497,6 +501,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.labroi.murmur.ios.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -510,6 +515,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 4B55ZVBVKN;
 				GENERATE_INFOPLIST_FILE = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.labroi.murmur.ios.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
