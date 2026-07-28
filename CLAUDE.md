@@ -6,6 +6,7 @@ Push-to-talk dictation for Windows (Wispr Flow parity). Electron tray app, Groq 
 
 - `prd.json` is the spec. Every change maps to a story; each story has acceptance criteria and a `passes` flag. Never set `passes: true` until every criterion is verified, and record how it was verified in `notes`. Criteria needing a live mic or real API key are verified manually by Labroi.
 - Verify with `npm run smoke` after any main-process or preload change. It boots every subsystem headlessly and prints `SMOKE_RESULT` JSON; it must stay green and new subsystems should get a check added.
+- Live verification runs on the installed build, never assume a dev run. Before handing a story to Labroi for a live test: quit Murmur (`Stop-Process -Name Murmur -Force`), rebuild with `npm run dist:win`, silently install the NSIS setup from `release/` with `/S`, relaunch `%LOCALAPPDATA%\Programs\murmur\Murmur.exe`, then hand off. The dev run and the installed exe share userData but not code, so a verify against a stale install proves nothing (learned on US-029, 2026-07-28).
 
 ## Hard constraints
 
