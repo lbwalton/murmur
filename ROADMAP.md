@@ -1,6 +1,6 @@
 # Murmur Roadmap
 
-> Generated from prd.json (20/28 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (21/29 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -24,6 +24,7 @@
 - [x] **US-026** Number formatting option
 - [x] **US-027** Warm mic survives sleep and resume
 - [x] **US-028** Silence never inserts text
+- [x] **US-029** Dictionary prompt never leaks into transcripts
 
 ## Built, awaiting live verification
 

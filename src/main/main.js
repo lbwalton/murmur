@@ -610,6 +610,24 @@ async function runSmoke() {
       && x({ text: 'plain endpoint' }) === 'plain endpoint'
       && x({ text: 'no probs', segments: [{ text: ' no probs' }] }) === 'no probs';
   })();
+  // US-029 prompt echo guard: the full dictionary run, verbatim and in
+  // registered order, strips out of a longer transcript with punctuation
+  // tidied; partial runs, reordered terms, spoken "and" lists, a transcript
+  // that is exactly the list, and sub-two-term dictionaries all pass
+  // through untouched. The vocabulary prompt itself must be bare terms.
+  checks.promptEcho = (() => {
+    const strip = transcribe.stripPromptEcho;
+    const dict = ['VyStar', 'UPPAbaby', 'Tinuiti'];
+    return strip('we switched our conversion actions to be VyStar, UPPAbaby, Tinuiti. We changed the rest.', dict)
+        === 'we switched our conversion actions to be. We changed the rest.'
+      && strip('met with VyStar, UPPAbaby, and Tinuiti today', dict) === 'met with VyStar, UPPAbaby, and Tinuiti today'
+      && strip('VyStar and UPPAbaby launch Monday', dict) === 'VyStar and UPPAbaby launch Monday'
+      && strip('Tinuiti, UPPAbaby, VyStar in that order', dict) === 'Tinuiti, UPPAbaby, VyStar in that order'
+      && strip('VyStar, UPPAbaby, Tinuiti.', dict) === 'VyStar, UPPAbaby, Tinuiti.'
+      && strip('some words', ['OnlyOne']) === 'some words'
+      && strip('some words', []) === 'some words'
+      && transcribe.vocabPrompt(dict) === 'VyStar, UPPAbaby, Tinuiti.';
+  })();
   // Numbers: digits mode adds the digit rule, words mode the word rule,
   // auto adds neither, unknown values fall back to auto.
   checks.numberPrompt = (() => {
@@ -687,7 +705,7 @@ async function runSmoke() {
     'iconsExist', 'iconsDecode', 'settingsFile', 'tray', 'fetchGlobals',
     'injectHelper', 'injectChain', 'overlayLoaded', 'correctionDiff', 'clipboardMain',
     'correctionApply', 'settingsRenderer', 'onboardDismiss', 'keyStorage', 'formatPrompt', 'structurePrompt',
-    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule', 'numberPrompt', 'formatChatGuard', 'silenceSegments',
+    'expansionApply', 'expansionPrivacy', 'analyticsEvents', 'analyticsCost', 'recapSchedule', 'numberPrompt', 'formatChatGuard', 'silenceSegments', 'promptEcho',
     IS_MAC ? 'macTrayTemplate' : 'sendKeysEscape',
   ];
   const ok = required.every((k) => checks[k] === true);

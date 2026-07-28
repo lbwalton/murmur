@@ -443,6 +443,23 @@
       "priority": 2,
       "passes": true,
       "notes": "Driven by live failures 2026-07-22: silence hallucination chain hit three ways in one day (a lone '.' inserted, the formatter chatting about a silence artifact, and Whisper inventing 'You're welcome.' from a silent take, which no text-level guard can safely catch because Thank you and You're welcome are legitimate dictations). First attempt (refuse when peak RMS under 0.01) FAILED live the same day: four silent takes still inserted Okay, VyStar UPPAbaby (the vocabulary prompt echoed back), and Thank you twice; a key click, breath, or AGC-boosted room tone pushes a single frame past any fixed peak threshold. Rebuilt the same day on burstiness: the overlay keeps the take's full per-frame RMS series (capped 20000), floor is the 20th percentile, voiced means above max(0.02, 3x floor), and handleAudio refuses takes with rmsSamples >= 5 and voicedFrames < 3. Second layer: response_format verbose_json and extractTranscript drops segments with no_speech_prob > 0.85 (silence hallucinations ride in at 0.9+, real speech even whispered stays far lower), failing open without segment data; required silenceSegments smoke check covers drop, mixed, whisper-level, and fail-open cases. Punctuation-only transcripts also refuse. Live-verified by Labroi 2026-07-22 on the rebuilt gate: silent takes show No speech detected, whispered and normal speech both transcribe."
+    },
+    {
+      "id": "US-029",
+      "title": "Dictionary prompt never leaks into transcripts",
+      "description": "As a user, my custom vocabulary helps Whisper spell names right but never shows up in a dictation as words I did not say.",
+      "acceptanceCriteria": [
+        "The Whisper vocabulary prompt is the bare term list with no instruction phrasing that could be echoed as text",
+        "A transcript containing the full dictionary verbatim, in registered order, joined by commas or spaces without a spoken and, has that run stripped and the surrounding punctuation tidied",
+        "Partial runs, reordered terms, and lists joined with and are never stripped, so real speech about the same names survives",
+        "A strip that would leave no words keeps the original transcript, so dictating exactly the list still inserts",
+        "Fewer than two dictionary terms disables the guard entirely",
+        "Echo stripping and the bare prompt form are covered by a required smoke check",
+        "A long dictation with pauses inserts only the spoken words, no dictionary echo, verified live"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Driven by live failure 2026-07-28: a 108 second take (107 words, long pauses between thoughts) came back with the entire dictionary spliced verbatim mid-sentence: 'switched our conversion actions within Google Ads to be VyStar, UPPAbaby, Tinuiti. We changed...'. Whisper echoes its prompt into low-confidence spans; US-028's guards only cover fully silent takes and near-certain non-speech segments, so an echo landing inside a real take passed every gate, and formatLevel structure keeps wording verbatim so the formatter correctly preserved it. Built 2026-07-28, two layers: vocabPrompt drops the echoable instruction sentence in favor of bare terms, and stripPromptEcho removes a full-dictionary run (verbatim spelling, registered order, comma or space joined, no and) from the transcript before corrections and formatting. Spoken lists come out partial, reordered, or with an and, so they survive; the accepted tradeoff is that the full list spoken adjacently in registered order inside a longer take also strips. Fails open when the dictionary has fewer than two terms or when stripping would empty the transcript. Required promptEcho smoke check covers the live-observed echo, and-joined and reordered survivals, whole-transcript fail-open, and the bare prompt form. Live-verified by Labroi 2026-07-28: a long dictation with deliberate pauses inserted only the spoken words, no dictionary echo."
     }
   ]
 }

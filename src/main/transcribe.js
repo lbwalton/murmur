@@ -29,6 +29,14 @@ function friendlyNetworkError(err) {
   return err;
 }
 
+// US-029: the prompt is bare terms, reading like prior-transcript context,
+// which is the form Whisper's prompt is designed for. The old instruction
+// sentence ("Vocabulary that may appear: ...") was itself echoable text and
+// showed up in a live transcript.
+function vocabPrompt(dictionary) {
+  return `${dictionary.join(', ')}.`;
+}
+
 async function transcribe(audioBuffer, s) {
   const form = new FormData();
   form.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), 'dictation.webm');
@@ -39,7 +47,7 @@ async function transcribe(audioBuffer, s) {
   form.append('response_format', 'verbose_json');
   if (s.language && s.language !== 'auto') form.append('language', s.language);
   if (Array.isArray(s.dictionary) && s.dictionary.length) {
-    form.append('prompt', `Vocabulary that may appear: ${s.dictionary.join(', ')}.`);
+    form.append('prompt', vocabPrompt(s.dictionary));
   }
 
   let res;
@@ -54,7 +62,41 @@ async function transcribe(audioBuffer, s) {
     throw friendlyNetworkError(err);
   }
   if (!res.ok) throw apiError(res.status, await res.text().catch(() => ''));
-  return extractTranscript(await res.json());
+  return stripPromptEcho(extractTranscript(await res.json()), s.dictionary);
+}
+
+// US-029 prompt echo guard. Whisper regurgitates its vocabulary prompt into
+// low-confidence spans of otherwise real speech (observed live 2026-07-28:
+// "...switched our conversion actions within Google Ads to be VyStar,
+// UPPAbaby, Tinuiti. We changed..."). The tell is the full dictionary,
+// verbatim spelling, registered order, joined by commas or spaces with no
+// "and": a spoken list comes out partial, reordered, or with an "and", so
+// those all survive. Fails open twice: fewer than two terms gives no
+// signature worth matching, and a strip that would leave no words keeps the
+// original, because someone really can dictate exactly the list. The
+// accepted tradeoff is that the full list spoken adjacently, in registered
+// order, without an "and", inside a longer take gets stripped; losing that
+// rare phrase beats inserting the prompt.
+function stripPromptEcho(text, dictionary) {
+  const t = String(text || '');
+  if (!Array.isArray(dictionary) || dictionary.length < 2) return t;
+  const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let re;
+  try {
+    re = new RegExp(
+      `(?<![\\p{L}\\p{N}])${dictionary.map(esc).join('[,\\s]+')}(?![\\p{L}\\p{N}])`,
+      'gu'
+    );
+  } catch {
+    return t;
+  }
+  const replaced = t.replace(re, ' ');
+  if (replaced === t) return t;
+  const stripped = replaced
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return /[\p{L}\p{N}]/u.test(stripped) ? stripped : t;
 }
 
 // Whisper marks segments it doubted were speech at all via no_speech_prob.
@@ -255,4 +297,4 @@ async function testConnection(s) {
   }
 }
 
-module.exports = { transcribe, smartFormat, testConnection, listModels, buildFormatPrompt, guardFormatOutput, extractTranscript };
+module.exports = { transcribe, smartFormat, testConnection, listModels, buildFormatPrompt, guardFormatOutput, extractTranscript, stripPromptEcho, vocabPrompt };
