@@ -7,6 +7,8 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const prd = JSON.parse(fs.readFileSync(path.join(ROOT, 'prd.json'), 'utf8'));
+const iosPath = path.join(ROOT, 'prd-ios.json');
+const prdIos = fs.existsSync(iosPath) ? JSON.parse(fs.readFileSync(iosPath, 'utf8')) : null;
 
 // A story is "built, awaiting live verification" when its notes record a
 // build or partial verification but passes has not flipped yet.
@@ -40,9 +42,18 @@ out.push('## Planned');
 out.push('');
 for (const s of groups.planned) out.push(line(s, ' '));
 out.push('');
+if (prdIos) {
+  const ig = { done: [], awaiting: [], planned: [] };
+  for (const s of prdIos.stories) ig[bucket(s)].push(s);
+  out.push(`## iOS (prd-ios.json, ${ig.done.length}/${prdIos.stories.length} verified)`);
+  out.push('');
+  for (const s of ig.done) out.push(line(s, 'x'));
+  for (const s of ig.awaiting) out.push(line(s, ' ') + ' · built, live check pending');
+  for (const s of ig.planned) out.push(line(s, ' '));
+  out.push('');
+}
 out.push('## Horizon (not yet stories)');
 out.push('');
-out.push('- [ ] iOS app + Murmur keyboard: native Swift, keyboard extension with the containing-app mic bounce (the Wispr Flow shape), shared formatter spec extracted to shared/ first. Gets its own prd-ios.json in this repo.');
 out.push('- [ ] Paid tier sold outside the Mac App Store: license keys via a merchant of record (Lemon Squeezy or Polar shortlisted, both $0 upfront). Free forever from source.');
 out.push('- [ ] Marketing: repo transfer to the public-facing account, README as landing page, SEO pass, launch content.');
 out.push('');

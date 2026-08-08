@@ -1,12 +1,22 @@
 # Murmur
 
-Push-to-talk dictation for Windows (Wispr Flow parity). Electron tray app, Groq Whisper by default, any OpenAI-compatible endpoint supported.
+Push-to-talk dictation for Windows and macOS (Wispr Flow parity), with an iOS app + keyboard in ios/. Electron tray app on desktop, Groq Whisper by default, any OpenAI-compatible endpoint supported.
 
 ## Process
 
-- `prd.json` is the spec. Every change maps to a story; each story has acceptance criteria and a `passes` flag. Never set `passes: true` until every criterion is verified, and record how it was verified in `notes`. Criteria needing a live mic or real API key are verified manually by Labroi.
+- `prd.json` is the desktop spec; `prd-ios.json` is the iOS spec. Every change maps to a story; each story has acceptance criteria and a `passes` flag. Never set `passes: true` until every criterion is verified, and record how it was verified in `notes`. Criteria needing a live mic, a real API key, a physical iPhone, or App Store Connect are verified manually by Labroi.
 - Verify with `npm run smoke` after any main-process or preload change. It boots every subsystem headlessly and prints `SMOKE_RESULT` JSON; it must stay green and new subsystems should get a check added.
 - Live verification runs on the installed build, never assume a dev run. Before handing a story to Labroi for a live test: quit Murmur (`Stop-Process -Name Murmur -Force`), rebuild with `npm run dist:win`, silently install the NSIS setup from `release/` with `/S`, relaunch `%LOCALAPPDATA%\Programs\murmur\Murmur.exe`, then hand off. The dev run and the installed exe share userData but not code, so a verify against a stale install proves nothing (learned on US-029, 2026-07-28).
+- After changing either PRD, run `npm run roadmap` so ROADMAP.md stays true.
+- `git pull --rebase` before every commit: parallel sessions run on Labroi's other machines. Skipping this on 2026-08-07 put a desktop formatter fix on a line that had diverged from a whole iOS epic; the merge cost more than the pull would have.
+
+## iOS (ios/)
+
+- Verification gate: `cd ios && xcodebuild -scheme Murmur -destination 'platform=iOS Simulator,name=iPhone 17' test` must stay green (the smoke equivalent). Substitute any installed simulator name (`xcrun simctl list devices available`). Touching `shared/` or `src/` also requires `npm run smoke` green at the repo root.
+- The keyboard extension NEVER records audio; Apple forbids microphone access in keyboards. All audio lives in the containing app, reached via the murmur:// bounce, results returned through the App Group store. The keyboard contains no networking or audio code.
+- The API key lives in the iOS Keychain only: never UserDefaults, never the App Group, never logs.
+- `shared/format-spec.json` is the single source of truth for formatter rules on every platform; `shared/test-vectors.json` keeps desktop smoke checks and iOS unit tests testing the same cases. Change behavior there or nowhere.
+- No binary assets on iOS either: `npm run icons:ios` (part of postinstall) generates the app icon and keyboard glyph PNGs into the asset catalogs, which git ignores. Run it once before the first xcodebuild on a fresh clone.
 
 ## Hard constraints
 
