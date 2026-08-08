@@ -82,6 +82,60 @@ enum Transcriber {
         return (json.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    // US-030 transcript fence: the transcript goes to the model wrapped in the
+    // spec's tags, so a model that echoes the fence back would insert literal
+    // tags into the target app. Every occurrence goes, not just wrapping ones,
+    // so a fence echoed mid-reply cannot survive. Pattern and flags come from
+    // the spec so both platforms strip identically.
+    static func stripTranscriptTags(_ text: String, spec: FormatSpec) -> String {
+        let w = spec.prompt.transcriptWrapper
+        guard let re = try? NSRegularExpression(pattern: w.stripPattern,
+                                                options: regexOptions(from: w.stripFlags)) else {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let range = NSRange(text.startIndex..., in: text)
+        let stripped = re.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // US-029 prompt-echo guard. Whisper regurgitates its vocabulary prompt
+    // into low-confidence spans of otherwise real speech (observed live
+    // 2026-07-28: "...conversion actions to be VyStar, UPPAbaby, Tinuiti. We
+    // changed..."). The signature is the full dictionary verbatim, in
+    // registered order, joined only by commas or whitespace: a spoken list has
+    // an "and", or is partial, or reordered, so all of those survive. Fails
+    // open twice, matching desktop stripPromptEcho: a dictionary under minTerms
+    // has no signature, and a strip that would leave no letters or digits keeps
+    // the original because someone really can dictate exactly the list.
+    static func stripPromptEcho(_ text: String, dictionary: [String], spec: FormatSpec) -> String {
+        let echo = spec.promptEcho
+        guard dictionary.count >= echo.minTerms else { return text }
+        let joined = dictionary
+            .map { NSRegularExpression.escapedPattern(for: $0) }
+            .joined(separator: echo.joinPattern)
+        let pattern = "(?<![\\p{L}\\p{N}])" + joined + "(?![\\p{L}\\p{N}])"
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return text }
+        let replaced = re.stringByReplacingMatches(
+            in: text, range: NSRange(text.startIndex..., in: text), withTemplate: " ")
+        if replaced == text { return text }
+        // Tidy space-before-punctuation and runs of spaces, then trim, exactly
+        // as desktop does after the run is blanked out.
+        var stripped = replaced
+        stripped = Self.replaceAll(#"\s+([.,;:!?])"#, in: stripped, with: "$1")
+        stripped = Self.replaceAll(#"\s{2,}"#, in: stripped, with: " ")
+        stripped = stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasContent = (try? NSRegularExpression(pattern: "[\\p{L}\\p{N}]"))
+            .map { $0.firstMatch(in: stripped, range: NSRange(stripped.startIndex..., in: stripped)) != nil }
+            ?? false
+        return hasContent ? stripped : text
+    }
+
+    private static func replaceAll(_ pattern: String, in text: String, with template: String) -> String {
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return text }
+        return re.stringByReplacingMatches(
+            in: text, range: NSRange(text.startIndex..., in: text), withTemplate: template)
+    }
+
     // ---------------------------------------------------- request bodies
 
     static func normalizedBase(_ baseUrl: String) -> String {
@@ -131,13 +185,17 @@ enum Transcriber {
         system += Formatter.promptSuffixes(dictionary: settings.dictionary,
                                            corrections: settings.corrections,
                                            spec: spec)
+        // Fence the transcript so a task-shaped dictation reads as data, not
+        // orders in the user turn (US-030); the reply is un-fenced before the
+        // guard sees it.
+        let w = spec.prompt.transcriptWrapper
         let payload: [String: Any] = [
             "model": settings.formatModel,
             "temperature": 0.2,
             "max_tokens": 4096,
             "messages": [
                 ["role": "system", "content": system],
-                ["role": "user", "content": text],
+                ["role": "user", "content": w.open + text + w.close],
             ],
         ]
         return try JSONSerialization.data(withJSONObject: payload)
@@ -170,7 +228,8 @@ enum Transcriber {
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw APIError(message: apiErrorMessage(status: http.statusCode, body: data))
         }
-        return extractTranscript(data, spec: spec)
+        return stripPromptEcho(extractTranscript(data, spec: spec),
+                               dictionary: settings.dictionary, spec: spec)
     }
 
     // Fail open at every turn: a dictation is never lost because the
@@ -188,7 +247,10 @@ enum Transcriber {
             request.httpBody = try formatRequestBody(text: text, settings: settings, spec: spec)
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return text }
-            return Formatter.guardFormatOutput(input: text, output: chatContent(from: data), spec: spec)
+            // Un-fence the reply before guarding, so an echoed <transcript>
+            // tag can never reach the target app (US-030).
+            let reply = stripTranscriptTags(chatContent(from: data), spec: spec)
+            return Formatter.guardFormatOutput(input: text, output: reply, spec: spec)
         } catch {
             return text
         }

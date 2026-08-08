@@ -19,6 +19,11 @@ enum Formatter {
             lines.append(spec.prompt.spokenCommands)
             lines += spec.structure
         }
+        // Headings start at Soft: Structure promises the speaker's own words
+        // with polish, and a heading invents a line that was never a sentence.
+        if lvl != "none" && lvl != "structure" {
+            lines += spec.headingRule
+        }
         lines += spec.styles[sty] ?? []
         lines += spec.prompt.footer
         return lines.joined(separator: "\n")
@@ -39,6 +44,32 @@ enum Formatter {
             out += "\n" + fillTemplate(spec.prompt.correctionsRule, ["pairs": pairs])
         }
         return out
+    }
+
+    // US-030 compliance patterns, compiled once per distinct pattern set and
+    // reused, never per call. A spec pattern this platform cannot compile is
+    // dropped, exactly as desktop does, so an incompatible regex weakens the
+    // guard but never breaks it. Keyed by the pattern+flags signature because
+    // FormatSpec is a value type with no stable identity to key on.
+    private static var complyCache: [String: [NSRegularExpression]] = [:]
+    private static let complyCacheLock = NSLock()
+
+    static func compiledComplyPatterns(_ spec: FormatSpec) -> [NSRegularExpression] {
+        let key = spec.chatGuard.complyPatterns
+            .map { "\($0.pattern)\u{1}\($0.flags)" }
+            .joined(separator: "\u{2}")
+        complyCacheLock.lock()
+        defer { complyCacheLock.unlock() }
+        if let cached = complyCache[key] { return cached }
+        let compiled = spec.chatGuard.complyPatterns.compactMap {
+            try? NSRegularExpression(pattern: $0.pattern, options: regexOptions(from: $0.flags))
+        }
+        complyCache[key] = compiled
+        return compiled
+    }
+
+    private static func matches(_ re: NSRegularExpression, _ text: String) -> Bool {
+        re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
     // Word extraction matching the desktop regex /[\p{L}\p{N}']+/gu.
@@ -65,6 +96,10 @@ enum Formatter {
         let lowerIn = inp.lowercased()
         let lowerOut = out.lowercased()
         if g.tells.contains(where: { lowerOut.contains($0) && !lowerIn.contains($0) }) { return inp }
+        // US-030 compliance patterns, same output-but-not-input rule as the
+        // tells: the model performed a task instead of cleaning speech.
+        let comply = compiledComplyPatterns(spec)
+        if comply.contains(where: { matches($0, out) && !matches($0, inp) }) { return inp }
         let inWords = wordsOf(inp)
         let outWords = wordsOf(out)
         // A transcript of at most one word gives a cleanup nothing to say

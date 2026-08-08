@@ -43,10 +43,11 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-024** Signed and notarized macOS build
 - [ ] **US-025** Auto-update from GitHub Releases
 
-## iOS (prd-ios.json, 2/11 verified)
+## iOS (prd-ios.json, 3/11 verified)
 
 - [x] **US-101** Shared formatter spec
 - [x] **US-102** Xcode project, app shell, and project law
+- [x] **US-111** Formatter parity: prompt echo and compliance guards on iOS
 - [ ] **US-103** Transcription and formatting pipeline in Swift · built, live check pending
 - [ ] **US-104** API key, settings, and onboarding · built, live check pending
 - [ ] **US-105** In-app dictation · built, live check pending
@@ -55,7 +56,6 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-108** Action Button and Siri Shortcut dictation · built, live check pending
 - [ ] **US-109** Dictionary, corrections, and expansions on iOS · built, live check pending
 - [ ] **US-110** TestFlight on Labroi's iPhone · built, live check pending
-- [ ] **US-111** Formatter parity: prompt echo and compliance guards on iOS
 
 ## Horizon (not yet stories)
 
