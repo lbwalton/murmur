@@ -464,6 +464,14 @@ function renderCorrections() {
 
 // ---------------------------------------------------------------- history
 
+// US-030: only takes where the formatter put in words nobody spoke are worth
+// flagging. Punctuation and capitalization fixes are the formatter working,
+// and once a take has been reverted the original matches the text, so there
+// is nothing left to show.
+function showsOriginal(item) {
+  return !!(item.altered && item.raw && item.raw !== item.text);
+}
+
 async function refreshHistory() {
   const items = await window.murmur.historyList();
   const list = $('historyList');
@@ -472,16 +480,52 @@ async function refreshHistory() {
   for (const item of items) {
     const row = document.createElement('div');
     row.className = 'h-item';
+    const body = document.createElement('div');
+    body.className = 'h-body';
     const text = document.createElement('div');
     text.className = 'h-text';
     text.textContent = item.text;
     text.title = item.text;
+    body.appendChild(text);
+    // US-030: when the formatter rewrote the take, say so and keep the
+    // spoken words one click away instead of silently replacing them.
+    if (showsOriginal(item)) {
+      const rawBlock = document.createElement('div');
+      rawBlock.className = 'h-raw';
+      rawBlock.hidden = true;
+      const label = document.createElement('div');
+      label.className = 'eyebrow mono';
+      label.textContent = 'AS SPOKEN';
+      const rawText = document.createElement('div');
+      rawText.textContent = item.raw;
+      rawBlock.append(label, rawText);
+      body.appendChild(rawBlock);
+    }
     const meta = document.createElement('div');
     meta.className = 'h-meta';
     const when = new Date(item.ts);
     meta.textContent = `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${item.words}w`;
+    if (showsOriginal(item)) {
+      const tag = document.createElement('div');
+      tag.className = 'h-tag';
+      tag.textContent = 'formatted';
+      tag.title = 'The formatter changed this take. Click Original to see what you said.';
+      meta.appendChild(tag);
+    }
     const actions = document.createElement('div');
     actions.className = 'h-actions';
+    if (showsOriginal(item)) {
+      const orig = document.createElement('button');
+      orig.className = 'btn';
+      orig.textContent = 'Original';
+      orig.title = 'Show the transcript before the formatter touched it';
+      orig.addEventListener('click', () => {
+        const block = body.querySelector('.h-raw');
+        block.hidden = !block.hidden;
+        orig.textContent = block.hidden ? 'Original' : 'Hide';
+      });
+      actions.appendChild(orig);
+    }
     const edit = document.createElement('button');
     edit.className = 'btn edit-btn';
     edit.textContent = 'Fix';
@@ -504,7 +548,7 @@ async function refreshHistory() {
       refreshHistory();
     });
     actions.append(edit, copy, del);
-    row.append(text, meta, actions);
+    row.append(body, meta, actions);
     list.appendChild(row);
   }
   return items;
@@ -539,7 +583,19 @@ function openEditor(row, item) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveBtn.click(); }
     if (e.key === 'Escape') refreshHistory();
   });
-  actions.append(saveBtn, cancelBtn);
+  // US-030: one click to throw away a formatter rewrite and keep what was
+  // actually said. Saving from here also teaches the correction, same as
+  // any other fix.
+  if (showsOriginal(item)) {
+    const revert = document.createElement('button');
+    revert.className = 'btn';
+    revert.textContent = 'Use original';
+    revert.title = 'Replace this with the transcript as spoken, before the formatter';
+    revert.addEventListener('click', () => { editor.value = item.raw; editor.focus(); });
+    actions.append(saveBtn, revert, cancelBtn);
+  } else {
+    actions.append(saveBtn, cancelBtn);
+  }
   row.replaceChildren(editor, actions);
   editor.focus();
 }

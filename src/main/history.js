@@ -8,8 +8,10 @@ const MAX_ITEMS = 200;
 let filePath = null;
 let items = [];
 
-function init() {
-  filePath = path.join(app.getPath('userData'), 'history.json');
+// An explicit path lets the smoke test exercise the store against a probe
+// file instead of the user's real history (same shape as analytics.init).
+function init(overridePath) {
+  filePath = overridePath || path.join(app.getPath('userData'), 'history.json');
   try {
     if (fs.existsSync(filePath)) items = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!Array.isArray(items)) items = [];
@@ -26,11 +28,17 @@ function save() {
   }
 }
 
-function add({ text, words, ms, model }) {
+// `raw` is the pre-formatter transcript, present only when the formatter
+// changed the text at all (US-030); absent means what you see is what Whisper
+// heard. `altered` is the narrower flag History surfaces: the formatter added
+// words that were never spoken.
+function add({ text, raw, altered, words, ms, model }) {
   items.unshift({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     ts: Date.now(),
     text,
+    ...(raw ? { raw } : {}),
+    ...(altered ? { altered: true } : {}),
     words,
     ms,
     model,

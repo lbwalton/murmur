@@ -441,6 +441,24 @@ select { cursor: pointer; }
   user-select: text;
 }
 
+.h-body { flex: 1; min-width: 0; }
+
+/* The pre-formatter transcript, folded away until asked for. */
+.h-raw {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--hairline);
+  background: var(--panel-2);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  user-select: text;
+  white-space: pre-wrap;
+}
+
+.h-raw .eyebrow { margin-bottom: 4px; }
+
 .h-meta {
   flex: none;
   text-align: right;
@@ -448,6 +466,14 @@ select { cursor: pointer; }
   font-size: 10px;
   color: var(--faint);
   line-height: 1.7;
+}
+
+/* A quiet note that the take was rewritten, not a live-state signal. */
+.h-tag {
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 9px;
 }
 
 .h-actions { display: flex; gap: 6px; flex: none; }
