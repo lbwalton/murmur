@@ -81,11 +81,13 @@ final class KeyboardViewController: UIInputViewController {
         .numberPad, .decimalPad, .phonePad, .numbersAndPunctuation, .emailAddress,
     ]
 
+    private let micGlyph = UIImage(named: "KeyboardGlyph") ?? UIImage(systemName: "waveform")
+
     private func buildDictationLayout() {
         let mic = makeKey(background: NightStudio.panelUI)
         mic.accessibilityLabel = "Dictate with Murmur"
         var micConfig = UIButton.Configuration.plain()
-        micConfig.image = UIImage(named: "KeyboardGlyph") ?? UIImage(systemName: "waveform")
+        micConfig.image = micGlyph
         micConfig.baseForegroundColor = NightStudio.textUI
         mic.configuration = micConfig
         mic.layer.borderWidth = 1.5
@@ -377,6 +379,15 @@ final class KeyboardViewController: UIInputViewController {
 
     // --------------------------------------------------------- UI updates
 
+    // The mic key shows exactly one thing at a time: its glyph when idle, the
+    // live waveform while listening. Leaving the glyph visible under the bars
+    // read as two frozen images stacked.
+    private func setMicGlyphVisible(_ visible: Bool) {
+        guard let mic = micButton, var config = mic.configuration else { return }
+        config.image = visible ? micGlyph : nil
+        mic.configuration = config
+    }
+
     private func updateDictationUI() {
         guard showingDictation, let status = statusLabel, let mic = micButton else { return }
 
@@ -384,10 +395,12 @@ final class KeyboardViewController: UIInputViewController {
             if inPlaceProcessing {
                 waveform?.isHidden = true
                 waveform?.stop()
+                setMicGlyphVisible(true)
                 status.text = "TRANSCRIBING..."
                 status.textColor = NightStudio.amberUI
                 mic.layer.borderColor = NightStudio.amberUI.cgColor
             } else {
+                setMicGlyphVisible(false)
                 waveform?.isHidden = false
                 waveform?.start()
                 // DIAGNOSTIC (remove once the in-place waveform is verified):
@@ -407,6 +420,7 @@ final class KeyboardViewController: UIInputViewController {
 
         waveform?.isHidden = true
         waveform?.stop()
+        setMicGlyphVisible(true)
 
         if store.pendingSession() != nil {
             status.text = "WAITING FOR MURMUR. TAP TO CANCEL."
@@ -451,6 +465,9 @@ final class WaveformView: UIView {
         layoutBars()
     }
 
+    // Positions only. Heights belong to tick(): a layout pass (triggered by
+    // any status-label text change, 4x a second while listening) must never
+    // snap animating bars back to their minimum.
     private func layoutBars() {
         let n = bars.count
         let barWidth: CGFloat = 4
@@ -458,7 +475,8 @@ final class WaveformView: UIView {
         let totalWidth = CGFloat(n) * barWidth + CGFloat(n - 1) * gap
         var x = (bounds.width - totalWidth) / 2
         for bar in bars {
-            bar.frame = CGRect(x: x, y: bounds.midY - 3, width: barWidth, height: 6)
+            let h = bar.frame.height >= 6 ? bar.frame.height : 6
+            bar.frame = CGRect(x: x, y: bounds.midY - h / 2, width: barWidth, height: h)
             x += barWidth + gap
         }
     }
@@ -481,20 +499,23 @@ final class WaveformView: UIView {
 
     private func tick() {
         let t = Date().timeIntervalSinceReferenceDate
-        let level = CGFloat(max(0, min(1, levelProvider?() ?? 0)))
+        let raw = CGFloat(max(0, min(1, levelProvider?() ?? 0)))
         // Display gain then square-root, the standard perceptual meter curve:
         // live speech maps around 0.05...0.35 raw (L readouts on device,
-        // 2026-08-09), which honest linear bars render as barely-there. The
-        // boost and curve make speech unmistakably dance while true zero
-        // stays flat. Display only; the silence gate reads the raw level.
-        let scaled = level > 0 ? min(1, level * 1.8).squareRoot() : 0
+        // 2026-08-09), which honest linear bars render as barely-there.
+        let voice = raw > 0 ? min(1, raw * 1.8).squareRoot() : 0
         for (i, bar) in bars.enumerated() {
             let phase = Double(i) * 0.7
-            // Per-bar liveliness so a steady voice still reads as a waveform,
-            // scaled by the real mic level: no level means flat bars.
-            let wobble = 0.55 + 0.45 * abs(sin(t * 9 + phase))
-            let amp = scaled * CGFloat(wobble)
-            let h = CGFloat(6 + amp * 42)
+            // Per-bar liveliness so a steady voice reads as a waveform.
+            let wobble = CGFloat(0.55 + 0.45 * abs(sin(t * 9 + phase)))
+            // A quiet breathing baseline keeps the meter visibly alive the
+            // whole time Murmur is listening; the real level rides far above
+            // it when the user speaks. Honesty about a deaf mic moved to the
+            // silence gate, which refuses a take that never rose over the
+            // floor, so the bars are free to always look alive.
+            let breathe = CGFloat(0.10 + 0.07 * abs(sin(t * 2.3 + phase * 1.4)))
+            let amp = max(breathe, voice * wobble)
+            let h = 6 + amp * 42
             bar.frame.size.height = h
             bar.frame.origin.y = bounds.midY - h / 2
         }
