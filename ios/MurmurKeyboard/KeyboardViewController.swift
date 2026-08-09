@@ -95,6 +95,12 @@ final class KeyboardViewController: UIInputViewController {
 
         let wave = WaveformView()
         wave.isHidden = true
+        // The waveform sits on top of the mic button; without this it would
+        // eat the taps meant to stop the take.
+        wave.isUserInteractionEnabled = false
+        // Driven by the real mic level the app shares: flat bars mean Murmur
+        // is not actually hearing you.
+        wave.levelProvider = { [weak self] in self?.store.readLevel() ?? 0 }
         wave.translatesAutoresizingMaskIntoConstraints = false
         waveform = wave
 
@@ -417,6 +423,7 @@ final class KeyboardViewController: UIInputViewController {
 final class WaveformView: UIView {
     private var bars: [UIView] = []
     private var timer: Timer?
+    var levelProvider: (() -> Float)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -466,10 +473,14 @@ final class WaveformView: UIView {
 
     private func tick() {
         let t = Date().timeIntervalSinceReferenceDate
+        let level = CGFloat(max(0, min(1, levelProvider?() ?? 0)))
         for (i, bar) in bars.enumerated() {
             let phase = Double(i) * 0.7
-            let v = abs(sin(t * 7 + phase)) * abs(cos(t * 3 + phase * 0.5))
-            let h = CGFloat(6 + v * 36)
+            // Per-bar liveliness so a steady voice still reads as a waveform,
+            // scaled by the real mic level: no level means flat bars.
+            let wobble = 0.55 + 0.45 * abs(sin(t * 9 + phase))
+            let amp = level * CGFloat(wobble)
+            let h = CGFloat(6 + amp * 42)
             bar.frame.size.height = h
             bar.frame.origin.y = bounds.midY - h / 2
         }

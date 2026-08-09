@@ -7,6 +7,7 @@ struct ContentView: View {
     @Binding var route: MurmurRoute?
     @State private var showSettings = false
     @ObservedObject private var intentBroker = IntentDictationBroker.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -50,6 +51,24 @@ struct ContentView: View {
         // The Action Button and Siri Shortcut land here (US-108).
         .fullScreenCover(isPresented: $intentBroker.active) {
             IntentDictationView()
+        }
+        // Returning to the app must not resurrect the bounce screen from an
+        // earlier dictation: the cover survives the user swiping away
+        // mid-guide, and a later manual visit would find it stuck saying
+        // STARTING over a recorder that is idle (US-112). A LIVE bounce is
+        // recognizable by its App Group pending session, written by the
+        // keyboard right before opening the URL and cleared when the result
+        // is consumed, so only tokens without one are stale. Checked by token
+        // rather than by recorder phase to stay safe against the
+        // scene-activation vs URL-delivery ordering race on a cold bounce.
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            HotMicManager.shared.resetIfFinished()
+            if let session = bounceSession,
+               AppGroupStore().pendingSession()?.token != session,
+               !HotMicManager.shared.isBusy {
+                route = nil
+            }
         }
         .preferredColorScheme(.dark)
     }

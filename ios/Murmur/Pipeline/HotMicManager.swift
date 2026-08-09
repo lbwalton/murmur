@@ -49,6 +49,7 @@ final class HotMicManager: ObservableObject {
     private var currentToken: String?
     private var foregroundCompletion: ((Bool, String) -> Void)?
     private var bridged = false
+    private var levelWriteToggle = false
 
     private init() {}
 
@@ -71,6 +72,21 @@ final class HotMicManager: ObservableObject {
     func setWarmSeconds(_ seconds: TimeInterval) { warmSeconds = seconds <= 0 ? 0 : max(10, seconds) }
 
     var isWarm: Bool { AppGroupStore().readHotState().phase != .cold }
+
+    // True while a take or its processing is actually in flight; the bounce
+    // screen has live work to show only in these phases.
+    var isBusy: Bool {
+        switch phase {
+        case .starting, .recording, .processing: return true
+        case .idle, .finished: return false
+        }
+    }
+
+    // Coming back to the app after the finished take's guide was swiped away:
+    // clear the leftover phase so stale UI can dismiss.
+    func resetIfFinished() {
+        if case .finished = phase { phase = .idle }
+    }
 
     // ------------------------------------------------------- foreground take
 
@@ -121,8 +137,12 @@ final class HotMicManager: ObservableObject {
         guard await AVAudioApplication.requestRecordPermission() else { return false }
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .measurement,
-                                    options: [.mixWithOthers, .allowBluetooth, .defaultToSpeaker])
+            // Default mode, not measurement: measurement disables the system's
+            // automatic gain control, which left speech so quiet the waveform
+            // barely moved. Default keeps AGC on, so levels are healthy for the
+            // meter and the audio arrives louder for Whisper. No mixWithOthers:
+            // it can hand back attenuated or silent input.
+            try session.setCategory(.playAndRecord, mode: .default)
             try session.setActive(true)
 
             let input = engine.inputNode
@@ -140,6 +160,11 @@ final class HotMicManager: ObservableObject {
             }
             engine.prepare()
             try engine.start()
+            // Prime the freshly started engine: input does not flow the instant
+            // start() returns, so capturing immediately would miss the first
+            // take entirely (the second works because the engine is warm by
+            // then). A short warm-up lets buffers begin arriving.
+            try? await Task.sleep(nanoseconds: 350_000_000)
             if warmSeconds > 0 {
                 publishState(.warm)
                 extendWarmWindow()
@@ -169,6 +194,7 @@ final class HotMicManager: ObservableObject {
     private func stopCapture() {
         guard case .recording = phase, let token = currentToken, let sink else { return }
         sink.endFile()
+        AppGroupStore().writeLevel(0)
         levels = Array(repeating: 0, count: 36)
         phase = .processing
         publishState(.processing)
@@ -180,6 +206,7 @@ final class HotMicManager: ObservableObject {
     private func cancelCapture() {
         guard case .recording = phase else { return }
         sink?.endFile()
+        AppGroupStore().writeLevel(0)
         if let url = currentFileURL { try? FileManager.default.removeItem(at: url) }
         currentFileURL = nil
         currentToken = nil
@@ -277,6 +304,7 @@ final class HotMicManager: ObservableObject {
         idleTimer?.invalidate()
         idleTimer = nil
         sink?.endFile()
+        AppGroupStore().writeLevel(0)
         if engine.isRunning { engine.stop() }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         publishState(.cold)
@@ -295,6 +323,10 @@ final class HotMicManager: ObservableObject {
         guard case .recording = phase else { return }
         levels.removeFirst()
         levels.append(level)
+        // Share the level so the keyboard's in-place waveform is real; every
+        // other buffer (~11 Hz) keeps the file writes light.
+        levelWriteToggle.toggle()
+        if levelWriteToggle { AppGroupStore().writeLevel(level) }
     }
 
     private func publishState(_ phase: HotPhase) {
@@ -308,35 +340,30 @@ final class HotMicManager: ObservableObject {
 
 // Nonisolated, thread-safe bridge between the real-time audio tap and the
 // manager. The tap thread calls write(); the main actor toggles capture by
-// swapping the file. A lock guards the file and the capturing flag; the
-// converter is only ever touched on the audio thread.
+// swapping the file. A lock guards the file. No sample-rate conversion: the
+// mic's native format is written straight to a 16-bit WAV (AVAudioFile encodes
+// the float buffers to int16 on disk), which Whisper accepts and which has no
+// converter to go wrong.
 private final class CaptureSink {
     var onLevel: ((Float) -> Void)?
 
     private let lock = NSLock()
     private var file: AVAudioFile?
-    private let converter: AVAudioConverter?
-    private let procFormat: AVAudioFormat
-
-    // Whisper wants 16 kHz mono; AVAudioFile encodes the float buffers we
-    // write into 16-bit PCM WAV on disk.
-    private static let recordSettings: [String: Any] = [
-        AVFormatIDKey: kAudioFormatLinearPCM,
-        AVSampleRateKey: 16000,
-        AVNumberOfChannelsKey: 1,
-        AVLinearPCMBitDepthKey: 16,
-        AVLinearPCMIsFloatKey: false,
-        AVLinearPCMIsBigEndianKey: false,
-    ]
+    private let recordSettings: [String: Any]
 
     init(inputFormat: AVAudioFormat) {
-        procFormat = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)
-            ?? inputFormat
-        converter = AVAudioConverter(from: inputFormat, to: procFormat)
+        recordSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: inputFormat.sampleRate,
+            AVNumberOfChannelsKey: Int(inputFormat.channelCount),
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+        ]
     }
 
     func beginFile(at url: URL) -> AVAudioFile? {
-        guard let f = try? AVAudioFile(forWriting: url, settings: Self.recordSettings) else { return nil }
+        guard let f = try? AVAudioFile(forWriting: url, settings: recordSettings) else { return nil }
         lock.lock(); file = f; lock.unlock()
         return f
     }
@@ -348,31 +375,26 @@ private final class CaptureSink {
     func write(_ input: AVAudioPCMBuffer) {
         onLevel?(level(of: input))
         lock.lock(); defer { lock.unlock() }
-        guard let file, let converter else { return }
-        let ratio = procFormat.sampleRate / input.format.sampleRate
-        let capacity = AVAudioFrameCount(Double(input.frameLength) * ratio) + 128
-        guard let out = AVAudioPCMBuffer(pcmFormat: procFormat, frameCapacity: capacity) else { return }
-        var consumed = false
-        var convError: NSError?
-        let status = converter.convert(to: out, error: &convError) { _, inputStatus in
-            if consumed { inputStatus.pointee = .noDataNow; return nil }
-            consumed = true
-            inputStatus.pointee = .haveData
-            return input
-        }
-        if status == .haveData, out.frameLength > 0 {
-            try? file.write(from: out)
-        }
+        guard let file else { return }
+        try? file.write(from: input)
     }
 
     private func level(of buffer: AVAudioPCMBuffer) -> Float {
-        guard let channel = buffer.floatChannelData?[0] else { return 0 }
         let count = Int(buffer.frameLength)
         guard count > 0 else { return 0 }
         var sum: Float = 0
-        for i in 0..<count { let s = channel[i]; sum += s * s }
+        if let channel = buffer.floatChannelData?[0] {
+            for i in 0..<count { let s = channel[i]; sum += s * s }
+        } else if let channel = buffer.int16ChannelData?[0] {
+            for i in 0..<count { let s = Float(channel[i]) / 32768; sum += s * s }
+        } else {
+            return 0
+        }
         let rms = (sum / Float(count)).squareRoot()
         let db = 20 * log10(max(rms, 1e-7))
-        return max(0, min(1, (db + 50) / 50))
+        // With AGC on, speech runs roughly -25 to -10 dBFS and a quiet room
+        // sits below -45, so this floor keeps silence flat while normal
+        // speech clearly drives the bars.
+        return max(0, min(1, (db + 45) / 30))
     }
 }

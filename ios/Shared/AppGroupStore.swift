@@ -149,6 +149,31 @@ extension AppGroupStore {
         guard now.timeIntervalSince(command.createdAt) <= Self.staleAfter else { return nil }
         return command
     }
+
+    // The live mic level (0...1), shared so the keyboard's in-place waveform is
+    // driven by real audio, not a canned animation, and so a flat waveform
+    // tells the user Murmur is not actually hearing them. A tiny file in the
+    // App Group container rather than UserDefaults: cross-process reads are
+    // immediate, where UserDefaults can serve a stale value.
+    private static var levelFileURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+            .appendingPathComponent("hot.level")
+    }
+
+    func writeLevel(_ level: Float) {
+        guard let url = Self.levelFileURL else { return }
+        var value = level
+        let data = Data(bytes: &value, count: MemoryLayout<Float>.size)
+        try? data.write(to: url)
+    }
+
+    func readLevel() -> Float {
+        guard let url = Self.levelFileURL,
+              let data = try? Data(contentsOf: url),
+              data.count >= MemoryLayout<Float>.size else { return 0 }
+        return data.withUnsafeBytes { $0.loadUnaligned(as: Float.self) }
+    }
 }
 
 // Cross-process wake-ups. Darwin notifications are global to the device and
