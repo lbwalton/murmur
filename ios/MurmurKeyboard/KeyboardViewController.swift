@@ -403,15 +403,7 @@ final class KeyboardViewController: UIInputViewController {
                 setMicGlyphVisible(false)
                 waveform?.isHidden = false
                 waveform?.start()
-                // DIAGNOSTIC (remove once the in-place waveform is verified):
-                // show the raw cross-process level so a flat waveform can be
-                // told apart from a level that never arrives. L-- means the
-                // level file does not exist at all.
-                if let level = store.readLevelIfPresent() {
-                    status.text = String(format: "LISTENING. TAP TO STOP. L%.2f", level)
-                } else {
-                    status.text = "LISTENING. TAP TO STOP. L--"
-                }
+                status.text = "LISTENING. TAP TO STOP."
                 status.textColor = NightStudio.amberUI
                 mic.layer.borderColor = NightStudio.amberUI.cgColor
             }
