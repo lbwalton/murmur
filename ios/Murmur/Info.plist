@@ -15,5 +15,9 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Murmur records your voice while you dictate and sends it only to the transcription API you configured.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

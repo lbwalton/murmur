@@ -43,7 +43,7 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-024** Signed and notarized macOS build
 - [ ] **US-025** Auto-update from GitHub Releases
 
-## iOS (prd-ios.json, 3/11 verified)
+## iOS (prd-ios.json, 3/12 verified)
 
 - [x] **US-101** Shared formatter spec
 - [x] **US-102** Xcode project, app shell, and project law
@@ -56,6 +56,7 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-108** Action Button and Siri Shortcut dictation · built, live check pending
 - [ ] **US-109** Dictionary, corrections, and expansions on iOS · built, live check pending
 - [ ] **US-110** TestFlight on Labroi's iPhone · built, live check pending
+- [ ] **US-112** Hot mic: in-place dictation after the first bounce · built, live check pending
 
 ## Horizon (not yet stories)
 

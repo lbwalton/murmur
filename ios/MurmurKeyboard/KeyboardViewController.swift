@@ -2,19 +2,33 @@ import UIKit
 
 // The Murmur keyboard: dictation-first, a big mic key plus space, delete,
 // return, and globe. Typing letters is what the system keyboard is for.
+//
 // Project law (CLAUDE.md): this extension NEVER records audio and ships no
-// networking or audio code; the only imports here are UIKit and Foundation.
-// The mic key bounces to the app via murmur://dictate?session=<token>, and
-// the finished text returns through the App Group store, consumed exactly
-// once even though iOS tears this controller down during the bounce.
+// networking or audio code; the only imports are UIKit and Foundation. It
+// drives dictation two ways, both of which keep every byte of audio in the
+// app:
+//   Cold  - no warm mic yet: the mic key bounces to the app (murmur://) which
+//           records the first take and, on the way, leaves the mic warm.
+//   Warm  - the app is resident with a live mic (US-112): the mic key records
+//           in place without switching apps, by dropping a command in the App
+//           Group and poking the app with a Darwin notification. The app
+//           streams its state and the finished text back through the store.
 final class KeyboardViewController: UIInputViewController {
 
     private let store = AppGroupStore()
     private var pollTimer: Timer?
 
-    // Views rebuilt per appearance; kept as properties for state updates.
+    // In-place take state (warm path). Nil when no in-place take is running.
+    private var inPlaceToken: String?
+    private var inPlaceProcessing = false
+    private var inPlaceStartedAt: Date?
+    private var inPlaceConfirmed = false
+
+    // Views kept for state updates without a full rebuild.
     private var micButton: UIButton?
     private var statusLabel: UILabel?
+    private var waveform: WaveformView?
+    private var showingDictation = false
 
     // ------------------------------------------------------------ lifecycle
 
@@ -29,15 +43,17 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         rebuildLayout()
-        // A fresh instance after the bounce: pick up the finished take.
-        checkForResult()
-        startPollingIfPending()
+        // A fresh instance after a bounce: pick up the finished take and note
+        // that the mic is now warm for in-place dictation.
+        consumeAnyResult()
+        updateDictationUI()
+        startPolling()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        pollTimer?.invalidate()
-        pollTimer = nil
+        stopPolling()
+        waveform?.stop()
     }
 
     // -------------------------------------------------------------- layout
@@ -46,6 +62,8 @@ final class KeyboardViewController: UIInputViewController {
         view.subviews.forEach { $0.removeFromSuperview() }
         micButton = nil
         statusLabel = nil
+        waveform = nil
+        showingDictation = false
 
         guard hasFullAccess else {
             buildFullAccessExplainer()
@@ -56,10 +74,9 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         buildDictationLayout()
+        showingDictation = true
     }
 
-    // Number, decimal, and email fields get the system keyboard, not a
-    // broken dictation layout: a clear line and a big globe key.
     private let handOffKeyboardTypes: Set<UIKeyboardType> = [
         .numberPad, .decimalPad, .phonePad, .numbersAndPunctuation, .emailAddress,
     ]
@@ -76,6 +93,28 @@ final class KeyboardViewController: UIInputViewController {
         mic.addTarget(self, action: #selector(micTapped), for: .touchUpInside)
         micButton = mic
 
+        let wave = WaveformView()
+        wave.isHidden = true
+        wave.translatesAutoresizingMaskIntoConstraints = false
+        waveform = wave
+
+        let stack = UIView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.addSubview(mic)
+        stack.addSubview(wave)
+        mic.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            mic.topAnchor.constraint(equalTo: stack.topAnchor),
+            mic.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            mic.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+            mic.bottomAnchor.constraint(equalTo: stack.bottomAnchor),
+            mic.heightAnchor.constraint(equalToConstant: 110),
+            wave.centerXAnchor.constraint(equalTo: mic.centerXAnchor),
+            wave.centerYAnchor.constraint(equalTo: mic.centerYAnchor),
+            wave.widthAnchor.constraint(equalTo: mic.widthAnchor, multiplier: 0.7),
+            wave.heightAnchor.constraint(equalToConstant: 48),
+        ])
+
         let status = UILabel()
         status.font = .monospacedSystemFont(ofSize: 11, weight: .medium)
         status.textColor = NightStudio.textUI.withAlphaComponent(0.55)
@@ -84,21 +123,15 @@ final class KeyboardViewController: UIInputViewController {
         status.accessibilityLabel = "Status"
         statusLabel = status
 
-        let top = UIStackView(arrangedSubviews: [mic, status])
+        let top = UIStackView(arrangedSubviews: [stack, status])
         top.axis = .vertical
         top.spacing = 8
         top.alignment = .fill
 
-        let bottom = bottomRow()
-        let root = UIStackView(arrangedSubviews: [top, bottom])
+        let root = UIStackView(arrangedSubviews: [top, bottomRow()])
         root.axis = .vertical
         root.spacing = 10
         install(root)
-        NSLayoutConstraint.activate([
-            mic.heightAnchor.constraint(equalToConstant: 110),
-            bottom.heightAnchor.constraint(equalToConstant: 46),
-        ])
-        refreshPendingState()
     }
 
     private func buildFullAccessExplainer() {
@@ -205,31 +238,50 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func deleteTapped() { textDocumentProxy.deleteBackward() }
     @objc private func returnTapped() { textDocumentProxy.insertText("\n") }
 
-    // ---------------------------------------------------------- the bounce
+    // -------------------------------------------------------- the mic key
 
     @objc private func micTapped() {
-        if store.pendingSession() != nil {
-            // Second tap while waiting cancels the session.
-            store.clearSession()
-            refreshPendingState()
+        // A take is running in place: this tap stops it.
+        if let token = inPlaceToken, !inPlaceProcessing {
+            store.writeCommand(HotCommand(action: .stop, token: token, createdAt: Date()))
+            DarwinSignal.post(DarwinSignal.command)
+            inPlaceProcessing = true
+            updateDictationUI()
             return
         }
-        let token = UUID().uuidString
-        store.beginSession(token: token)
-        guard let url = URL(string: "murmur://dictate?session=\(token)") else { return }
-        openContainingApp(url)
-        refreshPendingState()
+        if inPlaceProcessing { return }   // busy transcribing
+
+        // A bounce is in flight: this tap cancels it.
+        if store.pendingSession() != nil {
+            store.clearSession()
+            updateDictationUI()
+            return
+        }
+
+        if store.readHotState().phase != .cold {
+            // Warm: record in place, no app switch.
+            let token = UUID().uuidString
+            inPlaceToken = token
+            inPlaceProcessing = false
+            inPlaceConfirmed = false
+            inPlaceStartedAt = Date()
+            store.writeCommand(HotCommand(action: .start, token: token, createdAt: Date()))
+            DarwinSignal.post(DarwinSignal.command)
+            waveform?.start()
+            updateDictationUI()
+        } else {
+            // Cold: bounce to the app for the first take; it warms the mic.
+            let token = UUID().uuidString
+            store.beginSession(token: token)
+            guard let url = URL(string: "murmur://dictate?session=\(token)") else { return }
+            openContainingApp(url)
+            updateDictationUI()
+        }
     }
 
     // Opening the containing app from a keyboard. iOS 18 disabled the old
-    // openURL: selector for extensions (the system log force-returns NO), so
-    // extensionContext.open and that selector both do nothing on iOS 18 and
-    // later. The path that still works, the one KeyboardKit and other
-    // bounce-style keyboards use, is to walk the responder chain to the
+    // openURL: selector for extensions, so we walk the responder chain to the
     // UIApplication and call the modern open(_:options:completionHandler:).
-    // This target is not built application-extension-API-only, so the call
-    // compiles here; if it is ever flipped to API-only for submission, this
-    // one call moves into a small framework (noted in docs/ios-testflight.md).
     private func openContainingApp(_ url: URL) {
         var responder: UIResponder? = self
         while let current = responder {
@@ -243,44 +295,183 @@ final class KeyboardViewController: UIInputViewController {
 
     // ---------------------------------------------------------- the return
 
-    private func startPollingIfPending() {
-        guard store.pendingSession() != nil, pollTimer == nil else { return }
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.checkForResult()
+    private func startPolling() {
+        stopPolling()
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.poll()
         }
     }
 
-    private func checkForResult() {
-        guard let pending = store.pendingSession() else {
-            refreshPendingState()
-            return
-        }
-        guard let result = store.consumeResult(token: pending.token) else { return }
+    private func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+    }
+
+    private func poll() {
+        guard showingDictation else { return }
+        if inPlaceToken != nil {
+            pollInPlace()
+        } else {
+            // Idle: reflect warm/cold transitions (e.g. the window lapsed) and
+            // pick up a bounce result the instant it lands.
+            consumeAnyResult()
+            updateDictationUI()
+        }
+    }
+
+    private func pollInPlace() {
+        guard let token = inPlaceToken else { return }
+        // The finished take arrived: insert it and go back to warm-idle.
+        if let result = store.consumeResult(token: token) {
+            insert(result)
+            inPlaceToken = nil
+            inPlaceProcessing = false
+            waveform?.stop()
+            updateDictationUI()
+            return
+        }
+        let hot = store.readHotState()
+        if hot.phase == .listening || hot.phase == .processing { inPlaceConfirmed = true }
+        if hot.phase == .processing { inPlaceProcessing = true }
+
+        // Watchdog: if the app never confirmed it heard us, it is not resident
+        // (killed since it went cold). Fall back to a bounce next tap.
+        if !inPlaceConfirmed, let started = inPlaceStartedAt,
+           Date().timeIntervalSince(started) > 2.5 {
+            inPlaceToken = nil
+            inPlaceProcessing = false
+            waveform?.stop()
+            statusLabel?.text = "MURMUR ISN'T READY. TAP TO OPEN IT."
+            statusLabel?.textColor = NightStudio.redUI
+            micButton?.layer.borderColor = NightStudio.redUI.cgColor
+            return
+        }
+        updateDictationUI()
+    }
+
+    // Consumes a finished result for whichever take we are waiting on (a
+    // bounce's pending token, or an in-place token) and inserts it.
+    private func consumeAnyResult() {
+        let token = inPlaceToken ?? store.pendingSession()?.token
+        guard let token, let result = store.consumeResult(token: token) else { return }
+        insert(result)
+        inPlaceToken = nil
+        inPlaceProcessing = false
+    }
+
+    private func insert(_ result: BounceResult) {
         switch result.status {
         case .ok:
             textDocumentProxy.insertText(result.text)
-            statusLabel?.text = "INSERTED"
-            statusLabel?.textColor = NightStudio.textUI.withAlphaComponent(0.55)
         case .error:
             statusLabel?.text = result.text.uppercased()
             statusLabel?.textColor = NightStudio.redUI
         }
-        micButton?.layer.borderColor = NightStudio.textUI.withAlphaComponent(0.25).cgColor
     }
 
-    private func refreshPendingState() {
-        let waiting = store.pendingSession() != nil
-        if waiting {
-            statusLabel?.text = "WAITING FOR MURMUR. TAP TO CANCEL."
-            statusLabel?.textColor = NightStudio.amberUI
-            micButton?.layer.borderColor = NightStudio.amberUI.cgColor
-            startPollingIfPending()
+    // --------------------------------------------------------- UI updates
+
+    private func updateDictationUI() {
+        guard showingDictation, let status = statusLabel, let mic = micButton else { return }
+
+        if inPlaceToken != nil {
+            if inPlaceProcessing {
+                waveform?.isHidden = true
+                waveform?.stop()
+                status.text = "TRANSCRIBING..."
+                status.textColor = NightStudio.amberUI
+                mic.layer.borderColor = NightStudio.amberUI.cgColor
+            } else {
+                waveform?.isHidden = false
+                waveform?.start()
+                status.text = "LISTENING. TAP TO STOP."
+                status.textColor = NightStudio.amberUI
+                mic.layer.borderColor = NightStudio.amberUI.cgColor
+            }
+            return
+        }
+
+        waveform?.isHidden = true
+        waveform?.stop()
+
+        if store.pendingSession() != nil {
+            status.text = "WAITING FOR MURMUR. TAP TO CANCEL."
+            status.textColor = NightStudio.amberUI
+            mic.layer.borderColor = NightStudio.amberUI.cgColor
+        } else if store.readHotState().phase != .cold {
+            status.text = "TAP TO DICTATE"
+            status.textColor = NightStudio.textUI.withAlphaComponent(0.55)
+            mic.layer.borderColor = NightStudio.textUI.withAlphaComponent(0.25).cgColor
         } else {
-            statusLabel?.text = "TAP TO DICTATE"
-            statusLabel?.textColor = NightStudio.textUI.withAlphaComponent(0.55)
-            micButton?.layer.borderColor = NightStudio.textUI.withAlphaComponent(0.25).cgColor
+            status.text = "TAP TO SPEAK. OPENS MURMUR ONCE."
+            status.textColor = NightStudio.textUI.withAlphaComponent(0.55)
+            mic.layer.borderColor = NightStudio.textUI.withAlphaComponent(0.25).cgColor
+        }
+    }
+}
+
+// A canned listening waveform for the keyboard. The keyboard cannot read the
+// microphone, so this is a lively animation, not a real level meter; it only
+// needs to say "I am listening". Driven by a timer, amber, project law kept
+// (no audio anything, just moving bars).
+final class WaveformView: UIView {
+    private var bars: [UIView] = []
+    private var timer: Timer?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        for _ in 0..<13 {
+            let bar = UIView()
+            bar.backgroundColor = NightStudio.amberUI
+            bar.layer.cornerRadius = 2
+            addSubview(bar)
+            bars.append(bar)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layoutBars()
+    }
+
+    private func layoutBars() {
+        let n = bars.count
+        let barWidth: CGFloat = 4
+        let gap: CGFloat = 6
+        let totalWidth = CGFloat(n) * barWidth + CGFloat(n - 1) * gap
+        var x = (bounds.width - totalWidth) / 2
+        for bar in bars {
+            bar.frame = CGRect(x: x, y: bounds.midY - 3, width: barWidth, height: 6)
+            x += barWidth + gap
+        }
+    }
+
+    func start() {
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            self?.tick()
+        }
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        for bar in bars {
+            bar.frame.size.height = 6
+            bar.frame.origin.y = bounds.midY - 3
+        }
+    }
+
+    private func tick() {
+        let t = Date().timeIntervalSinceReferenceDate
+        for (i, bar) in bars.enumerated() {
+            let phase = Double(i) * 0.7
+            let v = abs(sin(t * 7 + phase)) * abs(cos(t * 3 + phase * 0.5))
+            let h = CGFloat(6 + v * 36)
+            bar.frame.size.height = h
+            bar.frame.origin.y = bounds.midY - h / 2
         }
     }
 }

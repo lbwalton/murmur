@@ -18,4 +18,7 @@ struct PipelineSettings {
     var expansions: [Expansion] = []
     var maxSeconds = 300
     var historyEnabled = true
+    // US-112: how long the hot mic stays warm after a dictation before it is
+    // released, reset on every take. 0 disables the hot mic (always bounce).
+    var warmSeconds = 90
 }

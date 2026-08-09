@@ -105,6 +105,20 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Keep mic ready", selection: $store.warmSeconds) {
+                        Text("Off, open Murmur each time").tag(0)
+                        Text("30 seconds").tag(30)
+                        Text("90 seconds").tag(90)
+                        Text("3 minutes").tag(180)
+                    }
+                    .accessibilityLabel("How long to keep the microphone ready between dictations")
+                } header: {
+                    Text("In-place dictation").font(NightStudio.mono(11))
+                } footer: {
+                    Text("After the first dictation, Murmur keeps the mic ready so the keyboard records in place without switching apps. The timer resets each time you speak. iOS shows the orange mic dot and uses more battery while the mic stays ready. Off opens Murmur for every dictation.")
+                }
+
+                Section {
                     Picker("Max take length", selection: $store.maxSeconds) {
                         Text("1 minute").tag(60)
                         Text("2 minutes").tag(120)

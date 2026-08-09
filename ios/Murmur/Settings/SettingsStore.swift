@@ -42,6 +42,7 @@ final class SettingsStore: ObservableObject {
     @Published var numberStyle: String { didSet { defaults.set(numberStyle, forKey: Keys.numberStyle) } }
     @Published var historyEnabled: Bool { didSet { defaults.set(historyEnabled, forKey: Keys.historyEnabled) } }
     @Published var maxSeconds: Int { didSet { defaults.set(maxSeconds, forKey: Keys.maxSeconds) } }
+    @Published var warmSeconds: Int { didSet { defaults.set(warmSeconds, forKey: Keys.warmSeconds) } }
     @Published var onboarded: Bool { didSet { defaults.set(onboarded, forKey: Keys.onboarded) } }
 
     // The vocabulary trio (US-109), stored as JSON in standard defaults,
@@ -71,6 +72,7 @@ final class SettingsStore: ObservableObject {
         static let numberStyle = "murmur.numberStyle"
         static let historyEnabled = "murmur.historyEnabled"
         static let maxSeconds = "murmur.maxSeconds"
+        static let warmSeconds = "murmur.warmSeconds"
         static let onboarded = "murmur.onboarded"
         static let dictionary = "murmur.dictionary"
         static let corrections = "murmur.corrections"
@@ -91,6 +93,7 @@ final class SettingsStore: ObservableObject {
         numberStyle = defaults.string(forKey: Keys.numberStyle) ?? fallback.numberStyle
         historyEnabled = defaults.object(forKey: Keys.historyEnabled) as? Bool ?? fallback.historyEnabled
         maxSeconds = defaults.object(forKey: Keys.maxSeconds) as? Int ?? fallback.maxSeconds
+        warmSeconds = defaults.object(forKey: Keys.warmSeconds) as? Int ?? fallback.warmSeconds
         onboarded = defaults.bool(forKey: Keys.onboarded)
         dictionary = Self.decode([String].self, defaults: defaults, key: Keys.dictionary) ?? []
         corrections = Self.decode([CorrectionPair].self, defaults: defaults, key: Keys.corrections) ?? []
@@ -132,6 +135,7 @@ final class SettingsStore: ObservableObject {
         s.numberStyle = numberStyle
         s.historyEnabled = historyEnabled
         s.maxSeconds = maxSeconds
+        s.warmSeconds = warmSeconds
         s.dictionary = dictionary
         s.corrections = corrections
         s.expansions = expansions

@@ -94,3 +94,87 @@ final class AppGroupStore {
         return try? JSONDecoder().decode(T.self, from: data)
     }
 }
+
+// MARK: - Hot mic (US-112)
+
+// The keyboard still cannot touch the microphone. But once the first bounce
+// has warmed the app's audio session, the app keeps recording from the
+// background (UIBackgroundModes audio), and the keyboard drives it remotely:
+// it drops a command in the App Group and pokes the app with a Darwin
+// notification; the app writes back its state and the finished result. Only
+// these small values cross into the keyboard, never audio or networking, so
+// the lean-keyboard hard constraint still holds.
+
+enum HotPhase: String, Codable {
+    case cold        // no warm session: the mic key must bounce to the app
+    case warm        // app resident with a live session, ready to record in place
+    case listening   // capturing a take right now
+    case processing  // transcribing and formatting a finished take
+}
+
+struct HotState: Codable, Equatable {
+    var phase: HotPhase
+    var warmUntil: Date?   // when the idle window releases the mic
+    static let cold = HotState(phase: .cold, warmUntil: nil)
+}
+
+struct HotCommand: Codable, Equatable {
+    enum Action: String, Codable { case start, stop, cancel }
+    let action: Action
+    let token: String
+    let createdAt: Date
+}
+
+extension AppGroupStore {
+    static let hotStateKey = "murmur.hot.state"
+    static let hotCommandKey = "murmur.hot.command"
+
+    func writeHotState(_ state: HotState) { write(state, key: Self.hotStateKey) }
+
+    // An expired warm window reads as cold whatever phase was stored, so a
+    // keyboard that missed the release still does the right thing (bounce).
+    func readHotState(now: Date = Date()) -> HotState {
+        guard let s: HotState = read(Self.hotStateKey) else { return .cold }
+        if let until = s.warmUntil, now > until { return .cold }
+        return s
+    }
+
+    func writeCommand(_ command: HotCommand) { write(command, key: Self.hotCommandKey) }
+
+    // Consume-once: the app reads a command and clears it, ignoring anything
+    // older than the bounce stale window so a stuck command never fires late.
+    func consumeCommand(now: Date = Date()) -> HotCommand? {
+        guard let command: HotCommand = read(Self.hotCommandKey) else { return nil }
+        defaults?.removeObject(forKey: Self.hotCommandKey)
+        guard now.timeIntervalSince(command.createdAt) <= Self.staleAfter else { return nil }
+        return command
+    }
+}
+
+// Cross-process wake-ups. Darwin notifications are global to the device and
+// carry no payload, so the real data rides the App Group and this just pokes
+// the other side to re-read it.
+enum DarwinSignal {
+    static let command = "com.labroi.murmur.hot.command"   // keyboard -> app
+    static let state = "com.labroi.murmur.hot.state"       // app -> keyboard
+
+    static func post(_ name: String) {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(name as CFString), nil, nil, true)
+    }
+
+    // Bridges a Darwin name onto NotificationCenter.default under the same
+    // name so Swift objects observe it the ordinary way; the C callback can
+    // capture nothing, hence the re-broadcast. Call once per name per process.
+    static func bridge(_ name: String) {
+        let callback: CFNotificationCallback = { _, _, cfName, _, _ in
+            guard let cfName else { return }
+            let raw = cfName.rawValue as String
+            NotificationCenter.default.post(name: Notification.Name(raw), object: nil)
+        }
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            nil, callback, name as CFString, nil, .deliverImmediately)
+    }
+}
