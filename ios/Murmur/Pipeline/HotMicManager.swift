@@ -50,6 +50,8 @@ final class HotMicManager: ObservableObject {
     private var foregroundCompletion: ((Bool, String) -> Void)?
     private var bridged = false
     private var levelWriteToggle = false
+    // Loudest mapped level seen during the current take, for the silence gate.
+    private var takePeak: Float = 0
 
     private init() {}
 
@@ -209,6 +211,7 @@ final class HotMicManager: ObservableObject {
         _ = file
         currentFileURL = url
         currentToken = token
+        takePeak = 0
         phase = .recording
         publishState(.listening)
         extendWarmWindow()
@@ -223,7 +226,10 @@ final class HotMicManager: ObservableObject {
         publishState(.processing)
         let url = currentFileURL
         let foreground = foregroundCompletion != nil
-        Task { await process(url: url, token: token, foreground: foreground) }
+        // Snapshot: a next take can begin while this one transcribes, and it
+        // resets takePeak for itself.
+        let peak = takePeak
+        Task { await process(url: url, token: token, foreground: foreground, peak: peak) }
     }
 
     private func cancelCapture() {
@@ -238,12 +244,23 @@ final class HotMicManager: ObservableObject {
         extendWarmWindow()
     }
 
-    private func process(url: URL?, token: String, foreground: Bool) async {
+    private func process(url: URL?, token: String, foreground: Bool, peak: Float) async {
         // Uncompressed WAV at the mic's native rate runs ~90 KB per second, so
         // anything under ~12 KB is a fraction of a syllable (or a header-only
         // file from a failed capture): refuse it readably here rather than let
         // the API reject it cryptically.
         guard let url, let data = try? Data(contentsOf: url), data.count >= 12_000 else {
+            finish(ok: false, text: "No speech detected", token: token, foreground: foreground)
+            return
+        }
+        // Silence gate. AGC amplifies an empty room into audio Whisper is
+        // confident about, so its no_speech_prob filter misses and silence
+        // comes back as "Thank you." (observed live 2026-08-09). Speech
+        // crosses ~0.3 on the (db+45)/30 map even when soft; a take whose
+        // peak never reached 0.1 held no words, so refuse it locally and
+        // spend no API call. If a real whispered take ever trips this, lower
+        // the floor rather than removing the gate.
+        guard peak >= 0.1 else {
             finish(ok: false, text: "No speech detected", token: token, foreground: foreground)
             return
         }
@@ -354,8 +371,9 @@ final class HotMicManager: ObservableObject {
         guard case .recording = phase else { return }
         levels.removeFirst()
         levels.append(level)
+        takePeak = max(takePeak, level)
         // Share the level so the keyboard's in-place waveform is real; every
-        // other buffer (~11 Hz) keeps the file writes light.
+        // other buffer (~11 Hz) keeps the cross-process writes light.
         levelWriteToggle.toggle()
         if levelWriteToggle { AppGroupStore().writeLevel(level) }
     }
