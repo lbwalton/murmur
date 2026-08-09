@@ -221,23 +221,20 @@ final class KeyboardViewController: UIInputViewController {
         refreshPendingState()
     }
 
-    // Keyboard extensions have no UIApplication.shared. extensionContext
-    // open works in some hosts; the responder-chain openURL selector covers
-    // the rest, the same pair every bounce-style keyboard relies on.
+    // Opening the containing app from a keyboard. iOS 18 disabled the old
+    // openURL: selector for extensions (the system log force-returns NO), so
+    // extensionContext.open and that selector both do nothing on iOS 18 and
+    // later. The path that still works, the one KeyboardKit and other
+    // bounce-style keyboards use, is to walk the responder chain to the
+    // UIApplication and call the modern open(_:options:completionHandler:).
+    // This target is not built application-extension-API-only, so the call
+    // compiles here; if it is ever flipped to API-only for submission, this
+    // one call moves into a small framework (noted in docs/ios-testflight.md).
     private func openContainingApp(_ url: URL) {
-        extensionContext?.open(url) { [weak self] handled in
-            if !handled {
-                DispatchQueue.main.async { self?.openViaResponderChain(url) }
-            }
-        }
-    }
-
-    private func openViaResponderChain(_ url: URL) {
         var responder: UIResponder? = self
-        let selector = NSSelectorFromString("openURL:")
         while let current = responder {
-            if current.responds(to: selector), !(current is UIViewController) {
-                current.perform(selector, with: url)
+            if let application = current as? UIApplication {
+                application.open(url, options: [:], completionHandler: nil)
                 return
             }
             responder = current.next

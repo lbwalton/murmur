@@ -36,12 +36,16 @@ struct ContentView: View {
             SettingsView()
         }
         // The keyboard's mic key lands here: recording starts on appear,
-        // no taps (US-107).
-        .fullScreenCover(isPresented: .init(
-            get: { bounceSession != nil },
-            set: { shown in if !shown { route = nil } }
-        )) {
-            BounceView(session: bounceSession ?? "") { route = nil }
+        // no taps (US-107). Keyed on the session TOKEN, not just "is a bounce
+        // showing": consecutive dictations move route from one .dictate token
+        // to the next without passing through nil, so an isPresented cover
+        // would never tear down. A new token is a new item, so the finished
+        // take's screen is replaced by a fresh recording one every time.
+        .fullScreenCover(item: .init(
+            get: { bounceSession.map { BounceItem(id: $0) } },
+            set: { item in if item == nil { route = nil } }
+        )) { item in
+            BounceView(session: item.id) { route = nil }
         }
         // The Action Button and Siri Shortcut land here (US-108).
         .fullScreenCover(isPresented: $intentBroker.active) {
@@ -56,4 +60,10 @@ struct ContentView: View {
         }
         return nil
     }
+
+    // Identity for the bounce cover. A distinct session token is a distinct
+    // presentation, which is what makes fullScreenCover(item:) dismiss the
+    // previous take and present a fresh BounceView whose onAppear starts a
+    // new recording under the new token.
+    private struct BounceItem: Identifiable, Equatable { let id: String }
 }

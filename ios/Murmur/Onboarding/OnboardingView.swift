@@ -4,7 +4,11 @@ import SwiftUI
 // remembered. Never shows again once completed (onboarded flag).
 struct OnboardingView: View {
     @EnvironmentObject private var store: SettingsStore
-    @State private var step = 0
+    // Persisted, not @State: tapping "Open Settings" in step 3 sends the app
+    // to the background, where iOS often reclaims it. On return the app cold
+    // relaunches, and in-memory @State would snap back to step 1. @AppStorage
+    // survives the relaunch so the user resumes where they left off.
+    @AppStorage("murmur.onboarding.step") private var step = 0
 
     @State private var testing = false
     @State private var testResult: (ok: Bool, message: String)?
