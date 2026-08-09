@@ -390,7 +390,10 @@ final class KeyboardViewController: UIInputViewController {
             } else {
                 waveform?.isHidden = false
                 waveform?.start()
-                status.text = "LISTENING. TAP TO STOP."
+                // DIAGNOSTIC (remove once the in-place waveform is verified):
+                // show the raw cross-process level so a flat waveform can be
+                // told apart from a level that never arrives.
+                status.text = String(format: "LISTENING. TAP TO STOP. L%.2f", store.readLevel())
                 status.textColor = NightStudio.amberUI
                 mic.layer.borderColor = NightStudio.amberUI.cgColor
             }
@@ -474,12 +477,15 @@ final class WaveformView: UIView {
     private func tick() {
         let t = Date().timeIntervalSinceReferenceDate
         let level = CGFloat(max(0, min(1, levelProvider?() ?? 0)))
+        // Square-root scaling, the standard perceptual meter curve: quiet
+        // speech at 0.15 still lifts bars visibly, while true zero stays flat.
+        let scaled = level > 0 ? level.squareRoot() : 0
         for (i, bar) in bars.enumerated() {
             let phase = Double(i) * 0.7
             // Per-bar liveliness so a steady voice still reads as a waveform,
             // scaled by the real mic level: no level means flat bars.
             let wobble = 0.55 + 0.45 * abs(sin(t * 9 + phase))
-            let amp = level * CGFloat(wobble)
+            let amp = scaled * CGFloat(wobble)
             let h = CGFloat(6 + amp * 42)
             bar.frame.size.height = h
             bar.frame.origin.y = bounds.midY - h / 2

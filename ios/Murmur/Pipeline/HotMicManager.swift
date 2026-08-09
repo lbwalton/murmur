@@ -49,7 +49,6 @@ final class HotMicManager: ObservableObject {
     private var currentToken: String?
     private var foregroundCompletion: ((Bool, String) -> Void)?
     private var bridged = false
-    private var levelWriteToggle = false
     // Loudest mapped level seen during the current take, for the silence gate.
     private var takePeak: Float = 0
 
@@ -372,10 +371,10 @@ final class HotMicManager: ObservableObject {
         levels.removeFirst()
         levels.append(level)
         takePeak = max(takePeak, level)
-        // Share the level so the keyboard's in-place waveform is real; every
-        // other buffer (~11 Hz) keeps the cross-process writes light.
-        levelWriteToggle.toggle()
-        if levelWriteToggle { AppGroupStore().writeLevel(level) }
+        // Share the level so the keyboard's in-place waveform is real. Every
+        // buffer (~23 Hz): a fresh reader should never be more than one
+        // buffer behind.
+        AppGroupStore().writeLevel(level)
     }
 
     private func publishState(_ phase: HotPhase) {
