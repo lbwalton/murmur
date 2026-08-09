@@ -67,6 +67,25 @@ final class HotMicManager: ObservableObject {
         NotificationCenter.default.addObserver(
             self, selector: #selector(commandPoked),
             name: Notification.Name(DarwinSignal.command), object: nil)
+        // A route change (AirPods connecting, headphones unplugged) rebuilds
+        // the engine's input under us, leaving the tap bound to a stale
+        // format. End any live take readably and go cold; the next take
+        // re-warms against the new route.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(engineConfigChanged),
+            name: .AVAudioEngineConfigurationChange, object: engine)
+    }
+
+    @objc private func engineConfigChanged() {
+        Task { @MainActor in
+            if case .recording = phase, let token = currentToken {
+                sink?.endFile()
+                AppGroupStore().writeLevel(0)
+                finish(ok: false, text: "Audio route changed. Tap to dictate again.",
+                       token: token, foreground: foregroundCompletion != nil)
+            }
+            release()
+        }
     }
 
     func setWarmSeconds(_ seconds: TimeInterval) { warmSeconds = seconds <= 0 ? 0 : max(10, seconds) }
@@ -152,12 +171,16 @@ final class HotMicManager: ObservableObject {
                 Task { @MainActor [weak self] in self?.pushLevel(level) }
             }
             self.sink = sink
-            if !tapInstalled {
-                input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak sink] buffer, _ in
-                    sink?.write(buffer)
-                }
-                tapInstalled = true
+            // Rebind the tap every warm-up. The tap closure holds the sink it
+            // was installed with, so a tap left from a previous warm cycle
+            // feeds a dead sink: every take after an idle release records
+            // nothing (a header-only WAV, "audio file is too short"), with no
+            // levels. Fresh warm, fresh sink, fresh tap, current format.
+            if tapInstalled { input.removeTap(onBus: 0) }
+            input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak sink] buffer, _ in
+                sink?.write(buffer)
             }
+            tapInstalled = true
             engine.prepare()
             try engine.start()
             // Prime the freshly started engine: input does not flow the instant
@@ -216,7 +239,11 @@ final class HotMicManager: ObservableObject {
     }
 
     private func process(url: URL?, token: String, foreground: Bool) async {
-        guard let url, let data = try? Data(contentsOf: url), data.count >= 1200 else {
+        // Uncompressed WAV at the mic's native rate runs ~90 KB per second, so
+        // anything under ~12 KB is a fraction of a syllable (or a header-only
+        // file from a failed capture): refuse it readably here rather than let
+        // the API reject it cryptically.
+        guard let url, let data = try? Data(contentsOf: url), data.count >= 12_000 else {
             finish(ok: false, text: "No speech detected", token: token, foreground: foreground)
             return
         }
@@ -305,6 +332,10 @@ final class HotMicManager: ObservableObject {
         idleTimer = nil
         sink?.endFile()
         AppGroupStore().writeLevel(0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         if engine.isRunning { engine.stop() }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         publishState(.cold)
