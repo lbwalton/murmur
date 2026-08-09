@@ -152,18 +152,38 @@ extension AppGroupStore {
 
     // The live mic level (0...1), shared so the keyboard's in-place waveform is
     // driven by real audio, not a canned animation, and so a flat waveform
-    // tells the user Murmur is not actually hearing them. Rides the same
-    // defaults suite as every other cross-process value here: state, commands,
-    // and results all demonstrably propagate promptly over it, where a raw
-    // container file read from the extension did not.
-    static let hotLevelKey = "murmur.hot.level"
+    // tells the user Murmur is not actually hearing them. NOT UserDefaults:
+    // live testing (2026-08-09, L0.00 readout) showed the suite's cross-process
+    // sync starves under a ~23 Hz write stream, serving the extension a stale
+    // snapshot until the writes stop; per-event values (state, commands,
+    // results) cross fine, a fast-changing one does not. Preferences are not
+    // IPC. A 4-byte file in the group container, written atomically so a read
+    // can never tear, is the honest transport.
+    private static var levelFileURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: suiteName)?
+            .appendingPathComponent("hot.level")
+    }
 
     func writeLevel(_ level: Float) {
-        defaults?.set(Double(level), forKey: Self.hotLevelKey)
+        guard let url = Self.levelFileURL else { return }
+        var value = level
+        let data = Data(bytes: &value, count: MemoryLayout<Float>.size)
+        try? data.write(to: url, options: .atomic)
+    }
+
+    // Nil means the file does not exist or cannot be read (writer never ran,
+    // container mismatch), as opposed to a real zero from a quiet mic. The
+    // keyboard's diagnostic readout renders the difference.
+    func readLevelIfPresent() -> Float? {
+        guard let url = Self.levelFileURL,
+              let data = try? Data(contentsOf: url),
+              data.count >= MemoryLayout<Float>.size else { return nil }
+        return data.withUnsafeBytes { $0.loadUnaligned(as: Float.self) }
     }
 
     func readLevel() -> Float {
-        Float(defaults?.double(forKey: Self.hotLevelKey) ?? 0)
+        readLevelIfPresent() ?? 0
     }
 }
 

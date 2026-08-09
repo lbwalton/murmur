@@ -392,8 +392,13 @@ final class KeyboardViewController: UIInputViewController {
                 waveform?.start()
                 // DIAGNOSTIC (remove once the in-place waveform is verified):
                 // show the raw cross-process level so a flat waveform can be
-                // told apart from a level that never arrives.
-                status.text = String(format: "LISTENING. TAP TO STOP. L%.2f", store.readLevel())
+                // told apart from a level that never arrives. L-- means the
+                // level file does not exist at all.
+                if let level = store.readLevelIfPresent() {
+                    status.text = String(format: "LISTENING. TAP TO STOP. L%.2f", level)
+                } else {
+                    status.text = "LISTENING. TAP TO STOP. L--"
+                }
                 status.textColor = NightStudio.amberUI
                 mic.layer.borderColor = NightStudio.amberUI.cgColor
             }
@@ -477,9 +482,12 @@ final class WaveformView: UIView {
     private func tick() {
         let t = Date().timeIntervalSinceReferenceDate
         let level = CGFloat(max(0, min(1, levelProvider?() ?? 0)))
-        // Square-root scaling, the standard perceptual meter curve: quiet
-        // speech at 0.15 still lifts bars visibly, while true zero stays flat.
-        let scaled = level > 0 ? level.squareRoot() : 0
+        // Display gain then square-root, the standard perceptual meter curve:
+        // live speech maps around 0.05...0.35 raw (L readouts on device,
+        // 2026-08-09), which honest linear bars render as barely-there. The
+        // boost and curve make speech unmistakably dance while true zero
+        // stays flat. Display only; the silence gate reads the raw level.
+        let scaled = level > 0 ? min(1, level * 1.8).squareRoot() : 0
         for (i, bar) in bars.enumerated() {
             let phase = Double(i) * 0.7
             // Per-bar liveliness so a steady voice still reads as a waveform,
