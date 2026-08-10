@@ -1,6 +1,7 @@
-# Shipping Murmur iOS to TestFlight
+# Shipping Murmur iOS: TestFlight, then the App Store
 
-The repeatable loop for getting a build onto Labroi's iPhone. Steps marked
+The repeatable loop for getting a build onto Labroi's iPhone, and below it,
+the one-time path from TestFlight to a live App Store listing. Steps marked
 **[Labroi]** need his Apple ID, his Team, or his hands; everything else is
 scriptable. All commands run from `ios/`.
 
@@ -98,3 +99,58 @@ The honest answers for Murmur as shipped:
 - Icons: `npm install` (or `npm run icons:ios`) must have run before
   archiving, or actool fails on the missing generated PNGs.
 - TestFlight builds expire after 90 days; ship a new build before then.
+- Distribution signing: this Mac carries the `Apple Distribution: Eze Media
+  LLC (4B55ZVBVKN)` certificate; automatic signing uses it for the archive
+  export. Dev builds installed from the command line sign under a personal
+  development cert and expire after about 7 days; TestFlight builds do not.
+
+## From TestFlight to the App Store (US-113, one-time)
+
+Everything here happens in App Store Connect on the record created above.
+All of it is **[Labroi]** except where noted; a session can draft every
+piece of text and generate every image on request.
+
+1. **Listing content** (App Store tab, iOS App):
+   - Name `Murmur`, subtitle (30 chars, e.g. `Push to talk. It types.`),
+     description, keywords, promotional text. A session drafts these.
+   - Screenshots: at minimum the 6.9-inch iPhone size; capture on the
+     iPhone 17 Pro Max simulator (`xcrun simctl io booted screenshot`), a
+     session can produce the set. Show the real app: dictation screen,
+     keyboard in Messages, settings, onboarding.
+   - The 1024 App Store icon ships in the asset catalog already
+     (generated, opaque RGB).
+2. **Privacy policy URL** (required even with zero data collection) and a
+   **support URL**. A one-page static site stating what the app does with
+   audio (sent only to the user-configured transcription API, nothing
+   stored server-side, no analytics) satisfies both; host it on Vercel and
+   keep the URL stable. A session can generate and deploy this page.
+3. **App Privacy questionnaire**: answers documented above (collection:
+   none).
+4. **Age rating** questionnaire: no objectionable content, rates 4+.
+5. **Pricing and availability**: Free, all territories (revisit when the
+   Pro plan exists).
+6. **App Review notes** (critical, the difference between a pass and a
+   rejection):
+   - **Test key**: the app requires a user-supplied Groq API key, so
+     reviewers need one to see dictation work (guideline 2.1). Create a
+     throwaway Groq key for review, paste it in the notes, revoke after
+     approval. State: paste the key in onboarding step 1, tap Test
+     connection.
+   - **Background audio justification** (UIBackgroundModes audio, added by
+     the hot mic): explain that recording is always user-initiated from
+     the keyboard's mic key, the system orange mic indicator is visible
+     the whole time, the session auto-releases after a short idle window
+     (default 90s, user-configurable, off switch included), and no audio
+     is captured outside an explicit dictation.
+   - **Keyboard**: works without Full Access for typing keys (guideline
+     4.4.1: basic function without Full Access, globe key present); Full
+     Access is needed only to receive the finished transcript through the
+     App Group, and the keyboard contains no networking or audio code.
+   - **The bounce**: describe the murmur:// flow so the reviewer is not
+     surprised the mic key opens the app (Apple forbids keyboard mic
+     access; this is the compliant pattern).
+7. **Submit for review.** Typical turnaround is 24 to 48 hours. Choose
+   manual release so the store date is deliberate.
+8. **If rejected**: the likely flags are the background audio mode or the
+   keyboard; the notes above answer both. Respond in Resolution Center
+   rather than resubmitting blind.
