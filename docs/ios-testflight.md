@@ -110,6 +110,35 @@ Everything here happens in App Store Connect on the record created above.
 All of it is **[Labroi]** except where noted; a session can draft every
 piece of text and generate every image on request.
 
+**Before anything in App Store Connect: clear ownership, license, and employer
+sign-off (US-114).** This is a legal gate, not a formality. Publishing a paid,
+open-source app you do not cleanly own, or rolling it out at work without
+approval, is the one mistake here that is expensive to undo.
+
+- **Ownership.** Confirm Labroi is the sole copyright holder. The origin code and
+  a few early fix PRs were authored on the work computer, which is the only
+  real exposure (Murmur is unrelated to the employer's business, so
+  California Labor Code 2870 otherwise protects personal-time work). Cure it with a
+  signed employer IP waiver: the ready-to-send email and acknowledgment live in
+  `docs/ip-waiver-request.md`, kept local and gitignored on purpose. Have a
+  California attorney review before relying on it.
+- **Going forward.** Author all code at home on personal equipment and personal
+  time. Filing GitHub issues from the work computer is fine (a bug report is not
+  code); write the fixes at home.
+- **License.** Relicense the repo to GPLv3 with Labroi as sole copyright holder, add
+  a `CONTRIBUTING.md` with a lightweight CLA, and do not accept external PRs (Labroi
+  authors all code). Sole ownership is what lets a GPLv3 project be sold on the App
+  Store; a single outside contribution without a CLA can freeze that right.
+- **Employer clearance, two separate lanes, do not conflate them.**
+  - *Cybersecurity director* owns the "may I use this on company systems and share
+    it with the team" decision. Lead with data handling (audio goes only to the
+    user-configured API, keys live in the Keychain, the code is open and auditable,
+    the developer runs no servers), then disclose the personal, App Store, and
+    open-source plan as transparency. His approval prevents a shadow-IT problem later.
+  - *People/HR* owns the IP side: the waiver above, and awareness of the side project.
+  Keep ownership and money in the People and legal lane; keep the tool and data
+  questions in the security lane.
+
 1. **Listing content** (App Store tab, iOS App):
    - Name `Murmur`, subtitle (30 chars, e.g. `Push to talk. It types.`),
      description, keywords, promotional text. A session drafts these.

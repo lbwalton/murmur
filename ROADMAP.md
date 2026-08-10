@@ -43,7 +43,7 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-024** Signed and notarized macOS build
 - [ ] **US-025** Auto-update from GitHub Releases
 
-## iOS (prd-ios.json, 3/13 verified)
+## iOS (prd-ios.json, 3/14 verified)
 
 - [x] **US-101** Shared formatter spec
 - [x] **US-102** Xcode project, app shell, and project law
@@ -58,6 +58,7 @@ Each of these works in the required smoke checks; the remaining step is a human 
 - [ ] **US-110** TestFlight on Labroi's iPhone · built, live check pending
 - [ ] **US-112** Hot mic: in-place dictation after the first bounce · built, live check pending
 - [ ] **US-113** App Store release
+- [ ] **US-114** Ownership, license, and employer clearance
 
 ## Horizon (not yet stories)
 

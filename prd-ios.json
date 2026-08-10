@@ -229,6 +229,7 @@
       "description": "As the owner, Murmur is live on the App Store: a real listing, honest privacy answers, review notes that pre-empt the background-audio and keyboard questions, and an approved build anyone can install.",
       "acceptanceCriteria": [
         "TestFlight loop proven first: US-110 passes (archive, upload, TestFlight install, bounce working end to end on Labroi's iPhone)",
+        "Ownership and license cleared first: US-114 passes (Labroi is the sole copyright holder, the repo is GPLv3 with a CLA, and employer clearance is in hand)",
         "Listing content written and entered: name, subtitle, description, keywords, promotional text",
         "Screenshot set produced (6.9-inch minimum) showing dictation, the keyboard in a host app, settings, and onboarding",
         "Privacy policy and support pages live at stable URLs and linked in the listing",
@@ -239,7 +240,22 @@
       ],
       "priority": 6,
       "passes": false,
-      "notes": "Opened 2026-08-09 when Labroi asked for the full path to a live store listing. The complete step-by-step runbook, including the review-notes text that pre-empts the two likely rejection reasons (UIBackgroundModes audio from the US-112 hot mic, and keyboard guideline 4.4.1), lives in docs/ios-testflight.md under From TestFlight to the App Store. Depends on US-110. A session can draft all listing copy, generate the screenshot set on the iPhone 17 Pro Max simulator, and build and deploy the privacy and support pages; entering content into App Store Connect and submitting is Labroi's."
+      "notes": "Opened 2026-08-09 when Labroi asked for the full path to a live store listing. The complete step-by-step runbook, including the review-notes text that pre-empts the two likely rejection reasons (UIBackgroundModes audio from the US-112 hot mic, and keyboard guideline 4.4.1), lives in docs/ios-testflight.md under From TestFlight to the App Store. Depends on US-110 for the TestFlight loop and US-114 for clean ownership and licensing before anything ships. A session can draft all listing copy, generate the screenshot set on the iPhone 17 Pro Max simulator, and build and deploy the privacy and support pages; entering content into App Store Connect and submitting is Labroi's."
+    },
+    {
+      "id": "US-114",
+      "title": "Ownership, license, and employer clearance",
+      "description": "As the owner, I can legally publish and sell Murmur: I am the sole copyright holder, the project is licensed GPLv3, and my employer has cleared both my use of it at work and my personal development of it.",
+      "acceptanceCriteria": [
+        "Sole copyright confirmed: an employer IP waiver is signed (docs/ip-waiver-request.md), or the employment contract and California Labor Code 2870 are reviewed and confirmed, with a California attorney's sign-off before the result is relied on",
+        "Clean going forward: all code is authored on personal equipment on personal time; bugs found at work are filed as GitHub issues and fixed at home; no code PRs from the work computer",
+        "License set: the repo is relicensed to GPLv3 with Labroi as the sole copyright holder, a CONTRIBUTING.md with a lightweight CLA is added, and external PRs are not accepted (Labroi authors all code)",
+        "Cybersecurity director approval: use on company systems and sharing with the team is cleared after a data-handling review (audio goes only to the user-configured API, keys live in the Keychain, the code is open and auditable, the developer runs no servers)",
+        "People/HR aware of the personal side project and the App Store plan"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Opened 2026-08-09. Gates US-113: Murmur cannot be published or sold without clean ownership and a settled license. Employer context: a performance marketing agency (unrelated to dictation), and Labroi is in California. The only real exposure is the origin code and a few early fix PRs authored on the work computer; CA Labor Code 2870 otherwise protects personal-time, personal-equipment work on an unrelated project. Remedy: the signed employer waiver in docs/ip-waiver-request.md plus authoring all code at home going forward, then relicensing to GPLv3 with a CLA and sole ownership. Two clearance lanes are kept separate: the cybersecurity director owns use and team-sharing (a data-handling question), People/HR owns the IP waiver and side-project awareness. The monetization this unlocks (open core, BYOK, free plus a one-time Pro unlock) lives in the project memory. Not legal advice; the contract, the CA statute, and an attorney are the authority."
     }
   ]
 }

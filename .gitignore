@@ -12,3 +12,7 @@ ios/**/*.png
 ios/build/
 xcuserdata/
 DerivedData/
+
+# Personal legal correspondence: stays local on Labroi's machines, never in
+# history (the repo is headed for public GPLv3). US-114 points here by name.
+docs/ip-waiver-request.md
