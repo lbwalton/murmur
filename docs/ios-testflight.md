@@ -43,16 +43,8 @@ scriptable. All commands run from `ios/`.
        xcodebuild -scheme Murmur -destination 'generic/platform=iOS' \
          -archivePath build/Murmur.xcarchive archive
 
-4. Export and upload. Create `ios/ExportOptions.plist` once:
-
-       <?xml version="1.0" encoding="UTF-8"?>
-       <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-       <plist version="1.0"><dict>
-         <key>method</key><string>app-store-connect</string>
-         <key>destination</key><string>upload</string>
-       </dict></plist>
-
-   Then:
+4. Export and upload. `ios/ExportOptions.plist` already ships in the repo
+   (method `app-store-connect`, destination `upload`), so just run:
 
        xcodebuild -exportArchive -archivePath build/Murmur.xcarchive \
          -exportOptionsPlist ExportOptions.plist
