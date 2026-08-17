@@ -11,16 +11,17 @@ scriptable. All commands run from `ios/`.
 2. Done 2026-07-24: the Team ID `4B55ZVBVKN` is set as `DEVELOPMENT_TEAM` on
    all three targets with `CODE_SIGN_STYLE = Automatic`; Xcode creates the
    App ID, the App Group, and profiles on first archive.
-3. **[Labroi]** In [App Store Connect](https://appstoreconnect.apple.com),
-   Apps, plus button, New App:
-   - Platform iOS, Name `Murmur`, primary language English.
-   - Bundle ID `com.labroi.murmur.ios` (appears after step 2's first archive
-     registers it, or register it manually under Identifiers).
-   - SKU anything memorable (`murmur-ios`).
-4. Xcode signing pickup: open `ios/Murmur.xcodeproj`, select the Murmur
-   target, Signing & Capabilities, choose the Team; repeat for the
-   MurmurKeyboard target. Both must show the App Group
-   `group.com.labroi.murmur.ios` with no red errors.
+3. Done 2026-08-15: the App Store Connect app record exists (App ID
+   `6801927849`), created by **[Labroi]** under Apps, plus button, New App:
+   - Platform iOS, Name `Murmur Voice Dictation` (plain `Murmur` and
+     `Murmur Dictation` were both taken store-wide; the home-screen name
+     stays `Murmur` via `CFBundleDisplayName`, and the store name is
+     editable with any future version submission).
+   - Bundle ID `com.labroi.murmur.ios`, SKU `murmur-ios`.
+4. Signing is automatic and headless: `DEVELOPMENT_TEAM = 4B55ZVBVKN` plus
+   `-allowProvisioningUpdates` on archive/export creates the profiles, no
+   Xcode GUI pass needed. Both targets carry the App Group
+   `group.com.labroi.murmur.ios`.
 
 ## Every release
 
@@ -44,14 +45,25 @@ scriptable. All commands run from `ios/`.
          -archivePath build/Murmur.xcarchive archive
 
 4. Export and upload. `ios/ExportOptions.plist` already ships in the repo
-   (method `app-store-connect`, destination `upload`), so just run:
+   (method `app-store-connect`, destination `upload`). Authenticate with an
+   App Store Connect API key, and prefix `PATH` with `/usr/bin` so Apple's
+   rsync is used (see the rsync gotcha below, this is not optional):
 
-       xcodebuild -exportArchive -archivePath build/Murmur.xcarchive \
-         -exportOptionsPlist ExportOptions.plist
+       PATH="/usr/bin:$PATH" xcodebuild -exportArchive \
+         -archivePath build/Murmur.xcarchive \
+         -exportOptionsPlist ExportOptions.plist \
+         -allowProvisioningUpdates \
+         -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_<KEYID>.p8 \
+         -authenticationKeyID <KEYID> \
+         -authenticationKeyIssuerID <ISSUER-ID>
 
-   **[Labroi]** The upload authenticates with his Apple ID. Either sign into
-   Xcode (Settings, Accounts) once beforehand, or create an App Store Connect
-   API key and pass `-authenticationKeyPath/-authenticationKeyID/-authenticationKeyIssuerID`.
+   **[Labroi]** Generate the key once: App Store Connect, Users and Access,
+   Integrations, App Store Connect API. **The role must be Admin** (App
+   Manager cannot create the distribution signing profiles and fails with
+   "Cloud signing permission error"). Download the `.p8` (one-time), note the
+   Key ID and Issuer ID. The `.p8` lives in `~/.appstoreconnect/private_keys/`
+   at `chmod 600`, never in the repo or a log; the Key ID and Issuer ID are
+   not secrets but stay out of the repo too.
 
 5. **[Labroi]** App Store Connect, Murmur, TestFlight tab. The build appears
    after processing (5 to 30 minutes; an email confirms). First build only:
@@ -85,11 +97,30 @@ The honest answers for Murmur as shipped:
 
 ## Gotchas worth knowing
 
+- Export "Copy failed" / rsync (hit on the first real upload, 2026-08-15):
+  `xcodebuild -exportArchive` shells out to `rsync` to build the `.ipa`.
+  Homebrew's rsync 3.4.x rejects the arguments Xcode passes and dies with
+  `Copy failed` (`rsync error: syntax or usage error (code 1)`). Fix is to
+  put Apple's openrsync first: prefix the export command with
+  `PATH="/usr/bin:$PATH"`. This is baked into the step 4 command above.
+- Signing role: the ASC API key used for export must be **Admin**, not App
+  Manager. App Manager uploads fine but cannot create the distribution
+  provisioning profiles, so `-allowProvisioningUpdates` fails with "Cloud
+  signing permission error" before anything uploads.
 - The keyboard extension inherits the archive's signing; if only the app
   target has a Team set, validation fails with a MurmurKeyboard profile
   error. Set the Team on both targets.
 - Icons: `npm install` (or `npm run icons:ios`) must have run before
   archiving, or actool fails on the missing generated PNGs.
+- Tester Apple ID vs device iCloud (hit on the first install, 2026-08-15):
+  the developer/App Store Connect account and the phone's primary iCloud
+  account are two different Apple IDs here. The build won't appear in the
+  TestFlight app until it is signed into the *same* Apple ID that was added
+  as the internal tester (the ASC/developer one), which is not the device's
+  everyday iCloud login. Fix on the phone: TestFlight, account menu, sign in
+  with the developer Apple ID and redeem there; or add the device's iCloud
+  Apple ID as a tester (invite it as a user under Users and Access first).
+  The exact account mapping is kept out of this repo; it lives in memory.
 - TestFlight builds expire after 90 days; ship a new build before then.
 - Distribution signing: this Mac carries the `Apple Distribution: Eze Media
   LLC (4B55ZVBVKN)` certificate; automatic signing uses it for the archive
