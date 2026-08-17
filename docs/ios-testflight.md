@@ -66,9 +66,12 @@ scriptable. All commands run from `ios/`.
    not secrets but stay out of the repo too.
 
 5. **[Labroi]** App Store Connect, Murmur, TestFlight tab. The build appears
-   after processing (5 to 30 minutes; an email confirms). First build only:
-   answer the export compliance question (Murmur uses only standard HTTPS,
-   so the exempt encryption answer applies).
+   after processing (5 to 30 minutes; an email confirms). Export compliance
+   is now automatic: `Murmur/Info.plist` ships
+   `ITSAppUsesNonExemptEncryption = false` (true because Murmur only uses the
+   HTTPS/TLS provided by iOS), so builds upload already compliant and skip
+   the "Missing Compliance" prompt. Build 1 (uploaded before the flag
+   existed) was cleared by hand with the "None of the algorithms" answer.
 
 6. **[Labroi]** TestFlight, Internal Testing, add himself as tester. His
    iPhone gets a TestFlight notification; install from the TestFlight app.
