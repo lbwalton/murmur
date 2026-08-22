@@ -9,6 +9,7 @@ struct DictationView: View {
     @StateObject private var controller = DictationController()
     @State private var pressed = false
     @State private var copiedId: UUID?
+    @State private var resultCopied = false
     @State private var editing: DictationRecord?
     @State private var editText = ""
 
@@ -72,6 +73,8 @@ struct DictationView: View {
             }
             .preferredColorScheme(.dark)
         }
+        // A fresh take (or a dismissed card) resets the Copy confirmation.
+        .onChange(of: controller.phase) { _, _ in resultCopied = false }
     }
 
     // --------------------------------------------------------- waveform
@@ -118,8 +121,18 @@ struct DictationView: View {
                     controller.pressEnded(settings: store.pipelineSettings, spec: Self.spec, history: history)
                 }
         )
-        .accessibilityLabel("Talk button")
-        .accessibilityHint("Hold to dictate and release to finish, or tap to start a long take and tap again to stop.")
+        // VoiceOver cannot deliver the hold gesture, so expose a toggle:
+        // one activation starts, the next stops. pressBegan is already a
+        // tested toggle (idle -> start, recording -> stop).
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(controller.isRecording ? "Stop dictation" : "Talk button")
+        .accessibilityHint(controller.isRecording
+            ? "Double tap to stop and transcribe."
+            : "Double tap to start dictating, then double tap again to stop. Touch and hold works too without VoiceOver.")
+        .accessibilityAction {
+            controller.pressBegan(settings: store.pipelineSettings, spec: Self.spec, history: history)
+        }
     }
 
     // ------------------------------------------------------ result card
@@ -135,10 +148,13 @@ struct DictationView: View {
                 HStack(spacing: 18) {
                     Button {
                         UIPasteboard.general.string = text
+                        resultCopied = true
+                        UIAccessibility.post(notification: .announcement, argument: "Copied")
                     } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
+                        Label(resultCopied ? "Copied" : "Copy",
+                              systemImage: resultCopied ? "checkmark" : "doc.on.doc")
                     }
-                    .accessibilityLabel("Copy the dictation")
+                    .accessibilityLabel(resultCopied ? "Copied" : "Copy the dictation")
                     ShareLink(item: text) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
@@ -228,6 +244,7 @@ struct DictationView: View {
             Button {
                 UIPasteboard.general.string = item.text
                 copiedId = item.id
+                UIAccessibility.post(notification: .announcement, argument: "Copied")
             } label: {
                 Image(systemName: copiedId == item.id ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 14))
