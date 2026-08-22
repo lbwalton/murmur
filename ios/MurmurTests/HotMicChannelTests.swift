@@ -54,4 +54,34 @@ final class HotMicChannelTests: XCTestCase {
         store.writeCommand(HotCommand(action: .start, token: "old", createdAt: Date().addingTimeInterval(-200)))
         XCTAssertNil(store.consumeCommand())
     }
+
+    // US-115: the take token rides the state so the keyboard can tell a live
+    // confirmation of ITS take from a stale claim left by a dead app.
+    func testTakeTokenRoundTrips() {
+        store.writeHotState(HotState(phase: .listening,
+                                     warmUntil: Date().addingTimeInterval(30),
+                                     takeToken: "t42"))
+        XCTAssertEqual(store.readHotState().takeToken, "t42")
+    }
+
+    // The app before takeToken existed wrote this shape; it must still decode.
+    func testStateWrittenWithoutTokenReadsNil() {
+        let legacy = Data(#"{"phase":"warm"}"#.utf8)
+        defaults.set(legacy, forKey: AppGroupStore.hotStateKey)
+        let state = store.readHotState()
+        XCTAssertEqual(state.phase, .warm)
+        XCTAssertNil(state.takeToken)
+    }
+
+    // The keyboard's watchdog corrects a warm claim nobody is backing (the app
+    // was killed or suspended); the forced cold must win over the stale entry
+    // so the next mic tap bounces instead of dead-ending in place.
+    func testForcedColdOverridesStaleWarmClaim() {
+        store.writeHotState(HotState(phase: .listening,
+                                     warmUntil: Date().addingTimeInterval(60),
+                                     takeToken: "dead"))
+        store.writeHotState(.cold)
+        XCTAssertEqual(store.readHotState().phase, .cold)
+        XCTAssertNil(store.readHotState().takeToken)
+    }
 }

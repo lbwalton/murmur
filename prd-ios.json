@@ -256,6 +256,25 @@
       "priority": 5,
       "passes": false,
       "notes": "Opened 2026-08-09. Gates US-113: Murmur cannot be published or sold without clean ownership and a settled license. Employer context: a performance marketing agency (unrelated to dictation), and Labroi is in California. The only real exposure is the origin code and a few early fix PRs authored on the work computer; CA Labor Code 2870 otherwise protects personal-time, personal-equipment work on an unrelated project. Remedy: the signed employer waiver in docs/ip-waiver-request.md plus authoring all code at home going forward, then relicensing to GPLv3 with a CLA and sole ownership. Two clearance lanes are kept separate: the cybersecurity director owns use and team-sharing (a data-handling question), People/HR owns the IP waiver and side-project awareness. The monetization this unlocks (open core, BYOK, free plus a one-time Pro unlock) lives in the project memory. Not legal advice; the contract, the CA statute, and an attorney are the authority."
+    },
+    {
+      "id": "US-115",
+      "title": "Warm-claim recovery: the mic key never dead-ends when the app is gone",
+      "description": "As a user, when I dictate in one conversation and then try again in another, the keyboard must work every time. If the app silently lost the microphone (a call, Siri, another recorder) or was killed while the App Group still claimed warm, the keyboard must recover to the bounce path on the next tap instead of silently failing for up to 90 seconds.",
+      "acceptanceCriteria": [
+        "The app observes AVAudioSession.interruptionNotification: an interruption ends any live take with a readable message and publishes cold, so a suspended app never leaves a warm claim it cannot back",
+        "The app publishes cold from UIApplication.willTerminateNotification so swiping Murmur away in the app switcher leaves honest state",
+        "HotState carries the live take's token (takeToken); the keyboard counts listening/processing as confirmation only when the token matches its own take, so a stale claim from a dead app cannot disarm the watchdog",
+        "When the watchdog fires, the keyboard writes HotState.cold to the store so the very next mic tap takes the bounce path, matching the TAP TO OPEN IT message it shows",
+        "Failure messages (watchdog, error results) persist on the status line until the next mic tap instead of being repainted away by the 4 Hz poll within 250ms",
+        "App and keyboard log phase transitions and failures via os.Logger under subsystem com.labroi.murmur.ios (categories hotmic, keyboard) with no transcript content, so device failures are diagnosable in Console.app",
+        "HotState decoding stays backward compatible with state written before takeToken existed; pinned in HotMicChannelTests along with token round-trip and forced-cold-wins",
+        "xcodebuild test green",
+        "Verified live by Labroi: dictate in one Messages conversation, force the dead-warm state (accept a phone call or swipe Murmur away within the warm window), move to another conversation, tap the mic; the keyboard shows MURMUR ISN'T READY, and the next tap opens Murmur and the take completes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Opened 2026-08-22 from Labroi's live report: dictation worked in one Messages conversation, failed in the next. Root cause (from code, no device logs existed): the App Group can claim warm while the app is suspended or dead. Nothing observed AVAudioSession interruptions, so the system taking the mic (call, Siri, another recorder) stopped the engine silently, iOS suspended the app, and the store kept saying warm with warmUntil up to 90s out. The keyboard then took the in-place path, its Darwin poke reached nobody, and the 2.5s watchdog only showed a message; the promised revert-to-bounce (US-112 criterion) was never implemented, the next tap re-read the stale warm state and dead-ended again, and the message itself was repainted to TAP TO DICTATE by the next 250ms poll tick, so the whole failure looked silent. Second trap: a stale listening claim disarmed the watchdog entirely because confirmation was phase-only, not token-matched. Fix: app-side interruption + willTerminate observers publish cold (mirroring the existing engineConfigChanged handling), publishState stamps takeToken during listening/processing, keyboard confirmation is token-gated, the watchdog force-writes cold so the next tap bounces, and a sticky notice holds failure text until the next tap. os.Logger added on both sides (first logging in the iOS app). Unit-verified: xcodebuild test 60/60 green 2026-08-22, HotMicChannelTests pins takeToken round-trip, legacy decode without the field, and forced-cold-wins. Remaining for Labroi: the live two-conversation loop in the criteria; flip passes then."
     }
   ]
 }

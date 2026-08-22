@@ -1,10 +1,12 @@
 import UIKit
+import os
 
 // The Murmur keyboard: dictation-first, a big mic key plus space, delete,
 // return, and globe. Typing letters is what the system keyboard is for.
 //
 // Project law (CLAUDE.md): this extension NEVER records audio and ships no
-// networking or audio code; the only imports are UIKit and Foundation. It
+// networking or audio code; the only imports are UIKit, Foundation, and os
+// (system logging, no transcript content ever logged). It
 // drives dictation two ways, both of which keep every byte of audio in the
 // app:
 //   Cold  - no warm mic yet: the mic key bounces to the app (murmur://) which
@@ -17,6 +19,13 @@ final class KeyboardViewController: UIInputViewController {
 
     private let store = AppGroupStore()
     private var pollTimer: Timer?
+    private static let log = Logger(subsystem: "com.labroi.murmur.ios", category: "keyboard")
+
+    // A failure the user must actually get to read (watchdog, error result).
+    // The 4 Hz poll repaints the status line, so without this hold any
+    // message set outside updateDictationUI was erased within 250ms; it stays
+    // until the next mic tap starts something new.
+    private var notice: String?
 
     // In-place take state (warm path). Nil when no in-place take is running.
     private var inPlaceToken: String?
@@ -43,6 +52,9 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         rebuildLayout()
+        // A leftover notice belongs to the previous field; clear before
+        // consuming so an error arriving with this appearance still shows.
+        notice = nil
         // A fresh instance after a bounce: pick up the finished take and note
         // that the mic is now warm for in-place dictation.
         consumeAnyResult()
@@ -249,6 +261,7 @@ final class KeyboardViewController: UIInputViewController {
     // -------------------------------------------------------- the mic key
 
     @objc private func micTapped() {
+        notice = nil
         // A take is running in place: this tap stops it.
         if let token = inPlaceToken, !inPlaceProcessing {
             store.writeCommand(HotCommand(action: .stop, token: token, createdAt: Date()))
@@ -268,6 +281,7 @@ final class KeyboardViewController: UIInputViewController {
 
         if store.readHotState().phase != .cold {
             // Warm: record in place, no app switch.
+            Self.log.info("mic: in-place start")
             let token = UUID().uuidString
             inPlaceToken = token
             inPlaceProcessing = false
@@ -279,6 +293,7 @@ final class KeyboardViewController: UIInputViewController {
             updateDictationUI()
         } else {
             // Cold: bounce to the app for the first take; it warms the mic.
+            Self.log.info("mic: bouncing to app")
             let token = UUID().uuidString
             store.beginSession(token: token)
             guard let url = URL(string: "murmur://dictate?session=\(token)") else { return }
@@ -339,19 +354,25 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         let hot = store.readHotState()
-        if hot.phase == .listening || hot.phase == .processing { inPlaceConfirmed = true }
-        if hot.phase == .processing { inPlaceProcessing = true }
+        // Confirmation must carry OUR token: a stale listening/processing claim
+        // left by an app that died mid-take must not disarm the watchdog.
+        if hot.takeToken == token {
+            if hot.phase == .listening || hot.phase == .processing { inPlaceConfirmed = true }
+            if hot.phase == .processing { inPlaceProcessing = true }
+        }
 
         // Watchdog: if the app never confirmed it heard us, it is not resident
-        // (killed since it went cold). Fall back to a bounce next tap.
+        // (suspended after an interruption, or killed while the store still
+        // claimed warm). Correct the claim so the next tap actually bounces;
+        // the app republishes warm when it truly warms up again.
         if !inPlaceConfirmed, let started = inPlaceStartedAt,
            Date().timeIntervalSince(started) > 2.5 {
+            Self.log.error("watchdog: no answer from app, forcing cold")
             inPlaceToken = nil
             inPlaceProcessing = false
             waveform?.stop()
-            statusLabel?.text = "MURMUR ISN'T READY. TAP TO OPEN IT."
-            statusLabel?.textColor = NightStudio.redUI
-            micButton?.layer.borderColor = NightStudio.redUI.cgColor
+            store.writeHotState(.cold)
+            showNotice("MURMUR ISN'T READY. TAP TO OPEN IT.")
             return
         }
         updateDictationUI()
@@ -370,11 +391,17 @@ final class KeyboardViewController: UIInputViewController {
     private func insert(_ result: BounceResult) {
         switch result.status {
         case .ok:
+            notice = nil
             textDocumentProxy.insertText(result.text)
         case .error:
-            statusLabel?.text = result.text.uppercased()
-            statusLabel?.textColor = NightStudio.redUI
+            Self.log.error("error result: \(result.text, privacy: .public)")
+            showNotice(result.text.uppercased())
         }
+    }
+
+    private func showNotice(_ text: String) {
+        notice = text
+        updateDictationUI()
     }
 
     // --------------------------------------------------------- UI updates
@@ -413,6 +440,13 @@ final class KeyboardViewController: UIInputViewController {
         waveform?.isHidden = true
         waveform?.stop()
         setMicGlyphVisible(true)
+
+        if let notice {
+            status.text = notice
+            status.textColor = NightStudio.redUI
+            mic.layer.borderColor = NightStudio.redUI.cgColor
+            return
+        }
 
         if store.pendingSession() != nil {
             status.text = "WAITING FOR MURMUR. TAP TO CANCEL."

@@ -1,6 +1,8 @@
 import Foundation
 import AVFoundation
 import Combine
+import UIKit
+import os
 
 // US-112, the hot mic. The keyboard cannot record, so after the first bounce
 // warms this manager, the app keeps a live audio engine running and stays
@@ -18,6 +20,10 @@ import Combine
 @MainActor
 final class HotMicManager: ObservableObject {
     static let shared = HotMicManager()
+
+    // Readable in Console.app with the iPhone plugged in (filter subsystem
+    // com.labroi.murmur.ios). Never logs transcripts or audio, only phases.
+    private nonisolated static let log = Logger(subsystem: "com.labroi.murmur.ios", category: "hotmic")
 
     // Mirrors BounceController.Phase so BounceView can drive this instead.
     enum Phase: Equatable {
@@ -75,18 +81,55 @@ final class HotMicManager: ObservableObject {
         NotificationCenter.default.addObserver(
             self, selector: #selector(engineConfigChanged),
             name: .AVAudioEngineConfigurationChange, object: engine)
+        // The system taking the mic (a phone call, Siri, another app
+        // recording) stops the engine and then suspends us; without this
+        // observer the App Group would keep claiming warm while the suspended
+        // app can no longer hear the keyboard's pokes, stranding the mic key
+        // (the two-conversations failure, 2026-08-21, US-115).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(sessionInterrupted),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance())
+        // A graceful kill (Murmur swiped away in the app switcher) must not
+        // leave a warm claim behind either.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(appWillTerminate),
+            name: UIApplication.willTerminateNotification, object: nil)
     }
 
     @objc private func engineConfigChanged() {
         Task { @MainActor in
-            if case .recording = phase, let token = currentToken {
-                sink?.endFile()
-                AppGroupStore().writeLevel(0)
-                finish(ok: false, text: "Audio route changed. Tap to dictate again.",
-                       token: token, foreground: foregroundCompletion != nil)
-            }
+            Self.log.info("engine configuration changed, going cold")
+            endLiveTake(message: "Audio route changed. Tap to dictate again.")
             release()
         }
+    }
+
+    @objc private func sessionInterrupted(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+        Task { @MainActor in
+            Self.log.info("audio session interrupted, going cold")
+            endLiveTake(message: "The microphone was interrupted. Tap to dictate again.")
+            release()
+        }
+    }
+
+    // The process is dying: one honest synchronous write, no Task (it would
+    // never run). The store is not actor-bound, so this is safe off-actor.
+    @objc nonisolated private func appWillTerminate() {
+        AppGroupStore().writeHotState(.cold)
+        AppGroupStore().writeLevel(0)
+        Self.log.info("app terminating, published cold")
+    }
+
+    // Ends a take in flight readably (the keyboard shows the message) so no
+    // exit to cold ever eats a recording silently. No-op outside a take.
+    private func endLiveTake(message: String) {
+        guard case .recording = phase, let token = currentToken else { return }
+        sink?.endFile()
+        AppGroupStore().writeLevel(0)
+        finish(ok: false, text: message, token: token, foreground: foregroundCompletion != nil)
     }
 
     func setWarmSeconds(_ seconds: TimeInterval) { warmSeconds = seconds <= 0 ? 0 : max(10, seconds) }
@@ -135,6 +178,7 @@ final class HotMicManager: ObservableObject {
     @objc private func commandPoked() {
         Task { @MainActor in
             guard let command = AppGroupStore().consumeCommand() else { return }
+            Self.log.info("keyboard command: \(command.action.rawValue, privacy: .public)")
             switch command.action {
             case .start:
                 guard await ensureWarm() else {
@@ -212,7 +256,7 @@ final class HotMicManager: ObservableObject {
         currentToken = token
         takePeak = 0
         phase = .recording
-        publishState(.listening)
+        publishState(.listening, token: token)
         extendWarmWindow()
     }
 
@@ -222,7 +266,7 @@ final class HotMicManager: ObservableObject {
         AppGroupStore().writeLevel(0)
         levels = Array(repeating: 0, count: 36)
         phase = .processing
-        publishState(.processing)
+        publishState(.processing, token: token)
         let url = currentFileURL
         let foreground = foregroundCompletion != nil
         // Snapshot: a next take can begin while this one transcribes, and it
@@ -286,6 +330,11 @@ final class HotMicManager: ObservableObject {
     }
 
     private func finish(ok: Bool, text: String, token: String, foreground: Bool) {
+        if ok {
+            Self.log.info("take finished ok (\(text.count) chars)")
+        } else {
+            Self.log.error("take failed: \(text, privacy: .public)")
+        }
         // The keyboard hears about every take through the App Group, whether it
         // ran in the foreground (first bounce) or the background (in place).
         AppGroupStore().writeResult(BounceResult(token: token, status: ok ? .ok : .error,
@@ -377,12 +426,13 @@ final class HotMicManager: ObservableObject {
         AppGroupStore().writeLevel(level)
     }
 
-    private func publishState(_ phase: HotPhase) {
+    private func publishState(_ phase: HotPhase, token: String? = nil) {
         let store = AppGroupStore()
         let existing = store.readHotState()
         let warmUntil = phase == .cold ? nil : (existing.warmUntil ?? Date().addingTimeInterval(warmSeconds))
-        store.writeHotState(HotState(phase: phase, warmUntil: warmUntil))
+        store.writeHotState(HotState(phase: phase, warmUntil: warmUntil, takeToken: token))
         DarwinSignal.post(DarwinSignal.state)
+        Self.log.info("published \(phase.rawValue, privacy: .public)")
     }
 }
 

@@ -115,6 +115,12 @@ enum HotPhase: String, Codable {
 struct HotState: Codable, Equatable {
     var phase: HotPhase
     var warmUntil: Date?   // when the idle window releases the mic
+    // The token of the take being captured or transcribed right now, nil
+    // outside a take. The keyboard treats listening/processing as confirmation
+    // of ITS take only when this matches; a stale claim left by a dead app
+    // carries some other take's token (or none) and must not disarm the
+    // watchdog (US-115).
+    var takeToken: String? = nil
     static let cold = HotState(phase: .cold, warmUntil: nil)
 }
 
