@@ -27,6 +27,19 @@ describe('mergeSettings', () => {
     expect((merged as unknown as Record<string, unknown>).futureFeature).toEqual({ on: true })
   })
 
+  it('discards stored values of the wrong type instead of breaking the app', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      provider: 'groq', // string over object: legacy or foreign settings file
+      autostart: 'yes', // string over boolean
+      dictionary: { from: 'a', to: 'b' }, // object over array
+      sounds: { volume: '1' } // string over number, nested
+    })
+    expect(merged.provider).toEqual(DEFAULT_SETTINGS.provider)
+    expect(merged.autostart).toBe(DEFAULT_SETTINGS.autostart)
+    expect(merged.dictionary).toEqual(DEFAULT_SETTINGS.dictionary)
+    expect(merged.sounds.volume).toBe(DEFAULT_SETTINGS.sounds.volume)
+  })
+
   it('replaces arrays wholesale', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, {
       dictionary: [{ from: 'labroy', to: 'LaBroi' }]

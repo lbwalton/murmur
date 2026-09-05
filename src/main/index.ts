@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Murmur main process entry. The shell grows story by story; see prd.json.
+import { rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
 import { initAudio } from './audio'
@@ -12,10 +14,18 @@ import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
 
 // Development builds get their own userData so the lock, settings, and
-// logs never collide with an installed Murmur (or the legacy app still
-// running on this machine during the transition).
+// logs never collide with an installed murmur (or the legacy app still
+// running on this machine during the transition). Smoke is hermetic: a
+// wiped temp dir per boot, so no stale state and no lock contention with
+// a running dev instance.
 if (!app.isPackaged) {
-  app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
+  if (isSmoke) {
+    const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
+    rmSync(dir, { recursive: true, force: true })
+    app.setPath('userData', dir)
+  } else {
+    app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
+  }
 }
 
 // Widget-first, single instance: a second launch hands off to the first.

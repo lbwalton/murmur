@@ -72,17 +72,24 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  * Deep-merge stored settings over defaults. Objects merge recursively,
  * arrays and scalars replace, and keys this build does not know about
  * are preserved so an older build never destroys a newer one's settings.
+ * A stored value whose type disagrees with the default is discarded:
+ * foreign or corrupt settings must never break the app.
  */
 export function mergeSettings<T extends object>(defaults: T, stored: unknown): T {
   if (!isPlainObject(stored)) return structuredClone(defaults)
   const out = structuredClone(defaults) as Record<string, unknown>
   for (const [key, value] of Object.entries(stored)) {
     const base = out[key]
-    if (isPlainObject(base) && isPlainObject(value)) {
-      out[key] = mergeSettings(base, value)
-    } else {
-      out[key] = structuredClone(value)
+    if (isPlainObject(base)) {
+      if (isPlainObject(value)) out[key] = mergeSettings(base, value)
+      continue
     }
+    if (Array.isArray(base)) {
+      if (Array.isArray(value)) out[key] = structuredClone(value)
+      continue
+    }
+    if (base !== undefined && typeof base !== typeof value) continue
+    out[key] = structuredClone(value)
   }
   return out as T
 }
