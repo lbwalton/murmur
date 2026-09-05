@@ -6,5 +6,12 @@ export const IpcChannels = {
   settingsUpdate: 'settings:update',
   apiKeySet: 'apikey:set',
   apiKeyClear: 'apikey:clear',
-  apiKeyStatus: 'apikey:status'
+  apiKeyStatus: 'apikey:status',
+  audioStart: 'audio:start',
+  audioStop: 'audio:stop',
+  audioCancel: 'audio:cancel',
+  audioRearm: 'audio:rearm',
+  audioReady: 'audio:ready',
+  audioArmed: 'audio:armed',
+  audioResult: 'audio:result'
 } as const

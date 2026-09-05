@@ -2,6 +2,7 @@
 // Murmur main process entry. The shell grows story by story; see prd.json.
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
+import { cancelRecording, initAudio, startRecording, stopRecording } from './audio'
 import { initHotkeys, stopHotkeys } from './hotkeys'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
@@ -91,19 +92,18 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
   initSettings()
+  initAudio()
 
-  // Recording lands in US-008; until then the hotkey drives a state stub
-  // so the trigger path is real end to end.
-  let dictating = false
+  // Transcription (US-010) consumes the WAV; until then stop just drops it.
   initHotkeys({
     start: () => {
-      dictating = true
+      startRecording()
     },
     stop: () => {
-      dictating = false
+      void stopRecording()
     }
   })
-  void dictating
+  void cancelRecording
 
   createTray({
     onOpen: showSettingsWindow,

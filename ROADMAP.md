@@ -16,10 +16,10 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-007** Global hotkeys: hold and toggle
+- [ ] **US-008** Recording pipeline with warm mic
 
 ## To do
 
-- [ ] **US-008** Recording pipeline with warm mic
 - [ ] **US-009** Overlay: waveform pill and live timer
 - [ ] **US-010** Transcription provider
 - [ ] **US-011** Insertion at the cursor

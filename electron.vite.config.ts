@@ -17,7 +17,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           settings: resolve(__dirname, 'src/preload/settings.ts'),
-          overlay: resolve(__dirname, 'src/preload/overlay.ts')
+          overlay: resolve(__dirname, 'src/preload/overlay.ts'),
+          audio: resolve(__dirname, 'src/preload/audio.ts')
         },
         output: {
           format: 'cjs',
@@ -33,7 +34,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           settings: resolve(__dirname, 'src/renderer/settings/index.html'),
-          overlay: resolve(__dirname, 'src/renderer/overlay/index.html')
+          overlay: resolve(__dirname, 'src/renderer/overlay/index.html'),
+          audio: resolve(__dirname, 'src/renderer/audio/index.html')
         }
       }
     }

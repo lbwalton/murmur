@@ -15,8 +15,11 @@ const artifacts = [
   'out/main/index.js',
   'out/preload/settings.js',
   'out/preload/overlay.js',
+  'out/preload/audio.js',
   'out/renderer/settings/index.html',
-  'out/renderer/overlay/index.html'
+  'out/renderer/overlay/index.html',
+  'out/renderer/audio/index.html',
+  'out/renderer/worklet.js'
 ]
 const missing = artifacts.filter((rel) => !existsSync(join(root, rel)))
 if (missing.length > 0) {

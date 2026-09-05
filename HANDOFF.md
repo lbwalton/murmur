@@ -11,6 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 ## Live verification queue
 
 - [ ] US-007 hotkeys: run `npm run dev`, grant Accessibility and Input Monitoring to the dev Electron when macOS asks, then confirm hold-to-talk (default Alt+Space) flips state and toggle mode debounces rapid taps. Full end-to-end feel comes once recording (US-008) and insertion (US-011) land; a quick sanity pass now is enough.
+- [ ] US-008 recording: with a real mic (grant the mic prompt), confirm a fast press-and-speak captures the very first word (the warm-mic pre-roll). Best tested together with US-010 transcription once it lands.
 
 ## Standing needs
 
