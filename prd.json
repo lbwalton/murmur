@@ -1,0 +1,398 @@
+{
+  "project": "Murmur",
+  "version": "0.1.0",
+  "license": "GPL-3.0-only",
+  "tagline": "Push-to-talk dictation that lives in your tray.",
+  "description": "Clean-room rebuild of a BYOK push-to-talk dictation app for Windows and macOS. Widget-first: the tray pill is the app, the window is for settings. Groq Whisper by default, any OpenAI-compatible endpoint supported. Merges the dictation core with the VFlow feature set (transcription log, usage analytics with live cost, WPM, recap notifications, wrap-up) reimplemented fresh. Copyright LaBroi Walton, GPLv3 from commit one, built entirely on LaBroi's personal machine. No code, prose, specs, or assets may be copied from ~/Projects/undertone, ~/Projects/the-peoples-voice-flow, or ~/Projects/OpenWhisp.",
+  "stack": {
+    "runtime": "Electron",
+    "bundler": "electron-vite",
+    "ui": "React + TypeScript",
+    "tests": "vitest",
+    "hotkeys": "uiohook-napi (prebuilt N-API binaries only, npmRebuild false)",
+    "packaging": "electron-builder (NSIS for Windows, dmg+zip for macOS)"
+  },
+  "conventions": {
+    "verify": "npm run typecheck, npm run test, and npm run smoke must be green before any commit. Smoke prints SMOKE_RESULT JSON and every subsystem adds a named check.",
+    "stories": "Work stories in order. Never set passes true until every acceptance criterion is verified; record how in notes. Stories with needs_human true get built and smoke-verified, then their human step is appended to HANDOFF.md and work continues.",
+    "commits": "One commit per story minimum, prefixed with the story id. git pull --rebase before every commit. After changing prd.json run npm run roadmap.",
+    "cleanRoom": "Never open or copy from the undertone, the-peoples-voice-flow, or OpenWhisp repos. Concepts yes, artifacts no. If blocked without them, stop and ask LaBroi.",
+    "style": "No em dashes or spaced hyphens as clause separators anywhere. Night studio design tokens only, amber reserved for live states."
+  },
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold and toolchain",
+      "description": "electron-vite + React + TypeScript project with main process, two preloads (settings window, overlay), and renderers. Scripts: dev, build, typecheck, test, smoke (placeholder), roadmap (placeholder), dist:mac, dist:win. GPLv3 LICENSE, license field GPL-3.0-only, npmRebuild false.",
+      "acceptance": [
+        "npm install completes with no compile step (no node-gyp output) on a fresh clone",
+        "npm run build produces main, preload, and renderer bundles",
+        "npm run typecheck is green",
+        "npm run test runs vitest and a seed test passes",
+        "LICENSE is GPLv3 and package.json license is GPL-3.0-only"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Roadmap generator",
+      "description": "scripts/roadmap.js reads prd.json and writes ROADMAP.md with three sections: done and verified, built awaiting live verification (needs_human stories whose automated criteria pass), and todo. npm run roadmap wires it.",
+      "acceptance": [
+        "npm run roadmap regenerates ROADMAP.md deterministically from prd.json",
+        "ROADMAP.md in git always matches a fresh run",
+        "Stories render with id, title, and checkbox state"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Icon and logo generation",
+      "description": "scripts/gen-icons.js draws the night studio waveform-pill mark programmatically and emits tray icons (idle and recording variants, including macOS template images), app icons (ico, icns, png sizes) into git-ignored build output. Runs on postinstall. No binary assets tracked.",
+      "acceptance": [
+        "Fresh clone + npm install generates every icon the app and builder reference",
+        "git ls-files shows no png, ico, icns, or other binary assets",
+        "Generation is deterministic (two runs produce identical bytes)",
+        "Tray icon reads clearly at 16px and 32px in light and dark trays"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Smoke harness",
+      "description": "npm run smoke boots the real app headlessly (windows hidden, providers in mock mode, no mic, no key), initializes every subsystem, prints a single SMOKE_RESULT JSON line with per-check booleans, and exits nonzero on any failure. Later stories each add a named check.",
+      "acceptance": [
+        "npm run smoke exits 0 and prints SMOKE_RESULT with ok true",
+        "A forced subsystem failure flips ok to false and the exit code to nonzero",
+        "Smoke needs no mic, no network, and no API key"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Tray shell, single instance, widget-first window",
+      "description": "Tray (menu bar on macOS) icon with menu: Open Murmur, pause dictation, Quit. Clicking the tray opens the settings window. Single instance lock: a second launch focuses the first. Closing the window hides it, the app lives in the tray. macOS runs without a Dock icon by default with a setting to show it.",
+      "acceptance": [
+        "Smoke check tray reports the tray and window created",
+        "Second launch exits immediately and the first instance shows its window",
+        "Window close hides the window and the process stays alive",
+        "Quit is only offered from the tray menu and exits cleanly"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Settings store and encrypted key",
+      "description": "JSON settings in userData with schema defaults, tolerant load (unknown keys preserved, corrupt file backed up and recovered to defaults), and allowlisted IPC getters and setters. The API key is encrypted with Electron safeStorage in its own file, never written to logs, and only a masked form ever reaches a renderer.",
+      "acceptance": [
+        "Unit tests cover defaults, merge, unknown-key preservation, and corrupt-file recovery with backup",
+        "Smoke check settings passes",
+        "The plaintext key never appears in any log file or renderer payload (grep the userData logs after a smoke run that sets a key)",
+        "Key round-trips through safeStorage encrypt and decrypt"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Global hotkeys: hold and toggle",
+      "description": "uiohook-napi global listener with two modes: hold-to-talk (press starts, release stops) and toggle (tap starts, tap stops). Bindings are configurable in settings with a capture UI that records the pressed combo. Sensible per-platform defaults. Debounced state machine so key repeat and rapid taps never double-fire.",
+      "acceptance": [
+        "Combo parse and format helpers are unit tested",
+        "Hold and toggle state machines are unit tested for press, release, repeat, and rapid-tap sequences",
+        "Smoke check hotkeys registers and unregisters the listener",
+        "Rebinding from the settings UI takes effect without restart"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Recording pipeline with warm mic",
+      "description": "A hidden audio renderer captures the mic to 16kHz mono WAV. The stream is pre-armed (warm mic) with a short ring buffer so the first syllable is never clipped. Handles sleep, resume, and device changes by re-arming automatically. Cancel discards audio. Smoke drives the pipeline with a synthetic source.",
+      "acceptance": [
+        "Smoke check recording produces a valid WAV header and nonzero samples from a synthetic source",
+        "WAV encoder is unit tested (header fields, sample counts, mono 16k)",
+        "Resume and device-change events re-arm the stream without an app restart",
+        "Live: LaBroi confirms the first word of a fast press-and-speak is captured"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Overlay: waveform pill and live timer",
+      "description": "Frameless always-on-top overlay at bottom center of the active display: focusable false, click-through, skipTaskbar. The waveform pill renders live mic levels with states idle, recording, processing, inserted, error, plus a fly-in animation and a live elapsed timer while recording.",
+      "acceptance": [
+        "Smoke check overlay asserts focusable false, click-through, always-on-top, and skipTaskbar",
+        "State transitions are driven over allowlisted IPC and unit tested as a state machine",
+        "Timer ticks while recording and resets between sessions",
+        "Live: LaBroi confirms the overlay never steals focus from the target app"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Transcription provider",
+      "description": "A provider interface with Groq Whisper as the default implementation, model configurable. Any OpenAI-compatible audio transcriptions endpoint works via base URL, model, and key settings. Timeouts, one retry on network error, and on final failure the WAV is saved to a recovery folder and the overlay shows the error. Audio is never lost.",
+      "acceptance": [
+        "Unit tests with a mocked fetch cover success, 4xx, 5xx, timeout, and the single retry",
+        "Smoke check provider passes in mock mode",
+        "A failed transcription leaves a playable WAV in userData recovery and surfaces the error state",
+        "Live: LaBroi runs one real dictation against Groq with a real key"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Insertion at the cursor",
+      "description": "Final text lands at the cursor in the focused app: save clipboard, set text, send the platform paste keystroke, restore the clipboard. macOS uses osascript keystroke (no compiled helper), Windows uses a no-compile keystroke path. A copy-only fallback setting exists. Insertion must never steal or shift focus.",
+      "acceptance": [
+        "Clipboard save and restore logic is unit tested, including non-text clipboard content left untouched on failure",
+        "Smoke check insertion initializes the platform strategy",
+        "Copy-only mode puts the text on the clipboard and skips the keystroke",
+        "Live: LaBroi verifies insertion in three real apps per platform without focus loss"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Silence never inserts text",
+      "description": "An energy gate (RMS threshold plus minimum voiced duration) short-circuits before upload, and a transcript sanity filter (empty, whitespace, known Whisper hallucination phrases) short-circuits after. Either path shows a quiet no-speech state and inserts nothing.",
+      "acceptance": [
+        "Unit tests: silent buffer, breath noise, and real-speech synthetic buffers classify correctly",
+        "Hallucination phrase list is data-driven and tested",
+        "Smoke check silence passes",
+        "Live: LaBroi holds the hotkey in silence and nothing is inserted"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Format spec and shared test vectors",
+      "description": "shared/format-spec.json defines deterministic formatter rules: filler removal, sentence capitalization, terminal punctuation, spoken punctuation and newline commands, self-correction handling, and a numbers mode. shared/test-vectors.json holds input and expected pairs. A pure-function formatter implements the spec and vitest runs every vector.",
+      "acceptance": [
+        "Every vector in shared/test-vectors.json passes",
+        "The formatter is a pure function with no IO",
+        "Spec rules are documented inside format-spec.json itself",
+        "Adding a vector with an unimplemented rule fails the suite (proving vectors drive behavior)"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "LLM formatter that fails open",
+      "description": "Optional cleanup pass through a Groq-hosted chat model (configurable) with levels off, light, and full. Strict system prompt plus output validation: length-ratio bounds, no meta chatter, and dictated instructions are transcribed literally, never obeyed. Any error, timeout, or validation failure returns the deterministic pre-formatted text.",
+      "acceptance": [
+        "Mocked-LLM unit tests: API error, timeout, chatty preamble, refusal, and an embedded instruction like a request to delete text all fail open to the deterministic output",
+        "Prompt-injection vectors in shared/test-vectors.json pass (dictations containing instructions come out as literal text)",
+        "Smoke check formatter passes in mock mode",
+        "Level off skips the LLM entirely"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Custom dictionary",
+      "description": "A user dictionary of proper nouns and replacement pairs applied deterministically after transcription and offered to the LLM as hints without leaking. Settings UI lists, adds, edits, and removes entries.",
+      "acceptance": [
+        "Vectors cover replacements, casing of proper nouns, and word-boundary safety",
+        "Leak test: a large dictionary plus an unrelated dictation never injects dictionary words into output",
+        "Dictionary hint text never appears in inserted output in any mocked-LLM failure mode",
+        "Settings UI round-trips entries to the store"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Text expansions",
+      "description": "Spoken trigger phrases expand to saved snippets after formatting (for example a spoken email trigger inserts the full address). Managed in settings with collision rules: longest trigger wins, one expansion per utterance position.",
+      "acceptance": [
+        "Vectors cover expansion, longest-match collision, and no-match passthrough",
+        "Settings UI round-trips expansions to the store",
+        "Expansions apply after the formatter so triggers are matched on clean text"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "History: append-only log and home transcription view",
+      "description": "Every completed session appends a JSONL event to userData: timestamp, duration, raw text, final text, word count, WPM, and cost estimate. The home view of the settings window is the transcription log grouped by date with copy buttons, live updates as sessions land, a retention setting, and clear-all.",
+      "acceptance": [
+        "Append, read, date grouping, and corrupt-line tolerance are unit tested",
+        "Smoke check history writes and reads a synthetic session end to end",
+        "The home view updates live when a session completes (IPC event test)",
+        "Copy button places the final text on the clipboard, retention prunes old entries, clear-all empties the log"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Usage analytics and live cost card",
+      "description": "Aggregations over the event log power an analytics page: minutes dictated, words, sessions, and daily activity chart, plus a monthly usage card with a live cost estimate computed from shared/rates.json. Rates are verified against the provider pricing page and the check date is recorded in the file.",
+      "acceptance": [
+        "Aggregation unit tests cover month boundaries, empty logs, and multi-day ranges",
+        "Cost math matches shared/rates.json exactly and rates carry a verified-on date sourced from the provider pricing page",
+        "Analytics page renders from a seeded log in smoke",
+        "Usage card updates after a new session lands"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Post-session WPM in the overlay",
+      "description": "When a session completes, the overlay shows a brief WPM chip before fading out, and the WPM lands in the history event.",
+      "acceptance": [
+        "WPM math is unit tested including very short sessions and zero-word results",
+        "The chip state is part of the overlay state machine tests",
+        "Live: LaBroi sees the WPM chip after a real dictation"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Recap notifications and wrap-up page",
+      "description": "A configurable daily recap time fires a native notification summarizing the day (sessions, minutes, words). Clicking it opens the wrap-up page in the settings window: a day summary view over the event log. A test-notification button fires one immediately.",
+      "acceptance": [
+        "Scheduler time math is unit tested with local-time boundaries",
+        "The test button fires a notification in a live run",
+        "Smoke check recap validates scheduling and the wrap-up data query without firing UI notifications",
+        "Live: LaBroi receives a scheduled recap and lands on wrap-up by clicking it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "First-run onboarding",
+      "description": "A wizard on first launch: welcome, API key entry with a connection test button, mic permission, hotkey choice with live capture, then a test dictation. Re-runnable from settings. Smoke completes the whole wizard in mock mode.",
+      "acceptance": [
+        "Wizard state machine is unit tested including back navigation and abandonment",
+        "Smoke completes the wizard end to end in mock mode",
+        "The connection test button reports success and failure states from the provider",
+        "Live: LaBroi completes first run on a clean profile through a real test dictation"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Sounds, autostart, resilience",
+      "description": "Start, stop, insert, and error cues synthesized by script at postinstall (no binary assets) with a volume and mute setting. Autostart toggle wired per platform. Resilience: crash-safe relaunch once, unhandled errors logged to rotating files in userData, and the tray reflects a degraded state instead of dying silently.",
+      "acceptance": [
+        "Sound files generate deterministically at postinstall and play through the cue player behind the setting",
+        "Autostart toggle round-trips through the platform API in smoke",
+        "Log rotation is unit tested",
+        "Live: LaBroi hears cues and survives a forced crash with an auto-relaunch"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Night studio design pass",
+      "description": "All screens consume a single tokens file: ink 0F0E11, panels 17161B, warm text ECE9E4, amber F0A44B for live states only, red E5484D for record and error, mono micro-labels. Reduced motion is respected. The waveform pill stays the only loud element.",
+      "acceptance": [
+        "A tokens file exists and a lint or grep check proves no raw hex outside it",
+        "Amber appears only on live or active states across every screen",
+        "Animations respect prefers-reduced-motion",
+        "Live: LaBroi approves the look on both the window and the overlay"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "macOS packaging and permissions flow",
+      "description": "electron-builder dmg and zip targets with hardened runtime and mic entitlement, appId com.lbwalton.murmur, productName Murmur. A permissions helper screen deep-links to Microphone, Accessibility, and Input Monitoring panes and reflects grant status.",
+      "acceptance": [
+        "npm run dist:mac produces a dmg on this Mac that installs and launches from Applications",
+        "The permissions screen deep-links to the right System Settings panes and reflects status",
+        "The packaged app passes a full live dictation loop",
+        "Live: LaBroi verifies mic, accessibility, and input monitoring prompts on a clean grant state"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Windows packaging",
+      "description": "NSIS one-click installer with silent /S support, per-user install, generated icon, autostart wiring, and productName Murmur. Built config is complete and buildable; final verification runs on LaBroi's Windows machine.",
+      "acceptance": [
+        "dist:win config builds without errors (cross-build or config validation on this Mac)",
+        "Silent install with /S works and the app launches from the per-user location",
+        "Autostart registers and survives reboot",
+        "Live: LaBroi runs the full dictation loop on Windows"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "README and coworker docs",
+      "description": "README: what Murmur is, why BYOK, Groq key setup, permissions guidance per platform, build from source, privacy note (audio goes to the configured provider), and license section. A short coworker quickstart doc covers install and first run.",
+      "acceptance": [
+        "README covers setup, permissions, build, privacy, and license with accurate commands",
+        "No em dashes or spaced-hyphen separators anywhere in the docs",
+        "Quickstart takes a coworker from installer to first dictation in under ten steps"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "GPLv3 compliance pass",
+      "description": "SPDX GPL-3.0-only headers in source files enforced by a check script, an about view showing version and license, and a THIRD-PARTY-NOTICES file generated from the dependency tree.",
+      "acceptance": [
+        "npm run check:headers is green and wired into the test script",
+        "The about view shows the version, GPLv3 notice, and a link to the license",
+        "THIRD-PARTY-NOTICES.md is generated from package-lock and committed",
+        "No dependency has a license incompatible with GPLv3"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    }
+  ]
+}
