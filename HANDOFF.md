@@ -5,7 +5,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 ## Now
 
 - [ ] A private note was removed before the repo went public.
-- [ ] Undertone follow-ups in the old repo (`~/Projects/undertone`): the app still calls itself Murmur internally (productName, appId, App Store listing from US-113/114). Pause any App Store submission under the Murmur name; rebrand or drop it.
+- [ ] Undertone switchover (rebrand shipped 2026-09-05): Undertone.app is in /Applications with a violet icon, same permissions. When ready: quit the old Murmur.app, launch Undertone (your settings and history migrate automatically), re-enter your Groq key once (the encrypted store follows the app name), then drag Murmur.app to the Trash.
+- [ ] Old iOS App Store listing (US-113/114 in the undertone repo) is still under the Murmur name. Pause any submission; redo as Undertone or drop it.
+- [ ] The undertone repo has 5 Dependabot alerts (4 high). Legacy app, so decide: patch or ignore.
 - [ ] Decide when the new `lbwalton/murmur` repo flips from private to public.
 
 ## Live verification queue
