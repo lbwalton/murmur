@@ -1,11 +1,12 @@
 # Murmur Roadmap
 
-> Generated from prd.json (2/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (3/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
 - [x] **US-001** Scaffold and toolchain
 - [x] **US-002** Roadmap generator
+- [x] **US-003** Icon and logo generation
 
 ## Built, awaiting live verification
 
@@ -15,7 +16,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-003** Icon and logo generation
 - [ ] **US-004** Smoke harness
 - [ ] **US-005** Tray shell, single instance, widget-first window
 - [ ] **US-006** Settings store and encrypted key

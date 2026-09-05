@@ -4,6 +4,9 @@ out/
 release/
 build/icons/
 build/sounds/
+build/icon.icns
+build/icon.ico
+build/icon.png
 *.log
 .DS_Store
 .env

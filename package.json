@@ -7,6 +7,7 @@
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
+    "postinstall": "node scripts/gen-icons.js",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
