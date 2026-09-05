@@ -171,7 +171,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: 7 unit tests on the pure restore plan (clean restore, empty original, non-text payload untouched, user copy mid-insertion wins) and the platform keystroke builders (osascript cmd+v, powershell SendKeys, null elsewhere). Smoke insertion check runs the copy path end to end and restores the user clipboard; keystrokes are never fired in smoke by design. Paste failure fails open to copied, so text is never lost. Copy-only mode is a setting (insertion.mode). Remaining live: paste into three real apps per platform without focus loss (HANDOFF.md)."
     },
     {
       "id": "US-012",

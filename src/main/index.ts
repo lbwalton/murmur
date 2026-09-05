@@ -7,6 +7,7 @@ import { BrowserWindow, app } from 'electron'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation } from './dictation'
 import { initHotkeys, stopHotkeys } from './hotkeys'
+import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
 import { initTranscribe } from './transcribe'
 import { initSettings } from './settings'
@@ -108,6 +109,7 @@ app.whenReady().then(async () => {
   initAudio()
   initOverlay()
   initTranscribe()
+  initInsertion()
   initDictation()
 
   initHotkeys({

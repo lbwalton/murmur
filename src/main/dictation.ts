@@ -4,6 +4,7 @@
 // on the clipboard, so a dictation is never silently lost.
 import { clipboard } from 'electron'
 import { cancelRecording, startRecording, stopRecording } from './audio'
+import { insertText } from './insertion'
 import { getOverlayPhase, setOverlayPhase } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
 import { registerSmokeCheck } from './smoke'
@@ -36,9 +37,9 @@ export async function dictationStop(): Promise<void> {
     return
   }
 
-  // Formatting (US-013+) and true cursor insertion (US-011) slot in here.
-  clipboard.writeText(result.text)
-  setOverlayPhase('inserted')
+  // Formatting (US-013+) slots in here before delivery.
+  const outcome = await insertText(result.text)
+  setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
 }
 
 export function dictationCancel(): void {

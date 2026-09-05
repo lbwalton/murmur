@@ -16,6 +16,9 @@ export interface Settings {
     level: 'off' | 'light' | 'full'
     numbers: 'auto' | 'words' | 'digits'
   }
+  insertion: {
+    mode: 'paste' | 'copy'
+  }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>
   sounds: {
@@ -46,6 +49,9 @@ export const DEFAULT_SETTINGS: Settings = {
   formatting: {
     level: 'full',
     numbers: 'auto'
+  },
+  insertion: {
+    mode: 'paste'
   },
   dictionary: [],
   expansions: [],
