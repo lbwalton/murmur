@@ -11,6 +11,26 @@ import { SettingsStore } from './store'
 let settingsStore: SettingsStore | null = null
 let keyStore: KeyStore | null = null
 
+type SettingsListener = (settings: Settings) => void
+const listeners = new Set<SettingsListener>()
+
+/** Subscribe to settings updates. Fires after every successful save. */
+export function onSettingsChanged(listener: SettingsListener): void {
+  listeners.add(listener)
+}
+
+function notifySettingsChanged(settings: Settings): void {
+  for (const listener of listeners) listener(settings)
+}
+
+/** Update settings from main-process code, notifying subscribers. */
+export function updateSettings(partial: unknown): Settings {
+  if (!settingsStore) throw new Error('settings not initialized')
+  const updated = settingsStore.update(partial)
+  notifySettingsChanged(updated)
+  return updated
+}
+
 export function initSettings(): void {
   const dir = app.getPath('userData')
   settingsStore = new SettingsStore(dir)
@@ -24,7 +44,7 @@ export function initSettings(): void {
 
   ipcMain.handle(IpcChannels.settingsGet, () => settingsStore?.get())
   ipcMain.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
-    return settingsStore?.update(partial)
+    return updateSettings(partial)
   })
   ipcMain.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {
     keyStore?.set(String(key))

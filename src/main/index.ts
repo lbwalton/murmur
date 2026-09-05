@@ -2,6 +2,7 @@
 // Murmur main process entry. The shell grows story by story; see prd.json.
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
+import { initHotkeys, stopHotkeys } from './hotkeys'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
@@ -78,6 +79,7 @@ app.on('second-instance', () => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  stopHotkeys()
 })
 
 // The tray keeps the app alive with every window hidden or closed.
@@ -89,6 +91,19 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
   initSettings()
+
+  // Recording lands in US-008; until then the hotkey drives a state stub
+  // so the trigger path is real end to end.
+  let dictating = false
+  initHotkeys({
+    start: () => {
+      dictating = true
+    },
+    stop: () => {
+      dictating = false
+    }
+  })
+  void dictating
 
   createTray({
     onOpen: showSettingsWindow,

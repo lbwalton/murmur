@@ -115,7 +115,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: 17 unit tests cover combo parse (aliases, casing, rejects), exact modifier matching, hold machine (repeat-safe, stray-up-safe), toggle machine (debounce absorbs repeat). Smoke checks hotkeys (binding parsed, machine built, listeners attached) and hotkeysRebind (live rebind to Ctrl+Shift+F19 and back through the settings-changed path, no restart) green. uIOhook.start wrapped: denied permission degrades, never crashes. Remaining: LaBroi live-verifies hold and toggle with real keys after granting Accessibility and Input Monitoring (queued in HANDOFF.md); the settings UI capture control lands with US-021."
     },
     {
       "id": "US-008",
