@@ -21,7 +21,7 @@ import { createTray, getTray } from './tray'
 // wiped temp dir per boot, so no stale state and no lock contention with
 // a running dev instance.
 if (!app.isPackaged) {
-  if (isSmoke || process.env.MURMUR_SETTINGS_CAPTURE) {
+  if (isSmoke || process.env.MURMUR_SETTINGS_CAPTURE || process.env.MURMUR_QUIT_TEST) {
     const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
     rmSync(dir, { recursive: true, force: true })
     app.setPath('userData', dir)
@@ -96,6 +96,10 @@ app.on('second-instance', () => {
 app.on('before-quit', () => {
   isQuitting = true
   stopHotkeys()
+  // Failsafe: if anything (a window, a native hook thread) still blocks
+  // the quit two seconds from now, leave anyway. Quit must always work.
+  const failsafe = setTimeout(() => app.exit(0), 2000)
+  failsafe.unref()
 })
 
 // The tray keeps the app alive with every window hidden or closed.
@@ -172,5 +176,13 @@ app.whenReady().then(async () => {
   if (isSmoke) {
     await settingsLoaded.catch(() => undefined)
     await runSmokeAndExit()
+  }
+
+  // Regression probe: MURMUR_QUIT_TEST=1 quits through the REAL quit path
+  // (app.quit, not app.exit) shortly after boot. The process must exit on
+  // its own; a hang here is the bug where a window or native hook blocks
+  // quitting.
+  if (process.env.MURMUR_QUIT_TEST === '1') {
+    setTimeout(() => app.quit(), 1200)
   }
 })

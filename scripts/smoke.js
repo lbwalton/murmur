@@ -56,6 +56,22 @@ child.on('close', (code) => {
     console.error(output.slice(-2000))
     process.exit(1)
   }
-  console.log(line)
-  process.exit(code === 0 ? 0 : 1)
+  const result = JSON.parse(line.slice('SMOKE_RESULT '.length))
+
+  // Second boot through the REAL quit path (app.quit, not app.exit): the
+  // process must exit on its own. Regression guard for quit hangs caught
+  // live on 2026-09-05 (overlay closable:false blocked every quit).
+  const quitChild = spawn(electronPath, ['.'], {
+    cwd: root,
+    env: { ...process.env, MURMUR_QUIT_TEST: '1' },
+    stdio: 'ignore'
+  })
+  const quitTimer = setTimeout(() => quitChild.kill('SIGKILL'), 30_000)
+  quitChild.on('close', (quitCode, signal) => {
+    clearTimeout(quitTimer)
+    result.checks.quitPath = quitCode === 0 && signal === null
+    result.ok = result.ok && result.checks.quitPath
+    console.log(`SMOKE_RESULT ${JSON.stringify(result)}`)
+    process.exit(code === 0 && result.ok ? 0 : 1)
+  })
 })

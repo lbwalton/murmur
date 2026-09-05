@@ -119,6 +119,14 @@ export function overlayPreviewBurst(durationMs = 2500): void {
 export function initOverlay(): void {
   overlayWindow = createOverlayWindow()
 
+  // closable false means app.quit() can never close this window through
+  // the normal path; it must be destroyed or quitting hangs forever.
+  app.on('before-quit', () => {
+    if (lingerTimer) clearTimeout(lingerTimer)
+    overlayWindow?.destroy()
+    overlayWindow = null
+  })
+
   ipcMain.handle('overlay:preview', () => {
     overlayPreviewBurst()
   })
