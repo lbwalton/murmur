@@ -3,9 +3,10 @@
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
 import { initAudio } from './audio'
-import { dictationStart, dictationStop } from './dictation'
+import { dictationStart, dictationStop, initDictation } from './dictation'
 import { initHotkeys, stopHotkeys } from './hotkeys'
 import { initOverlay } from './overlay'
+import { initTranscribe } from './transcribe'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
@@ -96,6 +97,8 @@ app.whenReady().then(async () => {
   initSettings()
   initAudio()
   initOverlay()
+  initTranscribe()
+  initDictation()
 
   initHotkeys({
     start: dictationStart,

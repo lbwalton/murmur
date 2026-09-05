@@ -157,7 +157,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: 9 provider unit tests with mocked fetch (multipart body shape, bearer auth, auth and badrequest never retried, 5xx and network retried once, timeout via AbortController, missing text field classified). Recovery unit tests (bytes round trip, prune to newest 20). Smoke provider check exercises the real HTTP client against in-process mocks; smoke dictationLoop runs the whole path synthetic mic to WAV to mock provider to clipboard to overlay inserted, with the user clipboard restored. transcribeWav saves recovery WAV on every failure path including missing key. Remaining live: one real Groq dictation (HANDOFF.md)."
     },
     {
       "id": "US-011",
