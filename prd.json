@@ -71,9 +71,9 @@
         "A forced subsystem failure flips ok to false and the exit code to nonzero",
         "Smoke needs no mic, no network, and no API key"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: npm run smoke boots the real Electron app hidden (MURMUR_SMOKE=1), runs registered checks appReady, settingsWindow, settingsRenderer (preload bridge probed via executeJavaScript), prints SMOKE_RESULT ok true, exit 0. MURMUR_SMOKE_FORCE_FAIL=1 injects a failing check: ok false, exit 1. No mic, network, or key touched; per-check 10s timeout, 60s harness kill switch."
     },
     {
       "id": "US-005",
