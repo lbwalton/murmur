@@ -1,6 +1,6 @@
 # Murmur Roadmap
 
-> Generated from prd.json (4/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (5/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -8,6 +8,7 @@
 - [x] **US-002** Roadmap generator
 - [x] **US-003** Icon and logo generation
 - [x] **US-004** Smoke harness
+- [x] **US-005** Tray shell, single instance, widget-first window
 
 ## Built, awaiting live verification
 
@@ -17,7 +18,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-005** Tray shell, single instance, widget-first window
 - [ ] **US-006** Settings store and encrypted key
 - [ ] **US-007** Global hotkeys: hold and toggle
 - [ ] **US-008** Recording pipeline with warm mic

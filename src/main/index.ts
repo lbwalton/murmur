@@ -3,6 +3,23 @@
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
+import { createTray, getTray } from './tray'
+
+// Development builds get their own userData so the lock, settings, and
+// logs never collide with an installed Murmur (or the legacy app still
+// running on this machine during the transition).
+if (!app.isPackaged) {
+  app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
+}
+
+// Widget-first, single instance: a second launch hands off to the first.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+}
+
+let settingsWindow: BrowserWindow | null = null
+let isQuitting = false
 
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -19,6 +36,14 @@ function createSettingsWindow(): BrowserWindow {
     }
   })
 
+  // Closing the window hides it; the app lives in the tray.
+  win.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      win.hide()
+    }
+  })
+
   const devServer = process.env.ELECTRON_RENDERER_URL
   if (devServer) {
     void win.loadURL(`${devServer}/settings/index.html`)
@@ -26,6 +51,15 @@ function createSettingsWindow(): BrowserWindow {
     void win.loadFile(join(__dirname, '../renderer/settings/index.html'))
   }
   return win
+}
+
+function showSettingsWindow(): void {
+  if (!settingsWindow || settingsWindow.isDestroyed()) {
+    settingsWindow = createSettingsWindow()
+    return
+  }
+  settingsWindow.show()
+  settingsWindow.focus()
 }
 
 function whenLoaded(win: BrowserWindow): Promise<void> {
@@ -37,30 +71,59 @@ function whenLoaded(win: BrowserWindow): Promise<void> {
   })
 }
 
-app.whenReady().then(async () => {
-  registerSmokeCheck('appReady', () => app.isReady())
+app.on('second-instance', () => {
+  showSettingsWindow()
+})
 
-  const settingsWindow = createSettingsWindow()
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
+// The tray keeps the app alive with every window hidden or closed.
+app.on('window-all-closed', () => {})
+
+app.whenReady().then(async () => {
+  // Widget-first on macOS: menu bar resident, no Dock icon. A visible
+  // window still shows normally; a Dock toggle setting lands later.
+  if (process.platform === 'darwin' && app.dock) app.dock.hide()
+
+  createTray({
+    onOpen: showSettingsWindow,
+    onQuit: () => app.quit()
+  })
+
+  settingsWindow = createSettingsWindow()
   const settingsLoaded = whenLoaded(settingsWindow)
 
-  registerSmokeCheck('settingsWindow', () => !settingsWindow.isDestroyed())
+  registerSmokeCheck('appReady', () => app.isReady())
+  registerSmokeCheck('singleInstanceLock', () => gotLock)
+  registerSmokeCheck('tray', () => {
+    const tray = getTray()
+    return tray !== null && !tray.isDestroyed()
+  })
+  registerSmokeCheck('settingsWindow', () => {
+    return settingsWindow !== null && !settingsWindow.isDestroyed()
+  })
   registerSmokeCheck('settingsRenderer', async () => {
     await settingsLoaded
+    if (!settingsWindow) return false
     const kind = await settingsWindow.webContents.executeJavaScript('typeof window.murmur')
     return kind === 'object'
   })
+  registerSmokeCheck('widgetLifecycle', async () => {
+    // Closing the window must hide it and keep the process alive.
+    if (!settingsWindow) return false
+    settingsWindow.close()
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    return !settingsWindow.isDestroyed() && !settingsWindow.isVisible()
+  })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createSettingsWindow()
+    showSettingsWindow()
   })
 
   if (isSmoke) {
     await settingsLoaded.catch(() => undefined)
     await runSmokeAndExit()
   }
-})
-
-// Tray-resident lifecycle lands in US-005. Until then the window is the app.
-app.on('window-all-closed', () => {
-  app.quit()
 })

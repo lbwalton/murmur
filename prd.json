@@ -85,9 +85,9 @@
         "Window close hides the window and the process stays alive",
         "Quit is only offered from the tray menu and exits cleanly"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: smoke checks tray, singleInstanceLock, settingsWindow, and widgetLifecycle (close hides, process survives) all green. Live CLI test: second launch exited in 1s while the first stayed alive and took the handoff. Quit exists only in the tray menu; window close is intercepted and hides. macOS runs menu-bar resident with Dock hidden. Dev builds use an isolated murmur-dev userData so the lock and settings never collide with the installed legacy app (found live: the old Murmur.app held the Murmur lock)."
     },
     {
       "id": "US-006",
