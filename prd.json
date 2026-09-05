@@ -197,9 +197,9 @@
         "Spec rules are documented inside format-spec.json itself",
         "Adding a vector with an unimplemented rule fails the suite (proving vectors drive behavior)"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: shared/format-spec.json documents every rule and the pipeline order inline; 26 vectors in shared/test-vectors.json all pass through the vector-runner test (fillers, spoken punctuation attach and capitalize, scratch-that sentence scoping, numbers digits and words modes, terminal punctuation, level off and light behavior). Vectors proved they drive behavior during development: two initially failed and forced a pipeline reorder (spoken punctuation before scratch-that). formatTranscript is a pure function wired into dictationStop; smoke dictationLoop now asserts the formatted output lands."
     },
     {
       "id": "US-014",

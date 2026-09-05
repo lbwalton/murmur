@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "comment": "Single source of truth for deterministic formatter rules on every platform. The pipeline order is: trim, fillers, spoken punctuation, scratch-that, whitespace, numbers, capitalization, terminal punctuation. Spoken punctuation runs before scratch-that so sentence boundaries exist. Levels: off applies nothing but a trim; light applies fillers, whitespace, capitalization; full applies everything. Change behavior here or nowhere.",
+  "fillers": {
+    "comment": "Standalone filler words removed at light and full. Word-boundary, case-insensitive. Never part of another word.",
+    "words": ["um", "uh", "uhm", "uhh", "erm", "mhm"]
+  },
+  "scratchThat": {
+    "comment": "Full level: each trigger deletes the current sentence up to and including the trigger, keeping what follows. Sentence start is the position after the previous . ! ? or newline.",
+    "triggers": ["scratch that", "strike that"]
+  },
+  "spokenPunctuation": {
+    "comment": "Full level: spoken commands become symbols. Longest phrase wins. Terminal symbols capitalize the next word. Newline commands also swallow surrounding spaces. This is a command vocabulary: speaking the word literally converts, which is the accepted tradeoff of deterministic dictation.",
+    "map": {
+      "new paragraph": "\n\n",
+      "new line": "\n",
+      "question mark": "?",
+      "exclamation point": "!",
+      "exclamation mark": "!",
+      "period": ".",
+      "comma": ",",
+      "colon": ":",
+      "semicolon": ";"
+    }
+  },
+  "numbers": {
+    "comment": "Setting digits converts standalone number words to digits: units 0-20, tens, and tens-units pairs (with or without hyphen). Setting words converts standalone digits 0-20 to words. Setting auto leaves the transcript as the model produced it.",
+    "units": {
+      "zero": 0,
+      "one": 1,
+      "two": 2,
+      "three": 3,
+      "four": 4,
+      "five": 5,
+      "six": 6,
+      "seven": 7,
+      "eight": 8,
+      "nine": 9,
+      "ten": 10,
+      "eleven": 11,
+      "twelve": 12,
+      "thirteen": 13,
+      "fourteen": 14,
+      "fifteen": 15,
+      "sixteen": 16,
+      "seventeen": 17,
+      "eighteen": 18,
+      "nineteen": 19,
+      "twenty": 20
+    },
+    "tens": {
+      "twenty": 20,
+      "thirty": 30,
+      "forty": 40,
+      "fifty": 50,
+      "sixty": 60,
+      "seventy": 70,
+      "eighty": 80,
+      "ninety": 90
+    }
+  },
+  "terminalPunctuation": {
+    "comment": "Full level: a transcript of three or more words that ends on a word character gets a closing period.",
+    "minWords": 3,
+    "append": "."
+  }
+}

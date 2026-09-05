@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (6/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (7/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -10,6 +10,7 @@
 - [x] **US-004** Smoke harness
 - [x] **US-005** Tray shell, single instance, widget-first window
 - [x] **US-006** Settings store and encrypted key
+- [x] **US-013** Format spec and shared test vectors
 
 ## Built, awaiting live verification
 
@@ -24,7 +25,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-013** Format spec and shared test vectors
 - [ ] **US-014** LLM formatter that fails open
 - [ ] **US-015** Custom dictionary
 - [ ] **US-016** Text expansions

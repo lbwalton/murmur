@@ -18,6 +18,7 @@
   },
   "include": [
     "src",
+    "shared",
     "electron.vite.config.ts",
     "vitest.config.ts"
   ]

@@ -1,0 +1,141 @@
+{
+  "comment": "Shared formatter cases: every platform's test suite runs all of these against shared/format-spec.json. settings defaults are level full, numbers auto unless stated.",
+  "vectors": [
+    {
+      "name": "off level leaves text untouched except a trim",
+      "settings": { "level": "off" },
+      "input": "  um hello period this stays raw  ",
+      "expected": "um hello period this stays raw"
+    },
+    {
+      "name": "light removes fillers and capitalizes",
+      "settings": { "level": "light" },
+      "input": "um so uh let's meet tomorrow",
+      "expected": "So let's meet tomorrow"
+    },
+    {
+      "name": "light does not convert spoken punctuation",
+      "settings": { "level": "light" },
+      "input": "send it today period",
+      "expected": "Send it today period"
+    },
+    {
+      "name": "basic sentence gets capitalized and terminated",
+      "input": "send the report tomorrow",
+      "expected": "Send the report tomorrow."
+    },
+    {
+      "name": "two words never get forced punctuation",
+      "input": "sounds good",
+      "expected": "Sounds good"
+    },
+    {
+      "name": "fillers vanish cleanly",
+      "input": "um I think uh we should um go",
+      "expected": "I think we should go."
+    },
+    {
+      "name": "filler words inside other words survive",
+      "input": "the umbrella is uh under the desk",
+      "expected": "The umbrella is under the desk."
+    },
+    {
+      "name": "spoken period attaches and capitalizes the next word",
+      "input": "that works period see you then",
+      "expected": "That works. See you then."
+    },
+    {
+      "name": "spoken comma attaches without capitalizing",
+      "input": "first the intro comma then the demo",
+      "expected": "First the intro, then the demo."
+    },
+    {
+      "name": "question mark command",
+      "input": "can you send it question mark",
+      "expected": "Can you send it?"
+    },
+    {
+      "name": "exclamation point command",
+      "input": "ship it exclamation point",
+      "expected": "Ship it!"
+    },
+    {
+      "name": "new line command breaks the line and capitalizes",
+      "input": "first item new line second item",
+      "expected": "First item\nSecond item."
+    },
+    {
+      "name": "new paragraph command makes a blank line",
+      "input": "that wraps up the intro new paragraph now the details",
+      "expected": "That wraps up the intro\n\nNow the details."
+    },
+    {
+      "name": "scratch that drops the current sentence so far",
+      "input": "send it friday scratch that send it monday",
+      "expected": "Send it monday."
+    },
+    {
+      "name": "scratch that only affects its own sentence",
+      "input": "the demo went well period we start tuesday scratch that we start thursday",
+      "expected": "The demo went well. We start thursday."
+    },
+    {
+      "name": "strike that works as an alias",
+      "input": "budget is fine strike that budget needs review",
+      "expected": "Budget needs review."
+    },
+    {
+      "name": "whisper trailing punctuation on commands is absorbed",
+      "input": "that works period. see you then",
+      "expected": "That works. See you then."
+    },
+    {
+      "name": "digits mode converts number words",
+      "settings": { "numbers": "digits" },
+      "input": "we need seven copies by five",
+      "expected": "We need 7 copies by 5."
+    },
+    {
+      "name": "digits mode handles compound tens",
+      "settings": { "numbers": "digits" },
+      "input": "about forty five minutes and twenty-one slides",
+      "expected": "About 45 minutes and 21 slides."
+    },
+    {
+      "name": "words mode converts small digits",
+      "settings": { "numbers": "words" },
+      "input": "we need 7 copies by 5",
+      "expected": "We need seven copies by five."
+    },
+    {
+      "name": "auto numbers mode leaves numbers alone",
+      "input": "we need seven copies and 12 folders",
+      "expected": "We need seven copies and 12 folders."
+    },
+    {
+      "name": "multiple sentences all capitalize",
+      "input": "the build passed. tests are green. ship it",
+      "expected": "The build passed. Tests are green. Ship it."
+    },
+    {
+      "name": "spaces collapse and punctuation spacing normalizes",
+      "input": "hello   there ,  friend .  how are you",
+      "expected": "Hello there, friend. How are you."
+    },
+    {
+      "name": "empty input stays empty",
+      "input": "   ",
+      "expected": ""
+    },
+    {
+      "name": "existing capitals are preserved",
+      "input": "ask LaBroi about the GPLv3 rollout",
+      "expected": "Ask LaBroi about the GPLv3 rollout."
+    },
+    {
+      "name": "ends with punctuation already means no append",
+      "input": "is the deck ready?",
+      "expected": "Is the deck ready?"
+    }
+  ]
+}

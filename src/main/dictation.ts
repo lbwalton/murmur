@@ -3,6 +3,8 @@
 // the overlay. Until insertion lands (US-011) the final text is placed
 // on the clipboard, so a dictation is never silently lost.
 import { clipboard } from 'electron'
+import formatSpec from '../../shared/format-spec.json'
+import { type FormatSpec, formatTranscript } from '../shared/formatter'
 import hallucinations from '../shared/hallucinations.json'
 import { hasSpeechEnergy, isHallucination } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
@@ -52,8 +54,17 @@ export async function dictationStop(): Promise<void> {
     return
   }
 
-  // Formatting (US-013+) slots in here before delivery.
-  const outcome = await insertText(result.text)
+  // Deterministic formatting always runs; the LLM pass (US-014) layers
+  // on top and falls back to this output on any failure.
+  const { getSettings } = await import('./settings')
+  const formatting = getSettings().formatting
+  const formatted = formatTranscript(
+    result.text,
+    { level: formatting.level, numbers: formatting.numbers },
+    formatSpec as unknown as FormatSpec
+  )
+
+  const outcome = await insertText(formatted)
   setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
 }
 
@@ -83,7 +94,13 @@ export function initDictation(): void {
       await new Promise((resolve) => setTimeout(resolve, 500))
       await dictationStop()
       const delivered = await clipboard.readText()
-      return getOverlayPhase() === 'inserted' && delivered === SMOKE_TRANSCRIPT
+      const { getSettings } = await import('./settings')
+      const expected = formatTranscript(
+        SMOKE_TRANSCRIPT,
+        getSettings().formatting,
+        formatSpec as unknown as FormatSpec
+      )
+      return getOverlayPhase() === 'inserted' && delivered === expected && delivered.endsWith('.')
     } finally {
       await clipboard.writeText(clipboardBefore)
     }
