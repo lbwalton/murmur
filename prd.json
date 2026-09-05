@@ -309,7 +309,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Settings surface shipped early (2026-09-05) so live verification can start: key entry with masked status and connection test, hotkey capture, trigger and insertion and formatting controls, macOS permissions panel with deep links and 3s polling, overlay preview button, try-it box. The first-run wizard and its state machine remain to be built for this story."
     },
     {
       "id": "US-022",

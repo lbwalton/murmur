@@ -74,3 +74,8 @@ export function stopHotkeys(): void {
     hookStarted = false
   }
 }
+
+/** Live status for the settings surface. */
+export function getHotkeysStatus(): HotkeysStatus {
+  return { hookStarted, bindingValid: binding !== null }
+}

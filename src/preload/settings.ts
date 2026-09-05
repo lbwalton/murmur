@@ -12,6 +12,22 @@ export interface KeyStatus {
   masked: string | null
 }
 
+export interface ProviderTestResult {
+  ok: boolean
+  detail: string
+}
+
+export interface PermissionsStatus {
+  microphone: string
+  accessibility: boolean
+  inputMonitoring: boolean
+}
+
+export interface HotkeysStatus {
+  hookStarted: boolean
+  bindingValid: boolean
+}
+
 const api = {
   appVersion: (): string => process.env.npm_package_version ?? '0.1.0',
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
@@ -20,7 +36,14 @@ const api = {
   },
   setApiKey: (key: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:set', key),
   clearApiKey: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clear'),
-  getApiKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:status')
+  getApiKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:status'),
+  testProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:test'),
+  getPermissions: (): Promise<PermissionsStatus> => ipcRenderer.invoke('perms:status'),
+  openPermissionPane: (pane: 'microphone' | 'accessibility' | 'input'): Promise<void> => {
+    return ipcRenderer.invoke('perms:open', pane)
+  },
+  getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
+  previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview')
 }
 
 export type SettingsApi = typeof api

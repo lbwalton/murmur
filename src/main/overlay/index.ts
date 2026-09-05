@@ -100,8 +100,28 @@ export function getOverlayPhase(): OverlayPhase {
   return machine.get().phase
 }
 
+/** Show the pill with synthetic levels for a moment: settings "preview". */
+export function overlayPreviewBurst(durationMs = 2500): void {
+  if (getOverlayPhase() !== 'idle') return
+  if (!setOverlayPhase('recording')) return
+  let t = 0
+  const levels = setInterval(() => {
+    t += 1
+    const level = 0.12 + 0.1 * Math.abs(Math.sin(t / 3)) + 0.06 * Math.random()
+    overlayWindow?.webContents.send(IpcChannels.overlayLevel, level)
+  }, 33)
+  setTimeout(() => {
+    clearInterval(levels)
+    setOverlayPhase('idle')
+  }, durationMs)
+}
+
 export function initOverlay(): void {
   overlayWindow = createOverlayWindow()
+
+  ipcMain.handle('overlay:preview', () => {
+    overlayPreviewBurst()
+  })
 
   // Design QA hook: MURMUR_OVERLAY_PREVIEW=1 shows the pill recording
   // with synthetic levels, no mic or hotkey needed.

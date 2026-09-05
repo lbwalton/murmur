@@ -16,5 +16,10 @@ export const IpcChannels = {
   audioResult: 'audio:result',
   audioLevel: 'audio:level',
   overlayState: 'overlay:state',
-  overlayLevel: 'overlay:level'
+  overlayLevel: 'overlay:level',
+  overlayPreview: 'overlay:preview',
+  providerTest: 'provider:test',
+  permsStatus: 'perms:status',
+  permsOpen: 'perms:open',
+  hotkeysStatus: 'hotkeys:status'
 } as const

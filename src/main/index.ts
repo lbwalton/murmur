@@ -9,6 +9,7 @@ import { dictationStart, dictationStop, initDictation } from './dictation'
 import { initHotkeys, stopHotkeys } from './hotkeys'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
+import { initPermissions } from './permissions'
 import { initTranscribe } from './transcribe'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
@@ -20,7 +21,7 @@ import { createTray, getTray } from './tray'
 // wiped temp dir per boot, so no stale state and no lock contention with
 // a running dev instance.
 if (!app.isPackaged) {
-  if (isSmoke) {
+  if (isSmoke || process.env.MURMUR_SETTINGS_CAPTURE) {
     const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
     rmSync(dir, { recursive: true, force: true })
     app.setPath('userData', dir)
@@ -118,6 +119,7 @@ app.whenReady().then(async () => {
       void dictationStop()
     }
   })
+  initPermissions()
 
   createTray({
     onOpen: showSettingsWindow,
@@ -153,6 +155,19 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     showSettingsWindow()
   })
+
+  // Design QA hook: MURMUR_SETTINGS_CAPTURE=/path.png saves a shot of the
+  // settings window and exits, no screen needed.
+  const settingsCapture = process.env.MURMUR_SETTINGS_CAPTURE
+  if (settingsCapture && settingsWindow) {
+    await settingsLoaded.catch(() => undefined)
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    const image = await settingsWindow.webContents.capturePage()
+    const { writeFile } = await import('node:fs/promises')
+    await writeFile(settingsCapture, image.toPNG())
+    app.exit(0)
+    return
+  }
 
   if (isSmoke) {
     await settingsLoaded.catch(() => undefined)

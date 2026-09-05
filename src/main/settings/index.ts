@@ -56,6 +56,33 @@ export function initSettings(): void {
   })
   ipcMain.handle(IpcChannels.apiKeyStatus, () => keyStore?.status())
 
+  // Connection test: a cheap authorized GET against the provider's model
+  // list. Proves base URL and key together without spending audio.
+  ipcMain.handle('provider:test', async () => {
+    const key = keyStore?.get()
+    if (!key) return { ok: false, detail: 'no key saved yet' }
+    const baseUrl = settingsStore?.get().provider.baseUrl.replace(/\/$/, '')
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 10_000)
+    try {
+      const response = await fetch(`${baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${key}` },
+        signal: controller.signal
+      })
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, detail: 'key rejected (401)' }
+      }
+      return response.ok
+        ? { ok: true, detail: 'connected' }
+        : { ok: false, detail: `http ${response.status}` }
+    } catch (error) {
+      const aborted = error instanceof Error && error.name === 'AbortError'
+      return { ok: false, detail: aborted ? 'timed out' : 'network error' }
+    } finally {
+      clearTimeout(timer)
+    }
+  })
+
   registerSmokeCheck('settings', () => {
     if (!settingsStore) return false
     const before = settingsStore.get()
