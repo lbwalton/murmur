@@ -3,6 +3,9 @@
 // the overlay. Until insertion lands (US-011) the final text is placed
 // on the clipboard, so a dictation is never silently lost.
 import { clipboard } from 'electron'
+import hallucinations from '../shared/hallucinations.json'
+import { hasSpeechEnergy, isHallucination } from '../shared/speech-gate'
+import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, startRecording, stopRecording } from './audio'
 import { insertText } from './insertion'
 import { getOverlayPhase, setOverlayPhase } from './overlay'
@@ -27,12 +30,24 @@ export async function dictationStop(): Promise<void> {
     return
   }
 
+  // Guard one: no speech energy means no upload and nothing inserted.
+  try {
+    if (!hasSpeechEnergy(wavSamples(wav), TARGET_SAMPLE_RATE)) {
+      setOverlayPhase('nospeech')
+      return
+    }
+  } catch {
+    setOverlayPhase('error')
+    return
+  }
+
   const result = await transcribeWav(wav)
   if (!result.ok) {
     setOverlayPhase('error')
     return
   }
-  if (result.text.trim().length === 0) {
+  // Guard two: empty or hallucinated transcripts never insert.
+  if (isHallucination(result.text, hallucinations.phrases)) {
     setOverlayPhase('nospeech')
     return
   }
@@ -48,6 +63,16 @@ export function dictationCancel(): void {
 }
 
 export function initDictation(): void {
+  registerSmokeCheck('silenceGuard', async () => {
+    const { encodeWavPcm16 } = await import('../shared/wav')
+    const silent = encodeWavPcm16(new Float32Array(TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
+    return (
+      !hasSpeechEnergy(wavSamples(silent), TARGET_SAMPLE_RATE) &&
+      isHallucination('Thank you.', hallucinations.phrases) &&
+      !isHallucination('send the invoice tomorrow', hallucinations.phrases)
+    )
+  })
+
   registerSmokeCheck('dictationLoop', async () => {
     // Full loop against the synthetic mic and mock provider: record,
     // stop, transcribe, deliver. The user clipboard is restored after.

@@ -52,6 +52,17 @@ export function encodeWavPcm16(samples: Float32Array, sampleRate: number): Uint8
   return new Uint8Array(buffer)
 }
 
+/** Decode the mono PCM16 samples of a WAV into floats (-1..1). */
+export function wavSamples(bytes: Uint8Array): Float32Array {
+  const info = parseWav(bytes)
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const out = new Float32Array(info.sampleCount)
+  for (let i = 0; i < info.sampleCount; i++) {
+    out[i] = view.getInt16(44 + i * 2, true) / 32768
+  }
+  return out
+}
+
 export interface WavInfo {
   sampleRate: number
   channels: number

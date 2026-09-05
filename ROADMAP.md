@@ -20,10 +20,10 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-009** Overlay: waveform pill and live timer
 - [ ] **US-010** Transcription provider
 - [ ] **US-011** Insertion at the cursor
+- [ ] **US-012** Silence never inserts text
 
 ## To do
 
-- [ ] **US-012** Silence never inserts text
 - [ ] **US-013** Format spec and shared test vectors
 - [ ] **US-014** LLM formatter that fails open
 - [ ] **US-015** Custom dictionary

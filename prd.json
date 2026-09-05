@@ -185,7 +185,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: 8 unit tests (pure silence, breath-level noise, speech bursts, one-loud-click rejected by the 200ms voiced minimum; empty, punctuation-only, and known phrases flagged case and punctuation insensitively; real dictations containing a phrase pass). Hallucination list is data-driven in shared/hallucinations.json. Both guards wired into dictationStop (energy gate before upload, sanity filter after) and covered by smoke silenceGuard. Remaining live: hold the hotkey in silence, expect the quiet no speech state (HANDOFF.md)."
     },
     {
       "id": "US-013",

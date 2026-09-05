@@ -1,0 +1,29 @@
+{
+  "comment": "Exact-match phrases (after lowercasing and punctuation strip) that Whisper-family models emit on silent or near-silent audio. Data-driven so new sightings land here, not in code.",
+  "phrases": [
+    "thank you",
+    "thank you for watching",
+    "thanks for watching",
+    "please subscribe",
+    "subscribe to my channel",
+    "like and subscribe",
+    "see you next time",
+    "see you in the next video",
+    "the end",
+    "bye",
+    "bye bye",
+    "you",
+    "so",
+    "uh",
+    "um",
+    "hmm",
+    "silence",
+    "music",
+    "applause",
+    "laughter",
+    "foreign",
+    "transcribed by",
+    "subtitles by the amaraorg community",
+    "copyright"
+  ]
+}
