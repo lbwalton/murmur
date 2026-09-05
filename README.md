@@ -1,8 +1,10 @@
-# Murmur
+# murmur
 
 Push-to-talk dictation that lives in your tray. Hold a key, speak, release, and clean text lands at your cursor in any app. Windows and macOS. Bring your own key: Groq Whisper by default, any OpenAI-compatible endpoint supported.
 
-Status: clean-room rebuild in progress. See ROADMAP.md once generated, and prd.json for the full story backlog.
+The name is always lowercase: murmur.
+
+Status: clean-room rebuild in progress. See ROADMAP.md, and prd.json for the full story backlog.
 
 ## License
 

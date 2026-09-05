@@ -21,16 +21,16 @@ export interface TrayHandlers {
 
 export function createTray(handlers: TrayHandlers): Tray {
   tray = new Tray(nativeImage.createFromPath(trayIconPath()))
-  tray.setToolTip('Murmur')
+  tray.setToolTip('murmur')
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Open Murmur', click: handlers.onOpen },
+      { label: 'Open murmur', click: handlers.onOpen },
       { type: 'separator' },
-      { label: 'Quit Murmur', click: handlers.onQuit }
+      { label: 'Quit murmur', click: handlers.onQuit }
     ])
   )
   // On Windows a left click opens the window; macOS convention keeps the
-  // click on the menu, where Open Murmur is the first item.
+  // click on the menu, where Open murmur is the first item.
   tray.on('click', () => {
     if (process.platform !== 'darwin') handlers.onOpen()
   })

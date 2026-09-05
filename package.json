@@ -20,7 +20,7 @@
   },
   "build": {
     "appId": "com.lbwalton.murmur",
-    "productName": "Murmur",
+    "productName": "murmur",
     "npmRebuild": false,
     "files": [
       "out/**/*",

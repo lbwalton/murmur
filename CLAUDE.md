@@ -1,6 +1,10 @@
-# Murmur
+# murmur
 
 Push-to-talk dictation for Windows and macOS. Widget-first: the tray pill is the app, the window is for settings. BYOK (Groq Whisper by default, any OpenAI-compatible endpoint). GPLv3, open core.
+
+## Brand
+
+The product name is always lowercase: murmur. Even at the start of a sentence, in headings, window titles, tray menus, installers, docs, and marketing copy. Never Murmur or MURMUR. Code identifiers follow normal language conventions.
 
 ## Provenance (non-negotiable)
 

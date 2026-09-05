@@ -2,7 +2,7 @@
 export function App(): React.JSX.Element {
   return (
     <main className="shell">
-      <p className="micro-label">MURMUR</p>
+      <p className="micro-label">murmur</p>
       <h1>Push-to-talk dictation.</h1>
       <p className="dim">The settings surface builds out story by story. See prd.json.</p>
     </main>

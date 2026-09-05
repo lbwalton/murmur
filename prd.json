@@ -1,5 +1,5 @@
 {
-  "project": "Murmur",
+  "project": "murmur",
   "version": "0.1.0",
   "license": "GPL-3.0-only",
   "tagline": "Push-to-talk dictation that lives in your tray.",
@@ -17,7 +17,7 @@
     "stories": "Work stories in order. Never set passes true until every acceptance criterion is verified; record how in notes. Stories with needs_human true get built and smoke-verified, then their human step is appended to HANDOFF.md and work continues.",
     "commits": "One commit per story minimum, prefixed with the story id. git pull --rebase before every commit. After changing prd.json run npm run roadmap.",
     "cleanRoom": "Never open or copy from the undertone, the-peoples-voice-flow, or OpenWhisp repos. Concepts yes, artifacts no. If blocked without them, stop and ask LaBroi.",
-    "style": "No em dashes or spaced hyphens as clause separators anywhere. Night studio design tokens only, amber reserved for live states."
+    "style": "No em dashes or spaced hyphens as clause separators anywhere. Night studio design tokens only, amber reserved for live states. The product name is always lowercase murmur in every user-visible surface, even at sentence start."
   },
   "stories": [
     {

@@ -33,7 +33,7 @@ function createSettingsWindow(): BrowserWindow {
     height: 640,
     show: !isSmoke,
     backgroundColor: '#0F0E11',
-    title: 'Murmur',
+    title: 'murmur',
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
       contextIsolation: true,
