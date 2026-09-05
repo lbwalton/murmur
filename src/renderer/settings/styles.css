@@ -1,0 +1,49 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Night studio. Full token system lands in US-023; keep hex here only until then. */
+:root {
+  --ink: #0f0e11;
+  --panel: #17161b;
+  --text: #ece9e4;
+  --text-dim: #9a968f;
+  --amber: #f0a44b;
+  --red: #e5484d;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family:
+    'Inter',
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  padding: 48px;
+}
+
+.micro-label {
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+
+.dim {
+  color: var(--text-dim);
+}

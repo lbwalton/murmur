@@ -31,9 +31,9 @@
         "npm run test runs vitest and a seed test passes",
         "LICENSE is GPLv3 and package.json license is GPL-3.0-only"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: npm install (377 packages, no node-gyp output), npm run build emits out/main, out/preload/{settings,overlay}.js, out/renderer/{settings,overlay}/index.html, typecheck green, vitest 4/4 green on src/shared/time.test.ts, LICENSE is GPLv3 text and package.json license GPL-3.0-only with npmRebuild false. Versions: electron 44, electron-vite 5, vite 7, react 19, typescript 7, vitest 5."
     },
     {
       "id": "US-002",
@@ -44,9 +44,9 @@
         "ROADMAP.md in git always matches a fresh run",
         "Stories render with id, title, and checkbox state"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: two consecutive runs produce identical ROADMAP.md (1 done, 26 todo), sections render done, awaiting-human (needs_human with automated criteria verified in notes), and todo with id + title checkboxes."
     },
     {
       "id": "US-003",
