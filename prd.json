@@ -99,9 +99,9 @@
         "The plaintext key never appears in any log file or renderer payload (grep the userData logs after a smoke run that sets a key)",
         "Key round-trips through safeStorage encrypt and decrypt"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: 18 new unit tests (merge semantics incl. unknown-key preservation, corrupt-file recovery with .bak, atomic saves, keystore round-trip with injected cipher, no-plaintext-on-disk, masked status). Smoke checks settings and secureKey green: real safeStorage round-trip of a probe key then cleared. Leak scan: probe plaintext appears zero times in smoke output, userData tree, or settings.json; key lives only in key.enc encrypted. Renderer receives only {present, masked}."
     },
     {
       "id": "US-007",

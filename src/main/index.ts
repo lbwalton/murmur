@@ -2,6 +2,7 @@
 // Murmur main process entry. The shell grows story by story; see prd.json.
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
+import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
 
@@ -86,6 +87,8 @@ app.whenReady().then(async () => {
   // Widget-first on macOS: menu bar resident, no Dock icon. A visible
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
+
+  initSettings()
 
   createTray({
     onOpen: showSettingsWindow,
