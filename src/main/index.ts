@@ -2,8 +2,10 @@
 // Murmur main process entry. The shell grows story by story; see prd.json.
 import { join } from 'node:path'
 import { BrowserWindow, app } from 'electron'
-import { cancelRecording, initAudio, startRecording, stopRecording } from './audio'
+import { initAudio } from './audio'
+import { dictationStart, dictationStop } from './dictation'
 import { initHotkeys, stopHotkeys } from './hotkeys'
+import { initOverlay } from './overlay'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
@@ -93,17 +95,14 @@ app.whenReady().then(async () => {
 
   initSettings()
   initAudio()
+  initOverlay()
 
-  // Transcription (US-010) consumes the WAV; until then stop just drops it.
   initHotkeys({
-    start: () => {
-      startRecording()
-    },
+    start: dictationStart,
     stop: () => {
-      void stopRecording()
+      void dictationStop()
     }
   })
-  void cancelRecording
 
   createTray({
     onOpen: showSettingsWindow,

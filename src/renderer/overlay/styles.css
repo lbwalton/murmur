@@ -1,0 +1,141 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Night studio overlay. Transparent window; the pill is the only paint. */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#root {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(23, 22, 27, 0.96);
+  border: 1px solid rgba(236, 233, 228, 0.08);
+  animation: fly-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+@keyframes fly-in {
+  from {
+    transform: translateY(28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill {
+    animation: none;
+  }
+  .bar {
+    transition: none;
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(236, 233, 228, 0.25);
+  flex: none;
+}
+
+.dot-live {
+  background: #e5484d;
+  box-shadow: 0 0 8px rgba(229, 72, 77, 0.7);
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 40px;
+  flex: 1;
+}
+
+.bar {
+  width: 3px;
+  min-height: 6px;
+  border-radius: 2px;
+  background: #f0a44b;
+  transition: height 90ms linear;
+}
+
+.pill-processing .bar {
+  background: rgba(236, 233, 228, 0.35);
+  animation: pulse 900ms ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.pill-error .bar {
+  background: rgba(229, 72, 77, 0.55);
+}
+
+.pill-nospeech .bar,
+.pill-inserted .bar {
+  background: rgba(236, 233, 228, 0.22);
+}
+
+.status-slot {
+  min-width: 58px;
+  text-align: right;
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.timer {
+  color: #ece9e4;
+}
+
+.ok {
+  color: #ece9e4;
+}
+
+.quiet {
+  color: rgba(236, 233, 228, 0.55);
+}
+
+.err {
+  color: #e5484d;
+}

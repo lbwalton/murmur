@@ -12,8 +12,23 @@ declare global {
 const params = new URLSearchParams(window.location.search)
 const synthetic = params.get('synthetic') === '1'
 
-const recorder = new Recorder({ synthetic })
 const bridge = window.murmurAudio
+
+// Forward waveform levels at most every 33ms, peak-held between sends.
+let pendingLevel = 0
+let lastLevelSentAt = 0
+const recorder = new Recorder({
+  synthetic,
+  onLevel: (rms) => {
+    pendingLevel = Math.max(pendingLevel, rms)
+    const now = performance.now()
+    if (now - lastLevelSentAt >= 33) {
+      bridge.level(pendingLevel)
+      pendingLevel = 0
+      lastLevelSentAt = now
+    }
+  }
+})
 
 bridge.onStart(() => {
   recorder.start()

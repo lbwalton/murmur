@@ -8,6 +8,8 @@ import { TARGET_SAMPLE_RATE, downsample, encodeWavPcm16 } from '../../shared/wav
 export interface RecorderOptions {
   synthetic: boolean
   preRollMs?: number
+  /** Called with the RMS level of each chunk while recording is active. */
+  onLevel?: (rms: number) => void
 }
 
 export class Recorder {
@@ -69,6 +71,11 @@ export class Recorder {
   private onChunk(chunk: Float32Array): void {
     if (this.active) {
       this.active.push(chunk)
+      if (this.opts.onLevel) {
+        let sum = 0
+        for (let i = 0; i < chunk.length; i++) sum += chunk[i] * chunk[i]
+        this.opts.onLevel(Math.sqrt(sum / chunk.length))
+      }
       return
     }
     this.preRoll.push(chunk)

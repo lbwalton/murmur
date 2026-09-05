@@ -27,6 +27,9 @@ const api = {
   },
   result: (wav: Uint8Array | null): void => {
     ipcRenderer.send('audio:result', wav)
+  },
+  level: (rms: number): void => {
+    ipcRenderer.send('audio:level', rms)
   }
 }
 

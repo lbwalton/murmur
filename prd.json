@@ -143,7 +143,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: overlay phase machine unit tested (happy path, illegal jumps rejected, cancel, error and nospeech restarts). Smoke overlayFlags green (focusable false, always-on-top screen-saver level, click-through, all-workspaces), overlayBridge green, overlayStatesAndTimer green (recording timer ticks to 0:01 in DOM, processing and idle phases land). Visual QA via MURMUR_OVERLAY_PREVIEW capture hook: pill renders with red live dot, amber waveform driven by RMS levels (33ms peak-held throttle), mono timer. Fly-in and reduced-motion in CSS. Remaining live: focus-stealing check in real apps (HANDOFF.md)."
     },
     {
       "id": "US-010",
