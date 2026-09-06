@@ -12,10 +12,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
-- [ ] US-007 hotkeys: run `npm run dev`, grant Accessibility and Input Monitoring to the dev Electron when macOS asks, then confirm hold-to-talk (default Alt+Space) flips state and toggle mode debounces rapid taps. Full end-to-end feel comes once recording (US-008) and insertion (US-011) land; a quick sanity pass now is enough.
 - [ ] US-008 recording: with a real mic (grant the mic prompt), confirm a fast press-and-speak captures the very first word (the warm-mic pre-roll). Best tested together with US-010 transcription once it lands.
-- [ ] US-009 overlay: while typing in another app, hold the hotkey and confirm the pill appears without the target app losing focus, waveform moves with your voice, timer ticks. `MURMUR_OVERLAY_PREVIEW=1 npm run dev` shows the pill anytime without a mic.
-- [ ] US-010 transcription: enter your Groq key in the app (once the settings UI lands, or ask Claude to wire a quick entry path), then dictate a sentence and confirm the text lands on the clipboard. This one live run covers US-007, US-008, and US-010 together.
 - [ ] US-011 insertion: dictate into three real apps (Notes, a browser text box, Slack or Messages) and confirm the text lands at the cursor, the app never loses focus, and whatever you had copied before is back on the clipboard afterward.
 - [ ] US-019 wpm chip: after any dictation, the pill shows your words-per-minute for a beat before fading. Confirm you see it.
 - [ ] US-012 silence: hold the hotkey for two seconds in silence and release. The pill should show the quiet no speech state and nothing gets inserted anywhere.
