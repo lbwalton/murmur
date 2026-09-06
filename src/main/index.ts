@@ -19,6 +19,7 @@ import { initHistory } from './history'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
+import { initRecap } from './recap'
 import { initTranscribe } from './transcribe'
 import { initSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
@@ -178,6 +179,12 @@ app.whenReady().then(async () => {
   initTranscribe()
   initFormatter()
   initHistory(() => settingsWindow)
+  initRecap({
+    openWrapup: () => {
+      showSettingsWindow()
+      settingsWindow?.webContents.send('nav:goto', 'wrapup')
+    }
+  })
   initInsertion()
   initDictation()
 

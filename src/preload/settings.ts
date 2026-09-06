@@ -60,6 +60,12 @@ const api = {
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
+  },
+  testRecap: (): Promise<string> => ipcRenderer.invoke('recap:test'),
+  onNavigate: (cb: (page: string) => void): (() => void) => {
+    const handler = (_e: unknown, page: string): void => cb(page)
+    ipcRenderer.on('nav:goto', handler)
+    return () => ipcRenderer.removeListener('nav:goto', handler)
   }
 }
 

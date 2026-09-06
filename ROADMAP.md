@@ -29,10 +29,10 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-011** Insertion at the cursor
 - [ ] **US-012** Silence never inserts text
 - [ ] **US-019** Post-session WPM in the overlay
+- [ ] **US-020** Recap notifications and wrap-up page
 
 ## To do
 
-- [ ] **US-020** Recap notifications and wrap-up page
 - [ ] **US-029** Progression engine: BJJ belts and stripes
 - [ ] **US-030** Achievements
 - [ ] **US-031** The dojo: unlockable cosmetics

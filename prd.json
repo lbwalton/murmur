@@ -309,7 +309,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-06: 9 scheduler unit tests (parse, same-local-day fire time, fires late after sleep, once per day, malformed time never fires). Recap fires via a minute tick with a corrupt-tolerant state file, notification click opens the wrap-up tab, Test button fires without consuming the daily recap, smoke recap check validates math and the wrap-up query with no UI. Wrap-up tab: day stats, best wpm, takes list, live refresh. Review gate confirmed two findings, fixed: the native time input could persist an empty value mid-edit and silently kill the schedule forever while Test masked it (valid-only commits with snap-back now), and the time-saved line could assert a false positive claim on slow sessions (now only renders when genuinely positive). Remaining live: LaBroi receives a scheduled recap and lands on wrap-up by clicking it (HANDOFF.md)."
     },
     {
       "id": "US-029",

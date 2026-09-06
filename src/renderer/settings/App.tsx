@@ -9,9 +9,11 @@ import type {
   ProviderTestResult,
   SettingsApi
 } from '../../preload/settings'
+import { parseRecapTime } from '../../shared/recap'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
+import { WrapUpView } from './WrapUpView'
 
 declare global {
   interface Window {
@@ -66,6 +68,36 @@ function TextSetting(props: {
         </datalist>
       )}
     </>
+  )
+}
+
+/**
+ * Recap time field. A native time input reports empty string during
+ * incomplete edits; persisting that would silently kill the recap
+ * schedule forever. Only valid times ever reach the store, and blurring
+ * an incomplete edit snaps back to the saved value.
+ */
+function RecapTimeInput(props: {
+  value: string
+  disabled: boolean
+  onCommit: (time: string) => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(props.value)
+  useEffect(() => setDraft(props.value), [props.value])
+  return (
+    <input
+      type="time"
+      className="field"
+      value={draft}
+      disabled={props.disabled}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        if (parseRecapTime(e.target.value)) props.onCommit(e.target.value)
+      }}
+      onBlur={() => {
+        if (!parseRecapTime(draft)) setDraft(props.value)
+      }}
+    />
   )
 }
 
@@ -157,7 +189,7 @@ export function App(): React.JSX.Element {
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
-  const [page, setPage] = useState<'home' | 'analytics' | 'setup'>('home')
+  const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'setup'>('home')
   const autoTested = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -176,6 +208,10 @@ export function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
+    // The recap notification lands on the wrap-up page.
+    const unNav = bridge().onNavigate((target) => {
+      if (target === 'wrapup') setPage('wrapup')
+    })
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved.
@@ -188,7 +224,10 @@ export function App(): React.JSX.Element {
       void bridge().getPermissions().then(setPerms)
       void bridge().getHotkeysStatus().then(setHotkeys)
     }, 3000)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      unNav()
+    }
   }, [refresh])
 
   const update = async (partial: Partial<Settings>): Promise<void> => {
@@ -295,6 +334,12 @@ export function App(): React.JSX.Element {
               analytics
             </button>
             <button
+              className={`nav-btn ${page === 'wrapup' ? 'nav-active' : ''}`}
+              onClick={() => setPage('wrapup')}
+            >
+              wrap-up
+            </button>
+            <button
               className={`nav-btn ${page === 'setup' ? 'nav-active' : ''}`}
               onClick={() => setPage('setup')}
             >
@@ -312,6 +357,7 @@ export function App(): React.JSX.Element {
 
       {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
       {page === 'analytics' && <AnalyticsView />}
+      {page === 'wrapup' && <WrapUpView />}
 
       <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
       <section className="panel">
@@ -604,6 +650,34 @@ export function App(): React.JSX.Element {
                 void update({ expansions: [...settings.expansions, { trigger, text }] })
               }
             />
+          </div>
+        </Row>
+      </section>
+
+      <section className="panel">
+        <p className="micro-label">recap</p>
+        <Row label="Daily recap" desc="A notification with your day's numbers; click it to open the wrap-up.">
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.recap.enabled ? 'on' : 'off'}
+              onChange={(e) =>
+                void update({
+                  recap: { ...settings.recap, enabled: e.target.value === 'on' }
+                })
+              }
+            >
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+            <RecapTimeInput
+              value={settings.recap.time}
+              disabled={!settings.recap.enabled}
+              onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
+            />
+            <button className="btn" onClick={() => void bridge().testRecap()}>
+              Test
+            </button>
           </div>
         </Row>
       </section>

@@ -35,6 +35,11 @@ export function recordSession(input: {
   return event
 }
 
+/** Read-only access to the log for other main subsystems (recap). */
+export function readHistory(): SessionEvent[] {
+  return log?.readAll() ?? []
+}
+
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   log = new HistoryLog(app.getPath('userData'))

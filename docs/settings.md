@@ -59,6 +59,10 @@ An expansion turns a spoken trigger phrase into a saved snippet: say "insert my 
 
 How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview overlay** shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
 
+## How do recaps and the wrap-up work?
+
+Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers. Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, an estimate of the typing time you saved, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+
 ## Which macOS permissions does murmur need, and why?
 
 | Permission | Why murmur needs it |
