@@ -143,7 +143,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: overlay phase machine unit tested (happy path, illegal jumps rejected, cancel, error and nospeech restarts). Smoke overlayFlags green (focusable false, always-on-top screen-saver level, click-through, all-workspaces), overlayBridge green, overlayStatesAndTimer green (recording timer ticks to 0:01 in DOM, processing and idle phases land). Visual QA via MURMUR_OVERLAY_PREVIEW capture hook: pill renders with red live dot, amber waveform driven by RMS levels (33ms peak-held throttle), mono timer. Fly-in and reduced-motion in CSS. Remaining live: focus-stealing check in real apps (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-05: overlay phase machine unit tested (happy path, illegal jumps rejected, cancel, error and nospeech restarts). Smoke overlayFlags green (focusable false, always-on-top screen-saver level, click-through, all-workspaces), overlayBridge green, overlayStatesAndTimer green (recording timer ticks to 0:01 in DOM, processing and idle phases land). Visual QA via MURMUR_OVERLAY_PREVIEW capture hook: pill renders with red live dot, amber waveform driven by RMS levels (33ms peak-held throttle), mono timer. Fly-in and reduced-motion in CSS. Remaining live: focus-stealing check in real apps (HANDOFF.md). Update 2026-09-05: overlay waveform styles shipped at LaBroi request: bars (classic) and speckle (jittered-grid dust field vibrating with RMS energy, canvas 2D, a few amber sparks, reduced-motion safe), selectable in settings and pushed live over overlay:config."
     },
     {
       "id": "US-010",
@@ -300,16 +300,17 @@
     {
       "id": "US-021",
       "title": "First-run onboarding",
-      "description": "A wizard on first launch: welcome, API key entry with a connection test button, mic permission, hotkey choice with live capture, then a test dictation. Re-runnable from settings. Smoke completes the whole wizard in mock mode.",
+      "description": "A wizard on first launch: welcome, API key entry with a connection test button, mic permission, hotkey choice with live capture, then a test dictation. Re-runnable from settings. Alongside the wizard, settings keeps a persistent setup checklist (LaBroi spec 2026-09-05): each step shows a green check when complete, the overall setup indicator shows a green check or a red x at a glance, and clicking a failing step scrolls to and highlights the field that needs fixing. Smoke completes the whole wizard in mock mode.",
       "acceptance": [
         "Wizard state machine is unit tested including back navigation and abandonment",
         "Smoke completes the wizard end to end in mock mode",
         "The connection test button reports success and failure states from the provider",
-        "Live: LaBroi completes first run on a clean profile through a real test dictation"
+        "Live: LaBroi completes first run on a clean profile through a real test dictation",
+        "Settings shows the persistent checklist: green check per completed step, red x overall indicator when anything is broken, and clicking a failing step highlights the exact field to fix"
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Settings surface shipped early (2026-09-05) so live verification can start: key entry with masked status and connection test, hotkey capture, trigger and insertion and formatting controls, macOS permissions panel with deep links and 3s polling, overlay preview button, try-it box. The first-run wizard and its state machine remain to be built for this story."
+      "notes": "Checklist half shipped 2026-09-05 (LaBroi spec): six live steps (key, connection, mic, accessibility, input monitoring, hotkey), overall all-set or needs-attention chip, click-to-scroll with a flash highlight, connection auto-tested when a key exists. Hotkey capture moved to the main process via before-input-event so menu accelerators like Cmd+W can never steal the combo, with Escape cancel, 10s timeout, parse validation, and the global trigger suppressed during capture. The first-run wizard remains."
     },
     {
       "id": "US-022",

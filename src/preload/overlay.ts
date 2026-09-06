@@ -6,12 +6,19 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { OverlayState } from '../shared/overlay-state'
 
+export interface OverlayConfig {
+  style: 'bars' | 'speckle'
+}
+
 const api = {
   onState: (cb: (state: OverlayState) => void): void => {
     ipcRenderer.on('overlay:state', (_event, state: OverlayState) => cb(state))
   },
   onLevel: (cb: (level: number) => void): void => {
     ipcRenderer.on('overlay:level', (_event, level: number) => cb(level))
+  },
+  onConfig: (cb: (config: OverlayConfig) => void): void => {
+    ipcRenderer.on('overlay:config', (_event, config: OverlayConfig) => cb(config))
   }
 }
 

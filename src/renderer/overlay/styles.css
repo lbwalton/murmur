@@ -92,6 +92,11 @@ body {
   transition: height 90ms linear;
 }
 
+.speckle {
+  width: 100%;
+  height: 100%;
+}
+
 .pill-processing .bar {
   background: rgba(236, 233, 228, 0.35);
   animation: pulse 900ms ease-in-out infinite;

@@ -77,6 +77,100 @@ h1 {
   padding: 18px 20px 8px;
 }
 
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.health {
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.health-ok {
+  color: var(--ok);
+  border-color: rgba(127, 176, 105, 0.4);
+}
+
+.health-bad {
+  color: var(--red);
+  border-color: rgba(229, 72, 77, 0.4);
+}
+
+.checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ink);
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  color: var(--text-dim);
+  padding: 5px 12px 5px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: default;
+}
+
+.check-bad {
+  cursor: pointer;
+  color: var(--text);
+  border-color: rgba(229, 72, 77, 0.35);
+}
+
+.check-bad:hover {
+  border-color: var(--red);
+}
+
+.check-mark {
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.check-ok .check-mark {
+  color: var(--ok);
+}
+
+.check-bad .check-mark {
+  color: var(--red);
+}
+
+.row-flash {
+  animation: flash-border 2.4s ease-out;
+  border-radius: 10px;
+}
+
+@keyframes flash-border {
+  0%,
+  60% {
+    box-shadow: 0 0 0 1px var(--red);
+    background: rgba(229, 72, 77, 0.06);
+  }
+  100% {
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-flash {
+    animation: none;
+    box-shadow: 0 0 0 1px var(--red);
+  }
+}
+
 .row {
   display: flex;
   align-items: center;

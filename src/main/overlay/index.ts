@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, screen } from 'electron'
 import { IpcChannels } from '../../shared/ipc'
 import { OverlayMachine, type OverlayPhase, type OverlayState } from '../../shared/overlay-state'
+import { getSettings, onSettingsChanged } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
 const WIDTH = 340
@@ -116,8 +117,16 @@ export function overlayPreviewBurst(durationMs = 2500): void {
   }, durationMs)
 }
 
+function sendOverlayConfig(): void {
+  const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
+  overlayWindow?.webContents.send(IpcChannels.overlayConfig, { style })
+}
+
 export function initOverlay(): void {
   overlayWindow = createOverlayWindow()
+
+  overlayWindow.webContents.on('did-finish-load', sendOverlayConfig)
+  onSettingsChanged(sendOverlayConfig)
 
   // closable false means app.quit() can never close this window through
   // the normal path; it must be destroyed or quitting hangs forever.

@@ -15,6 +15,17 @@ const keyMap = buildKeyMap(UiohookKey as unknown as Record<string, unknown>)
 let binding: ParsedBinding | null = null
 let machine: TriggerMachine | null = null
 let hookStarted = false
+let suppressed = false
+
+/** Pause the global trigger (used while capturing a new binding). */
+export function setHotkeysSuppressed(value: boolean): void {
+  suppressed = value
+}
+
+/** True when a binding string parses against the real key map. */
+export function isBindingParseable(bindingString: string): boolean {
+  return parseBinding(bindingString, keyMap) !== null
+}
 
 function apply(settings: Settings, callbacks: DictationCallbacks): void {
   // A live hold must not leak a stuck recording across a rebind.
@@ -34,9 +45,11 @@ export function initHotkeys(callbacks: DictationCallbacks): HotkeysStatus {
   onSettingsChanged((settings) => apply(settings, callbacks))
 
   uIOhook.on('keydown', (event) => {
+    if (suppressed) return
     if (binding && machine && matchesEvent(binding, event)) machine.keyDown()
   })
   uIOhook.on('keyup', (event) => {
+    if (suppressed) return
     if (binding && machine && matchesEvent(binding, event)) machine.keyUp()
   })
 

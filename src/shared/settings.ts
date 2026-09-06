@@ -19,6 +19,9 @@ export interface Settings {
   insertion: {
     mode: 'paste' | 'copy'
   }
+  overlay: {
+    style: 'bars' | 'speckle'
+  }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>
   sounds: {
@@ -52,6 +55,9 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   insertion: {
     mode: 'paste'
+  },
+  overlay: {
+    style: 'bars'
   },
   dictionary: [],
   expansions: [],

@@ -3,10 +3,11 @@
 import { rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, Menu, app, ipcMain } from 'electron'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation } from './dictation'
-import { initHotkeys, stopHotkeys } from './hotkeys'
+import { initHotkeys, isBindingParseable, setHotkeysSuppressed, stopHotkeys } from './hotkeys'
+import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
@@ -21,7 +22,12 @@ import { createTray, getTray } from './tray'
 // wiped temp dir per boot, so no stale state and no lock contention with
 // a running dev instance.
 if (!app.isPackaged) {
-  if (isSmoke || process.env.MURMUR_SETTINGS_CAPTURE || process.env.MURMUR_QUIT_TEST) {
+  const isolatedRun =
+    isSmoke ||
+    process.env.MURMUR_SETTINGS_CAPTURE ||
+    process.env.MURMUR_OVERLAY_CAPTURE ||
+    process.env.MURMUR_QUIT_TEST
+  if (isolatedRun) {
     const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
     rmSync(dir, { recursive: true, force: true })
     app.setPath('userData', dir)
@@ -110,6 +116,35 @@ app.whenReady().then(async () => {
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
+  // Minimal menu: macOS needs Edit roles for Cmd+V in fields; everything
+  // else stays out so stray accelerators cannot surprise the user. Other
+  // platforms get no menu bar at all.
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: 'murmur',
+          submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'quit' }]
+        },
+        {
+          label: 'Edit',
+          submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' }
+          ]
+        },
+        { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
+      ])
+    )
+  } else {
+    Menu.setApplicationMenu(null)
+  }
+
   initSettings()
   initAudio()
   initOverlay()
@@ -124,6 +159,23 @@ app.whenReady().then(async () => {
     }
   })
   initPermissions()
+
+  // Capture a new hotkey: global trigger paused, keys intercepted ahead
+  // of menu accelerators, binding validated against the real key map,
+  // and saved through the normal settings path on success.
+  ipcMain.handle('hotkeys:capture', async () => {
+    if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
+    setHotkeysSuppressed(true)
+    try {
+      const binding = await captureHotkeyFromWindow(settingsWindow)
+      if (!binding || !isBindingParseable(binding)) return { ok: false }
+      const { updateSettings } = await import('./settings')
+      updateSettings({ hotkey: { binding } })
+      return { ok: true, binding }
+    } finally {
+      setHotkeysSuppressed(false)
+    }
+  })
 
   createTray({
     onOpen: showSettingsWindow,
