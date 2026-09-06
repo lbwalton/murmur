@@ -43,7 +43,7 @@ const api = {
     return ipcRenderer.invoke('perms:open', pane)
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
-  captureHotkey: (): Promise<{ ok: boolean; binding?: string }> => {
+  captureHotkey: (): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture')
   },
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview')

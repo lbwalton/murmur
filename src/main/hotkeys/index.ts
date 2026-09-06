@@ -7,13 +7,22 @@ import { UiohookKey, uIOhook } from 'uiohook-napi'
 import type { Settings } from '../../shared/settings'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
-import { type ParsedBinding, buildKeyMap, matchesEvent, parseBinding } from './binding'
+import { type ParsedBinding, buildKeyMap, isSafeBinding, parseBinding } from './binding'
+import { HotkeyDispatcher, type ModifierCodes } from './dispatch'
 import { type DictationCallbacks, HoldMachine, ToggleMachine, type TriggerMachine } from './machines'
 
 const keyMap = buildKeyMap(UiohookKey as unknown as Record<string, unknown>)
 
+const MODIFIER_CODES: ModifierCodes = {
+  ctrl: [UiohookKey.Ctrl, UiohookKey.CtrlRight],
+  alt: [UiohookKey.Alt, UiohookKey.AltRight],
+  shift: [UiohookKey.Shift, UiohookKey.ShiftRight],
+  meta: [UiohookKey.Meta, UiohookKey.MetaRight]
+}
+
 let binding: ParsedBinding | null = null
 let machine: TriggerMachine | null = null
+let dispatcher: HotkeyDispatcher | null = null
 let hookStarted = false
 let suppressed = false
 
@@ -22,17 +31,22 @@ export function setHotkeysSuppressed(value: boolean): void {
   suppressed = value
 }
 
-/** True when a binding string parses against the real key map. */
+/** True when a binding string parses AND is safe to arm globally. */
 export function isBindingParseable(bindingString: string): boolean {
-  return parseBinding(bindingString, keyMap) !== null
+  const parsed = parseBinding(bindingString, keyMap)
+  return parsed !== null && isSafeBinding(parsed)
 }
 
 function apply(settings: Settings, callbacks: DictationCallbacks): void {
   // A live hold must not leak a stuck recording across a rebind.
   if (machine?.isActive()) callbacks.stop()
-  binding = parseBinding(settings.hotkey.binding, keyMap)
+  const parsed = parseBinding(settings.hotkey.binding, keyMap)
+  // Unsafe bindings (a bare letter would fire on every keystroke) are
+  // treated as invalid: the checklist surfaces it, dictation stays off.
+  binding = parsed && isSafeBinding(parsed) ? parsed : null
   machine =
     settings.hotkey.mode === 'hold' ? new HoldMachine(callbacks) : new ToggleMachine(callbacks)
+  dispatcher = binding ? new HotkeyDispatcher(binding, machine, MODIFIER_CODES) : null
 }
 
 export interface HotkeysStatus {
@@ -46,11 +60,11 @@ export function initHotkeys(callbacks: DictationCallbacks): HotkeysStatus {
 
   uIOhook.on('keydown', (event) => {
     if (suppressed) return
-    if (binding && machine && matchesEvent(binding, event)) machine.keyDown()
+    dispatcher?.keydown(event)
   })
   uIOhook.on('keyup', (event) => {
     if (suppressed) return
-    if (binding && machine && matchesEvent(binding, event)) machine.keyUp()
+    dispatcher?.keyup(event)
   })
 
   try {

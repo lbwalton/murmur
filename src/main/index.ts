@@ -167,11 +167,12 @@ app.whenReady().then(async () => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
     setHotkeysSuppressed(true)
     try {
-      const binding = await captureHotkeyFromWindow(settingsWindow)
-      if (!binding || !isBindingParseable(binding)) return { ok: false }
+      const outcome = await captureHotkeyFromWindow(settingsWindow)
+      if (!outcome.binding) return { ok: false, reason: outcome.reason ?? 'cancelled' }
+      if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }
       const { updateSettings } = await import('./settings')
-      updateSettings({ hotkey: { binding } })
-      return { ok: true, binding }
+      updateSettings({ hotkey: { binding: outcome.binding } })
+      return { ok: true, binding: outcome.binding }
     } finally {
       setHotkeysSuppressed(false)
     }

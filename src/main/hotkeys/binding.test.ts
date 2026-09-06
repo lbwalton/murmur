@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { buildKeyMap, matchesEvent, parseBinding } from './binding'
+import { buildKeyMap, isSafeBinding, matchesEvent, parseBinding } from './binding'
 
 const keyMap = { space: 57, a: 30, f19: 102 }
 
@@ -8,11 +8,23 @@ describe('parseBinding', () => {
   it('parses a bare key', () => {
     expect(parseBinding('Space', keyMap)).toEqual({
       code: 57,
+      keyName: 'space',
       ctrl: false,
       alt: false,
       shift: false,
       meta: false
     })
+  })
+
+  it('parses modifier-only combos', () => {
+    expect(parseBinding('Ctrl+Alt', keyMap)).toMatchObject({
+      code: null,
+      ctrl: true,
+      alt: true,
+      shift: false,
+      meta: false
+    })
+    expect(parseBinding('Cmd', keyMap)).toMatchObject({ code: null, meta: true })
   })
 
   it('parses modifiers with aliases, any casing, stray spaces', () => {
@@ -55,6 +67,23 @@ describe('matchesEvent', () => {
     expect(matchesEvent(binding, event({ keycode: 30 }))).toBe(false)
     expect(matchesEvent(binding, event({ ctrlKey: false }))).toBe(false)
     expect(matchesEvent(binding, event({ shiftKey: true }))).toBe(false)
+  })
+})
+
+describe('isSafeBinding', () => {
+  it('accepts modifier combos and modified keys', () => {
+    expect(isSafeBinding(parseBinding('Ctrl+Alt', keyMap)!)).toBe(true)
+    expect(isSafeBinding(parseBinding('Alt+Space', keyMap)!)).toBe(true)
+    expect(isSafeBinding(parseBinding('Cmd+A', keyMap)!)).toBe(true)
+  })
+
+  it('accepts bare function keys', () => {
+    expect(isSafeBinding(parseBinding('F19', keyMap)!)).toBe(true)
+  })
+
+  it('rejects bare typing keys that would fire mid-sentence', () => {
+    expect(isSafeBinding(parseBinding('A', keyMap)!)).toBe(false)
+    expect(isSafeBinding(parseBinding('Space', keyMap)!)).toBe(false)
   })
 })
 

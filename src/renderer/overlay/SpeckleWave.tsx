@@ -52,10 +52,10 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
     const dots: Dot[] = Array.from({ length: DOT_COUNT }, (_, i) => ({
       x: (i % cols) * cellW + cellW * (0.2 + Math.random() * 0.6),
       y: Math.floor(i / cols) * cellH + cellH * (0.2 + Math.random() * 0.6),
-      r: 0.7 + Math.random() * 1.3,
+      r: 0.5 + Math.random() * 0.9,
       phase: Math.random() * Math.PI * 2,
       speed: 0.4 + Math.random() * 1.1,
-      alpha: 0.2 + Math.random() * 0.55,
+      alpha: 0.16 + Math.random() * 0.42,
       // A few amber sparks in the cream dust; amber is a live color and
       // this field only exists while live.
       warm: Math.random() < 0.16
@@ -63,6 +63,17 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
 
     let smoothed = 0
     let raf = 0
+
+    // Soft-edge falloff: dots fade toward every edge of the field so the
+    // speckle melts into the pill instead of ending at a hard rectangle.
+    const FADE_X = 18
+    const FADE_Y = 9
+    const edgeFade = (px: number, py: number): number => {
+      const fx = Math.min(1, Math.max(0, Math.min(px, width - px) / FADE_X))
+      const fy = Math.min(1, Math.max(0, Math.min(py, height - py) / FADE_Y))
+      const f = fx * fy
+      return f * f * (3 - 2 * f) // smoothstep
+    }
 
     const draw = (t: number): void => {
       const target = mutedRef.current ? 0 : levelRef.current
@@ -72,11 +83,11 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
       ctx.clearRect(0, 0, width, height)
       const baseAlpha = mutedRef.current ? 0.35 : 1
       for (const dot of dots) {
-        const jitter = reduced ? 0 : 1.2 + energy * 6.5
+        const jitter = reduced ? 0 : 1.2 + energy * 6
         const px = dot.x + Math.sin(t / 190 * dot.speed + dot.phase) * jitter
         const py = dot.y + Math.cos(t / 160 * dot.speed + dot.phase * 1.7) * jitter
-        const radius = dot.r * (1 + energy * 1.1)
-        ctx.globalAlpha = dot.alpha * (0.4 + energy * 0.6) * baseAlpha
+        const radius = dot.r * (1 + energy * 0.8)
+        ctx.globalAlpha = dot.alpha * (0.4 + energy * 0.6) * baseAlpha * edgeFade(px, py)
         ctx.fillStyle = dot.warm ? '#F0A44B' : '#ECE9E4'
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)

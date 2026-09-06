@@ -4,7 +4,10 @@
 // wiring layer supplies the real uiohook key codes.
 
 export interface ParsedBinding {
-  code: number
+  /** Key code, or null for a modifier-only combo like Ctrl+Alt. */
+  code: number | null
+  /** Lowercase key name for code bindings, informational. */
+  keyName: string | null
   ctrl: boolean
   alt: boolean
   shift: boolean
@@ -22,7 +25,7 @@ export interface KeyEventLike {
   metaKey: boolean
 }
 
-const MODIFIER_ALIASES: Record<string, keyof Omit<ParsedBinding, 'code'>> = {
+const MODIFIER_ALIASES: Record<string, 'ctrl' | 'alt' | 'shift' | 'meta'> = {
   ctrl: 'ctrl',
   control: 'ctrl',
   alt: 'alt',
@@ -35,7 +38,11 @@ const MODIFIER_ALIASES: Record<string, keyof Omit<ParsedBinding, 'code'>> = {
   win: 'meta'
 }
 
-/** Parse a binding string. Returns null when it names no known key. */
+/**
+ * Parse a binding string. The last part may itself be a modifier, which
+ * makes a modifier-only combo (Ctrl+Alt, Cmd+Shift, or a lone Ctrl).
+ * Returns null when any part is unknown.
+ */
 export function parseBinding(binding: string, keyMap: KeyMap): ParsedBinding | null {
   const parts = binding
     .split('+')
@@ -43,23 +50,48 @@ export function parseBinding(binding: string, keyMap: KeyMap): ParsedBinding | n
     .filter((p) => p.length > 0)
   if (parts.length === 0) return null
 
-  const parsed: ParsedBinding = { code: -1, ctrl: false, alt: false, shift: false, meta: false }
+  const parsed: ParsedBinding = {
+    code: null,
+    keyName: null,
+    ctrl: false,
+    alt: false,
+    shift: false,
+    meta: false
+  }
   for (const part of parts.slice(0, -1)) {
     const modifier = MODIFIER_ALIASES[part]
     if (!modifier) return null
     parsed[modifier] = true
   }
 
-  const keyName = parts[parts.length - 1]
-  const code = keyMap[keyName]
+  const last = parts[parts.length - 1]
+  const lastModifier = MODIFIER_ALIASES[last]
+  if (lastModifier) {
+    parsed[lastModifier] = true
+    return parsed
+  }
+  const code = keyMap[last]
   if (code === undefined) return null
   parsed.code = code
+  parsed.keyName = last
   return parsed
 }
 
-/** Exact match: the bound key with exactly the bound modifiers. */
+/**
+ * A binding is safe to arm globally when it cannot fire during ordinary
+ * typing: modifier combos always qualify, keyed bindings need a modifier
+ * unless the key is a function key (F1 to F24).
+ */
+export function isSafeBinding(binding: ParsedBinding): boolean {
+  if (binding.code === null) return true
+  if (binding.ctrl || binding.alt || binding.shift || binding.meta) return true
+  return binding.keyName !== null && /^f([1-9]|1[0-9]|2[0-4])$/.test(binding.keyName)
+}
+
+/** Exact match for keyed bindings: the bound key with exactly the bound modifiers. */
 export function matchesEvent(binding: ParsedBinding, event: KeyEventLike): boolean {
   return (
+    binding.code !== null &&
     event.keycode === binding.code &&
     event.ctrlKey === binding.ctrl &&
     event.altKey === binding.alt &&

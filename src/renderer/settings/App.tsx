@@ -9,7 +9,7 @@ import type {
   ProviderTestResult,
   SettingsApi
 } from '../../preload/settings'
-import type { Settings } from '../../shared/settings'
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 
 declare global {
   interface Window {
@@ -124,6 +124,8 @@ export function App(): React.JSX.Element {
       const result = await bridge().captureHotkey()
       if (result.ok) {
         await refresh()
+      } else if (result.reason === 'needs-modifier') {
+        setCaptureNote('single letters would fire while typing; add Ctrl, Alt, Shift, or Cmd (F-keys can stand alone)')
       } else {
         setCaptureNote('not captured; click and try again, Esc cancels')
       }
@@ -284,14 +286,32 @@ export function App(): React.JSX.Element {
           label="Hotkey"
           anchor="row-hotkey"
           highlight={highlighted === 'row-hotkey'}
-          desc={captureNote ?? 'Click, then press the combo you want. Esc cancels.'}
+          desc={
+            captureNote ??
+            'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'
+          }
         >
-          <button
-            className={`field capture ${capturing ? 'capture-live' : ''}`}
-            onClick={() => void startCapture()}
-          >
-            {capturing ? 'press keys…' : settings.hotkey.binding}
-          </button>
+          <div className="inline">
+            <button
+              className={`field capture ${capturing ? 'capture-live' : ''}`}
+              onClick={() => void startCapture()}
+            >
+              {capturing ? 'press keys…' : settings.hotkey.binding}
+            </button>
+            {settings.hotkey.binding !== DEFAULT_SETTINGS.hotkey.binding && (
+              <button
+                className="btn quiet-btn"
+                onClick={() => {
+                  setCaptureNote(null)
+                  void update({
+                    hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey']
+                  })
+                }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </Row>
 
         <Row label="Insert by" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
