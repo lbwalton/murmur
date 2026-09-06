@@ -39,10 +39,22 @@ export interface Settings {
   showDockIcon: boolean
 }
 
+// This module loads in main AND in sandboxed renderers, where the node
+// process global does not exist. Never touch process directly here.
+function isMacPlatform(): boolean {
+  if (typeof process !== 'undefined' && typeof process.platform === 'string') {
+    return process.platform === 'darwin'
+  }
+  if (typeof navigator !== 'undefined') {
+    return navigator.platform.toLowerCase().includes('mac')
+  }
+  return false
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   hotkey: {
     mode: 'hold',
-    binding: process.platform === 'darwin' ? 'Alt+Space' : 'Ctrl+Space'
+    binding: isMacPlatform() ? 'Alt+Space' : 'Ctrl+Space'
   },
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',

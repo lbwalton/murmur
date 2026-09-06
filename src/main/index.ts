@@ -198,8 +198,14 @@ app.whenReady().then(async () => {
   registerSmokeCheck('settingsRenderer', async () => {
     await settingsLoaded
     if (!settingsWindow) return false
-    const kind = await settingsWindow.webContents.executeJavaScript('typeof window.murmur')
-    return kind === 'object'
+    // The bridge must exist AND the app must actually mount: a renderer
+    // crash leaves #root empty while the preload still loads fine
+    // (a blank window shipped on 2026-09-05 exactly this way).
+    const probe = await settingsWindow.webContents.executeJavaScript(
+      'JSON.stringify({ bridge: typeof window.murmur, mounted: document.querySelector("main.shell") !== null })'
+    )
+    const { bridge, mounted } = JSON.parse(probe) as { bridge: string; mounted: boolean }
+    return bridge === 'object' && mounted
   })
   registerSmokeCheck('widgetLifecycle', async () => {
     // Closing the window must hide it and keep the process alive.
