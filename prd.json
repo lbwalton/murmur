@@ -225,9 +225,9 @@
         "Smoke check formatter passes in mock mode",
         "Level off skips the LLM entirely"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: 13 unit tests on validatePolish and polishTranscript with mocked fetch (API error, network throw, timeout via AbortController, chatty preamble, refusal, preamble-colon line, quote-wrapper stripping, length drift both directions, obeyed-instruction detection via length guard, malformed body). Three prompt-injection vectors added to shared/test-vectors.json and passing (dictated instructions transcribed literally). Smoke llmFormatter green: clean accepts, chatty and 500 and obeyed all fail open. Wiring: runs only at Full level, never in smoke, never without a key, single attempt with 8s cap, falls back to deterministic output on any failure; off and light skip the LLM entirely. Uses the configured cleanup model and base URL per dictation."
     },
     {
       "id": "US-015",

@@ -349,7 +349,7 @@ export function App(): React.JSX.Element {
 
         <Row
           label="Cleanup model"
-          desc="Polishes the transcript once smart formatting lands. Suggestion or any model id."
+          desc="Polishes transcripts at Full formatting. If it misbehaves, murmur falls back to built-in cleanup."
         >
           <TextSetting
             value={settings.provider.llmModel}

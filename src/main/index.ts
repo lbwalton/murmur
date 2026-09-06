@@ -14,6 +14,7 @@ import {
   stopHotkeys
 } from './hotkeys'
 import { captureHotkeyFromWindow } from './hotkeys/capture'
+import { initFormatter } from './formatter'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
@@ -174,6 +175,7 @@ app.whenReady().then(async () => {
   initAudio()
   initOverlay()
   initTranscribe()
+  initFormatter()
   initInsertion()
   initDictation()
 

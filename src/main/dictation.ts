@@ -54,8 +54,8 @@ export async function dictationStop(): Promise<void> {
     return
   }
 
-  // Deterministic formatting always runs; the LLM pass (US-014) layers
-  // on top and falls back to this output on any failure.
+  // Deterministic formatting always runs; the LLM pass layers on top at
+  // Full level and falls back to this output on any failure at all.
   const { getSettings } = await import('./settings')
   const formatting = getSettings().formatting
   const formatted = formatTranscript(
@@ -63,8 +63,10 @@ export async function dictationStop(): Promise<void> {
     { level: formatting.level, numbers: formatting.numbers },
     formatSpec as unknown as FormatSpec
   )
+  const { maybePolish } = await import('./formatter')
+  const polished = await maybePolish(formatted)
 
-  const outcome = await insertText(formatted)
+  const outcome = await insertText(polished)
   setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
 }
 
