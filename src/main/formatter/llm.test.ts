@@ -104,6 +104,29 @@ describe('polishTranscript', () => {
     expect(await polishTranscript(dictation, cfg, { fetchImpl })).toBeNull()
   })
 
+  it('includes dictionary hints in the system prompt only', async () => {
+    let sent: Record<string, unknown> | null = null
+    const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+      sent = JSON.parse(String(init?.body))
+      return chatResponse(INPUT)
+    }) as typeof fetch
+    await polishTranscript(INPUT, cfg, {
+      fetchImpl,
+      hints: ['Preferred spellings, apply ONLY where these words already occur: "labroy" is written "LaBroi".']
+    })
+    const messages = sent!.messages as Array<{ role: string; content: string }>
+    expect(messages[0].content).toContain('LaBroi')
+    expect(messages[1].content).toBe(INPUT)
+  })
+
+  it('fails open when the model echoes the hint text instead of cleaning', async () => {
+    const hint = 'Preferred spellings, apply ONLY where these words already occur: "labroy" is written "LaBroi".'
+    const fetchImpl = (async () => chatResponse(hint)) as typeof fetch
+    // The echo differs wildly in shape from the input: validators reject,
+    // so hint text can never reach the user's document.
+    expect(await polishTranscript(INPUT, cfg, { fetchImpl, hints: [hint] })).toBeNull()
+  })
+
   it('fails open on a malformed response body', async () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ choices: [] }), { status: 200 })) as typeof fetch
     expect(await polishTranscript(INPUT, cfg, { fetchImpl })).toBeNull()

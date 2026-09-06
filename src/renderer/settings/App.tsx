@@ -67,6 +67,41 @@ function TextSetting(props: {
   )
 }
 
+/** Inline add form for a dictionary pair. */
+function DictAdd(props: { onAdd: (from: string, to: string) => void }): React.JSX.Element {
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const submit = (): void => {
+    if (from.trim().length === 0 || to.trim().length === 0) return
+    props.onAdd(from.trim(), to.trim())
+    setFrom('')
+    setTo('')
+  }
+  return (
+    <div className="dict-row">
+      <input
+        className="field mono-field dict-field"
+        placeholder="heard as…"
+        value={from}
+        onChange={(e) => setFrom(e.target.value)}
+      />
+      <span className="dim">→</span>
+      <input
+        className="field mono-field dict-field"
+        placeholder="written as…"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submit()
+        }}
+      />
+      <button className="btn" onClick={submit} disabled={!from.trim() || !to.trim()}>
+        Add
+      </button>
+    </div>
+  )
+}
+
 function Row(props: {
   label: string
   desc?: string
@@ -452,6 +487,37 @@ export function App(): React.JSX.Element {
           <button className="btn" onClick={() => void bridge().previewOverlay()}>
             Preview overlay
           </button>
+        </Row>
+      </section>
+
+      <section className="panel">
+        <p className="micro-label">dictionary</p>
+        <Row
+          label="Custom words"
+          desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
+        >
+          <div className="dict-editor">
+            {settings.dictionary.map((entry, i) => (
+              <div className="dict-row" key={i}>
+                <span className="dict-pair mono-inline">
+                  {entry.from} → {entry.to}
+                </span>
+                <button
+                  className="btn quiet-btn"
+                  onClick={() =>
+                    void update({ dictionary: settings.dictionary.filter((_, j) => j !== i) })
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <DictAdd
+              onAdd={(from, to) =>
+                void update({ dictionary: [...settings.dictionary, { from, to }] })
+              }
+            />
+          </div>
         </Row>
       </section>
 

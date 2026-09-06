@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import hallucinations from './hallucinations.json'
-import { hasSpeechEnergy, isHallucination, normalizeTranscript, voicedMs } from './speech-gate'
+import { hasSpeechEnergy, isHallucination, normalizeTranscript, trimSilence, voicedMs } from './speech-gate'
 
 const RATE = 16_000
 
@@ -46,6 +46,40 @@ describe('energy gate', () => {
     const clicky = silence(1)
     clicky.set(speechBursts(0.05).subarray(0, 800), 8000)
     expect(hasSpeechEnergy(clicky, RATE)).toBe(false)
+  })
+})
+
+describe('trimSilence', () => {
+  it('cuts a long silent tail down to the padding cushion', () => {
+    const speech = speechBursts(1)
+    const tail = silence(2)
+    const combined = new Float32Array(speech.length + tail.length)
+    combined.set(speech, 0)
+    combined.set(tail, speech.length)
+    const trimmed = trimSilence(combined, RATE)
+    // Everything after the last voiced window plus ~250ms padding goes.
+    expect(trimmed.length).toBeLessThan(speech.length + RATE * 0.4)
+    expect(trimmed.length).toBeGreaterThan(RATE * 0.5)
+  })
+
+  it('cuts a silent head the same way', () => {
+    const head = silence(2)
+    const speech = speechBursts(1)
+    const combined = new Float32Array(head.length + speech.length)
+    combined.set(head, 0)
+    combined.set(speech, head.length)
+    const trimmed = trimSilence(combined, RATE)
+    expect(trimmed.length).toBeLessThan(speech.length + RATE * 0.6)
+  })
+
+  it('keeps audio that is voiced to the very end', () => {
+    const speech = speechBursts(1)
+    const trimmed = trimSilence(speech, RATE)
+    expect(trimmed.length).toBeGreaterThanOrEqual(speech.length * 0.85)
+  })
+
+  it('returns empty for pure silence', () => {
+    expect(trimSilence(silence(1), RATE).length).toBe(0)
   })
 })
 

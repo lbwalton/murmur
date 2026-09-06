@@ -239,9 +239,9 @@
         "Dictionary hint text never appears in inserted output in any mocked-LLM failure mode",
         "Settings UI round-trips entries to the store"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: applyDictionary is pure, word-boundary safe (conditional boundaries so c++ style terms work), case-insensitive in, exact casing out, longest phrase wins, regex-escaped, type-resilient against hand-edited settings. Four shared vectors including brand casing surviving sentence-start capitalization via enforceDictionaryCasing, which runs last in the pipeline. LLM hint via dictionaryHint with a Preferred spellings leak sentinel; hint echo can never reach output (unit tested). Settings UI editor with add and remove. Smoke dictionary check covers replacement, boundary safety, and the store round trip. First story through the independent review gate: reviewer confirmed two real findings (sentence-start casing clobber; wrong-typed entries could throw uncaught, wedging the overlay in processing and losing the dictation), both fixed with tests, and the whole formatting stage now fails open to the raw transcript. 24 dictionary-related unit tests among 154 total."
     },
     {
       "id": "US-016",

@@ -22,6 +22,7 @@ This is a clean rebuild. Copyright LaBroi Walton, GPLv3 from commit one, written
 - `npm run typecheck` and `npm run test` must be green before any commit.
 - After changing prd.json, run `npm run roadmap` so ROADMAP.md stays true.
 - `git pull --rebase` before every commit; parallel sessions may run on other machines.
+- Review gate (LaBroi directive, 2026-09-05): before a story's push, an independent reviewer agent examines the full uncommitted diff against these rules and reports findings; confirmed findings get fixed and re-verified before the push. The reviewer never edits, the builder never skips the gate. Findings the builder disputes, and anything needing human judgment, escalate to LaBroi instead of being quietly dropped.
 
 ## Hard constraints
 

@@ -2,6 +2,7 @@
 // App-level cleanup pass wiring and its smoke coverage. The pass runs
 // only at Full formatting, only outside smoke, and only with a key;
 // every other path is the deterministic formatter alone.
+import { dictionaryHint } from '../../shared/dictionary'
 import { getApiKey, getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { polishTranscript } from './llm'
@@ -17,15 +18,34 @@ export async function maybePolish(text: string): Promise<string> {
   if (settings.formatting.level !== 'full') return text
   const apiKey = getApiKey()
   if (!apiKey) return text
-  const polished = await polishTranscript(text, {
-    baseUrl: settings.provider.baseUrl,
-    model: settings.provider.llmModel,
-    apiKey
-  })
+  const hint = dictionaryHint(settings.dictionary)
+  const polished = await polishTranscript(
+    text,
+    {
+      baseUrl: settings.provider.baseUrl,
+      model: settings.provider.llmModel,
+      apiKey
+    },
+    hint ? { hints: [hint] } : {}
+  )
   return polished ?? text
 }
 
 export function initFormatter(): void {
+  registerSmokeCheck('dictionary', async () => {
+    const { applyDictionary } = await import('../../shared/dictionary')
+    const { updateSettings } = await import('../settings')
+    const entries = [{ from: 'labroy', to: 'LaBroi' }]
+    const replaced = applyDictionary('tell labroy the plan', entries) === 'tell LaBroi the plan'
+    const untouched = applyDictionary('collaborate on the plan', entries) === 'collaborate on the plan'
+    // Store round trip through the real settings path.
+    const before = getSettings().dictionary
+    const saved = updateSettings({ dictionary: entries }).dictionary
+    const roundTrip = saved.length === 1 && saved[0].to === 'LaBroi'
+    updateSettings({ dictionary: before })
+    return replaced && untouched && roundTrip
+  })
+
   registerSmokeCheck('llmFormatter', async () => {
     const cfg = { baseUrl: 'https://mock.local/v1', model: 'm', apiKey: 'k' }
     const input = 'Send the report tomorrow and copy the whole team on it please.'

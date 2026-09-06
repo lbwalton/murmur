@@ -4,11 +4,12 @@
 import { describe, expect, it } from 'vitest'
 import spec from '../../shared/format-spec.json'
 import vectors from '../../shared/test-vectors.json'
+import { type DictionaryEntry, applyDictionary, enforceDictionaryCasing } from './dictionary'
 import { type FormatOptions, type FormatSpec, formatTranscript } from './formatter'
 
 interface Vector {
   name: string
-  settings?: Partial<FormatOptions>
+  settings?: Partial<FormatOptions> & { dictionary?: DictionaryEntry[] }
   input: string
   expected: string
 }
@@ -20,9 +21,12 @@ describe('formatTranscript against shared/test-vectors.json', () => {
         level: vector.settings?.level ?? 'full',
         numbers: vector.settings?.numbers ?? 'auto'
       }
-      expect(formatTranscript(vector.input, options, spec as unknown as FormatSpec)).toBe(
-        vector.expected
-      )
+      // Match the app pipeline: dictionary on raw text, formatting, then
+      // exact dictionary casing re-asserted on top.
+      const dictionary = vector.settings?.dictionary ?? []
+      const input = applyDictionary(vector.input, dictionary)
+      const formatted = formatTranscript(input, options, spec as unknown as FormatSpec)
+      expect(enforceDictionaryCasing(formatted, dictionary)).toBe(vector.expected)
     })
   }
 

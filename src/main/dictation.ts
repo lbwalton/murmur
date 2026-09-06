@@ -33,17 +33,25 @@ export async function dictationStop(): Promise<void> {
   }
 
   // Guard one: no speech energy means no upload and nothing inserted.
+  // The silent head and tail are then cut before upload: trailing
+  // silence is what makes speech models hallucinate a "Thank you."
+  // onto the end of real dictations.
+  let upload = wav
   try {
-    if (!hasSpeechEnergy(wavSamples(wav), TARGET_SAMPLE_RATE)) {
+    const samples = wavSamples(wav)
+    if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
       setOverlayPhase('nospeech')
       return
     }
+    const { trimSilence } = await import('../shared/speech-gate')
+    const { encodeWavPcm16 } = await import('../shared/wav')
+    upload = encodeWavPcm16(trimSilence(samples, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
   } catch {
     setOverlayPhase('error')
     return
   }
 
-  const result = await transcribeWav(wav)
+  const result = await transcribeWav(upload)
   if (!result.ok) {
     setOverlayPhase('error')
     return
@@ -54,20 +62,39 @@ export async function dictationStop(): Promise<void> {
     return
   }
 
-  // Deterministic formatting always runs; the LLM pass layers on top at
-  // Full level and falls back to this output on any failure at all.
-  const { getSettings } = await import('./settings')
-  const formatting = getSettings().formatting
-  const formatted = formatTranscript(
-    result.text,
-    { level: formatting.level, numbers: formatting.numbers },
-    formatSpec as unknown as FormatSpec
-  )
-  const { maybePolish } = await import('./formatter')
-  const polished = await maybePolish(formatted)
+  // Dictionary first (raw text, so capitalization comes after), then
+  // deterministic formatting, then the LLM pass at Full level, then the
+  // dictionary's exact casing re-asserted over everything. The whole
+  // stage fails open to the raw transcript: a broken settings entry or
+  // formatter bug must never lose a dictation or wedge the overlay in
+  // processing (review gate finding, 2026-09-05).
+  let finalText = result.text
+  try {
+    const { getSettings } = await import('./settings')
+    const { applyDictionary, enforceDictionaryCasing } = await import('../shared/dictionary')
+    const settings = getSettings()
+    const corrected = applyDictionary(result.text, settings.dictionary)
+    const formatting = settings.formatting
+    const formatted = formatTranscript(
+      corrected,
+      { level: formatting.level, numbers: formatting.numbers },
+      formatSpec as unknown as FormatSpec
+    )
+    const { maybePolish } = await import('./formatter')
+    const polished = await maybePolish(formatted)
+    finalText = enforceDictionaryCasing(polished, settings.dictionary)
+  } catch (error) {
+    console.error('[murmur] formatting stage failed open to raw transcript:', error)
+    finalText = result.text
+  }
 
-  const outcome = await insertText(polished)
-  setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
+  try {
+    const outcome = await insertText(finalText)
+    setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
+  } catch (error) {
+    console.error('[murmur] insertion failed:', error)
+    setOverlayPhase('error')
+  }
 }
 
 export function dictationCancel(): void {

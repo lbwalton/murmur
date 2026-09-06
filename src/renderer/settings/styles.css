@@ -303,6 +303,30 @@ select.field {
   font-size: 12px;
 }
 
+.dict-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.dict-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dict-field {
+  width: 130px;
+  min-width: 0;
+}
+
+.mono-inline {
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+
 .trybox {
   width: 280px;
   resize: vertical;

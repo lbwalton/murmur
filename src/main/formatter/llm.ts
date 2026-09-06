@@ -13,6 +13,8 @@ export interface PolishConfig {
 export interface PolishOptions {
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  /** Extra system-prompt lines, e.g. the dictionary spelling hint. */
+  hints?: string[]
 }
 
 export const POLISH_SYSTEM_PROMPT = [
@@ -100,7 +102,8 @@ export async function polishTranscript(
   cfg: PolishConfig,
   options: PolishOptions = {}
 ): Promise<string | null> {
-  const { fetchImpl = fetch, timeoutMs = 8_000 } = options
+  const { fetchImpl = fetch, timeoutMs = 8_000, hints = [] } = options
+  const systemPrompt = [POLISH_SYSTEM_PROMPT, ...hints].join(' ')
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -114,7 +117,7 @@ export async function polishTranscript(
         model: cfg.model,
         temperature: 0.2,
         messages: [
-          { role: 'system', content: POLISH_SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: text }
         ]
       }),
@@ -127,7 +130,18 @@ export async function polishTranscript(
     const content = body.choices?.[0]?.message?.content
     if (typeof content !== 'string') return null
     const verdict = validatePolish(text, content)
-    return verdict.ok ? verdict.text : null
+    if (!verdict.ok) return null
+    // Hint-leak sentinel: hint lines all start with "Preferred spellings"
+    // (see dictionaryHint), so any echo of hint text into the output is
+    // detectable even when it slips the shape checks.
+    if (
+      hints.length > 0 &&
+      verdict.text.toLowerCase().includes('preferred spellings') &&
+      !text.toLowerCase().includes('preferred spellings')
+    ) {
+      return null
+    }
+    return verdict.text
   } catch {
     return null
   } finally {
