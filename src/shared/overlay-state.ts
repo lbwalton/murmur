@@ -8,6 +8,8 @@ export interface OverlayState {
   phase: OverlayPhase
   /** Epoch ms when recording began; drives the live timer. */
   startedAt: number | null
+  /** Words per minute of the finished session, shown on inserted. */
+  wpm: number | null
 }
 
 const ALLOWED: Record<OverlayPhase, readonly OverlayPhase[]> = {
@@ -20,18 +22,23 @@ const ALLOWED: Record<OverlayPhase, readonly OverlayPhase[]> = {
 }
 
 export class OverlayMachine {
-  private state: OverlayState = { phase: 'idle', startedAt: null }
+  private state: OverlayState = { phase: 'idle', startedAt: null, wpm: null }
 
   get(): OverlayState {
     return { ...this.state }
   }
 
   /** Attempt a transition. Returns the new state, or null if disallowed. */
-  transition(to: OverlayPhase, now: () => number = () => Date.now()): OverlayState | null {
+  transition(
+    to: OverlayPhase,
+    now: () => number = () => Date.now(),
+    wpm: number | null = null
+  ): OverlayState | null {
     if (!ALLOWED[this.state.phase].includes(to)) return null
     this.state = {
       phase: to,
-      startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null
+      startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null,
+      wpm: to === 'inserted' ? wpm : null
     }
     return this.get()
   }

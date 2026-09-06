@@ -80,8 +80,8 @@ function sendState(state: OverlayState): void {
 }
 
 /** Drive the overlay. Illegal transitions are ignored, never thrown. */
-export function setOverlayPhase(phase: OverlayPhase): OverlayState | null {
-  const state = machine.transition(phase)
+export function setOverlayPhase(phase: OverlayPhase, wpm: number | null = null): OverlayState | null {
+  const state = machine.transition(phase, undefined, wpm)
   if (!state || !overlayWindow) return state
   if (lingerTimer) {
     clearTimeout(lingerTimer)

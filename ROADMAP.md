@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (15/32 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (16/32 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -19,6 +19,7 @@
 - [x] **US-015** Custom dictionary
 - [x] **US-016** Text expansions
 - [x] **US-017** History: append-only log and home transcription view
+- [x] **US-018** Usage analytics and live cost card
 
 ## Built, awaiting live verification
 
@@ -27,11 +28,10 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-008** Recording pipeline with warm mic
 - [ ] **US-011** Insertion at the cursor
 - [ ] **US-012** Silence never inserts text
+- [ ] **US-019** Post-session WPM in the overlay
 
 ## To do
 
-- [ ] **US-018** Usage analytics and live cost card
-- [ ] **US-019** Post-session WPM in the overlay
 - [ ] **US-020** Recap notifications and wrap-up page
 - [ ] **US-029** Progression engine: BJJ belts and stripes
 - [ ] **US-030** Achievements

@@ -16,7 +16,7 @@ declare global {
 const BAR_COUNT = 21
 
 export function App(): React.JSX.Element {
-  const [state, setState] = useState<OverlayState>({ phase: 'idle', startedAt: null })
+  const [state, setState] = useState<OverlayState>({ phase: 'idle', startedAt: null, wpm: null })
   const [levels, setLevels] = useState<number[]>(() => new Array<number>(BAR_COUNT).fill(0))
   const [style, setStyle] = useState<OverlayConfig['style']>('bars')
   const [elapsed, setElapsed] = useState(0)
@@ -76,7 +76,11 @@ export function App(): React.JSX.Element {
             {formatDuration(elapsed)}
           </span>
         )}
-        {state.phase === 'inserted' && <span className="ok">inserted</span>}
+        {state.phase === 'inserted' && (
+          <span className="ok" data-wpm="">
+            {state.wpm && state.wpm > 0 ? `${state.wpm} wpm` : 'inserted'}
+          </span>
+        )}
         {state.phase === 'nospeech' && <span className="quiet">no speech</span>}
         {state.phase === 'error' && <span className="err">error</span>}
       </span>

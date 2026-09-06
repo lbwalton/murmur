@@ -42,6 +42,17 @@ export function initSettings(): void {
   }
   keyStore = new KeyStore(dir, cipher)
 
+  // Migrate decommissioned Groq model ids (shut down 2026-08-16, per
+  // console.groq.com/docs/deprecations) to their documented replacements
+  // so existing profiles get a working cleanup pass again.
+  const MODEL_MIGRATIONS: Record<string, string> = {
+    'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+    'llama-3.1-8b-instant': 'openai/gpt-oss-20b'
+  }
+  const storedLlm = settingsStore.get().provider.llmModel
+  const replacement = MODEL_MIGRATIONS[storedLlm]
+  if (replacement) settingsStore.update({ provider: { llmModel: replacement } })
+
   ipcMain.handle(IpcChannels.settingsGet, () => settingsStore?.get())
   ipcMain.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
     return updateSettings(partial)

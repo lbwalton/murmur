@@ -280,9 +280,9 @@
         "Analytics page renders from a seeded log in smoke",
         "Usage card updates after a new session lands"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: 9 aggregation unit tests (month and today boundaries local-time and DST safe, zero-filled chronological 14-day series, empty log, cost math incl. the Groq 10-second ASR billing minimum, fallback rates, no compounding rounding). Analytics tab renders monthly card with live cost estimate, 14-day chart (cream emphasis, amber stays reserved), lifetime totals; summary computed in main so transcripts never reach the renderer for charts; smoke analytics check green. Review gate CRITICAL catch: the llama cleanup defaults had been decommissioned by Groq on 2026-08-16, confirmed against console.groq.com/docs/deprecations, meaning the cleanup pass had been silently failing open for all users; rates.json, defaults, UI suggestions, and docs repointed to openai/gpt-oss-120b and gpt-oss-20b (rates from the primary models page), plus an automatic settings migration for existing profiles. Also fixed per review: per-day minutes rounding no longer compounds (regression test added). Lesson recorded: verify against primary sources, secondary roundups quoted stale tables."
     },
     {
       "id": "US-019",
@@ -295,7 +295,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-05: wpm carried through the overlay state machine only on inserted (unit tested), chip renders wpm or falls back to inserted, wpm stored per session in the history log since US-017 (math unit tested there). Remaining live: LaBroi sees the chip after a real dictation (HANDOFF.md)."
     },
     {
       "id": "US-020",

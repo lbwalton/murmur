@@ -95,10 +95,12 @@ export async function dictationStop(): Promise<void> {
 
   try {
     const outcome = await insertText(finalText)
-    setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
-    if (outcome !== 'error') {
+    if (outcome === 'error') {
+      setOverlayPhase('error')
+    } else {
       const { recordSession } = await import('./history')
-      recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
+      const event = recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
+      setOverlayPhase('inserted', event?.wpm ?? null)
     }
   } catch (error) {
     console.error('[murmur] insertion failed:', error)

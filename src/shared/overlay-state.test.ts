@@ -23,6 +23,16 @@ describe('OverlayMachine', () => {
     expect(m.get().phase).toBe('recording')
   })
 
+  it('carries wpm only through the inserted phase', () => {
+    const m = new OverlayMachine()
+    m.transition('recording')
+    m.transition('processing')
+    expect(m.transition('inserted', undefined, 132)?.wpm).toBe(132)
+    expect(m.transition('idle')?.wpm).toBeNull()
+    m.transition('recording')
+    expect(m.get().wpm).toBeNull()
+  })
+
   it('allows cancel from recording straight to idle', () => {
     const m = new OverlayMachine()
     m.transition('recording')

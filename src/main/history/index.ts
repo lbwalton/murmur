@@ -10,13 +10,13 @@ import { HistoryLog } from './log'
 let log: HistoryLog | null = null
 let getTargetWindow: (() => BrowserWindow | null) | null = null
 
-/** Record a finished dictation and notify open windows. */
+/** Record a finished dictation and notify the settings window. */
 export function recordSession(input: {
   startedAt: number
   rawText: string
   finalText: string
-}): void {
-  if (!log) return
+}): SessionEvent | null {
+  if (!log) return null
   const now = Date.now()
   const words = countWords(input.finalText)
   const event: SessionEvent = {
@@ -32,6 +32,7 @@ export function recordSession(input: {
   // the log) receives them, never the overlay or audio windows.
   const win = getTargetWindow?.()
   if (win && !win.isDestroyed()) win.webContents.send('history:appended', event)
+  return event
 }
 
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
@@ -54,6 +55,18 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return []
   })
 
+  // Analytics travel as a computed summary: the renderer never needs
+  // the full transcript log to draw charts and the cost card.
+  ipcMain.handle('analytics:summary', async () => {
+    const { aggregate } = await import('../../shared/analytics')
+    const rates = (await import('../../../shared/rates.json')).default
+    const settings = getSettings()
+    return aggregate(log?.readAll() ?? [], rates as never, {
+      sttModel: settings.provider.sttModel,
+      llmModel: settings.provider.llmModel
+    })
+  })
+
   registerSmokeCheck('history', () => {
     if (!log) return false
     const probe: SessionEvent = {
@@ -67,5 +80,20 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     log.append(probe)
     const events = log.readAll()
     return events.some((e) => e.rawText === 'smoke history probe')
+  })
+
+  registerSmokeCheck('analytics', async () => {
+    const { aggregate } = await import('../../shared/analytics')
+    const rates = (await import('../../../shared/rates.json')).default
+    const summary = aggregate(log?.readAll() ?? [], rates as never, {
+      sttModel: 'whisper-large-v3-turbo',
+      llmModel: 'llama-3.3-70b-versatile'
+    })
+    // The history smoke probe has already appended at least one event.
+    return (
+      summary.lifetime.sessions >= 1 &&
+      summary.lifetime.estCostUsd > 0 &&
+      summary.days.length === 14
+    )
   })
 }

@@ -10,6 +10,7 @@ import type {
   SettingsApi
 } from '../../preload/settings'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
 
 declare global {
@@ -156,7 +157,7 @@ export function App(): React.JSX.Element {
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
-  const [page, setPage] = useState<'home' | 'setup'>('home')
+  const [page, setPage] = useState<'home' | 'analytics' | 'setup'>('home')
   const autoTested = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -288,12 +289,18 @@ export function App(): React.JSX.Element {
               home
             </button>
             <button
+              className={`nav-btn ${page === 'analytics' ? 'nav-active' : ''}`}
+              onClick={() => setPage('analytics')}
+            >
+              analytics
+            </button>
+            <button
               className={`nav-btn ${page === 'setup' ? 'nav-active' : ''}`}
               onClick={() => setPage('setup')}
             >
               settings
             </button>
-            {!allOk && page === 'home' && <span className="nav-alert">✗</span>}
+            {!allOk && page !== 'setup' && <span className="nav-alert">✗</span>}
           </nav>
         </div>
         <h1>Push-to-talk dictation.</h1>
@@ -304,6 +311,7 @@ export function App(): React.JSX.Element {
       </header>
 
       {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
+      {page === 'analytics' && <AnalyticsView />}
 
       <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
       <section className="panel">
@@ -435,7 +443,7 @@ export function App(): React.JSX.Element {
           <TextSetting
             value={settings.provider.llmModel}
             listId="llm-models"
-            options={['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']}
+            options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
             onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
           />
         </Row>

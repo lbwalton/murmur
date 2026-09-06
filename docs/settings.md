@@ -43,6 +43,10 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 The cleanup pass fails open: if the model is slow, wrong, or chatty, murmur inserts the deterministically formatted text instead. A dictation is never lost or delayed indefinitely because of the cleanup model.
 
+## What does the analytics tab show, and how is the cost estimated?
+
+The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at Groq's published rates (verified 2026-09-05, in `shared/rates.json`): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
+
 ## How does the custom dictionary work?
 
 The dictionary fixes words the speech model keeps mishearing, names especially. Add a pair in Settings, dictionary: what it is heard as, and what it should be written as. Matching is whole-word and case-insensitive; output uses exactly the casing you typed, even at the start of a sentence, and even after the AI cleanup pass. Multi-word phrases work, and longer phrases win over shorter ones. The dictionary can only ever change words that were actually spoken: an unrelated dictation is never touched, and dictionary content can never leak into your text on its own.

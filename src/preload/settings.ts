@@ -57,7 +57,10 @@ const api = {
     // unsubscribe so listeners never pile up across switches.
     return () => ipcRenderer.removeListener('history:appended', handler)
   },
-  copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text)
+  copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
+  getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
+    return ipcRenderer.invoke('analytics:summary')
+  }
 }
 
 export type SettingsApi = typeof api

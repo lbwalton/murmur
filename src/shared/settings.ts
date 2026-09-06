@@ -59,7 +59,9 @@ export const DEFAULT_SETTINGS: Settings = {
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',
     sttModel: 'whisper-large-v3-turbo',
-    llmModel: 'llama-3.3-70b-versatile'
+    // Groq decommissioned the llama defaults 2026-08-16; gpt-oss-120b is
+    // their documented replacement (console.groq.com/docs/deprecations).
+    llmModel: 'openai/gpt-oss-120b'
   },
   formatting: {
     level: 'full',

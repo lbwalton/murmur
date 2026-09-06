@@ -22,9 +22,9 @@ Groq is murmur's default because Whisper on Groq is extremely fast and inexpensi
 | --- | --- |
 | Base URL | `https://api.groq.com/openai/v1` |
 | Speech model | `whisper-large-v3-turbo` (fastest) or `whisper-large-v3` (highest accuracy) |
-| Cleanup model | `llama-3.3-70b-versatile` (thorough) or `llama-3.1-8b-instant` (fastest) |
+| Cleanup model | `openai/gpt-oss-120b` (thorough) or `openai/gpt-oss-20b` (fastest) |
 
-Current model list: [console.groq.com/docs/models](https://console.groq.com/docs/models)
+Current model list: [console.groq.com/docs/models](https://console.groq.com/docs/models). Note: Groq decommissioned `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on 2026-08-16 ([deprecations](https://console.groq.com/docs/deprecations)); murmur migrates old settings to the replacements automatically.
 
 ## How do I use OpenAI with murmur?
 
