@@ -13,6 +13,7 @@ import { parseRecapTime } from '../../shared/recap'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
+import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 
 declare global {
@@ -190,6 +191,8 @@ export function App(): React.JSX.Element {
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
   const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'setup'>('home')
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const offeredWizard = useRef(false)
   const autoTested = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -218,6 +221,15 @@ export function App(): React.JSX.Element {
       if (k.present && !autoTested.current) {
         autoTested.current = true
         void bridge().testProvider().then(setTest)
+      }
+      // Fresh profiles get the guided path once, automatically.
+      if (!offeredWizard.current) {
+        offeredWizard.current = true
+        void bridge()
+          .getSettings()
+          .then((s) => {
+            if (!s.onboarding.completed && !k.present) setWizardOpen(true)
+          })
       }
     })
     const timer = setInterval(() => {
@@ -282,6 +294,24 @@ export function App(): React.JSX.Element {
   }
 
   if (!settings) return <main className="shell" />
+
+  if (wizardOpen) {
+    return (
+      <main className="shell">
+        <header className="masthead">
+          <p className="micro-label">murmur</p>
+        </header>
+        <WizardView
+          settings={settings}
+          onFinish={() => {
+            setWizardOpen(false)
+            void update({ onboarding: { completed: true } })
+            void refresh()
+          }}
+        />
+      </main>
+    )
+  }
 
   const isMac = navigator.platform.toLowerCase().includes('mac')
   const micOk = perms?.microphone === 'granted'
@@ -586,6 +616,12 @@ export function App(): React.JSX.Element {
         <Row label="Overlay" desc="See the pill without dictating.">
           <button className="btn" onClick={() => void bridge().previewOverlay()}>
             Preview overlay
+          </button>
+        </Row>
+
+        <Row label="Setup wizard" desc="Walk the guided setup again anytime.">
+          <button className="btn" onClick={() => setWizardOpen(true)}>
+            Run wizard
           </button>
         </Row>
       </section>

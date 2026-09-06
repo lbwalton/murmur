@@ -176,6 +176,70 @@ body {
   background: rgba(236, 233, 228, 0.6);
 }
 
+.wizard-panel {
+  padding: 26px 28px 20px;
+}
+
+.wizard-progress {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+
+.wizard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--panel-edge);
+}
+
+.wizard-dot-done {
+  /* Completed is history, not a live state: cream, never amber. */
+  background: rgba(236, 233, 228, 0.55);
+}
+
+.wizard-dot-active {
+  /* The step you are ON is genuinely active: amber earns its use. */
+  background: var(--amber);
+}
+
+.wizard-body h2 {
+  font-size: 21px;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+
+.wizard-body .dim {
+  line-height: 1.55;
+  max-width: 470px;
+}
+
+.wizard-controls {
+  margin-top: 18px;
+}
+
+.wizard-perms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.wizard-try {
+  margin-top: 18px;
+  width: 100%;
+  max-width: 470px;
+}
+
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-edge);
+}
+
 .chart-tick {
   font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 9px;

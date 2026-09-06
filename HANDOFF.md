@@ -16,6 +16,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [ ] US-011 insertion: dictate into three real apps (Notes, a browser text box, Slack or Messages) and confirm the text lands at the cursor, the app never loses focus, and whatever you had copied before is back on the clipboard afterward.
 - [ ] US-019 wpm chip: after any dictation, the pill shows your words-per-minute for a beat before fading. Confirm you see it.
 - [ ] US-020 recap: turn on the daily recap in settings, set a time a few minutes out, wait for the notification, click it, confirm you land on the wrap-up tab. The Test button previews instantly.
+- [ ] US-021 wizard: in settings hit Run wizard and walk it through, or test a truly clean profile anytime. Confirm the gates feel right and the test dictation works.
 - [ ] US-012 silence: hold the hotkey for two seconds in silence and release. The pill should show the quiet no speech state and nothing gets inserted anywhere.
 
 ## Standing needs

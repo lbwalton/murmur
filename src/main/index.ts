@@ -256,6 +256,40 @@ app.whenReady().then(async () => {
     const { bridge, mounted } = JSON.parse(probe) as { bridge: string; mounted: boolean }
     return bridge === 'object' && mounted
   })
+  registerSmokeCheck('wizard', async () => {
+    // The pure machine walks the whole path, gates hold, and a fresh
+    // profile (which smoke always is) gets the wizard offered in the DOM.
+    const { canAdvance, nextStep, shouldOfferWizard, stepsFor } = await import('../shared/wizard')
+    const facts = {
+      keyPresent: true,
+      connected: true,
+      micGranted: true,
+      accessibilityGranted: true,
+      inputMonitoringActive: true,
+      bindingValid: true,
+      isMac: process.platform === 'darwin'
+    }
+    let step: string | null = 'welcome'
+    const visited: string[] = []
+    while (step) {
+      visited.push(step)
+      step = nextStep(step as never, facts)
+    }
+    const walked = visited.join(',') === stepsFor(facts).join(',')
+    const gated = !canAdvance('key', { ...facts, connected: false })
+    const offered = shouldOfferWizard({ ...facts, keyPresent: false })
+
+    if (!settingsWindow) return false
+    for (let i = 0; i < 10; i++) {
+      const inDom = await settingsWindow.webContents.executeJavaScript(
+        'document.querySelector("[data-wizard]") !== null'
+      )
+      if (inDom === true) return walked && gated && offered
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    return false
+  })
+
   registerSmokeCheck('widgetLifecycle', async () => {
     // Closing the window must hide it and keep the process alive.
     if (!settingsWindow) return false

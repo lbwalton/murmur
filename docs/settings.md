@@ -10,6 +10,10 @@ The window opens on your transcription log: every dictation, grouped by day, new
 
 History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. Clear all wipes the log instantly. Nothing about your history is ever uploaded anywhere.
 
+## What happens on first launch?
+
+A guided wizard walks the whole setup: welcome, provider key with a live connection test, macOS permissions with deep links and live status, hotkey capture, and a test dictation. Each step gates on actually being done, so finishing the wizard means murmur genuinely works. Skip anytime; the setup checklist keeps tracking anything unfinished, and Run wizard in settings starts it over whenever you like.
+
 ## What does the setup checklist mean?
 
 The chips at the top of the setup panel track everything murmur needs to work: API key saved, provider connected, microphone, accessibility, input monitoring, and a valid hotkey. Green check means done. A red ✗ means click the chip: murmur scrolls to the exact field and highlights what to fix. The panel badge reads "all set" only when every step is green.

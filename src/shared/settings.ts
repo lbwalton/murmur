@@ -37,6 +37,9 @@ export interface Settings {
   }
   autostart: boolean
   showDockIcon: boolean
+  onboarding: {
+    completed: boolean
+  }
 }
 
 // This module loads in main AND in sandboxed renderers, where the node
@@ -87,7 +90,10 @@ export const DEFAULT_SETTINGS: Settings = {
     time: '17:30'
   },
   autostart: false,
-  showDockIcon: false
+  showDockIcon: false,
+  onboarding: {
+    completed: false
+  }
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
