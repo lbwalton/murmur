@@ -244,6 +244,16 @@ select.field {
   background-repeat: no-repeat;
 }
 
+.mono-field {
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-size: 12px;
+  width: 210px;
+}
+
+.wide-field {
+  width: 280px;
+}
+
 .capture {
   font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 12px;

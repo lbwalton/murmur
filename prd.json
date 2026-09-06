@@ -113,9 +113,9 @@
         "Smoke check hotkeys registers and unregisters the listener",
         "Rebinding from the settings UI takes effect without restart"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: 17 unit tests cover combo parse (aliases, casing, rejects), exact modifier matching, hold machine (repeat-safe, stray-up-safe), toggle machine (debounce absorbs repeat). Smoke checks hotkeys (binding parsed, machine built, listeners attached) and hotkeysRebind (live rebind to Ctrl+Shift+F19 and back through the settings-changed path, no restart) green. uIOhook.start wrapped: denied permission degrades, never crashes. Remaining: LaBroi live-verifies hold and toggle with real keys after granting Accessibility and Input Monitoring (queued in HANDOFF.md); the settings UI capture control lands with US-021."
+      "notes": "automated criteria verified 2026-09-05 (17 unit tests, smoke hotkeys and hotkeysRebind). Live verified by LaBroi 2026-09-05: captured Ctrl+Alt from the settings UI with no restart and dictated with it end to end. Later hardening: modifier-only chords via code-tracked dispatcher, safe-binding rule (bare typing keys invalid), capture via the global hook with window fallback."
     },
     {
       "id": "US-008",
@@ -141,9 +141,9 @@
         "Timer ticks while recording and resets between sessions",
         "Live: LaBroi confirms the overlay never steals focus from the target app"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: overlay phase machine unit tested (happy path, illegal jumps rejected, cancel, error and nospeech restarts). Smoke overlayFlags green (focusable false, always-on-top screen-saver level, click-through, all-workspaces), overlayBridge green, overlayStatesAndTimer green (recording timer ticks to 0:01 in DOM, processing and idle phases land). Visual QA via MURMUR_OVERLAY_PREVIEW capture hook: pill renders with red live dot, amber waveform driven by RMS levels (33ms peak-held throttle), mono timer. Fly-in and reduced-motion in CSS. Remaining live: focus-stealing check in real apps (HANDOFF.md). Update 2026-09-05: overlay waveform styles shipped at LaBroi request: bars (classic) and speckle (jittered-grid dust field vibrating with RMS energy, canvas 2D, a few amber sparks, reduced-motion safe), selectable in settings and pushed live over overlay:config."
+      "notes": "automated criteria verified 2026-09-05 (phase machine tests, overlayFlags, overlayBridge, overlayStatesAndTimer smoke, visual QA via capture hook). Live verified by LaBroi 2026-09-05: pill appears during dictation, waveform tracks voice, timer ticks, and insertion into the focused app succeeded, which requires focus never having been stolen. Bonus shipped: selectable waveform styles (bars, speckle dust with edge fade)."
     },
     {
       "id": "US-010",
@@ -155,9 +155,9 @@
         "A failed transcription leaves a playable WAV in userData recovery and surfaces the error state",
         "Live: LaBroi runs one real dictation against Groq with a real key"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: 9 provider unit tests with mocked fetch (multipart body shape, bearer auth, auth and badrequest never retried, 5xx and network retried once, timeout via AbortController, missing text field classified). Recovery unit tests (bytes round trip, prune to newest 20). Smoke provider check exercises the real HTTP client against in-process mocks; smoke dictationLoop runs the whole path synthetic mic to WAV to mock provider to clipboard to overlay inserted, with the user clipboard restored. transcribeWav saves recovery WAV on every failure path including missing key. Remaining live: one real Groq dictation (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-05 (9 provider unit tests, recovery tests, provider and dictationLoop smoke). Live verified by LaBroi 2026-09-05: real Groq key saved and connection test green, real dictations transcribed and delivered."
     },
     {
       "id": "US-011",
@@ -200,6 +200,20 @@
       "passes": true,
       "needs_human": false,
       "notes": "Verified 2026-09-05: shared/format-spec.json documents every rule and the pipeline order inline; 26 vectors in shared/test-vectors.json all pass through the vector-runner test (fillers, spoken punctuation attach and capitalize, scratch-that sentence scoping, numbers digits and words modes, terminal punctuation, level off and light behavior). Vectors proved they drive behavior during development: two initially failed and forced a pipeline reorder (spoken punctuation before scratch-that). formatTranscript is a pure function wired into dictationStop; smoke dictationLoop now asserts the formatted output lands."
+    },
+    {
+      "id": "US-028",
+      "title": "Provider and model controls",
+      "description": "Settings UI over the provider fields that have existed since US-010: swap the speech and cleanup models from Groq suggestions or type any model id, point the base URL at any OpenAI-compatible endpoint (OpenAI, a proxy, a local server), and reset to Groq defaults. Values apply on the next dictation with no restart because the transcriber reads settings per call. Requested by LaBroi 2026-09-05.",
+      "acceptance": [
+        "Base URL, speech model, and cleanup model are editable fields; both model fields offer Groq suggestions while accepting any typed id",
+        "Edits persist through the settings store and apply to the next dictation without restart",
+        "Reset restores the Groq defaults",
+        "The connection test exercises whatever base URL and key are configured"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": "Built 2026-09-05: provider panel with base URL, speech model, and cleanup model fields (Groq suggestions via datalist plus free text), commit-on-blur, reset-to-defaults. Typecheck and 114 unit tests green; settings capture screenshot verified the panel renders. Smoke verification pending: GUI boots from the agent context stopped completing (environment, machine likely locked), rerun smoke on the next session before setting passes."
     },
     {
       "id": "US-014",

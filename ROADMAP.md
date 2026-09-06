@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (7/27 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (10/28 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -10,21 +10,22 @@
 - [x] **US-004** Smoke harness
 - [x] **US-005** Tray shell, single instance, widget-first window
 - [x] **US-006** Settings store and encrypted key
+- [x] **US-007** Global hotkeys: hold and toggle
+- [x] **US-009** Overlay: waveform pill and live timer
+- [x] **US-010** Transcription provider
 - [x] **US-013** Format spec and shared test vectors
 
 ## Built, awaiting live verification
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
-- [ ] **US-007** Global hotkeys: hold and toggle
 - [ ] **US-008** Recording pipeline with warm mic
-- [ ] **US-009** Overlay: waveform pill and live timer
-- [ ] **US-010** Transcription provider
 - [ ] **US-011** Insertion at the cursor
 - [ ] **US-012** Silence never inserts text
 
 ## To do
 
+- [ ] **US-028** Provider and model controls
 - [ ] **US-014** LLM formatter that fails open
 - [ ] **US-015** Custom dictionary
 - [ ] **US-016** Text expansions

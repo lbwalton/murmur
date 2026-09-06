@@ -37,6 +37,8 @@ export async function runSmokeAndExit(): Promise<void> {
     } catch {
       checks[name] = false
     }
+    // Progress to stderr so a hung run shows exactly where it stopped.
+    console.error(`smoke: ${name}=${checks[name]}`)
   }
   // Lets the harness prove that a failing check propagates to the exit code.
   if (process.env.MURMUR_SMOKE_FORCE_FAIL === '1') checks.forcedFailure = false

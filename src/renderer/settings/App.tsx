@@ -27,6 +27,46 @@ interface SetupStep {
   anchor: string
 }
 
+/** Text field that commits on blur or Enter, with optional suggestions. */
+function TextSetting(props: {
+  value: string
+  placeholder?: string
+  listId?: string
+  options?: string[]
+  wide?: boolean
+  onCommit: (value: string) => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(props.value)
+  useEffect(() => setDraft(props.value), [props.value])
+  const commit = (): void => {
+    const next = draft.trim()
+    if (next.length > 0 && next !== props.value) props.onCommit(next)
+    else setDraft(props.value)
+  }
+  return (
+    <>
+      <input
+        className={`field mono-field ${props.wide ? 'wide-field' : ''}`}
+        value={draft}
+        placeholder={props.placeholder}
+        list={props.listId}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+      />
+      {props.listId && props.options && (
+        <datalist id={props.listId}>
+          {props.options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      )}
+    </>
+  )
+}
+
 function Row(props: {
   label: string
   desc?: string
@@ -265,6 +305,58 @@ export function App(): React.JSX.Element {
               </span>
             )}
           </div>
+        </Row>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <p className="micro-label">provider</p>
+          {(settings.provider.baseUrl !== DEFAULT_SETTINGS.provider.baseUrl ||
+            settings.provider.sttModel !== DEFAULT_SETTINGS.provider.sttModel ||
+            settings.provider.llmModel !== DEFAULT_SETTINGS.provider.llmModel) && (
+            <button
+              className="btn quiet-btn"
+              onClick={() => void update({ provider: { ...DEFAULT_SETTINGS.provider } })}
+            >
+              Reset to Groq defaults
+            </button>
+          )}
+        </div>
+
+        <Row
+          label="Base URL"
+          desc="Any OpenAI-compatible endpoint. Groq by default; point it at OpenAI, a proxy, or a local server. Run Test connection after changing."
+        >
+          <TextSetting
+            wide
+            value={settings.provider.baseUrl}
+            placeholder="https://api.groq.com/openai/v1"
+            onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
+          />
+        </Row>
+
+        <Row
+          label="Speech model"
+          desc="Transcribes your voice. Pick a suggestion or type any model id your provider offers."
+        >
+          <TextSetting
+            value={settings.provider.sttModel}
+            listId="stt-models"
+            options={['whisper-large-v3-turbo', 'whisper-large-v3']}
+            onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+          />
+        </Row>
+
+        <Row
+          label="Cleanup model"
+          desc="Polishes the transcript once smart formatting lands. Suggestion or any model id."
+        >
+          <TextSetting
+            value={settings.provider.llmModel}
+            listId="llm-models"
+            options={['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']}
+            onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+          />
         </Row>
       </section>
 

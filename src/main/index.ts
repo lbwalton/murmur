@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Murmur main process entry. The shell grows story by story; see prd.json.
-import { rmSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Menu, app, ipcMain } from 'electron'
@@ -34,8 +34,17 @@ if (!app.isPackaged) {
     process.env.MURMUR_OVERLAY_CAPTURE ||
     process.env.MURMUR_QUIT_TEST
   if (isolatedRun) {
+    // Sweep profiles left by earlier isolated runs (SIGKILL skips cleanup).
+    try {
+      for (const entry of readdirSync(tmpdir())) {
+        if (entry.startsWith('murmur-smoke-')) {
+          rmSync(join(tmpdir(), entry), { recursive: true, force: true })
+        }
+      }
+    } catch {
+      // A locked entry never blocks boot.
+    }
     const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
-    rmSync(dir, { recursive: true, force: true })
     app.setPath('userData', dir)
   } else {
     app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
@@ -205,6 +214,10 @@ app.whenReady().then(async () => {
 
   settingsWindow = createSettingsWindow()
   const settingsLoaded = whenLoaded(settingsWindow)
+  // A crashed renderer must be loud in logs, not silent.
+  settingsWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[murmur] settings renderer gone:', JSON.stringify(details))
+  })
 
   registerSmokeCheck('appReady', () => app.isReady())
   registerSmokeCheck('singleInstanceLock', () => gotLock)
@@ -253,7 +266,7 @@ app.whenReady().then(async () => {
   }
 
   if (isSmoke) {
-    await settingsLoaded.catch(() => undefined)
+    await settingsLoaded.catch((error) => console.error('[murmur] settings load failed:', error))
     await runSmokeAndExit()
   }
 
