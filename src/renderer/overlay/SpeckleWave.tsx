@@ -66,7 +66,7 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
 
     // Soft-edge falloff: dots fade toward every edge of the field so the
     // speckle melts into the pill instead of ending at a hard rectangle.
-    const FADE_X = 11
+    const FADE_X = 7
     const FADE_Y = 8
     const edgeFade = (px: number, py: number): number => {
       const fx = Math.min(1, Math.max(0, Math.min(px, width - px) / FADE_X))

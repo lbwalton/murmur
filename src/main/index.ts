@@ -6,7 +6,13 @@ import { join } from 'node:path'
 import { BrowserWindow, Menu, app, ipcMain } from 'electron'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation } from './dictation'
-import { initHotkeys, isBindingParseable, setHotkeysSuppressed, stopHotkeys } from './hotkeys'
+import {
+  captureHotkeyViaHook,
+  initHotkeys,
+  isBindingParseable,
+  setHotkeysSuppressed,
+  stopHotkeys
+} from './hotkeys'
 import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
@@ -167,7 +173,11 @@ app.whenReady().then(async () => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
     setHotkeysSuppressed(true)
     try {
-      const outcome = await captureHotkeyFromWindow(settingsWindow)
+      // Prefer the global hook (the same source the trigger reads, and
+      // it sees pure modifier chords reliably); fall back to window
+      // capture when the hook has no permission yet.
+      const outcome =
+        (await captureHotkeyViaHook()) ?? (await captureHotkeyFromWindow(settingsWindow))
       if (!outcome.binding) return { ok: false, reason: outcome.reason ?? 'cancelled' }
       if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }
       const { updateSettings } = await import('./settings')

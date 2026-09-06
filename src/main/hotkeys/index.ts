@@ -106,3 +106,92 @@ export function stopHotkeys(): void {
 export function getHotkeysStatus(): HotkeysStatus {
   return { hookStarted, bindingValid: binding !== null }
 }
+
+// ------------------------------------------------------------- capture ---
+
+const NAME_BY_CODE = (() => {
+  const map = new Map<number, string>()
+  for (const [name, code] of Object.entries(UiohookKey as unknown as Record<string, unknown>)) {
+    if (typeof code === 'number' && !map.has(code)) map.set(code, name)
+  }
+  return map
+})()
+
+const MODIFIER_BY_CODE = new Map<number, 'ctrl' | 'alt' | 'shift' | 'meta'>()
+for (const name of ['ctrl', 'alt', 'shift', 'meta'] as const) {
+  for (const code of MODIFIER_CODES[name]) MODIFIER_BY_CODE.set(code, name)
+}
+
+export interface HookCaptureOutcome {
+  binding: string | null
+  reason?: 'cancelled' | 'needs-modifier'
+}
+
+/**
+ * Capture a combo straight from the global hook: the exact same event
+ * source the runtime trigger uses, so whatever captures here will fire
+ * there. Modifiers pressed and released alone become a modifier-only
+ * combo; a regular key closes a modified combo immediately; bare typing
+ * keys are refused (F-keys exempt). Returns null when the hook is not
+ * running (no permission yet); callers fall back to window capture.
+ */
+export function captureHotkeyViaHook(timeoutMs = 10_000): Promise<HookCaptureOutcome> | null {
+  if (!hookStarted) return null
+  return new Promise((resolve) => {
+    const held = { ctrl: false, alt: false, shift: false, meta: false }
+    let sawModifier = false
+
+    const comboString = (keyName: string | null): string => {
+      const parts: string[] = []
+      if (held.ctrl) parts.push('Ctrl')
+      if (held.alt) parts.push('Alt')
+      if (held.shift) parts.push('Shift')
+      if (held.meta) parts.push('Cmd')
+      if (keyName) parts.push(keyName)
+      return parts.join('+')
+    }
+
+    const finish = (outcome: HookCaptureOutcome): void => {
+      uIOhook.off('keydown', onDown)
+      uIOhook.off('keyup', onUp)
+      clearTimeout(timer)
+      resolve(outcome)
+    }
+
+    const timer = setTimeout(() => finish({ binding: null, reason: 'cancelled' }), timeoutMs)
+
+    const onDown = (e: { keycode: number; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }): void => {
+      console.log(`[capture:hook] down code=${e.keycode} flags=${Number(e.ctrlKey)}${Number(e.altKey)}${Number(e.shiftKey)}${Number(e.metaKey)}`)
+      if (e.keycode === UiohookKey.Escape) {
+        finish({ binding: null, reason: 'cancelled' })
+        return
+      }
+      const modifier = MODIFIER_BY_CODE.get(e.keycode)
+      if (modifier) {
+        held[modifier] = true
+        sawModifier = true
+        return
+      }
+      const name = NAME_BY_CODE.get(e.keycode)
+      if (!name) return
+      const anyModifier = held.ctrl || held.alt || held.shift || held.meta
+      if (!anyModifier && !/^F\d+$/.test(name)) {
+        finish({ binding: null, reason: 'needs-modifier' })
+        return
+      }
+      finish({ binding: comboString(name) })
+    }
+
+    const onUp = (e: { keycode: number }): void => {
+      console.log(`[capture:hook] up code=${e.keycode}`)
+      const modifier = MODIFIER_BY_CODE.get(e.keycode)
+      if (modifier && sawModifier) {
+        // Releasing with no regular key pressed: that IS the combo.
+        finish({ binding: comboString(null) })
+      }
+    }
+
+    uIOhook.on('keydown', onDown)
+    uIOhook.on('keyup', onUp)
+  })
+}
