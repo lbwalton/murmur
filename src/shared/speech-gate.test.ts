@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import hallucinations from './hallucinations.json'
-import { hasSpeechEnergy, isHallucination, normalizeTranscript, trimSilence, voicedMs } from './speech-gate'
+import { hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs } from './speech-gate'
 
 const RATE = 16_000
 
@@ -105,5 +105,37 @@ describe('transcript sanity filter', () => {
 
   it('normalizes consistently', () => {
     expect(normalizeTranscript('  Thank   You!! ')).toBe('thank you')
+  })
+})
+
+describe('stripTrailingHallucinations', () => {
+  const tails = hallucinations.artifactTails
+
+  it('cuts a broadcast-artifact tail off real speech', () => {
+    expect(stripTrailingHallucinations('Send the deck by noon. Thanks for watching!', tails)).toBe(
+      'Send the deck by noon.'
+    )
+  })
+
+  it('cuts stacked artifact tails', () => {
+    expect(
+      stripTrailingHallucinations('The meeting moved. Please subscribe. Thanks for watching!', tails)
+    ).toBe('The meeting moved.')
+  })
+
+  it('NEVER cuts a genuine spoken sign-off (the iron law)', () => {
+    expect(stripTrailingHallucinations('Send the deck by noon. Thank you.', tails)).toBe(
+      'Send the deck by noon. Thank you.'
+    )
+    expect(stripTrailingHallucinations('Talk soon. Bye.', tails)).toBe('Talk soon. Bye.')
+  })
+
+  it('leaves a single-sentence dictation alone', () => {
+    expect(stripTrailingHallucinations('Thanks for watching!', tails)).toBe('Thanks for watching!')
+  })
+
+  it('leaves clean transcripts untouched', () => {
+    const text = 'Ship it today. I will follow up tomorrow.'
+    expect(stripTrailingHallucinations(text, tails)).toBe(text)
   })
 })

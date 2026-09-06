@@ -127,6 +127,12 @@ describe('polishTranscript', () => {
     expect(await polishTranscript(INPUT, cfg, { fetchImpl, hints: [hint] })).toBeNull()
   })
 
+  it('fails open when the model appends a polite closing', async () => {
+    const fetchImpl = (async () =>
+      chatResponse('Send the report tomorrow and copy the whole team on it, please. Thank you.')) as typeof fetch
+    expect(await polishTranscript(INPUT, cfg, { fetchImpl })).toBeNull()
+  })
+
   it('fails open on a malformed response body', async () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ choices: [] }), { status: 200 })) as typeof fetch
     expect(await polishTranscript(INPUT, cfg, { fetchImpl })).toBeNull()

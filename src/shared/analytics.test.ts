@@ -37,7 +37,7 @@ describe('sessionCostUsd', () => {
 describe('aggregate', () => {
   it('returns zeroed totals and a full zero-filled series for an empty log', () => {
     const summary = aggregate([], RATES, { now: () => NOW })
-    expect(summary.lifetime).toEqual({ sessions: 0, words: 0, minutes: 0, estCostUsd: 0 })
+    expect(summary.lifetime).toEqual({ sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0 })
     expect(summary.days.length).toBe(14)
     expect(summary.days.at(-1)?.day).toBe('2026-09-05')
     expect(summary.days.every((d) => d.sessions === 0)).toBe(true)
@@ -68,6 +68,11 @@ describe('aggregate', () => {
     const events = Array.from({ length: 5 }, (_, i) => event(NOW - (i + 1) * 60_000, 10, 4_000))
     const summary = aggregate(events, RATES, { now: () => NOW })
     expect(summary.days.at(-1)?.minutes).toBe(0.3)
+  })
+
+  it('computes lifetime average wpm from words over minutes', () => {
+    const summary = aggregate([event(NOW - 1000, 300, 120_000)], RATES, { now: () => NOW })
+    expect(summary.lifetime.avgWpm).toBe(150)
   })
 
   it('rounds minutes and cost without corrupting counts', () => {

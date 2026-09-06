@@ -3,6 +3,8 @@
 // transcript, never lose one. Any error, delay, chatter, refusal, or
 // suspicious output falls back to the deterministic text it was given.
 // Dictated instructions are content to transcribe, never commands.
+import hallucinations from '../../shared/hallucinations.json'
+import { isHallucination } from '../../shared/speech-gate'
 
 export interface PolishConfig {
   baseUrl: string
@@ -87,6 +89,20 @@ export function validatePolish(input: string, candidate: string): PolishVerdict 
     if (ratio < 0.6 || ratio > 1.4) return { ok: false, reason: 'length ratio' }
   } else if (Math.abs(outputWords - inputWords) > 8) {
     return { ok: false, reason: 'length delta' }
+  }
+
+  // A model that appends a polite closing the speaker never said is
+  // injecting, not cleaning: reject when the output ends on a known
+  // hallucination phrase the input did not end on.
+  const lastSentence = (value: string): string => {
+    const parts = value.trim().split(/(?<=[.!?])\s+/)
+    return parts[parts.length - 1] ?? ''
+  }
+  if (
+    isHallucination(lastSentence(text), hallucinations.phrases) &&
+    !isHallucination(lastSentence(input), hallucinations.phrases)
+  ) {
+    return { ok: false, reason: 'appended chatter' }
   }
 
   return { ok: true, text }

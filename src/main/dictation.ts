@@ -6,7 +6,7 @@ import { clipboard } from 'electron'
 import formatSpec from '../../shared/format-spec.json'
 import { type FormatSpec, formatTranscript } from '../shared/formatter'
 import hallucinations from '../shared/hallucinations.json'
-import { hasSpeechEnergy, isHallucination } from '../shared/speech-gate'
+import { hasSpeechEnergy, isHallucination, stripTrailingHallucinations } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, playCue, startRecording, stopRecording } from './audio'
 import { insertText } from './insertion'
@@ -65,12 +65,18 @@ export async function dictationStop(): Promise<void> {
     playCue('error')
     return
   }
-  // Guard two: empty or hallucinated transcripts never insert.
+  // Guard two: empty or hallucinated transcripts never insert, and a
+  // hallucinated tail appended to real speech is cut before formatting.
   if (isHallucination(result.text, hallucinations.phrases)) {
     setOverlayPhase('nospeech')
     playCue('nospeech')
     return
   }
+  // Trailing artifact strip uses ONLY the never-genuinely-spoken subset
+  // (review gate: a real spoken thank-you sign-off must survive), and
+  // history records the transcript as heard, before any stripping.
+  const heardText = result.text
+  const cleanedText = stripTrailingHallucinations(heardText, hallucinations.artifactTails)
 
   // Dictionary first (raw text, so capitalization comes after), then
   // deterministic formatting, then the LLM pass at Full level, then the
@@ -78,12 +84,12 @@ export async function dictationStop(): Promise<void> {
   // stage fails open to the raw transcript: a broken settings entry or
   // formatter bug must never lose a dictation or wedge the overlay in
   // processing (review gate finding, 2026-09-05).
-  let finalText = result.text
+  let finalText = cleanedText
   try {
     const { getSettings } = await import('./settings')
     const { applyDictionary, enforceDictionaryCasing } = await import('../shared/dictionary')
     const settings = getSettings()
-    const corrected = applyDictionary(result.text, settings.dictionary)
+    const corrected = applyDictionary(cleanedText, settings.dictionary)
     const formatting = settings.formatting
     const formatted = formatTranscript(
       corrected,
@@ -97,7 +103,7 @@ export async function dictationStop(): Promise<void> {
     finalText = applyExpansions(cased, settings.expansions)
   } catch (error) {
     console.error('[murmur] formatting stage failed open to raw transcript:', error)
-    finalText = result.text
+    finalText = cleanedText
   }
 
   try {
@@ -107,7 +113,7 @@ export async function dictationStop(): Promise<void> {
       playCue('error')
     } else {
       const { recordSession } = await import('./history')
-      const event = recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
+      const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       // A session can change rank, and rank can change the belt accent.

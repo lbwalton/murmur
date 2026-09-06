@@ -23,6 +23,8 @@ export interface UsageTotals {
   words: number
   minutes: number
   estCostUsd: number
+  /** Words per spoken minute across the whole span. */
+  avgWpm: number
 }
 
 export interface DayUsage {
@@ -63,7 +65,7 @@ export function sessionCostUsd(
 }
 
 function emptyTotals(): UsageTotals {
-  return { sessions: 0, words: 0, minutes: 0, estCostUsd: 0 }
+  return { sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0 }
 }
 
 function add(totals: UsageTotals, event: SessionEvent, cost: number): void {
@@ -78,7 +80,8 @@ function round(totals: UsageTotals): UsageTotals {
     sessions: totals.sessions,
     words: totals.words,
     minutes: Math.round(totals.minutes * 10) / 10,
-    estCostUsd: Math.round(totals.estCostUsd * 10_000) / 10_000
+    estCostUsd: Math.round(totals.estCostUsd * 10_000) / 10_000,
+    avgWpm: totals.minutes > 0 ? Math.round(totals.words / totals.minutes) : 0
   }
 }
 

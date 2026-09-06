@@ -35,6 +35,7 @@ export function recordSession(input: {
   const win = getTargetWindow?.()
   if (win && !win.isDestroyed()) win.webContents.send('history:appended', event)
   void notifyNewAchievements()
+  void notifyNewPromotions()
   return event
 }
 
@@ -79,6 +80,46 @@ async function notifyNewAchievements(): Promise<void> {
     writeFileSync(stateFile, JSON.stringify([...announced, ...toShow.map((e) => e.id)]))
   } catch (error) {
     console.error('[murmur] achievement notify failed:', error)
+  }
+}
+
+// Belt promotions announce themselves the same once-only way.
+async function notifyNewPromotions(): Promise<void> {
+  try {
+    const { isSmoke } = await import('../smoke')
+    if (isSmoke || !log) return
+    const { computeProgress } = await import('../../shared/ranks')
+    const ranksSpec = (await import('../../../shared/ranks.json')).default
+    const { existsSync, readFileSync, writeFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { Notification } = await import('electron')
+
+    const stateFile = join(app.getPath('userData'), 'promotions-notified.json')
+    let announced: string[] = []
+    try {
+      if (existsSync(stateFile)) {
+        const parsed: unknown = JSON.parse(readFileSync(stateFile, 'utf8'))
+        if (Array.isArray(parsed)) announced = parsed.filter((x) => typeof x === 'string')
+      }
+    } catch {
+      // Corrupt state re-announces at worst.
+    }
+
+    const progress = computeProgress(log.readAll(), ranksSpec as never)
+    const fresh = progress.promotions.filter((promo) => !announced.includes(promo.id))
+    if (fresh.length === 0 || !Notification.isSupported()) return
+    const ladder = (ranksSpec as never as { ranks: { id: string; label: string; title: string }[] }).ranks
+    // Announce the highest new rank only; a backfill batch reads as one
+    // promotion, which is how a gym would do it.
+    const top = fresh[fresh.length - 1]
+    const spec = ladder.find((r) => r.id === top.id)
+    new Notification({
+      title: 'belt promotion',
+      body: spec ? `${spec.label} · ${spec.title}` : top.id
+    }).show()
+    writeFileSync(stateFile, JSON.stringify([...announced, ...fresh.map((f) => f.id)]))
+  } catch (error) {
+    console.error('[murmur] promotion notify failed:', error)
   }
 }
 
@@ -196,7 +237,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const settings = getSettings()
     return aggregate(log?.readAll() ?? [], rates as never, {
       sttModel: settings.provider.sttModel,
-      llmModel: settings.provider.llmModel
+      llmModel: settings.provider.llmModel,
+      dayCount: 126
     })
   })
 

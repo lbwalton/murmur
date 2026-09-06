@@ -86,3 +86,17 @@ export function isHallucination(text: string, phrases: readonly string[]): boole
   if (normalized.length === 0) return true
   return phrases.some((phrase) => normalizeTranscript(phrase) === normalized)
 }
+
+/**
+ * Strip trailing sentences matching the given phrases from a
+ * multi-sentence transcript. Callers MUST pass the artifactTails subset
+ * (phrases nobody genuinely dictates), never the full hallucination
+ * list: a real spoken sign-off like thank-you must always survive.
+ */
+export function stripTrailingHallucinations(text: string, phrases: readonly string[]): string {
+  const sentences = text.trim().split(/(?<=[.!?])\s+/)
+  while (sentences.length > 1 && isHallucination(sentences[sentences.length - 1], phrases)) {
+    sentences.pop()
+  }
+  return sentences.join(' ')
+}

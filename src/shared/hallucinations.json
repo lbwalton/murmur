@@ -1,5 +1,5 @@
 {
-  "comment": "Exact-match phrases (after lowercasing and punctuation strip) that Whisper-family models emit on silent or near-silent audio. Data-driven so new sightings land here, not in code.",
+  "comment": "Exact-match phrases (after lowercasing and punctuation strip) that Whisper-family models emit on silent or near-silent audio. Two lists with different jobs: phrases guards WHOLE transcripts (a dictation that is only one of these is an artifact); artifactTails is the strict subset safe to strip off the END of real speech, because no one genuinely dictates them (a spoken thank-you or bye sign-off must always survive). Data-driven so new sightings land here, not in code.",
   "phrases": [
     "thank you",
     "thank you for watching",
@@ -25,5 +25,16 @@
     "transcribed by",
     "subtitles by the amaraorg community",
     "copyright"
+  ],
+  "artifactTails": [
+    "thanks for watching",
+    "thank you for watching",
+    "please subscribe",
+    "subscribe to my channel",
+    "like and subscribe",
+    "see you in the next video",
+    "subtitles by the amaraorg community",
+    "transcribed by",
+    "foreign"
   ]
 }
