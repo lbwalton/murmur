@@ -2,6 +2,14 @@
 
 Everything the settings window can do, in the order it appears. For provider setup (base URL, keys, model ids per provider) see [providers.md](./providers.md).
 
+## What is the home view?
+
+The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. A red ✗ next to the settings tab means setup needs attention.
+
+## How long is my history kept, and where?
+
+History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. Clear all wipes the log instantly. Nothing about your history is ever uploaded anywhere.
+
 ## What does the setup checklist mean?
 
 The chips at the top of the setup panel track everything murmur needs to work: API key saved, provider connected, microphone, accessibility, input monitoring, and a valid hotkey. Green check means done. A red ✗ means click the chip: murmur scrolls to the exact field and highlights what to fix. The panel badge reads "all set" only when every step is green.

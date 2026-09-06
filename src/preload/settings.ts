@@ -5,6 +5,7 @@
 // must bundle to a single file (no shared chunks), and the literals ARE
 // this window's IPC allowlist. Keep them in sync with src/shared/ipc.ts.
 import { contextBridge, ipcRenderer } from 'electron'
+import type { SessionEvent } from '../shared/history'
 import type { Settings } from '../shared/settings'
 
 export interface KeyStatus {
@@ -46,7 +47,17 @@ const api = {
   captureHotkey: (): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture')
   },
-  previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview')
+  previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
+  listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
+  clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),
+  onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {
+    const handler = (_e: unknown, event: SessionEvent): void => cb(event)
+    ipcRenderer.on('history:appended', handler)
+    // The home view mounts and unmounts with its tab: give it a real
+    // unsubscribe so listeners never pile up across switches.
+    return () => ipcRenderer.removeListener('history:appended', handler)
+  },
+  copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text)
 }
 
 export type SettingsApi = typeof api

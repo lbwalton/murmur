@@ -10,6 +10,7 @@ import type {
   SettingsApi
 } from '../../preload/settings'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { HomeView } from './HomeView'
 
 declare global {
   interface Window {
@@ -155,6 +156,7 @@ export function App(): React.JSX.Element {
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
+  const [page, setPage] = useState<'home' | 'setup'>('home')
   const autoTested = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -276,7 +278,24 @@ export function App(): React.JSX.Element {
   return (
     <main className="shell">
       <header className="masthead">
-        <p className="micro-label">murmur</p>
+        <div className="mast-top">
+          <p className="micro-label">murmur</p>
+          <nav className="nav">
+            <button
+              className={`nav-btn ${page === 'home' ? 'nav-active' : ''}`}
+              onClick={() => setPage('home')}
+            >
+              home
+            </button>
+            <button
+              className={`nav-btn ${page === 'setup' ? 'nav-active' : ''}`}
+              onClick={() => setPage('setup')}
+            >
+              settings
+            </button>
+            {!allOk && page === 'home' && <span className="nav-alert">✗</span>}
+          </nav>
+        </div>
         <h1>Push-to-talk dictation.</h1>
         <p className="dim">
           Hold <span className="kbd">{settings.hotkey.binding}</span>, speak, release. Text lands at
@@ -284,6 +303,9 @@ export function App(): React.JSX.Element {
         </p>
       </header>
 
+      {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
+
+      <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
       <section className="panel">
         <div className="panel-head">
           <p className="micro-label">setup</p>
@@ -650,6 +672,8 @@ export function App(): React.JSX.Element {
           <textarea className="field trybox" placeholder="dictate here…" rows={3} />
         </Row>
       </section>
+
+      </div>
 
       <footer className="foot dim">murmur {bridge().appVersion()} · GPL-3.0-only</footer>
     </main>

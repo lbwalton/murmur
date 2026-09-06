@@ -3,7 +3,7 @@
 import { readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, ipcMain } from 'electron'
+import { BrowserWindow, Menu, app, clipboard, ipcMain } from 'electron'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation } from './dictation'
 import {
@@ -15,6 +15,7 @@ import {
 } from './hotkeys'
 import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initFormatter } from './formatter'
+import { initHistory } from './history'
 import { initInsertion } from './insertion'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
@@ -176,6 +177,7 @@ app.whenReady().then(async () => {
   initOverlay()
   initTranscribe()
   initFormatter()
+  initHistory(() => settingsWindow)
   initInsertion()
   initDictation()
 
@@ -186,6 +188,11 @@ app.whenReady().then(async () => {
     }
   })
   initPermissions()
+
+  // Copy for the history view: sandboxed renderers route through main.
+  ipcMain.handle('clipboard:copy', async (_event, text: unknown) => {
+    await clipboard.writeText(String(text))
+  })
 
   // Capture a new hotkey: global trigger paused, keys intercepted ahead
   // of menu accelerators, binding validated against the real key map,

@@ -14,12 +14,15 @@ import { getOverlayPhase, setOverlayPhase } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
 import { registerSmokeCheck } from './smoke'
 
+let sessionStartedAt = 0
+
 export function dictationStart(): void {
   const phase = getOverlayPhase()
   if (phase !== 'idle' && phase !== 'inserted' && phase !== 'error' && phase !== 'nospeech') {
     return
   }
   if (!setOverlayPhase('recording')) return
+  sessionStartedAt = Date.now()
   startRecording()
 }
 
@@ -93,6 +96,10 @@ export async function dictationStop(): Promise<void> {
   try {
     const outcome = await insertText(finalText)
     setOverlayPhase(outcome === 'error' ? 'error' : 'inserted')
+    if (outcome !== 'error') {
+      const { recordSession } = await import('./history')
+      recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
+    }
   } catch (error) {
     console.error('[murmur] insertion failed:', error)
     setOverlayPhase('error')
