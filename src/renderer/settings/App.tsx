@@ -13,6 +13,7 @@ import { parseRecapTime } from '../../shared/recap'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
+import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 
@@ -220,7 +221,9 @@ export function App(): React.JSX.Element {
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
   const [version, setVersion] = useState('')
-  const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'setup'>('home')
+  const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
+  const [insignia, setInsignia] = useState<{ color: string; stripes: number; founder: boolean } | null>(null)
+  const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'journey' | 'setup'>('home')
   const [wizardOpen, setWizardOpen] = useState(false)
   const offeredWizard = useRef(false)
   const autoTested = useRef(false)
@@ -246,6 +249,14 @@ export function App(): React.JSX.Element {
       if (target === 'wrapup') setPage('wrapup')
     })
     void bridge().appVersion().then(setVersion)
+    const loadCosmetics = (): void => {
+      void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
+        setCosmetics(c)
+        setInsignia({ color: c.beltColor, stripes: p.rank.stripes, founder: p.founder })
+      })
+    }
+    loadCosmetics()
+    const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved.
@@ -270,6 +281,7 @@ export function App(): React.JSX.Element {
     return () => {
       clearInterval(timer)
       unNav()
+      unCosmetics()
     }
   }, [refresh])
 
@@ -277,6 +289,10 @@ export function App(): React.JSX.Element {
     setSettings(await bridge().updateSettings(partial))
     setHotkeys(await bridge().getHotkeysStatus())
   }
+
+  useEffect(() => {
+    if (settings) document.documentElement.dataset.theme = settings.cosmetics.uiTheme
+  }, [settings])
 
   const saveKey = async (): Promise<void> => {
     if (keyDraft.trim().length === 0) return
@@ -380,7 +396,17 @@ export function App(): React.JSX.Element {
     <main className="shell">
       <header className="masthead">
         <div className="mast-top">
-          <p className="micro-label">murmur</p>
+          <p className="micro-label">
+            murmur
+            {insignia && (
+              <span className="insignia" style={{ background: insignia.color }} title="your belt">
+                {Array.from({ length: Math.min(insignia.stripes, 4) }, (_, i) => (
+                  <span className="insignia-stripe" key={i} />
+                ))}
+                {insignia.founder && <span className="insignia-crown">♛</span>}
+              </span>
+            )}
+          </p>
           <nav className="nav">
             <button
               className={`nav-btn ${page === 'home' ? 'nav-active' : ''}`}
@@ -401,6 +427,12 @@ export function App(): React.JSX.Element {
               wrap-up
             </button>
             <button
+              className={`nav-btn ${page === 'journey' ? 'nav-active' : ''}`}
+              onClick={() => setPage('journey')}
+            >
+              journey
+            </button>
+            <button
               className={`nav-btn ${page === 'setup' ? 'nav-active' : ''}`}
               onClick={() => setPage('setup')}
             >
@@ -419,6 +451,7 @@ export function App(): React.JSX.Element {
       {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
       {page === 'analytics' && <AnalyticsView />}
       {page === 'wrapup' && <WrapUpView />}
+      {page === 'journey' && <JourneyView />}
 
       <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
       <section className="panel">
@@ -631,7 +664,7 @@ export function App(): React.JSX.Element {
           </select>
         </Row>
 
-        <Row label="Waveform" desc="How the pill visualizes your voice.">
+        <Row label="Waveform" desc="How the pill visualizes your voice. Locked styles show how to earn them.">
           <select
             className="field"
             value={settings.overlay.style}
@@ -639,8 +672,47 @@ export function App(): React.JSX.Element {
               void update({ overlay: { style: e.target.value } as Settings['overlay'] })
             }
           >
-            <option value="bars">Bars (classic)</option>
-            <option value="speckle">Speckle (dust that vibrates)</option>
+            {(cosmetics?.overlayStyles ?? []).map((item) => (
+              <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                {item.unlocked ? `${item.name} (${item.hint})` : `${item.name} (locked: ${item.hint})`}
+              </option>
+            ))}
+          </select>
+        </Row>
+
+        <Row label="Accent" desc="The color of your waveform. Earned, never bought.">
+          <select
+            className="field"
+            value={settings.cosmetics.accent}
+            onChange={(e) =>
+              void update({
+                cosmetics: { ...settings.cosmetics, accent: e.target.value }
+              })
+            }
+          >
+            {(cosmetics?.accents ?? []).map((item) => (
+              <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+              </option>
+            ))}
+          </select>
+        </Row>
+
+        <Row label="Theme" desc="The window itself. More arrive with rank.">
+          <select
+            className="field"
+            value={settings.cosmetics.uiTheme}
+            onChange={(e) =>
+              void update({
+                cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
+              })
+            }
+          >
+            {(cosmetics?.uiThemes ?? []).map((item) => (
+              <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+              </option>
+            ))}
           </select>
         </Row>
 

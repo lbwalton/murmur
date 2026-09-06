@@ -32,6 +32,8 @@
   --red-glow: rgba(229, 72, 77, 0.7);
   --red-wash: rgba(229, 72, 77, 0.06);
   --ok: #7fb069;
+  /* Keep in sync with founderGold in shared/cosmetics.json. */
+  --founder-gold: #e0b64f;
   --ok-edge: rgba(127, 176, 105, 0.4);
 
   /* type */
@@ -41,4 +43,14 @@
     'Segoe UI',
     sans-serif;
   --font-mono: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+}
+
+/* Unlockable theme: morning mist. Cooler ground, same signals. */
+:root[data-theme='mist'] {
+  --ink: #10131a;
+  --panel: #191d26;
+  --panel-glass: rgba(25, 29, 38, 0.96);
+  --panel-edge: rgba(226, 233, 240, 0.08);
+  --text: #e6ebf0;
+  --text-dim: #93a0ac;
 }

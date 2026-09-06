@@ -126,16 +126,54 @@ export function overlayPreviewBurst(durationMs = 2500): void {
   previewTimers.push(levels, stop)
 }
 
+async function resolveAccent(): Promise<string> {
+  try {
+    const { resolveAccentColor } = await import('../../shared/cosmetics')
+    const { computeProgress } = await import('../../shared/ranks')
+    const { evaluateAchievements } = await import('../../shared/achievements')
+    const { readHistory } = await import('../history')
+    const { existsSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const cosmeticsSpec = (await import('../../../shared/cosmetics.json')).default
+    const ranksSpec = (await import('../../../shared/ranks.json')).default
+    const defs = (await import('../../../shared/achievements.json')).default
+    const events = readHistory()
+    const founder = existsSync(join(app.getPath('userData'), 'founder'))
+    const progress = computeProgress(events, ranksSpec as never, { founder })
+    const earned = evaluateAchievements(events, defs as never)
+    return resolveAccentColor(getSettings().cosmetics.accent, cosmeticsSpec as never, progress, earned)
+  } catch {
+    return '#f0a44b'
+  }
+}
+
 function sendOverlayConfig(): void {
-  const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
-  aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style })
+  void (async () => {
+    const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
+    const accent = await resolveAccent()
+    aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent })
+  })()
+}
+
+/** Re-resolve and resend the overlay config (promotions change accents). */
+export function refreshOverlayConfig(): void {
+  sendOverlayConfig()
 }
 
 export function initOverlay(): void {
   overlayWindow = createOverlayWindow()
 
   overlayWindow.webContents.on('did-finish-load', sendOverlayConfig)
-  onSettingsChanged(sendOverlayConfig)
+  // Resolving the accent walks the whole history log; only do it when a
+  // field that can affect the overlay actually changed (review gate
+  // finding: every settings save was re-reading the entire log).
+  let lastConfigKey = ''
+  onSettingsChanged((settings) => {
+    const key = `${settings.overlay.style}|${settings.cosmetics.accent}`
+    if (key === lastConfigKey) return
+    lastConfigKey = key
+    sendOverlayConfig()
+  })
 
   // closable false means app.quit() can never close this window through
   // the normal path; it must be destroyed or quitting hangs forever.

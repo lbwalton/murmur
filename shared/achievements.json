@@ -1,0 +1,19 @@
+{
+  "comment": "Achievement definitions, evaluated deterministically over the session log. Adding one is a JSON edit: pick a condition type the engine supports (firstSession, streak, dayWords, lifetimeSessions, marathon, timeOfDay, comeback) and its parameters. Earned timestamps derive from the log itself, so they can never drift or re-fire.",
+  "achievements": [
+    { "id": "first-words", "name": "first words", "hint": "complete your first dictation", "condition": { "type": "firstSession" } },
+    { "id": "streak-3", "name": "three in a row", "hint": "dictate on three consecutive days", "condition": { "type": "streak", "days": 3 } },
+    { "id": "streak-7", "name": "a full week", "hint": "dictate seven days straight", "condition": { "type": "streak", "days": 7 } },
+    { "id": "streak-30", "name": "the habit", "hint": "dictate thirty days straight", "condition": { "type": "streak", "days": 30 } },
+    { "id": "streak-100", "name": "unbroken", "hint": "one hundred days straight", "condition": { "type": "streak", "days": 100 } },
+    { "id": "day-1k", "name": "a thousand today", "hint": "a thousand words in one day", "condition": { "type": "dayWords", "words": 1000 } },
+    { "id": "day-5k", "name": "on a roll", "hint": "five thousand words in one day", "condition": { "type": "dayWords", "words": 5000 } },
+    { "id": "day-10k", "name": "the flood", "hint": "ten thousand words in one day", "condition": { "type": "dayWords", "words": 10000 } },
+    { "id": "sessions-100", "name": "a hundred takes", "hint": "one hundred dictations", "condition": { "type": "lifetimeSessions", "count": 100 } },
+    { "id": "sessions-1000", "name": "a thousand takes", "hint": "one thousand dictations", "condition": { "type": "lifetimeSessions", "count": 1000 } },
+    { "id": "marathon", "name": "the marathon", "hint": "hold one dictation past five minutes", "condition": { "type": "marathon", "durationMs": 300000 } },
+    { "id": "night-owl", "name": "night owl", "hint": "dictate between midnight and four", "condition": { "type": "timeOfDay", "fromHour": 0, "toHour": 4 } },
+    { "id": "early-bird", "name": "early bird", "hint": "dictate before six in the morning", "condition": { "type": "timeOfDay", "fromHour": 4, "toHour": 6 } },
+    { "id": "comeback", "name": "the comeback", "hint": "return after a week away", "condition": { "type": "comeback", "quietDays": 7 } }
+  ]
+}

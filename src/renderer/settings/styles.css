@@ -548,3 +548,155 @@ select.field {
   padding: 6px 0 2px;
   font-family: var(--font-mono);
 }
+
+.journey-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 10px 0 8px;
+}
+
+.belt {
+  position: relative;
+  width: 170px;
+  height: 34px;
+  border-radius: 6px;
+  flex: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.belt-bar {
+  position: absolute;
+  right: 18px;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.belt-stripe {
+  width: 3px;
+  height: 22px;
+  background: var(--text);
+}
+
+.belt-crown {
+  position: absolute;
+  right: -26px;
+  top: 3px;
+  font-size: 18px;
+  /* Identity, not a live state: founder gold, never signal amber. */
+  color: var(--founder-gold);
+}
+
+.journey-rank {
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.journey-title {
+  font-style: italic;
+  margin-top: 3px;
+}
+
+.journey-line {
+  padding-bottom: 12px;
+}
+
+.gate {
+  padding: 8px 0 4px;
+}
+
+.gate-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.gate-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--cream-06);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.gate-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--cream-55);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 6px 0 14px;
+}
+
+.badge {
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.badge-earned {
+  border-color: var(--ok-edge);
+}
+
+.badge-mark {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.badge-earned .badge-mark {
+  color: var(--ok);
+}
+
+.badge-name {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.badge-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.promo-row {
+  display: flex;
+  gap: 14px;
+  padding: 7px 0;
+  align-items: baseline;
+}
+
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 12px;
+  border-radius: 3px;
+  padding: 0 6px;
+  margin-left: 10px;
+  vertical-align: 2px;
+}
+
+.insignia-stripe {
+  width: 2px;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.insignia-crown {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--founder-gold);
+}

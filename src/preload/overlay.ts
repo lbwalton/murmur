@@ -7,7 +7,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { OverlayState } from '../shared/overlay-state'
 
 export interface OverlayConfig {
-  style: 'bars' | 'speckle'
+  style: string
+  accent?: string
 }
 
 const api = {

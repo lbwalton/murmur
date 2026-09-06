@@ -4,7 +4,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OverlayState } from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
-import type { OverlayApi, OverlayConfig } from '../../preload/overlay'
+import type { OverlayApi } from '../../preload/overlay'
+import { PulseWave } from './PulseWave'
 import { SpeckleWave } from './SpeckleWave'
 
 declare global {
@@ -18,7 +19,8 @@ const BAR_COUNT = 21
 export function App(): React.JSX.Element {
   const [state, setState] = useState<OverlayState>({ phase: 'idle', startedAt: null, wpm: null })
   const [levels, setLevels] = useState<number[]>(() => new Array<number>(BAR_COUNT).fill(0))
-  const [style, setStyle] = useState<OverlayConfig['style']>('bars')
+  const [style, setStyle] = useState<string>('bars')
+  const [accent, setAccent] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const levelRef = useRef(0)
   const stateRef = useRef(state)
@@ -38,6 +40,7 @@ export function App(): React.JSX.Element {
     })
     window.murmurOverlay.onConfig((config) => {
       setStyle(config.style)
+      setAccent(config.accent ?? null)
     })
   }, [])
 
@@ -61,9 +64,19 @@ export function App(): React.JSX.Element {
   return (
     <div className={`pill pill-${state.phase}`}>
       <span className={`dot ${live ? 'dot-live' : ''}`} />
-      <div className="wave" aria-hidden="true">
-        {style === 'speckle' ? (
-          <SpeckleWave levelRef={levelRef} muted={state.phase !== 'recording'} />
+      <div
+        className="wave"
+        aria-hidden="true"
+        style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
+      >
+        {style === 'pulse' ? (
+          <PulseWave
+            levelRef={levelRef}
+            muted={state.phase !== 'recording'}
+            accent={accent ?? 'rgb(240, 164, 75)'}
+          />
+        ) : style === 'speckle' ? (
+          <SpeckleWave levelRef={levelRef} muted={state.phase !== 'recording'} accent={accent} />
         ) : (
           levels.map((level, i) => (
             <span key={i} className="bar" style={{ height: `${Math.round(6 + level * 30)}px` }} />

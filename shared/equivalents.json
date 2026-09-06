@@ -1,0 +1,17 @@
+{
+  "comment": "Famous word counts for the rotating you-dictated-X-times-Y line. Counts are widely cited approximations, that is the point of the fun; add entries freely.",
+  "works": [
+    { "words": 6000, "name": "a State of the Union address" },
+    { "words": 26000, "name": "Animal Farm" },
+    { "words": 47000, "name": "The Great Gatsby" },
+    { "words": 77000, "name": "the first Harry Potter" },
+    { "words": 89000, "name": "1984" },
+    { "words": 95000, "name": "The Hobbit" },
+    { "words": 130000, "name": "a doctoral dissertation" },
+    { "words": 209000, "name": "Moby-Dick" },
+    { "words": 480000, "name": "The Lord of the Rings" },
+    { "words": 587000, "name": "War and Peace" },
+    { "words": 1084000, "name": "the entire Harry Potter series" },
+    { "words": 1700000, "name": "A Song of Ice and Fire so far" }
+  ]
+}

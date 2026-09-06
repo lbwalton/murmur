@@ -90,7 +90,7 @@ body {
   width: 3px;
   min-height: 6px;
   border-radius: 2px;
-  background: var(--amber);
+  background: var(--wave-accent, var(--amber));
   transition: height 90ms linear;
 }
 

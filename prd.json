@@ -336,9 +336,9 @@
         "A fresh unlock triggers a notification and an overlay moment",
         "Unit tests cover each condition type, persistence, and no-refire"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-06: 14 data-driven definitions over 7 condition types, evaluated deterministically from the log (9 unit tests: streak break on gaps, per-day accumulation, marathon single-hold, stored-hour time windows, comeback, stable first-earn timestamps); local hour stored on events like the day key. Unlock notifications dedupe through an announced-state file wrapped so failure can never break recording; self-contained smoke check. Review gate CRITICAL catch fixed: the announce write used to mark every earned id as announced while only three showed (or zero on unsupported platforms), permanently silencing the rest; only actually-shown ids persist now, so backlogs drain three per session. Reviewer verified day-distance math is leap and DST safe, no transcript leakage, and the notify path cannot throw into recordSession."
     },
     {
       "id": "US-031",
@@ -350,9 +350,9 @@
         "At least: one new overlay style, belt accent colors, one UI theme, and the wordmark insignia ship as unlockables",
         "Unit tests cover gating, and smoke covers the registry wiring"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-06: shared/cosmetics.json registry (belt colors, founder gold, overlay styles, accents including the rank-following belt accent, ui themes) with pure unlock logic and 8 tests; pickers render locked items disabled with earn hints; the waveform accent resolves in main with locked-falls-back-to-amber; the pulse overlay style (unlocked at white belt) and morning mist theme (blue belt) shipped; accents apply to bars, speckle, and pulse. Review gate findings fixed: accent resolution no longer re-reads the whole log on every unrelated settings save (keyed cache plus refresh after each recorded session), and the founder crown wears founder gold, never signal amber."
     },
     {
       "id": "US-032",
@@ -367,7 +367,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-06: journey tab with the drawn belt and stripes, rank and title, dual gate bars, rotating equivalents line (7 tests on the shared engine: percentage, about-the-length, multiples tiers, truthfulness floor), badge grid with hints, dated promotion timeline; masthead insignia with belt color, stripes, and founder crown refreshing on history appends; share card drawn from design tokens on canvas (roundRect verified available, label widths verified against panel bounds) and saved through a dialog-mediated handler with no renderer-controlled paths. Remaining live: LaBroi approves the look of the page and the card (HANDOFF.md)."
     },
     {
       "id": "US-021",

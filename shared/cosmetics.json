@@ -1,0 +1,31 @@
+{
+  "comment": "Unlockable cosmetics, gated by belts and achievements. Cosmetics only, never function. Colors here are DATA consumed by renderers via inline styles from this file; the design lint governs source literals, not data. Belt colors are tuned to sit on night studio ink.",
+  "beltColors": {
+    "none": "#5a564f",
+    "white": "#efece4",
+    "blue": "#5b82d9",
+    "purple": "#9a6fd9",
+    "brown": "#a97a4f",
+    "black": "#2e2c33",
+    "coral-black": "#d94f4f",
+    "coral-white": "#e8b9b9",
+    "red": "#c93a3a"
+  },
+  "founderGold": "#e0b64f",
+  "overlayStyles": [
+    { "id": "bars", "name": "bars", "hint": "the classic", "unlock": null },
+    { "id": "speckle", "name": "speckle", "hint": "dust that vibrates", "unlock": null },
+    { "id": "pulse", "name": "pulse", "hint": "earn your white belt", "unlock": { "rank": "white" } }
+  ],
+  "accents": [
+    { "id": "amber", "name": "signal amber", "hint": "the original", "color": "#f0a44b", "unlock": null },
+    { "id": "belt", "name": "your belt color", "hint": "earn your white belt; follows your rank", "color": null, "unlock": { "rank": "white" } },
+    { "id": "ember", "name": "ember red", "hint": "hold a dictation past five minutes", "color": "#e06a4f", "unlock": { "achievement": "marathon" } },
+    { "id": "moonlight", "name": "moonlight", "hint": "dictate between midnight and four", "color": "#9fb8e8", "unlock": { "achievement": "night-owl" } },
+    { "id": "dawn", "name": "dawn", "hint": "dictate before six in the morning", "color": "#e8c9a0", "unlock": { "achievement": "early-bird" } }
+  ],
+  "uiThemes": [
+    { "id": "ember", "name": "night studio", "hint": "the original", "unlock": null },
+    { "id": "mist", "name": "morning mist", "hint": "earn your blue belt", "unlock": { "rank": "blue" } }
+  ]
+}

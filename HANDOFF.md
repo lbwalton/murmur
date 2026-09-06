@@ -12,6 +12,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-032 journey: open the journey tab, check your belt (want the founder crown? run: touch "$HOME/Library/Application Support/murmur-dev/founder" and reopen), try the share card, and bless or veto the look.
+- [ ] US-031 cosmetics: dictate enough to hit white belt (a real session does it), watch pulse and the belt accent unlock, try the morning mist theme at blue.
+
 - [ ] US-024 packaged mac app: open release/murmur-0.1.0-arm64.dmg, drag murmur to Applications, quit the dev version first, launch, grant permissions fresh, dictate. Cleanest if you retire the legacy Murmur.app beforehand (its data dir shares the packaged app name; murmur handles it safely either way).
 - [ ] US-025 windows: tell me your Windows machine arch (almost certainly x64) and I build that installer; then silent install with /S, autostart after reboot, and one dictation loop there.
 

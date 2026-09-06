@@ -14,6 +14,8 @@ export interface SessionEvent {
    * never re-bucket history (a belt once earned stays earned), so this
    * is stored, not derived. Absent on old events; eventDay falls back. */
   day?: string
+  /** Local hour (0-23) at record time, stored for the same reason. */
+  hour?: number
 }
 
 /** The day an event belongs to: stored key first, derived as fallback. */
@@ -72,6 +74,7 @@ export function isSessionEvent(value: unknown): value is SessionEvent {
     typeof v.finalText === 'string' &&
     typeof v.words === 'number' &&
     typeof v.wpm === 'number' &&
-    (v.day === undefined || typeof v.day === 'string')
+    (v.day === undefined || typeof v.day === 'string') &&
+    (v.hour === undefined || typeof v.hour === 'number')
   )
 }

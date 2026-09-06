@@ -20,7 +20,11 @@ export interface Settings {
     mode: 'paste' | 'copy'
   }
   overlay: {
-    style: 'bars' | 'speckle'
+    style: string
+  }
+  cosmetics: {
+    accent: string
+    uiTheme: string
   }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>
@@ -75,6 +79,10 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   overlay: {
     style: 'bars'
+  },
+  cosmetics: {
+    accent: 'amber',
+    uiTheme: 'ember'
   },
   dictionary: [],
   expansions: [],

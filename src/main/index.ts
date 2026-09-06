@@ -199,11 +199,11 @@ app.whenReady().then(async () => {
   }
 
   initSettings()
+  initHistory(() => settingsWindow)
   initAudio()
   initOverlay()
   initTranscribe()
   initFormatter()
-  initHistory(() => settingsWindow)
   initRecap({
     openWrapup: () => {
       showSettingsWindow()
@@ -220,6 +220,23 @@ app.whenReady().then(async () => {
     }
   })
   initPermissions()
+
+  // Share card: the journey page draws a PNG locally; main only offers
+  // the save dialog and writes bytes. Nothing leaves the machine.
+  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown) => {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return false
+    const { dialog } = await import('electron')
+    const { writeFile } = await import('node:fs/promises')
+    const target = settingsWindow
+    if (!target || target.isDestroyed()) return false
+    const { canceled, filePath } = await dialog.showSaveDialog(target, {
+      defaultPath: 'murmur-belt.png',
+      filters: [{ name: 'PNG image', extensions: ['png'] }]
+    })
+    if (canceled || !filePath) return false
+    await writeFile(filePath, Buffer.from(dataUrl.slice('data:image/png;base64,'.length), 'base64'))
+    return true
+  })
 
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('app:license', async () => {

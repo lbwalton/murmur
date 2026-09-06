@@ -9,6 +9,8 @@ interface SpeckleWaveProps {
   levelRef: React.MutableRefObject<number>
   /** Dim and slow the field while processing. */
   muted: boolean
+  /** Unlockable accent for the warm sparks; null keeps signal amber. */
+  accent?: string | null
 }
 
 interface Dot {
@@ -23,10 +25,10 @@ interface Dot {
 
 const DOT_COUNT = 84
 
-export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.Element {
+export function SpeckleWave(props: SpeckleWaveProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const mutedRef = useRef(muted)
-  mutedRef.current = muted
+  const mutedRef = useRef(props.muted)
+  mutedRef.current = props.muted
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -46,7 +48,7 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
     // Colors come from the design tokens, never hardcoded: the canvas
     // reads the same variables the stylesheets consume.
     const styles = getComputedStyle(document.documentElement)
-    const amber = styles.getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)'
+    const amber = props.accent ?? (styles.getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)')
     const cream = styles.getPropertyValue('--text').trim() || 'rgb(236, 233, 228)'
 
     // Jittered grid rather than pure random: even speckle coverage with
@@ -82,7 +84,7 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
     }
 
     const draw = (t: number): void => {
-      const target = mutedRef.current ? 0 : levelRef.current
+      const target = mutedRef.current ? 0 : props.levelRef.current
       smoothed += (target - smoothed) * 0.25
       const energy = Math.min(1, smoothed * 3.2)
 
@@ -104,7 +106,7 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
 
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
-  }, [levelRef])
+  }, [props.levelRef, props.accent])
 
   return <canvas ref={canvasRef} className="speckle" aria-hidden="true" />
 }

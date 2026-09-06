@@ -25,6 +25,7 @@ The name is always lowercase: murmur.
 - [Settings, explained](docs/settings.md): every control and scenario
 - [Connecting a provider](docs/providers.md): Groq (default), OpenAI, local servers, any OpenAI-compatible endpoint, and troubleshooting
 - [Coworker quickstart](docs/quickstart.md): install to first dictation in five minutes
+- [The journey](docs/journey.md): belts, achievements, and unlocks, BJJ style
 
 ## Privacy
 

@@ -66,6 +66,21 @@ const api = {
   getRankProgress: (): Promise<import('../shared/ranks').ProgressReport> => {
     return ipcRenderer.invoke('ranks:progress')
   },
+  getEarnedAchievements: (): Promise<import('../shared/achievements').EarnedAchievement[]> => {
+    return ipcRenderer.invoke('achievements:earned')
+  },
+  getAchievementDefs: (): Promise<Array<{ id: string; name: string; hint: string }>> => {
+    return ipcRenderer.invoke('achievements:defs')
+  },
+  getCosmetics: (): Promise<import('../shared/cosmetics').CosmeticsReport> => {
+    return ipcRenderer.invoke('cosmetics:report')
+  },
+  getEquivalentLine: (pick: number): Promise<string> => {
+    return ipcRenderer.invoke('equivalents:line', pick)
+  },
+  saveShareCard: (pngDataUrl: string): Promise<boolean> => {
+    return ipcRenderer.invoke('sharecard:save', pngDataUrl)
+  },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
     ipcRenderer.on('nav:goto', handler)

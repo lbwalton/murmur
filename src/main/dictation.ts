@@ -10,7 +10,7 @@ import { hasSpeechEnergy, isHallucination } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, playCue, startRecording, stopRecording } from './audio'
 import { insertText } from './insertion'
-import { getOverlayPhase, setOverlayPhase } from './overlay'
+import { getOverlayPhase, refreshOverlayConfig, setOverlayPhase } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
 import { registerSmokeCheck } from './smoke'
 
@@ -110,6 +110,8 @@ export async function dictationStop(): Promise<void> {
       const event = recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
+      // A session can change rank, and rank can change the belt accent.
+      refreshOverlayConfig()
     }
   } catch (error) {
     console.error('[murmur] insertion failed:', error)
