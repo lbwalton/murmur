@@ -77,6 +77,18 @@ Turn on the daily recap in Settings and pick a time. At that moment (or on the n
 
 The permissions panel shows live status and deep-links each one into System Settings. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
 
+## What do the sound cues mean?
+
+Quiet blips confirm what murmur is doing without you looking: a rising two-tone when recording starts, falling when it stops, a soft ding when text lands, a low note for no speech, and a buzz for errors. All synthesized live, no sound files anywhere. The system panel has the on/off switch and a volume slider.
+
+## Does murmur start automatically at login?
+
+Turn on Start at login in the system panel and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
+
+## What happens if murmur crashes?
+
+The error is written to a small rotating log in murmur's data folder under `logs/`, and the app relaunches itself exactly once. If the relaunched instance hits trouble too, it stays running in a visibly degraded state instead of looping, and the log has the story. Your dictation history and settings are untouched by any of this.
+
 ## Why does silence never insert anything?
 
 Two guards. Before upload: if the recording contains under about a fifth of a second of voiced audio, murmur discards it locally, and your audio never leaves the machine. After transcription: empty results and the stock phrases speech models hallucinate on silence ("Thank you.") are recognized and dropped. The pill shows a quiet "no speech" instead.

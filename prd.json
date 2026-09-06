@@ -387,16 +387,17 @@
     {
       "id": "US-022",
       "title": "Sounds, autostart, resilience",
-      "description": "Start, stop, insert, and error cues synthesized by script at postinstall (no binary assets) with a volume and mute setting. Autostart toggle wired per platform. Resilience: crash-safe relaunch once, unhandled errors logged to rotating files in userData, and the tray reflects a degraded state instead of dying silently.",
+      "description": "Start, stop, insert, and error cues synthesized live with WebAudio in the audio renderer (no files, no postinstall step, no binary assets by construction; supersedes the generate-at-postinstall design, changed 2026-09-06 for simplicity). Volume and mute setting. Autostart toggle wired per platform via loginItemSettings. Resilience: uncaught main-process errors log to rotating files in userData/logs, the app relaunches itself once after a crash (never loops), and a degraded state is visible instead of a silent death.",
       "acceptance": [
-        "Sound files generate deterministically at postinstall and play through the cue player behind the setting",
-        "Autostart toggle round-trips through the platform API in smoke",
-        "Log rotation is unit tested",
+        "Cues are synthesized in code and play through the cue player, gated by the sounds setting and scaled by volume",
+        "Autostart round-trips through the platform loginItemSettings API in smoke without changing its state",
+        "Log rotation is unit tested and uncaught errors land in userData/logs",
+        "A crashed main process relaunches exactly once, never loops",
         "Live: LaBroi hears cues and survives a forced crash with an auto-relaunch"
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-06: cues synthesized live with WebAudio (no files), gated by the sounds setting, scaled by volume, near-silent smoke check green; autostart round-trips loginItemSettings in smoke without changing state, applies on setting changes, packaged-only; RotatingLog unit tested (append, cap rotation, bounded set, unwritable dir never throws); crash relaunch verified live twice from the CLI: exactly one relaunch, no loop, and after the review fix the relaunched instance carries its predecessor profile so the crash log survives with both entries. Review gate confirmed four findings, all fixed: three silent error paths now play the error cue, the volume slider commits on settle instead of flooding writes, the cue channels joined the IPC source of truth, and the isolated-run sweep no longer destroys the log the relaunch just wrote. Remaining live: LaBroi hears the cues (HANDOFF.md)."
     },
     {
       "id": "US-023",
@@ -452,7 +453,7 @@
       ],
       "passes": false,
       "needs_human": false,
-      "notes": "Started early 2026-09-05: docs/settings.md (full settings surface, question-phrased for AEO) and docs/providers.md (Groq default, OpenAI verified against their live API reference 2026-09-05, local servers, gateways, troubleshooting) shipped and linked from README; documentation rules added to CLAUDE.md. Remaining: coworker quickstart, build-from-source, license section, and keeping pace with future stories."
+      "notes": "Started early 2026-09-05: docs/settings.md (full settings surface, question-phrased for AEO) and docs/providers.md (Groq default, OpenAI verified against their live API reference 2026-09-05, local servers, gateways, troubleshooting) shipped and linked from README; documentation rules added to CLAUDE.md. Remaining: coworker quickstart, build-from-source, license section, and keeping pace with future stories. Update 2026-09-06: README expanded (why murmur, getting started, privacy, build from source, process, license), coworker quickstart shipped at docs/quickstart.md, settings docs cover sounds, autostart, crash behavior, wizard, recap, analytics, history."
     },
     {
       "id": "US-027",

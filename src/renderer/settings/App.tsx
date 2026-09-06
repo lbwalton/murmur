@@ -73,6 +73,35 @@ function TextSetting(props: {
 }
 
 /**
+ * Volume slider. Dragging fires change continuously; committing each
+ * tick would flood synchronous settings writes, so the value lives
+ * locally and commits when the drag settles.
+ */
+function VolumeSlider(props: {
+  value: number
+  disabled: boolean
+  onCommit: (volume: number) => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(Math.round(props.value * 100))
+  useEffect(() => setDraft(Math.round(props.value * 100)), [props.value])
+  const commit = (): void => {
+    if (draft !== Math.round(props.value * 100)) props.onCommit(draft / 100)
+  }
+  return (
+    <input
+      type="range"
+      min={0}
+      max={100}
+      value={draft}
+      disabled={props.disabled}
+      onChange={(e) => setDraft(Number(e.target.value))}
+      onPointerUp={commit}
+      onBlur={commit}
+    />
+  )
+}
+
+/**
  * Recap time field. A native time input reports empty string during
  * incomplete edits; persisting that would silently kill the recap
  * schedule forever. Only valid times ever reach the store, and blurring
@@ -687,6 +716,44 @@ export function App(): React.JSX.Element {
               }
             />
           </div>
+        </Row>
+      </section>
+
+      <section className="panel">
+        <p className="micro-label">system</p>
+
+        <Row label="Sounds" desc="Quiet cues for start, stop, insert, and errors.">
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.sounds.enabled ? 'on' : 'off'}
+              onChange={(e) =>
+                void update({ sounds: { ...settings.sounds, enabled: e.target.value === 'on' } })
+              }
+            >
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+            <VolumeSlider
+              value={settings.sounds.volume}
+              disabled={!settings.sounds.enabled}
+              onCommit={(volume) => void update({ sounds: { ...settings.sounds, volume } })}
+            />
+          </div>
+        </Row>
+
+        <Row
+          label="Start at login"
+          desc="Opens murmur in the tray when you log in. Applies to installed builds."
+        >
+          <select
+            className="field"
+            value={settings.autostart ? 'on' : 'off'}
+            onChange={(e) => void update({ autostart: e.target.value === 'on' })}
+          >
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
         </Row>
       </section>
 

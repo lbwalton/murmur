@@ -75,6 +75,16 @@ export function initAudio(): void {
     )
   })
 
+  registerSmokeCheck('cues', async () => {
+    await whenAudioReady()
+    const played = new Promise<boolean>((resolve) => {
+      ipcMain.once(IpcChannels.audioCuePlayed, (_event, cue: string) => resolve(cue === 'insert'))
+    })
+    // Near-silent volume: proves the synth path without waking anyone.
+    aliveAudio()?.webContents.send(IpcChannels.audioCue, 'insert', 0.01)
+    return played
+  })
+
   registerSmokeCheck('recordingRearm', async () => {
     await whenAudioReady()
     const armed = new Promise<boolean>((resolve) => {
@@ -113,6 +123,15 @@ export function stopRecording(): Promise<Uint8Array | null> {
 
 export function isAudioReady(): boolean {
   return ready
+}
+
+/** Play a sound cue, honoring the sounds setting. Fire and forget. */
+export function playCue(cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech'): void {
+  void import('../settings').then(({ getSettings }) => {
+    const sounds = getSettings().sounds
+    if (!sounds.enabled) return
+    aliveAudio()?.webContents.send(IpcChannels.audioCue, cue, sounds.volume)
+  })
 }
 
 app.on('before-quit', () => {

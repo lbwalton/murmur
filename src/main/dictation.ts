@@ -8,7 +8,7 @@ import { type FormatSpec, formatTranscript } from '../shared/formatter'
 import hallucinations from '../shared/hallucinations.json'
 import { hasSpeechEnergy, isHallucination } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
-import { cancelRecording, startRecording, stopRecording } from './audio'
+import { cancelRecording, playCue, startRecording, stopRecording } from './audio'
 import { insertText } from './insertion'
 import { getOverlayPhase, setOverlayPhase } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
@@ -24,14 +24,17 @@ export function dictationStart(): void {
   if (!setOverlayPhase('recording')) return
   sessionStartedAt = Date.now()
   startRecording()
+  playCue('start')
 }
 
 export async function dictationStop(): Promise<void> {
   if (getOverlayPhase() !== 'recording') return
   setOverlayPhase('processing')
+  playCue('stop')
   const wav = await stopRecording()
   if (!wav) {
     setOverlayPhase('error')
+    playCue('error')
     return
   }
 
@@ -44,6 +47,7 @@ export async function dictationStop(): Promise<void> {
     const samples = wavSamples(wav)
     if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
       setOverlayPhase('nospeech')
+      playCue('nospeech')
       return
     }
     const { trimSilence } = await import('../shared/speech-gate')
@@ -51,17 +55,20 @@ export async function dictationStop(): Promise<void> {
     upload = encodeWavPcm16(trimSilence(samples, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
   } catch {
     setOverlayPhase('error')
+    playCue('error')
     return
   }
 
   const result = await transcribeWav(upload)
   if (!result.ok) {
     setOverlayPhase('error')
+    playCue('error')
     return
   }
   // Guard two: empty or hallucinated transcripts never insert.
   if (isHallucination(result.text, hallucinations.phrases)) {
     setOverlayPhase('nospeech')
+    playCue('nospeech')
     return
   }
 
@@ -97,14 +104,17 @@ export async function dictationStop(): Promise<void> {
     const outcome = await insertText(finalText)
     if (outcome === 'error') {
       setOverlayPhase('error')
+      playCue('error')
     } else {
       const { recordSession } = await import('./history')
       const event = recordSession({ startedAt: sessionStartedAt, rawText: result.text, finalText })
       setOverlayPhase('inserted', event?.wpm ?? null)
+      playCue('insert')
     }
   } catch (error) {
     console.error('[murmur] insertion failed:', error)
     setOverlayPhase('error')
+    playCue('error')
   }
 }
 

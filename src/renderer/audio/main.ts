@@ -46,6 +46,20 @@ bridge.onRearm(() => {
   void recorder.rearm().then((ok) => bridge.armed(ok))
 })
 
+// Sound cues share this window's audio stack. A dedicated context so
+// cue playback never touches the capture graph.
+let cueContext: AudioContext | null = null
+bridge.onCue((cue, volume) => {
+  void (async () => {
+    const { playCue, CUE_NAMES } = await import('./cues')
+    if (!CUE_NAMES.includes(cue as never)) return
+    cueContext ??= new AudioContext()
+    if (cueContext.state === 'suspended') await cueContext.resume()
+    playCue(cueContext, cue as never, volume)
+    bridge.cuePlayed(cue)
+  })()
+})
+
 void recorder
   .arm()
   .then(() => bridge.ready())

@@ -17,11 +17,12 @@ import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initFormatter } from './formatter'
 import { initHistory } from './history'
 import { initInsertion } from './insertion'
+import { RotatingLog } from './logging'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initTranscribe } from './transcribe'
-import { initSettings } from './settings'
+import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { createTray, getTray } from './tray'
 
@@ -35,33 +36,57 @@ if (!app.isPackaged) {
     isSmoke ||
     process.env.MURMUR_SETTINGS_CAPTURE ||
     process.env.MURMUR_OVERLAY_CAPTURE ||
-    process.env.MURMUR_QUIT_TEST
+    process.env.MURMUR_QUIT_TEST ||
+    process.env.MURMUR_CRASH_TEST
   if (isolatedRun) {
-    // Sweep profiles left by earlier isolated runs (SIGKILL skips cleanup).
-    try {
-      for (const entry of readdirSync(tmpdir())) {
-        if (entry.startsWith('murmur-smoke-')) {
-          rmSync(join(tmpdir(), entry), { recursive: true, force: true })
+    // A relaunched isolated instance inherits its predecessor's profile
+    // (so the crash log it just wrote survives) and skips the sweep.
+    const carried = process.argv.find((a) => a.startsWith('--murmur-userdata='))
+    if (carried) {
+      app.setPath('userData', carried.slice('--murmur-userdata='.length))
+    } else {
+      // Sweep profiles left by earlier isolated runs (SIGKILL skips cleanup).
+      try {
+        for (const entry of readdirSync(tmpdir())) {
+          if (entry.startsWith('murmur-smoke-')) {
+            rmSync(join(tmpdir(), entry), { recursive: true, force: true })
+          }
         }
+      } catch {
+        // A locked entry never blocks boot.
       }
-    } catch {
-      // A locked entry never blocks boot.
+      app.setPath('userData', join(tmpdir(), `murmur-smoke-${process.pid}`))
     }
-    const dir = join(tmpdir(), `murmur-smoke-${process.pid}`)
-    app.setPath('userData', dir)
   } else {
     app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
   }
 }
 
-// Last-resort net: an uncaught main-process exception must log, never
-// throw a modal error dialog at the user. File logging with rotation
-// arrives with US-022.
+// Last-resort net: an uncaught main-process exception logs to a
+// rotating file and relaunches the app exactly once. A crash on the
+// relaunched instance logs and degrades visibly instead of looping.
+const crashLog = new RotatingLog(app.getPath('userData'))
+const alreadyRelaunched = process.argv.includes('--murmur-relaunched')
+
 process.on('uncaughtException', (error) => {
   console.error('[murmur] uncaught exception:', error)
+  crashLog.write(`uncaught exception: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`)
+  if (isSmoke || alreadyRelaunched || !app.isReady()) {
+    if (alreadyRelaunched) getTray()?.setToolTip('murmur (degraded, see logs)')
+    return
+  }
+  app.relaunch({
+    args: [
+      ...process.argv.slice(1).filter((a) => !a.startsWith('--murmur-userdata=')),
+      '--murmur-relaunched',
+      `--murmur-userdata=${app.getPath('userData')}`
+    ]
+  })
+  app.exit(1)
 })
 process.on('unhandledRejection', (reason) => {
   console.error('[murmur] unhandled rejection:', reason)
+  crashLog.write(`unhandled rejection: ${reason instanceof Error ? (reason.stack ?? reason.message) : String(reason)}`)
 })
 
 // Widget-first, single instance: a second launch hands off to the first.
@@ -327,4 +352,28 @@ app.whenReady().then(async () => {
   if (process.env.MURMUR_QUIT_TEST === '1') {
     setTimeout(() => app.quit(), 1200)
   }
+
+  // Crash probe: MURMUR_CRASH_TEST=1 throws after boot so the
+  // relaunch-once path can be verified from the command line.
+  if (process.env.MURMUR_CRASH_TEST === '1') {
+    setTimeout(() => {
+      throw new Error('synthetic crash probe')
+    }, 1500)
+  }
+
+  // Autostart follows the setting. Dev builds skip: registering the dev
+  // Electron binary as a login item would be a trap.
+  const applyAutostart = (enabled: boolean): void => {
+    if (!app.isPackaged) return
+    app.setLoginItemSettings({ openAtLogin: enabled })
+  }
+  applyAutostart(getSettings().autostart)
+  onSettingsChanged((s) => applyAutostart(s.autostart))
+
+  registerSmokeCheck('autostart', () => {
+    // Round trip the platform API without changing its state.
+    const before = app.getLoginItemSettings()
+    app.setLoginItemSettings({ openAtLogin: before.openAtLogin })
+    return app.getLoginItemSettings().openAtLogin === before.openAtLogin
+  })
 })

@@ -15,6 +15,8 @@ export const IpcChannels = {
   audioArmed: 'audio:armed',
   audioResult: 'audio:result',
   audioLevel: 'audio:level',
+  audioCue: 'audio:cue',
+  audioCuePlayed: 'audio:cue-played',
   overlayState: 'overlay:state',
   overlayLevel: 'overlay:level',
   overlayConfig: 'overlay:config',

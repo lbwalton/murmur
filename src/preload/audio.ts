@@ -30,6 +30,12 @@ const api = {
   },
   level: (rms: number): void => {
     ipcRenderer.send('audio:level', rms)
+  },
+  onCue: (cb: (cue: string, volume: number) => void): void => {
+    ipcRenderer.on('audio:cue', (_e, cue: string, volume: number) => cb(cue, volume))
+  },
+  cuePlayed: (cue: string): void => {
+    ipcRenderer.send('audio:cue-played', cue)
   }
 }
 
