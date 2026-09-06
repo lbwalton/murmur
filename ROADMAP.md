@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (10/28 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (10/32 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -33,6 +33,10 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-018** Usage analytics and live cost card
 - [ ] **US-019** Post-session WPM in the overlay
 - [ ] **US-020** Recap notifications and wrap-up page
+- [ ] **US-029** Progression engine: BJJ belts and stripes
+- [ ] **US-030** Achievements
+- [ ] **US-031** The dojo: unlockable cosmetics
+- [ ] **US-032** Journey page and share card
 - [ ] **US-021** First-run onboarding
 - [ ] **US-022** Sounds, autostart, resilience
 - [ ] **US-023** Night studio design pass

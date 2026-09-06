@@ -312,6 +312,63 @@
       "notes": ""
     },
     {
+      "id": "US-029",
+      "title": "Progression engine: BJJ belts and stripes",
+      "description": "The rank system LaBroi specced 2026-09-05: adult Brazilian Jiu-Jitsu belts, verified against the IBJJF General Graduation System (researched via EXA 2026-09-05). Ladder: no belt, then white, blue, purple, brown, black (four stripes each), black belt degrees 1 to 6, coral red-and-black at 7th, coral red-and-white at 8th, red at 9th; the 10th stays reserved for the pioneers and is unearnable, on purpose. shared/ranks.json encodes every rank with a lifetime-words threshold, a minimum-active-days gate honoring the spirit of IBJJF time-in-grade minimums (2 years at blue, 1.5 at purple, 1 at brown, 3 to 5 per black degree, scaled to app time), and a title. A pure engine computes rank, stripes, progress, and promotion history deterministically from the event log. Balancing lives entirely in the JSON.",
+      "acceptance": [
+        "shared/ranks.json carries the full adult ladder with words thresholds, active-day minimums, and titles; the 10th degree is present but marked unearnable",
+        "The engine is pure: given an event log it returns belt, stripes, degree, progress percentages toward both gates, and dated promotion history",
+        "Promotion requires BOTH gates: a words burst without enough active days does not skip a belt",
+        "Unit tests cover threshold edges, dual gating, stripe progression, black degrees, coral and red, and the unearnable 10th"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Achievements",
+      "description": "Data-driven badges in shared/achievements.json evaluated over the event log: first dictation, streaks (3, 7, 30, 100 days), single-day word volumes, night owl and early bird sessions, marathon takes, comeback after a quiet week, lifetime session counts. Unlocks persist with timestamps in userData, fire once, and surface as a notification plus an overlay moment. Adding an achievement is a JSON edit, never a code change.",
+      "acceptance": [
+        "Achievement definitions are data-driven and evaluated deterministically over the log",
+        "Unlocks persist with timestamps, never re-fire, and survive restarts",
+        "A fresh unlock triggers a notification and an overlay moment",
+        "Unit tests cover each condition type, persistence, and no-refire"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "The dojo: unlockable cosmetics",
+      "description": "Cosmetics only, never function (decided 2026-09-05). A registry maps ranks and achievements to unlockables: overlay waveform styles beyond bars and speckle, overlay accent colors (your current belt color is always among them), settings UI accent themes, tray icon variants, and the wordmark insignia (belt bar, crown at coral and beyond). Locked items stay visible with how-to-earn hints. Selection persists in settings; locked selections are impossible.",
+      "acceptance": [
+        "The unlock registry gates cosmetics by rank or achievement and is data-driven",
+        "Locked cosmetics render visibly locked with an earn hint and cannot be selected",
+        "At least: one new overlay style, belt accent colors, one UI theme, and the wordmark insignia ship as unlockables",
+        "Unit tests cover gating, and smoke covers the registry wiring"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Journey page and share card",
+      "description": "A dedicated Journey page: the belt drawn with its stripes, rank title, dual progress bars (words and active days), a rotating dictation equivalent from shared/equivalents.json (approximate famous word counts: The Hobbit, 1984, War and Peace, the Harry Potter series, A Song of Ice and Fire, and more; rotates per app open and is trivially extendable), the achievements grid, and a promotion timeline. A small rank insignia sits by the wordmark across the app. Share card: a locally generated night-studio PNG of belt, title, stats, and badges, exported via save dialog, no network. Real verified profiles are a Phase 2 cloud feature and out of scope here.",
+      "acceptance": [
+        "Journey page renders belt, stripes, title, dual progress, rotating equivalent line, achievements grid, and promotion history",
+        "The equivalent line rotates between app opens and comes from shared/equivalents.json",
+        "The rank insignia appears by the wordmark and updates on promotion",
+        "Share card PNG generates locally with belt, title, stats, and badges, and saves via dialog",
+        "Live: LaBroi approves the look of the page and the card"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
       "id": "US-021",
       "title": "First-run onboarding",
       "description": "A wizard on first launch: welcome, API key entry with a connection test button, mic permission, hotkey choice with live capture, then a test dictation. Re-runnable from settings. Alongside the wizard, settings keeps a persistent setup checklist (LaBroi spec 2026-09-05): each step shows a green check when complete, the overall setup indicator shows a green check or a red x at a glance, and clicking a failing step scrolls to and highlights the field that needs fixing. Smoke completes the whole wizard in mock mode.",
