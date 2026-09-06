@@ -66,7 +66,7 @@ export function captureHotkeyFromWindow(win: BrowserWindow): Promise<CaptureOutc
     const handler = (event: Electron.Event, input: Electron.Input): void => {
       event.preventDefault()
 
-      if (input.type === 'keyDown') {
+      if (input.type === 'keyDown' || input.type === 'rawKeyDown') {
         if (input.key === 'Escape') {
           finish({ binding: null, reason: 'cancelled' })
           return

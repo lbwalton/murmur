@@ -14,33 +14,40 @@ export interface ModifierCodes {
   meta: number[]
 }
 
+type ModifierName = 'ctrl' | 'alt' | 'shift' | 'meta'
+
+const MODIFIER_NAMES: readonly ModifierName[] = ['ctrl', 'alt', 'shift', 'meta']
+
 export class HotkeyDispatcher {
-  private readonly allModifierCodes: Set<number>
-  private readonly boundModifierCodes: Set<number>
+  private readonly codeToModifier = new Map<number, ModifierName>()
+  // Own modifier tracking by key code: the flags a hook attaches to a
+  // modifier's OWN press can lag behind (the mask updates after
+  // dispatch on some platforms), so trusting them broke chords like
+  // Ctrl+Alt. Codes are ground truth; flags only ever add, on keydown,
+  // for modifiers whose press we never saw.
+  private readonly down: Record<ModifierName, boolean> = {
+    ctrl: false,
+    alt: false,
+    shift: false,
+    meta: false
+  }
 
   constructor(
     private readonly binding: ParsedBinding,
     private readonly machine: TriggerMachine,
     modifierCodes: ModifierCodes
   ) {
-    this.allModifierCodes = new Set(
-      [...modifierCodes.ctrl, ...modifierCodes.alt, ...modifierCodes.shift, ...modifierCodes.meta]
-    )
-    this.boundModifierCodes = new Set([
-      ...(binding.ctrl ? modifierCodes.ctrl : []),
-      ...(binding.alt ? modifierCodes.alt : []),
-      ...(binding.shift ? modifierCodes.shift : []),
-      ...(binding.meta ? modifierCodes.meta : [])
-    ])
+    for (const name of MODIFIER_NAMES) {
+      for (const code of modifierCodes[name]) this.codeToModifier.set(code, name)
+    }
   }
 
-  private flagsMatch(event: KeyEventLike): boolean {
-    return (
-      event.ctrlKey === this.binding.ctrl &&
-      event.altKey === this.binding.alt &&
-      event.shiftKey === this.binding.shift &&
-      event.metaKey === this.binding.meta
-    )
+  private chordEquals(): boolean {
+    return MODIFIER_NAMES.every((name) => this.down[name] === this.binding[name])
+  }
+
+  private chordExceeds(): boolean {
+    return MODIFIER_NAMES.some((name) => this.down[name] && !this.binding[name])
   }
 
   keydown(event: KeyEventLike): void {
@@ -49,13 +56,22 @@ export class HotkeyDispatcher {
       return
     }
     // Modifier-only combo.
-    if (!this.allModifierCodes.has(event.keycode)) {
+    const modifier = this.codeToModifier.get(event.keycode)
+    if (!modifier) {
       // A regular key while armed means the user is typing a shortcut.
       if (this.machine.isActive()) this.machine.keyUp()
       return
     }
-    if (this.flagsMatch(event)) this.machine.keyDown()
-    else if (this.machine.isActive()) this.machine.keyUp()
+    this.down[modifier] = true
+    this.down.ctrl ||= event.ctrlKey
+    this.down.alt ||= event.altKey
+    this.down.shift ||= event.shiftKey
+    this.down.meta ||= event.metaKey
+    if (this.chordExceeds()) {
+      if (this.machine.isActive()) this.machine.keyUp()
+      return
+    }
+    if (this.chordEquals()) this.machine.keyDown()
   }
 
   keyup(event: KeyEventLike): void {
@@ -65,6 +81,9 @@ export class HotkeyDispatcher {
       if (event.keycode === this.binding.code) this.machine.keyUp()
       return
     }
-    if (this.boundModifierCodes.has(event.keycode)) this.machine.keyUp()
+    const modifier = this.codeToModifier.get(event.keycode)
+    if (!modifier) return
+    this.down[modifier] = false
+    if (this.binding[modifier]) this.machine.keyUp()
   }
 }

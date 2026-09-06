@@ -34,7 +34,7 @@ body {
 .pill {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
   height: 56px;
   padding: 0 18px;
   border-radius: 999px;
@@ -122,7 +122,7 @@ body {
 }
 
 .status-slot {
-  min-width: 58px;
+  min-width: 42px;
   text-align: right;
   font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 12px;
