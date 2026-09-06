@@ -211,9 +211,9 @@
         "Reset restores the Groq defaults",
         "The connection test exercises whatever base URL and key are configured"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": "Built 2026-09-05: provider panel with base URL, speech model, and cleanup model fields (Groq suggestions via datalist plus free text), commit-on-blur, reset-to-defaults. Typecheck and 114 unit tests green; settings capture screenshot verified the panel renders. Smoke verification pending: GUI boots from the agent context stopped completing (environment, machine likely locked), rerun smoke on the next session before setting passes."
+      "notes": "Built 2026-09-05: provider panel with base URL, speech model, and cleanup model fields (Groq suggestions via datalist plus free text), commit-on-blur, reset-to-defaults. Typecheck and 114 unit tests green; settings capture screenshot verified the panel renders. Smoke rerun green 2026-09-05 once the session unlocked (the wedge was environmental, confirmed by a minimal Electron probe failing identically). All criteria verified."
     },
     {
       "id": "US-014",
@@ -314,12 +314,13 @@
     {
       "id": "US-029",
       "title": "Progression engine: BJJ belts and stripes",
-      "description": "The rank system LaBroi specced 2026-09-05: adult Brazilian Jiu-Jitsu belts, verified against the IBJJF General Graduation System (researched via EXA 2026-09-05). Ladder: no belt, then white, blue, purple, brown, black (four stripes each), black belt degrees 1 to 6, coral red-and-black at 7th, coral red-and-white at 8th, red at 9th; the 10th stays reserved for the pioneers and is unearnable, on purpose. shared/ranks.json encodes every rank with a lifetime-words threshold, a minimum-active-days gate honoring the spirit of IBJJF time-in-grade minimums (2 years at blue, 1.5 at purple, 1 at brown, 3 to 5 per black degree, scaled to app time), and a title. A pure engine computes rank, stripes, progress, and promotion history deterministically from the event log. Balancing lives entirely in the JSON.",
+      "description": "The rank system LaBroi specced 2026-09-05: adult Brazilian Jiu-Jitsu belts, verified against the IBJJF General Graduation System (researched via EXA 2026-09-05). Ladder: no belt, then white, blue, purple, brown, black (four stripes each), black belt degrees 1 to 6, coral red-and-black at 7th, coral red-and-white at 8th, red at 9th; the 10th stays reserved for the pioneers and is unearnable, on purpose. shared/ranks.json encodes every rank with a lifetime-words threshold, a minimum-active-days gate honoring the spirit of IBJJF time-in-grade minimums (2 years at blue, 1.5 at purple, 1 at brown, 3 to 5 per black degree, scaled to app time), and a title. A pure engine computes rank, stripes, progress, and promotion history deterministically from the event log. Balancing lives entirely in the JSON. Founder provision (LaBroi, 2026-09-05): the 10th degree red belt is the Founder belt, held by LaBroi alone, exactly as the real 10th was reserved for the pioneers of the art; every other user tops out at the 9th. v1 recognizes a local founder marker (honor system, like all local ranks); the Phase 2 cloud tier makes it verifiable.",
       "acceptance": [
         "shared/ranks.json carries the full adult ladder with words thresholds, active-day minimums, and titles; the 10th degree is present but marked unearnable",
         "The engine is pure: given an event log it returns belt, stripes, degree, progress percentages toward both gates, and dated promotion history",
         "Promotion requires BOTH gates: a words burst without enough active days does not skip a belt",
-        "Unit tests cover threshold edges, dual gating, stripe progression, black degrees, coral and red, and the unearnable 10th"
+        "Unit tests cover threshold edges, dual gating, stripe progression, black degrees, coral and red, and the unearnable 10th",
+        "The 10th degree renders as the Founder belt with its own title and insignia, granted only by the founder marker; no usage volume can earn it"
       ],
       "passes": false,
       "needs_human": false,
