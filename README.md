@@ -4,6 +4,11 @@ Push-to-talk dictation that lives in your tray. Hold a key, speak, release, and 
 
 The name is always lowercase: murmur.
 
+## Documentation
+
+- [Settings, explained](docs/settings.md): every control, every scenario
+- [Connecting a provider](docs/providers.md): Groq (default), OpenAI, local servers, any OpenAI-compatible endpoint, and troubleshooting
+
 Status: clean-room rebuild in progress. See ROADMAP.md, and prd.json for the full story backlog.
 
 ## License

@@ -443,15 +443,16 @@
     {
       "id": "US-026",
       "title": "README and coworker docs",
-      "description": "README: what Murmur is, why BYOK, Groq key setup, permissions guidance per platform, build from source, privacy note (audio goes to the configured provider), and license section. A short coworker quickstart doc covers install and first run.",
+      "description": "README: what murmur is, why BYOK, Groq key setup, permissions guidance per platform, build from source, privacy note (audio goes to the configured provider), and license section. A short coworker quickstart doc covers install and first run. Docs are a product surface (CLAUDE.md Documentation rules, LaBroi directive 2026-09-05): every setting and scenario documented in docs/ as it ships, question-phrased headings for answer engines, drift-prone facts carry verified-on dates, written well enough to seed the future website.",
       "acceptance": [
         "README covers setup, permissions, build, privacy, and license with accurate commands",
         "No em dashes or spaced-hyphen separators anywhere in the docs",
-        "Quickstart takes a coworker from installer to first dictation in under ten steps"
+        "Quickstart takes a coworker from installer to first dictation in under ten steps",
+        "docs/ covers every shipped setting and scenario, including per-provider setup (Groq, OpenAI, local and self-hosted) with verified-on dates and a troubleshooting table"
       ],
       "passes": false,
       "needs_human": false,
-      "notes": ""
+      "notes": "Started early 2026-09-05: docs/settings.md (full settings surface, question-phrased for AEO) and docs/providers.md (Groq default, OpenAI verified against their live API reference 2026-09-05, local servers, gateways, troubleshooting) shipped and linked from README; documentation rules added to CLAUDE.md. Remaining: coworker quickstart, build-from-source, license section, and keeping pace with future stories."
     },
     {
       "id": "US-027",

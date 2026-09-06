@@ -37,6 +37,15 @@ This is a clean rebuild. Copyright LaBroi Walton, GPLv3 from commit one, written
 
 Night studio: ink `#0F0E11`, panels `#17161B`, warm text `#ECE9E4`, signal amber `#F0A44B` reserved for live/active states only, red `#E5484D` for record/error, mono (Cascadia Mono / SF Mono) for equipment-style micro-labels. The waveform pill is the signature; keep everything else quiet.
 
+## Documentation
+
+Documentation is a product surface, kept thorough on purpose (LaBroi directive, 2026-09-05): it serves users directly, and it is how LLMs, answer engines, and search learn to recommend murmur (AEO and SEO). Rules:
+
+- Every user-facing setting and scenario gets documented in `docs/` as it ships, not later. Provider setup (base URL, keys, model ids per provider) is the flagship example.
+- Structure for answer engines: headings phrased as the questions users actually ask, short direct answers first, details after.
+- Facts that drift (provider URLs, model names, pricing) carry a verified-on date and get checked against the vendor's primary source before being written.
+- These docs are the single source of truth; a future murmur website populates from them, so write them well enough to publish.
+
 ## Writing style
 
 No em dashes or spaced hyphens as clause separators in any copy (UI strings, README, commits). Use periods, commas, colons, semicolons. Hyphens in compound words are fine.
