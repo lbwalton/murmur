@@ -11,12 +11,13 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "node scripts/check-design.js && vitest run",
     "test:watch": "vitest",
     "smoke": "npm run build && node scripts/smoke.js",
     "roadmap": "node scripts/roadmap.js",
     "dist:mac": "electron-vite build && electron-builder --mac",
-    "dist:win": "electron-vite build && electron-builder --win"
+    "dist:win": "electron-vite build && electron-builder --win",
+    "check:design": "node scripts/check-design.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",

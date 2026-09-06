@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Night studio, the single source of color and type. Every renderer
+   stylesheet consumes these tokens; raw hex anywhere else fails the
+   design lint (scripts/check-design.js). Amber is reserved for live and
+   active states, red for record and error. The waveform pill is the one
+   loud element; everything else stays quiet. */
+:root {
+  /* ground */
+  --ink: #0f0e11;
+  --panel: #17161b;
+  --panel-lift: #26242c;
+  --panel-glass: rgba(23, 22, 27, 0.96);
+  --panel-edge: rgba(236, 233, 228, 0.07);
+
+  /* voice */
+  --text: #ece9e4;
+  --text-dim: #9a968f;
+  --cream-06: rgba(236, 233, 228, 0.06);
+  --cream-14: rgba(236, 233, 228, 0.14);
+  --cream-22: rgba(236, 233, 228, 0.22);
+  --cream-25: rgba(236, 233, 228, 0.25);
+  --cream-35: rgba(236, 233, 228, 0.35);
+  --cream-55: rgba(236, 233, 228, 0.55);
+  --cream-60: rgba(236, 233, 228, 0.6);
+
+  /* signals */
+  --amber: #f0a44b;
+  --amber-soft: rgba(240, 164, 75, 0.55);
+  --red: #e5484d;
+  --red-soft: rgba(229, 72, 77, 0.55);
+  --red-edge: rgba(229, 72, 77, 0.35);
+  --red-glow: rgba(229, 72, 77, 0.7);
+  --red-wash: rgba(229, 72, 77, 0.06);
+  --ok: #7fb069;
+  --ok-edge: rgba(127, 176, 105, 0.4);
+
+  /* type */
+  --font-body:
+    'Inter',
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  --font-mono: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+}

@@ -18,6 +18,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [ ] US-020 recap: turn on the daily recap in settings, set a time a few minutes out, wait for the notification, click it, confirm you land on the wrap-up tab. The Test button previews instantly.
 - [ ] US-021 wizard: in settings hit Run wizard and walk it through, or test a truly clean profile anytime. Confirm the gates feel right and the test dictation works.
 - [ ] US-022 sounds: dictate once and confirm the four cues (start, stop, insert, and force an error by turning off wifi) feel right at your volume.
+- [ ] US-023 design: give the window and the pill one aesthetic once-over and bless or veto. The tokens file is src/renderer/tokens.css if you want to tweak a shade.
 - [ ] US-012 silence: hold the hotkey for two seconds in silence and release. The pill should show the quiet no speech state and nothing gets inserted anywhere.
 
 ## Standing needs

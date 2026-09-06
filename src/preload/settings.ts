@@ -30,7 +30,8 @@ export interface HotkeysStatus {
 }
 
 const api = {
-  appVersion: (): string => process.env.npm_package_version ?? '0.1.0',
+  appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  openLicense: (): Promise<void> => ipcRenderer.invoke('app:license'),
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   updateSettings: (partial: Partial<Settings>): Promise<Settings> => {
     return ipcRenderer.invoke('settings:update', partial)

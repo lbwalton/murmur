@@ -219,6 +219,7 @@ export function App(): React.JSX.Element {
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
+  const [version, setVersion] = useState('')
   const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'setup'>('home')
   const [wizardOpen, setWizardOpen] = useState(false)
   const offeredWizard = useRef(false)
@@ -244,6 +245,7 @@ export function App(): React.JSX.Element {
     const unNav = bridge().onNavigate((target) => {
       if (target === 'wrapup') setPage('wrapup')
     })
+    void bridge().appVersion().then(setVersion)
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved.
@@ -860,7 +862,13 @@ export function App(): React.JSX.Element {
 
       </div>
 
-      <footer className="foot dim">murmur {bridge().appVersion()} · GPL-3.0-only</footer>
+      <footer className="foot dim">
+        murmur {version} · free software under{' '}
+        <button className="link-btn" onClick={() => void bridge().openLicense()}>
+          GPL-3.0-only
+        </button>{' '}
+        · copyright LaBroi Walton
+      </footer>
     </main>
   )
 }

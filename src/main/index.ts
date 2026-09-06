@@ -221,6 +221,12 @@ app.whenReady().then(async () => {
   })
   initPermissions()
 
+  ipcMain.handle('app:version', () => app.getVersion())
+  ipcMain.handle('app:license', async () => {
+    const { shell } = await import('electron')
+    await shell.openExternal('https://www.gnu.org/licenses/gpl-3.0.html')
+  })
+
   // Copy for the history view: sandboxed renderers route through main.
   ipcMain.handle('clipboard:copy', async (_event, text: unknown) => {
     await clipboard.writeText(String(text))

@@ -31,6 +31,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-019** Post-session WPM in the overlay
 - [ ] **US-020** Recap notifications and wrap-up page
 - [ ] **US-022** Sounds, autostart, resilience
+- [ ] **US-023** Night studio design pass
 
 ## To do
 
@@ -39,7 +40,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-031** The dojo: unlockable cosmetics
 - [ ] **US-032** Journey page and share card
 - [ ] **US-021** First-run onboarding
-- [ ] **US-023** Night studio design pass
 - [ ] **US-024** macOS packaging and permissions flow
 - [ ] **US-025** Windows packaging
 - [ ] **US-026** README and coworker docs

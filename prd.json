@@ -411,7 +411,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "automated criteria verified 2026-09-06: src/renderer/tokens.css is the single color and type source (ground, cream alpha ladder, signals, glass, font stacks); both stylesheets fully tokenized and SpeckleWave reads tokens from computed styles; scripts/check-design.js fails any raw hex outside tokens.css and runs inside npm test; reviewer audited every amber use as genuinely live or active with zero violations, verified token value integrity and import resolution in the built bundles, and confirmed one finding: the processing pulse escaped prefers-reduced-motion (fixed with a steady mid-opacity). The canvas rgb fallback strings match tokens exactly and are accepted as written per the hex-only criterion, noted for follow-up if tokens ever change. Before and after captures pixel-consistent. Remaining live: LaBroi approves the look (HANDOFF.md)."
     },
     {
       "id": "US-024",

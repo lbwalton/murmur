@@ -1,15 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Night studio. Full token system lands in US-023; keep hex here only until then. */
-:root {
-  --ink: #0f0e11;
-  --panel: #17161b;
-  --panel-edge: rgba(236, 233, 228, 0.07);
-  --text: #ece9e4;
-  --text-dim: #9a968f;
-  --amber: #f0a44b;
-  --red: #e5484d;
-  --ok: #7fb069;
-}
+/* Night studio settings surface. All color and type from tokens.css. */
+@import '../tokens.css';
 
 * {
   margin: 0;
@@ -20,11 +11,7 @@
 body {
   background: var(--ink);
   color: var(--text);
-  font-family:
-    'Inter',
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   font-size: 14px;
 }
@@ -58,7 +45,7 @@ body {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.14em;
   padding: 4px 10px;
@@ -78,7 +65,7 @@ body {
 
 .nav-alert {
   color: var(--red);
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 
@@ -137,7 +124,7 @@ body {
 }
 
 .stat-label {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -168,12 +155,12 @@ body {
   width: 100%;
   max-width: 26px;
   border-radius: 3px 3px 0 0;
-  background: rgba(236, 233, 228, 0.14);
+  background: var(--cream-14);
 }
 
 .chart-bar-live {
   /* Data emphasis, not a live state: amber stays reserved. */
-  background: rgba(236, 233, 228, 0.6);
+  background: var(--cream-60);
 }
 
 .wizard-panel {
@@ -195,7 +182,7 @@ body {
 
 .wizard-dot-done {
   /* Completed is history, not a live state: cream, never amber. */
-  background: rgba(236, 233, 228, 0.55);
+  background: var(--cream-55);
 }
 
 .wizard-dot-active {
@@ -241,13 +228,13 @@ body {
 }
 
 .chart-tick {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   color: var(--text-dim);
 }
 
 .micro-label {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.18em;
   color: var(--text-dim);
@@ -265,7 +252,7 @@ h1 {
 }
 
 .kbd {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   background: var(--panel);
   border: 1px solid var(--panel-edge);
@@ -288,7 +275,7 @@ h1 {
 }
 
 .health {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   padding: 3px 10px;
@@ -298,12 +285,12 @@ h1 {
 
 .health-ok {
   color: var(--ok);
-  border-color: rgba(127, 176, 105, 0.4);
+  border-color: var(--ok-edge);
 }
 
 .health-bad {
   color: var(--red);
-  border-color: rgba(229, 72, 77, 0.4);
+  border-color: var(--red-edge);
 }
 
 .checklist {
@@ -331,7 +318,7 @@ h1 {
 .check-bad {
   cursor: pointer;
   color: var(--text);
-  border-color: rgba(229, 72, 77, 0.35);
+  border-color: var(--red-edge);
 }
 
 .check-bad:hover {
@@ -339,7 +326,7 @@ h1 {
 }
 
 .check-mark {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 
@@ -360,7 +347,7 @@ h1 {
   0%,
   60% {
     box-shadow: 0 0 0 1px var(--red);
-    background: rgba(229, 72, 77, 0.06);
+    background: var(--red-wash);
   }
   100% {
     box-shadow: none;
@@ -430,7 +417,7 @@ h1 {
 
 .field:focus {
   outline: none;
-  border-color: rgba(240, 164, 75, 0.55);
+  border-color: var(--amber-soft);
 }
 
 select.field {
@@ -449,7 +436,7 @@ select.field {
 }
 
 .mono-field {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   width: 210px;
 }
@@ -459,7 +446,7 @@ select.field {
 }
 
 .capture {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   text-align: center;
   cursor: pointer;
@@ -483,7 +470,7 @@ select.field {
 }
 
 .btn:hover:not(:disabled) {
-  border-color: rgba(236, 233, 228, 0.25);
+  border-color: var(--cream-25);
 }
 
 .btn:disabled {
@@ -497,13 +484,13 @@ select.field {
 
 .status-ok {
   color: var(--ok);
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
 .status-bad {
   color: var(--red);
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -531,7 +518,7 @@ select.field {
 }
 
 .mono-inline {
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);
 }
@@ -541,9 +528,23 @@ select.field {
   resize: vertical;
 }
 
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  color: var(--text);
+}
+
 .foot {
   font-size: 11.5px;
   text-align: center;
   padding: 6px 0 2px;
-  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
 }

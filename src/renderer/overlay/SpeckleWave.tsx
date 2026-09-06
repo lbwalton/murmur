@@ -43,6 +43,12 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    // Colors come from the design tokens, never hardcoded: the canvas
+    // reads the same variables the stylesheets consume.
+    const styles = getComputedStyle(document.documentElement)
+    const amber = styles.getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)'
+    const cream = styles.getPropertyValue('--text').trim() || 'rgb(236, 233, 228)'
+
     // Jittered grid rather than pure random: even speckle coverage with
     // no clumps or bald patches, like film grain.
     const cols = 14
@@ -88,7 +94,7 @@ export function SpeckleWave({ levelRef, muted }: SpeckleWaveProps): React.JSX.El
         const py = dot.y + Math.cos(t / 160 * dot.speed + dot.phase * 1.7) * jitter
         const radius = dot.r * (1 + energy * 0.8)
         ctx.globalAlpha = dot.alpha * (0.4 + energy * 0.6) * baseAlpha * edgeFade(px, py)
-        ctx.fillStyle = dot.warm ? '#F0A44B' : '#ECE9E4'
+        ctx.fillStyle = dot.warm ? amber : cream
         ctx.beginPath()
         ctx.arc(px, py, radius, 0, Math.PI * 2)
         ctx.fill()
