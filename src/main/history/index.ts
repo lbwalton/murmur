@@ -2,7 +2,7 @@
 // History wiring: userData path, IPC for the home view, live append
 // notifications to the settings window, retention pruning, smoke.
 import { type BrowserWindow, app, ipcMain } from 'electron'
-import { type SessionEvent, countWords, wordsPerMinute } from '../../shared/history'
+import { type SessionEvent, countWords, dayKey, wordsPerMinute } from '../../shared/history'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { HistoryLog } from './log'
@@ -25,7 +25,8 @@ export function recordSession(input: {
     rawText: input.rawText,
     finalText: input.finalText,
     words,
-    wpm: wordsPerMinute(words, Math.max(1, now - input.startedAt))
+    wpm: wordsPerMinute(words, Math.max(1, now - input.startedAt)),
+    day: dayKey(now)
   }
   log.append(event)
   // Transcripts are sensitive: only the settings window (which renders
@@ -58,6 +59,32 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle('history:clear', () => {
     log?.clear()
     return []
+  })
+
+  // Belt progression: computed in main from the log. The founder marker
+  // is a file named founder in userData; it grants the 10th degree and
+  // nothing else can (see shared/ranks.json).
+  ipcMain.handle('ranks:progress', async () => {
+    const { computeProgress } = await import('../../shared/ranks')
+    const { existsSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const ranksSpec = (await import('../../../shared/ranks.json')).default
+    const founder = existsSync(join(app.getPath('userData'), 'founder'))
+    return computeProgress(log?.readAll() ?? [], ranksSpec as never, { founder })
+  })
+
+  registerSmokeCheck('ranks', async () => {
+    const { computeProgress } = await import('../../shared/ranks')
+    const ranksSpec = (await import('../../../shared/ranks.json')).default
+    const events = log?.readAll() ?? []
+    const report = computeProgress(events, ranksSpec as never)
+    const founderReport = computeProgress(events, ranksSpec as never, { founder: true })
+    return (
+      report.rank.id !== 'red-10' &&
+      report.totals.words >= 0 &&
+      founderReport.rank.id === 'red-10' &&
+      founderReport.next === null
+    )
   })
 
   // Analytics travel as a computed summary: the renderer never needs

@@ -9,8 +9,34 @@ const { join } = require('node:path')
 
 const root = join(__dirname, '..')
 
-// Everything that ends up inside a distributed build.
-const SHIPPED = ['uiohook-napi', 'react', 'react-dom', 'scheduler', 'electron']
+// Seeds: runtime dependencies from package.json, the renderer libraries
+// bundled into out/, and the Electron shell itself. The tree walk below
+// pulls in every transitive runtime dependency (like uiohook-napi's
+// node-gyp-build loader) so nothing that ships goes unlisted.
+const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+const SEEDS = [...Object.keys(pkg.dependencies ?? {}), 'react', 'react-dom', 'electron']
+
+// electron is a leaf: what ships is its prebuilt binary, not its npm
+// dependencies (those are download tooling that never enters a build).
+const LEAVES = new Set(['electron'])
+
+function collectShipped(seeds) {
+  const seen = new Set()
+  const queue = [...seeds]
+  while (queue.length > 0) {
+    const name = queue.shift()
+    if (seen.has(name)) continue
+    seen.add(name)
+    if (LEAVES.has(name)) continue
+    const metaFile = join(root, 'node_modules', name, 'package.json')
+    if (!existsSync(metaFile)) continue
+    const meta = JSON.parse(readFileSync(metaFile, 'utf8'))
+    for (const dep of Object.keys(meta.dependencies ?? {})) queue.push(dep)
+  }
+  return [...seen].sort()
+}
+
+const SHIPPED = collectShipped(SEEDS)
 
 function licenseTextFor(pkg) {
   const dir = join(root, 'node_modules', pkg)

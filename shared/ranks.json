@@ -1,0 +1,294 @@
+{
+  "comment": "The murmur belt ladder, modeled on the adult IBJJF graduation system (researched and verified against the IBJJF General Graduation System, 2026-09-05; see prd US-029). Promotion requires BOTH gates: lifetime words AND distinct active days, honoring the spirit of IBJJF time-in-grade minimums, so a burst week cannot skip a belt. Every number here is balancing data, tunable without code changes. The 10th degree is the Founder belt: held by LaBroi alone, granted only by the founder marker, unearnable by usage.",
+  "ranks": [
+    {
+      "id": "none",
+      "belt": "none",
+      "stripes": 0,
+      "label": "no belt",
+      "title": "just walked in",
+      "words": 0,
+      "activeDays": 0
+    },
+    {
+      "id": "white",
+      "belt": "white",
+      "stripes": 0,
+      "label": "white belt",
+      "title": "the beginning",
+      "words": 100,
+      "activeDays": 1
+    },
+    {
+      "id": "white-1",
+      "belt": "white",
+      "stripes": 1,
+      "label": "white belt, one stripe",
+      "title": "showing up",
+      "words": 2500,
+      "activeDays": 2
+    },
+    {
+      "id": "white-2",
+      "belt": "white",
+      "stripes": 2,
+      "label": "white belt, two stripes",
+      "title": "finding rhythm",
+      "words": 6000,
+      "activeDays": 4
+    },
+    {
+      "id": "white-3",
+      "belt": "white",
+      "stripes": 3,
+      "label": "white belt, three stripes",
+      "title": "settling in",
+      "words": 12000,
+      "activeDays": 6
+    },
+    {
+      "id": "white-4",
+      "belt": "white",
+      "stripes": 4,
+      "label": "white belt, four stripes",
+      "title": "ready for blue",
+      "words": 18000,
+      "activeDays": 9
+    },
+    {
+      "id": "blue",
+      "belt": "blue",
+      "stripes": 0,
+      "label": "blue belt",
+      "title": "consistency",
+      "words": 25000,
+      "activeDays": 14
+    },
+    {
+      "id": "blue-1",
+      "belt": "blue",
+      "stripes": 1,
+      "label": "blue belt, one stripe",
+      "title": "daily voice",
+      "words": 35000,
+      "activeDays": 20
+    },
+    {
+      "id": "blue-2",
+      "belt": "blue",
+      "stripes": 2,
+      "label": "blue belt, two stripes",
+      "title": "second nature",
+      "words": 45000,
+      "activeDays": 26
+    },
+    {
+      "id": "blue-3",
+      "belt": "blue",
+      "stripes": 3,
+      "label": "blue belt, three stripes",
+      "title": "fluent",
+      "words": 55000,
+      "activeDays": 32
+    },
+    {
+      "id": "blue-4",
+      "belt": "blue",
+      "stripes": 4,
+      "label": "blue belt, four stripes",
+      "title": "ready for purple",
+      "words": 65000,
+      "activeDays": 38
+    },
+    {
+      "id": "purple",
+      "belt": "purple",
+      "stripes": 0,
+      "label": "purple belt",
+      "title": "your own game",
+      "words": 75000,
+      "activeDays": 45
+    },
+    {
+      "id": "purple-1",
+      "belt": "purple",
+      "stripes": 1,
+      "label": "purple belt, one stripe",
+      "title": "signature style",
+      "words": 95000,
+      "activeDays": 52
+    },
+    {
+      "id": "purple-2",
+      "belt": "purple",
+      "stripes": 2,
+      "label": "purple belt, two stripes",
+      "title": "sharp timing",
+      "words": 115000,
+      "activeDays": 60
+    },
+    {
+      "id": "purple-3",
+      "belt": "purple",
+      "stripes": 3,
+      "label": "purple belt, three stripes",
+      "title": "the mentor",
+      "words": 135000,
+      "activeDays": 68
+    },
+    {
+      "id": "purple-4",
+      "belt": "purple",
+      "stripes": 4,
+      "label": "purple belt, four stripes",
+      "title": "ready for brown",
+      "words": 155000,
+      "activeDays": 75
+    },
+    {
+      "id": "brown",
+      "belt": "brown",
+      "stripes": 0,
+      "label": "brown belt",
+      "title": "refinement",
+      "words": 175000,
+      "activeDays": 90
+    },
+    {
+      "id": "brown-1",
+      "belt": "brown",
+      "stripes": 1,
+      "label": "brown belt, one stripe",
+      "title": "polishing",
+      "words": 210000,
+      "activeDays": 100
+    },
+    {
+      "id": "brown-2",
+      "belt": "brown",
+      "stripes": 2,
+      "label": "brown belt, two stripes",
+      "title": "the details",
+      "words": 245000,
+      "activeDays": 110
+    },
+    {
+      "id": "brown-3",
+      "belt": "brown",
+      "stripes": 3,
+      "label": "brown belt, three stripes",
+      "title": "almost there",
+      "words": 280000,
+      "activeDays": 120
+    },
+    {
+      "id": "brown-4",
+      "belt": "brown",
+      "stripes": 4,
+      "label": "brown belt, four stripes",
+      "title": "ready for black",
+      "words": 315000,
+      "activeDays": 130
+    },
+    {
+      "id": "black",
+      "belt": "black",
+      "stripes": 0,
+      "label": "black belt",
+      "title": "professor",
+      "words": 350000,
+      "activeDays": 150
+    },
+    {
+      "id": "black-1",
+      "belt": "black",
+      "stripes": 1,
+      "label": "black belt, first degree",
+      "title": "professor, first degree",
+      "words": 500000,
+      "activeDays": 210
+    },
+    {
+      "id": "black-2",
+      "belt": "black",
+      "stripes": 2,
+      "label": "black belt, second degree",
+      "title": "professor, second degree",
+      "words": 700000,
+      "activeDays": 280
+    },
+    {
+      "id": "black-3",
+      "belt": "black",
+      "stripes": 3,
+      "label": "black belt, third degree",
+      "title": "professor, third degree",
+      "words": 950000,
+      "activeDays": 365
+    },
+    {
+      "id": "black-4",
+      "belt": "black",
+      "stripes": 4,
+      "label": "black belt, fourth degree",
+      "title": "professor, fourth degree",
+      "words": 1300000,
+      "activeDays": 500
+    },
+    {
+      "id": "black-5",
+      "belt": "black",
+      "stripes": 5,
+      "label": "black belt, fifth degree",
+      "title": "professor, fifth degree",
+      "words": 1750000,
+      "activeDays": 650
+    },
+    {
+      "id": "black-6",
+      "belt": "black",
+      "stripes": 6,
+      "label": "black belt, sixth degree",
+      "title": "professor, sixth degree",
+      "words": 2300000,
+      "activeDays": 800
+    },
+    {
+      "id": "coral-7",
+      "belt": "coral-black",
+      "stripes": 7,
+      "label": "red and black coral belt, seventh degree",
+      "title": "master",
+      "words": 3000000,
+      "activeDays": 1000
+    },
+    {
+      "id": "coral-8",
+      "belt": "coral-white",
+      "stripes": 8,
+      "label": "red and white coral belt, eighth degree",
+      "title": "senior master",
+      "words": 4000000,
+      "activeDays": 1300
+    },
+    {
+      "id": "red-9",
+      "belt": "red",
+      "stripes": 9,
+      "label": "red belt, ninth degree",
+      "title": "grandmaster",
+      "words": 5500000,
+      "activeDays": 1700
+    },
+    {
+      "id": "red-10",
+      "belt": "red",
+      "stripes": 10,
+      "label": "red belt, tenth degree",
+      "title": "the founder",
+      "words": null,
+      "activeDays": null,
+      "founderOnly": true
+    }
+  ]
+}

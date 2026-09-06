@@ -12,6 +12,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-024 packaged mac app: open release/murmur-0.1.0-arm64.dmg, drag murmur to Applications, quit the dev version first, launch, grant permissions fresh, dictate. Cleanest if you retire the legacy Murmur.app beforehand (its data dir shares the packaged app name; murmur handles it safely either way).
+- [ ] US-025 windows: tell me your Windows machine arch (almost certainly x64) and I build that installer; then silent install with /S, autostart after reboot, and one dictation loop there.
+
 - [ ] US-008 recording: with a real mic (grant the mic prompt), confirm a fast press-and-speak captures the very first word (the warm-mic pre-roll). Best tested together with US-010 transcription once it lands.
 - [ ] US-011 insertion: dictate into three real apps (Notes, a browser text box, Slack or Messages) and confirm the text lands at the cursor, the app never loses focus, and whatever you had copied before is back on the clipboard afterward.
 - [ ] US-019 wpm chip: after any dictation, the pill shows your words-per-minute for a beat before fading. Confirm you see it.

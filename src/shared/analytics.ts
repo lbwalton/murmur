@@ -2,7 +2,7 @@
 // Aggregations over the session log: totals, the monthly usage card,
 // the daily series, and the live cost estimate. Pure functions; rates
 // come from shared/rates.json and costs are estimates at today's rates.
-import { type SessionEvent, dayKey } from './history'
+import { type SessionEvent, dayKey, eventDay } from './history'
 
 export interface RatesSpec {
   stt: {
@@ -116,7 +116,7 @@ export function aggregate(
   for (const event of events) {
     const cost = sessionCostUsd(event, rates, sttModel, llmModel)
     add(lifetime, event, cost)
-    const key = dayKey(event.at)
+    const key = eventDay(event)
     if (key.startsWith(monthPrefix)) add(month, event, cost)
     if (key === todayKey) add(today, event, cost)
     const bucket = dayIndex.get(key)

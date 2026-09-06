@@ -10,6 +10,15 @@ export interface SessionEvent {
   finalText: string
   words: number
   wpm: number
+  /** Local day key captured at record time. Timezone changes later must
+   * never re-bucket history (a belt once earned stays earned), so this
+   * is stored, not derived. Absent on old events; eventDay falls back. */
+  day?: string
+}
+
+/** The day an event belongs to: stored key first, derived as fallback. */
+export function eventDay(event: SessionEvent): string {
+  return event.day ?? dayKey(event.at)
 }
 
 /** Count words the way the rest of the app does. */
@@ -38,7 +47,7 @@ export function groupByDay(events: readonly SessionEvent[]): Array<{
 }> {
   const byDay = new Map<string, SessionEvent[]>()
   for (const event of events) {
-    const key = dayKey(event.at)
+    const key = eventDay(event)
     const bucket = byDay.get(key)
     if (bucket) bucket.push(event)
     else byDay.set(key, [event])
@@ -62,6 +71,7 @@ export function isSessionEvent(value: unknown): value is SessionEvent {
     typeof v.rawText === 'string' &&
     typeof v.finalText === 'string' &&
     typeof v.words === 'number' &&
-    typeof v.wpm === 'number'
+    typeof v.wpm === 'number' &&
+    (v.day === undefined || typeof v.day === 'string')
   )
 }

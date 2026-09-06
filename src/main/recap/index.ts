@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Notification, app, ipcMain } from 'electron'
-import { dayKey } from '../../shared/history'
+import { dayKey, eventDay } from '../../shared/history'
 import { shouldFire } from '../../shared/recap'
 import { getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
@@ -40,7 +40,7 @@ function todaySummary(): { sessions: number; words: number; minutes: number } {
   let words = 0
   let minutes = 0
   for (const event of readHistory()) {
-    if (dayKey(event.at) !== today) continue
+    if (eventDay(event) !== today) continue
     sessions += 1
     words += event.words
     minutes += event.durationMs / 60_000

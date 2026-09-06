@@ -63,6 +63,9 @@ const api = {
     return ipcRenderer.invoke('analytics:summary')
   },
   testRecap: (): Promise<string> => ipcRenderer.invoke('recap:test'),
+  getRankProgress: (): Promise<import('../shared/ranks').ProgressReport> => {
+    return ipcRenderer.invoke('ranks:progress')
+  },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
     ipcRenderer.on('nav:goto', handler)

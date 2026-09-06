@@ -11,13 +11,15 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/check-design.js && vitest run",
+    "test": "node scripts/check-headers.js && node scripts/check-design.js && vitest run",
     "test:watch": "vitest",
     "smoke": "npm run build && node scripts/smoke.js",
     "roadmap": "node scripts/roadmap.js",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
-    "check:design": "node scripts/check-design.js"
+    "check:design": "node scripts/check-design.js",
+    "check:headers": "node scripts/check-headers.js",
+    "notices": "node scripts/gen-notices.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",
@@ -27,9 +29,41 @@
       "out/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "build/icons/tray",
+        "to": "icons/tray"
+      }
+    ],
     "directories": {
       "buildResources": "build",
       "output": "release"
+    },
+    "artifactName": "murmur-${version}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "murmur records your voice while you hold the hotkey and sends it only to the transcription provider you configured.",
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
     }
   },
   "devDependencies": {

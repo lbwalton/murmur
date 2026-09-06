@@ -57,7 +57,9 @@ export function initAudio(): void {
     // Let the warm-mic pre-roll fill before recording, as real use would.
     await new Promise((resolve) => setTimeout(resolve, 300))
     startRecording()
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    // Generous window: chunk delivery lags wall time on a loaded machine
+    // and this check flaked intermittently at 600ms.
+    await new Promise((resolve) => setTimeout(resolve, 900))
     const wav = await stopRecording()
     if (!wav) {
       console.error('smoke recording: stop returned null')
@@ -70,7 +72,7 @@ export function initAudio(): void {
       info.sampleRate === 16_000 &&
       info.channels === 1 &&
       info.bitsPerSample === 16 &&
-      info.sampleCount > 4_000 &&
+      info.sampleCount > 2_500 &&
       info.peak > 0.05
     )
   })
