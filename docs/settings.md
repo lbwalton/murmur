@@ -35,6 +35,14 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 The cleanup pass fails open: if the model is slow, wrong, or chatty, murmur inserts the deterministically formatted text instead. A dictation is never lost or delayed indefinitely because of the cleanup model.
 
+## How does the custom dictionary work?
+
+The dictionary fixes words the speech model keeps mishearing, names especially. Add a pair in Settings, dictionary: what it is heard as, and what it should be written as. Matching is whole-word and case-insensitive; output uses exactly the casing you typed, even at the start of a sentence, and even after the AI cleanup pass. Multi-word phrases work, and longer phrases win over shorter ones. The dictionary can only ever change words that were actually spoken: an unrelated dictation is never touched, and dictionary content can never leak into your text on its own.
+
+## How do text expansions work?
+
+An expansion turns a spoken trigger phrase into a saved snippet: say "insert my email" and your address appears; say "sign off" and your closing lines appear. Add pairs in Settings, dictionary, Expansions. Triggers match after formatting, so they work naturally mid-sentence and next to punctuation. Snippets insert exactly as written, line breaks and casing included, and a snippet's own content never triggers another expansion. When two triggers could match at the same spot, the longer one wins.
+
 ## What are the waveform styles?
 
 How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview overlay** shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.

@@ -25,7 +25,8 @@ function isUsableEntry(e: unknown): e is DictionaryEntry {
   )
 }
 
-function boundaryPattern(term: string): RegExp {
+/** Whole-word/phrase matcher shared with expansions. */
+export function boundaryPattern(term: string): RegExp {
   // \b only works against word characters; terms ending in symbols
   // (c++) get whitespace-or-edge lookarounds instead.
   const lead = /^\w/.test(term) ? '\\b' : '(?<!\\S)'

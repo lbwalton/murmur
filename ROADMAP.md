@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (13/32 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (14/32 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -17,6 +17,7 @@
 - [x] **US-028** Provider and model controls
 - [x] **US-014** LLM formatter that fails open
 - [x] **US-015** Custom dictionary
+- [x] **US-016** Text expansions
 
 ## Built, awaiting live verification
 
@@ -28,7 +29,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-016** Text expansions
 - [ ] **US-017** History: append-only log and home transcription view
 - [ ] **US-018** Usage analytics and live cost card
 - [ ] **US-019** Post-session WPM in the overlay

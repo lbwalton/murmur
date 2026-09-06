@@ -321,6 +321,11 @@ select.field {
   min-width: 0;
 }
 
+.dict-multiline {
+  resize: vertical;
+  min-height: 34px;
+}
+
 .mono-inline {
   font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 12px;

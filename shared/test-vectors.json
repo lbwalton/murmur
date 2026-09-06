@@ -1,5 +1,5 @@
 {
-  "comment": "Shared formatter cases: every platform's test suite runs all of these against shared/format-spec.json. settings defaults are level full, numbers auto unless stated. A vector's settings.dictionary entries are applied to the raw input before formatting, matching the app pipeline.",
+  "comment": "Shared formatter cases: every platform's test suite runs all of these against shared/format-spec.json. settings defaults are level full, numbers auto unless stated. Pipeline per vector, matching the app: settings.dictionary on raw input, formatting, dictionary casing enforcement, then settings.expansions last.",
   "vectors": [
     {
       "name": "off level leaves text untouched except a trim",
@@ -223,6 +223,49 @@
       },
       "input": "mermer crashed today",
       "expected": "murmur crashed today."
+    },
+    {
+      "name": "expansion replaces a spoken trigger after formatting",
+      "settings": {
+        "expansions": [
+          {
+            "trigger": "insert my email",
+            "text": "lbwalton@gmail.com"
+          }
+        ]
+      },
+      "input": "insert my email period thanks",
+      "expected": "lbwalton@gmail.com. Thanks."
+    },
+    {
+      "name": "longest expansion trigger wins",
+      "settings": {
+        "expansions": [
+          {
+            "trigger": "sign off",
+            "text": "Best,\nLaBroi"
+          },
+          {
+            "trigger": "sign off formal",
+            "text": "Sincerely,\nLaBroi Walton"
+          }
+        ]
+      },
+      "input": "sign off formal",
+      "expected": "Sincerely,\nLaBroi Walton."
+    },
+    {
+      "name": "expansion snippets are never rescanned",
+      "settings": {
+        "expansions": [
+          {
+            "trigger": "my address",
+            "text": "my address is 1 Main St"
+          }
+        ]
+      },
+      "input": "my address",
+      "expected": "my address is 1 Main St"
     }
   ]
 }

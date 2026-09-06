@@ -81,8 +81,10 @@ export async function dictationStop(): Promise<void> {
       formatSpec as unknown as FormatSpec
     )
     const { maybePolish } = await import('./formatter')
+    const { applyExpansions } = await import('../shared/expansions')
     const polished = await maybePolish(formatted)
-    finalText = enforceDictionaryCasing(polished, settings.dictionary)
+    const cased = enforceDictionaryCasing(polished, settings.dictionary)
+    finalText = applyExpansions(cased, settings.expansions)
   } catch (error) {
     console.error('[murmur] formatting stage failed open to raw transcript:', error)
     finalText = result.text

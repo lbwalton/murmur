@@ -46,6 +46,19 @@ export function initFormatter(): void {
     return replaced && untouched && roundTrip
   })
 
+  registerSmokeCheck('expansions', async () => {
+    const { applyExpansions } = await import('../../shared/expansions')
+    const { updateSettings } = await import('../settings')
+    const entries = [{ trigger: 'insert my email', text: 'user@example.com' }]
+    const expanded = applyExpansions('Insert my email.', entries) === 'user@example.com.'
+    const bounded = applyExpansions('emailing you now', entries) === 'emailing you now'
+    const before = getSettings().expansions
+    const saved = updateSettings({ expansions: entries }).expansions
+    const roundTrip = saved.length === 1 && saved[0].trigger === 'insert my email'
+    updateSettings({ expansions: before })
+    return expanded && bounded && roundTrip
+  })
+
   registerSmokeCheck('llmFormatter', async () => {
     const cfg = { baseUrl: 'https://mock.local/v1', model: 'm', apiKey: 'k' }
     const input = 'Send the report tomorrow and copy the whole team on it please.'

@@ -5,11 +5,15 @@ import { describe, expect, it } from 'vitest'
 import spec from '../../shared/format-spec.json'
 import vectors from '../../shared/test-vectors.json'
 import { type DictionaryEntry, applyDictionary, enforceDictionaryCasing } from './dictionary'
+import { type ExpansionEntry, applyExpansions } from './expansions'
 import { type FormatOptions, type FormatSpec, formatTranscript } from './formatter'
 
 interface Vector {
   name: string
-  settings?: Partial<FormatOptions> & { dictionary?: DictionaryEntry[] }
+  settings?: Partial<FormatOptions> & {
+    dictionary?: DictionaryEntry[]
+    expansions?: ExpansionEntry[]
+  }
   input: string
   expected: string
 }
@@ -21,12 +25,14 @@ describe('formatTranscript against shared/test-vectors.json', () => {
         level: vector.settings?.level ?? 'full',
         numbers: vector.settings?.numbers ?? 'auto'
       }
-      // Match the app pipeline: dictionary on raw text, formatting, then
-      // exact dictionary casing re-asserted on top.
+      // Match the app pipeline: dictionary on raw text, formatting,
+      // exact dictionary casing, then expansions last.
       const dictionary = vector.settings?.dictionary ?? []
+      const expansions = vector.settings?.expansions ?? []
       const input = applyDictionary(vector.input, dictionary)
       const formatted = formatTranscript(input, options, spec as unknown as FormatSpec)
-      expect(enforceDictionaryCasing(formatted, dictionary)).toBe(vector.expected)
+      const cased = enforceDictionaryCasing(formatted, dictionary)
+      expect(applyExpansions(cased, expansions)).toBe(vector.expected)
     })
   }
 

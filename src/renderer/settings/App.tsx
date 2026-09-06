@@ -67,35 +67,59 @@ function TextSetting(props: {
   )
 }
 
-/** Inline add form for a dictionary pair. */
-function DictAdd(props: { onAdd: (from: string, to: string) => void }): React.JSX.Element {
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+/**
+ * Inline add form for a pair of values. multilineRight turns the second
+ * field into a textarea (snippets need line breaks for sign-offs):
+ * Enter makes a new line there, Cmd or Ctrl+Enter and the Add button
+ * submit.
+ */
+function PairAdd(props: {
+  placeholderLeft: string
+  placeholderRight: string
+  multilineRight?: boolean
+  onAdd: (left: string, right: string) => void
+}): React.JSX.Element {
+  const [left, setLeft] = useState('')
+  const [right, setRight] = useState('')
+  const canSubmit = left.trim().length > 0 && right.trim().length > 0
   const submit = (): void => {
-    if (from.trim().length === 0 || to.trim().length === 0) return
-    props.onAdd(from.trim(), to.trim())
-    setFrom('')
-    setTo('')
+    if (!canSubmit) return
+    props.onAdd(left.trim(), right.trim())
+    setLeft('')
+    setRight('')
   }
   return (
     <div className="dict-row">
       <input
         className="field mono-field dict-field"
-        placeholder="heard as…"
-        value={from}
-        onChange={(e) => setFrom(e.target.value)}
+        placeholder={props.placeholderLeft}
+        value={left}
+        onChange={(e) => setLeft(e.target.value)}
       />
       <span className="dim">→</span>
-      <input
-        className="field mono-field dict-field"
-        placeholder="written as…"
-        value={to}
-        onChange={(e) => setTo(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') submit()
-        }}
-      />
-      <button className="btn" onClick={submit} disabled={!from.trim() || !to.trim()}>
+      {props.multilineRight ? (
+        <textarea
+          className="field mono-field dict-field dict-multiline"
+          placeholder={props.placeholderRight}
+          rows={2}
+          value={right}
+          onChange={(e) => setRight(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
+          }}
+        />
+      ) : (
+        <input
+          className="field mono-field dict-field"
+          placeholder={props.placeholderRight}
+          value={right}
+          onChange={(e) => setRight(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit()
+          }}
+        />
+      )}
+      <button className="btn" onClick={submit} disabled={!canSubmit}>
         Add
       </button>
     </div>
@@ -512,9 +536,42 @@ export function App(): React.JSX.Element {
                 </button>
               </div>
             ))}
-            <DictAdd
+            <PairAdd
+              placeholderLeft="heard as…"
+              placeholderRight="written as…"
               onAdd={(from, to) =>
                 void update({ dictionary: [...settings.dictionary, { from, to }] })
+              }
+            />
+          </div>
+        </Row>
+
+        <Row
+          label="Expansions"
+          desc="Say a trigger phrase, get a snippet: an email address, a sign-off, an intro. Inserted exactly as written."
+        >
+          <div className="dict-editor">
+            {settings.expansions.map((entry, i) => (
+              <div className="dict-row" key={i}>
+                <span className="dict-pair mono-inline">
+                  {entry.trigger} → {entry.text.length > 24 ? `${entry.text.slice(0, 24)}…` : entry.text}
+                </span>
+                <button
+                  className="btn quiet-btn"
+                  onClick={() =>
+                    void update({ expansions: settings.expansions.filter((_, j) => j !== i) })
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <PairAdd
+              placeholderLeft="when I say…"
+              placeholderRight="insert… (Enter for a new line)"
+              multilineRight
+              onAdd={(trigger, text) =>
+                void update({ expansions: [...settings.expansions, { trigger, text }] })
               }
             />
           </div>

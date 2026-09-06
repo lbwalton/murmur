@@ -252,9 +252,9 @@
         "Settings UI round-trips expansions to the store",
         "Expansions apply after the formatter so triggers are matched on clean text"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-05: applyExpansions is single-pass (snippet content never rescanned, so no recursive expansion), longest-trigger-wins at a position, non-overlapping, boundary-safe via the shared matcher, case-insensitive triggers with verbatim snippets, type-resilient. 8 unit tests plus 3 shared vectors (post-formatting trigger match, longest wins, no rescan); vector runner now mirrors the full pipeline order. Settings editor via generalized PairAdd; smoke expansions check covers apply, boundary, and store round trip. Review gate round two: reviewer confirmed the snippet editor could not produce the multi-line sign-offs the feature advertises (fixed with a textarea, Enter for newline, Cmd or Ctrl+Enter submits); its matchAll typing finding was verified not applicable on this toolchain (typecheck green on TS 7) and recorded rather than dropped."
     },
     {
       "id": "US-017",
