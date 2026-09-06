@@ -18,6 +18,12 @@ let overlayWindow: BrowserWindow | null = null
 const machine = new OverlayMachine()
 let lingerTimer: NodeJS.Timeout | null = null
 let clickThrough = false
+const previewTimers: NodeJS.Timeout[] = []
+
+/** The overlay window, only while it is safe to touch. */
+function aliveOverlay(): BrowserWindow | null {
+  return overlayWindow && !overlayWindow.isDestroyed() ? overlayWindow : null
+}
 
 function createOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -70,7 +76,7 @@ function positionOverlay(win: BrowserWindow): void {
 }
 
 function sendState(state: OverlayState): void {
-  overlayWindow?.webContents.send(IpcChannels.overlayState, state)
+  aliveOverlay()?.webContents.send(IpcChannels.overlayState, state)
 }
 
 /** Drive the overlay. Illegal transitions are ignored, never thrown. */
@@ -82,9 +88,11 @@ export function setOverlayPhase(phase: OverlayPhase): OverlayState | null {
     lingerTimer = null
   }
 
+  const win = aliveOverlay()
+  if (!win) return state
   if (phase === 'recording') {
-    positionOverlay(overlayWindow)
-    if (!isSmoke) overlayWindow.showInactive()
+    positionOverlay(win)
+    if (!isSmoke) win.showInactive()
   }
   sendState(state)
 
@@ -93,7 +101,7 @@ export function setOverlayPhase(phase: OverlayPhase): OverlayState | null {
       setOverlayPhase('idle')
     }, LINGER_MS)
   }
-  if (phase === 'idle' && !isSmoke) overlayWindow.hide()
+  if (phase === 'idle' && !isSmoke) win.hide()
   return state
 }
 
@@ -109,17 +117,18 @@ export function overlayPreviewBurst(durationMs = 2500): void {
   const levels = setInterval(() => {
     t += 1
     const level = 0.12 + 0.1 * Math.abs(Math.sin(t / 3)) + 0.06 * Math.random()
-    overlayWindow?.webContents.send(IpcChannels.overlayLevel, level)
+    aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
   }, 33)
-  setTimeout(() => {
+  const stop = setTimeout(() => {
     clearInterval(levels)
     setOverlayPhase('idle')
   }, durationMs)
+  previewTimers.push(levels, stop)
 }
 
 function sendOverlayConfig(): void {
   const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
-  overlayWindow?.webContents.send(IpcChannels.overlayConfig, { style })
+  aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style })
 }
 
 export function initOverlay(): void {
@@ -132,6 +141,8 @@ export function initOverlay(): void {
   // the normal path; it must be destroyed or quitting hangs forever.
   app.on('before-quit', () => {
     if (lingerTimer) clearTimeout(lingerTimer)
+    for (const timer of previewTimers) clearTimeout(timer)
+    previewTimers.length = 0
     overlayWindow?.destroy()
     overlayWindow = null
   })
@@ -144,34 +155,43 @@ export function initOverlay(): void {
   // with synthetic levels, no mic or hotkey needed.
   if (process.env.MURMUR_OVERLAY_PREVIEW === '1') {
     overlayWindow.webContents.once('did-finish-load', () => {
-      setTimeout(() => {
+      const kickoff = setTimeout(() => {
         setOverlayPhase('recording')
         let t = 0
-        setInterval(() => {
+        const levels = setInterval(() => {
           t += 1
           const level = 0.12 + 0.1 * Math.abs(Math.sin(t / 3)) + 0.06 * Math.random()
-          overlayWindow?.webContents.send(IpcChannels.overlayLevel, level)
+          aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
         }, 33)
+        previewTimers.push(levels)
         // MURMUR_OVERLAY_CAPTURE=/path.png saves a shot of the pill and
         // exits: design QA without a screen, mic, or hotkey.
         const capturePath = process.env.MURMUR_OVERLAY_CAPTURE
         if (capturePath) {
-          setTimeout(() => {
-            void overlayWindow?.webContents.capturePage().then(async (image) => {
+          const shot = setTimeout(() => {
+            const win = aliveOverlay()
+            if (!win) {
+              app.exit(1)
+              return
+            }
+            void win.webContents.capturePage().then(async (image) => {
               const { writeFile } = await import('node:fs/promises')
               await writeFile(capturePath, image.toPNG())
+              clearInterval(levels)
               app.exit(0)
             })
           }, 2000)
+          previewTimers.push(shot)
         }
       }, 400)
+      previewTimers.push(kickoff)
     })
   }
 
   // Live waveform: audio renderer posts levels, the overlay paints them.
   ipcMain.on(IpcChannels.audioLevel, (_event, level: number) => {
     if (machine.get().phase === 'recording') {
-      overlayWindow?.webContents.send(IpcChannels.overlayLevel, level)
+      aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
     }
   })
 

@@ -42,6 +42,16 @@ if (!app.isPackaged) {
   }
 }
 
+// Last-resort net: an uncaught main-process exception must log, never
+// throw a modal error dialog at the user. File logging with rotation
+// arrives with US-022.
+process.on('uncaughtException', (error) => {
+  console.error('[murmur] uncaught exception:', error)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[murmur] unhandled rejection:', reason)
+})
+
 // Widget-first, single instance: a second launch hands off to the first.
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {

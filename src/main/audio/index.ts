@@ -9,6 +9,10 @@ import { parseWav } from '../../shared/wav'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
 let audioWindow: BrowserWindow | null = null
+
+function aliveAudio(): BrowserWindow | null {
+  return audioWindow && !audioWindow.isDestroyed() ? audioWindow : null
+}
 let readyResolvers: Array<() => void> = []
 let ready = false
 
@@ -36,7 +40,7 @@ export function initAudio(): void {
   })
 
   powerMonitor.on('resume', () => {
-    audioWindow?.webContents.send(IpcChannels.audioRearm)
+    aliveAudio()?.webContents.send(IpcChannels.audioRearm)
   })
 
   const query = isSmoke ? { synthetic: '1' } : undefined
@@ -76,17 +80,17 @@ export function initAudio(): void {
     const armed = new Promise<boolean>((resolve) => {
       ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(Boolean(ok)))
     })
-    audioWindow?.webContents.send(IpcChannels.audioRearm)
+    aliveAudio()?.webContents.send(IpcChannels.audioRearm)
     return armed
   })
 }
 
 export function startRecording(): void {
-  audioWindow?.webContents.send(IpcChannels.audioStart)
+  aliveAudio()?.webContents.send(IpcChannels.audioStart)
 }
 
 export function cancelRecording(): void {
-  audioWindow?.webContents.send(IpcChannels.audioCancel)
+  aliveAudio()?.webContents.send(IpcChannels.audioCancel)
 }
 
 const STOP_TIMEOUT_MS = 5_000
@@ -103,7 +107,7 @@ export function stopRecording(): Promise<Uint8Array | null> {
       resolve(wav ? Uint8Array.from(wav) : null)
     }
     ipcMain.once(IpcChannels.audioResult, onResult)
-    audioWindow?.webContents.send(IpcChannels.audioStop)
+    aliveAudio()?.webContents.send(IpcChannels.audioStop)
   })
 }
 
