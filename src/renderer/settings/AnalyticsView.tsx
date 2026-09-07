@@ -4,6 +4,8 @@
 // over the computed summary; transcripts never enter this view.
 import { useEffect, useState } from 'react'
 import type { AnalyticsSummary } from '../../shared/analytics'
+import type { CosmeticsReport } from '../../shared/cosmetics'
+import type { Settings } from '../../shared/settings'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
@@ -13,23 +15,29 @@ function money(usd: number): string {
   return `$${usd.toFixed(2)}`
 }
 
-function Stat(props: { label: string; value: string }): React.JSX.Element {
-  return (
-    <div className="stat">
-      <div className="stat-value">{props.value}</div>
-      <div className="stat-label">{props.label}</div>
-    </div>
-  )
+// Fill strength per heat level. Level 0 keeps the resting cell color;
+// the rest mix the chosen base color over transparency so the ladder
+// reads the same whether the base is cream or a belt color.
+const HEAT_PCT = [0, 20, 40, 65, 95]
+
+function heatFill(level: number, base: string): string | undefined {
+  if (level === 0) return undefined
+  return `color-mix(in srgb, ${base} ${HEAT_PCT[level]}%, transparent)`
 }
 
 export function AnalyticsView(): React.JSX.Element {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [cosmetics, setCosmetics] = useState<CosmeticsReport | null>(null)
 
   useEffect(() => {
-    void bridge().getAnalytics().then(setSummary)
-    return bridge().onHistoryAppended(() => {
+    const load = (): void => {
       void bridge().getAnalytics().then(setSummary)
-    })
+      void bridge().getSettings().then(setSettings)
+      void bridge().getCosmetics().then(setCosmetics)
+    }
+    load()
+    return bridge().onHistoryAppended(() => load())
   }, [])
 
   if (!summary) return <div className="home" />
@@ -58,6 +66,15 @@ export function AnalyticsView(): React.JSX.Element {
     if (r > 0.5) return 3
     if (r > 0.25) return 2
     return 1
+  }
+  const beltUnlocked = cosmetics?.accents.find((a) => a.id === 'belt')?.unlocked ?? false
+  const useBelt = settings?.cosmetics.heat === 'belt' && beltUnlocked && cosmetics
+  const heatBase = useBelt ? cosmetics.beltColor : 'var(--text)'
+  const setHeat = (heat: Settings['cosmetics']['heat']): void => {
+    if (!settings) return
+    void bridge()
+      .updateSettings({ cosmetics: { ...settings.cosmetics, heat } })
+      .then(setSettings)
   }
 
   return (
@@ -92,19 +109,42 @@ export function AnalyticsView(): React.JSX.Element {
       </section>
 
       <section className="panel">
-        <p className="micro-label">the mat · last 18 weeks</p>
+        <div className="panel-head">
+          <p className="micro-label">getting active · last 18 weeks</p>
+          {settings && (
+            <select
+              className="field heat-picker"
+              value={settings.cosmetics.heat}
+              onChange={(e) => setHeat(e.target.value as Settings['cosmetics']['heat'])}
+              aria-label="heatmap color"
+            >
+              <option value="cream">cream</option>
+              <option value="belt" disabled={!beltUnlocked}>
+                {beltUnlocked ? 'your belt color' : 'your belt color (earn your white belt)'}
+              </option>
+            </select>
+          )}
+        </div>
         <div className="heat" aria-hidden="true">
           {heatCells.map((cell, i) =>
             cell === null ? (
               <span className="heat-cell heat-pad" key={`pad-${i}`} />
             ) : (
               <span
-                className={`heat-cell heat-${heatLevel(cell.words)} ${cell.day === todayKey ? 'heat-today' : ''}`}
+                className={`heat-cell ${cell.day === todayKey ? 'heat-today' : ''}`}
                 key={cell.day}
+                style={{ background: heatFill(heatLevel(cell.words), heatBase) }}
                 title={`${cell.day}: ${cell.words.toLocaleString()} words`}
               />
             )
           )}
+        </div>
+        <div className="heat-legend" aria-hidden="true">
+          <span className="chart-tick">less</span>
+          {HEAT_PCT.map((_, level) => (
+            <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase) }} />
+          ))}
+          <span className="chart-tick">more</span>
         </div>
         <p className="row-desc rates-note">Every square is a day; depth is words. Show up and the wall fills.</p>
       </section>
@@ -119,6 +159,15 @@ export function AnalyticsView(): React.JSX.Element {
           <Stat label="est. cost" value={money(summary.lifetime.estCostUsd)} />
         </div>
       </section>
+    </div>
+  )
+}
+
+function Stat(props: { label: string; value: string }): React.JSX.Element {
+  return (
+    <div className="stat">
+      <div className="stat-value">{props.value}</div>
+      <div className="stat-label">{props.label}</div>
     </div>
   )
 }

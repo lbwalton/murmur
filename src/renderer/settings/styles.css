@@ -722,23 +722,25 @@ select.field {
   background: transparent;
 }
 
-.heat-1 {
-  background: var(--cream-14);
-}
-
-.heat-2 {
-  background: var(--cream-25);
-}
-
-.heat-3 {
-  background: var(--cream-55);
-}
-
-.heat-4 {
-  background: var(--cream-60);
-}
-
 .heat-today {
   outline: 1px solid var(--cream-55);
   outline-offset: 1px;
+}
+
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+}
+
+.heat-legend .chart-tick {
+  padding: 0 4px;
+}
+
+.heat-picker {
+  width: auto;
+  font-size: 11px;
+  padding: 3px 8px;
 }

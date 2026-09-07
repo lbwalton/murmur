@@ -96,3 +96,9 @@ Two guards. Before upload: if the recording contains under about a fifth of a se
 ## Where does my data live?
 
 Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
+
+## What is the "getting active" grid on the analytics page?
+
+A GitHub-style activity heatmap covering your last 18 weeks. Every square is a day; the deeper the fill, the more words you dictated that day, scaled against your own busiest day. Today carries an outline.
+
+The picker on the panel chooses the fill color: cream (the default) or your belt color. The belt option unlocks with your white belt and then follows your rank as you are promoted. Cosmetic only; it changes nothing about what is counted.

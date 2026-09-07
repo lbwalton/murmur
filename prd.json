@@ -395,9 +395,9 @@
         "A crashed main process relaunches exactly once, never loops",
         "Live: LaBroi hears cues and survives a forced crash with an auto-relaunch"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-06: cues synthesized live with WebAudio (no files), gated by the sounds setting, scaled by volume, near-silent smoke check green; autostart round-trips loginItemSettings in smoke without changing state, applies on setting changes, packaged-only; RotatingLog unit tested (append, cap rotation, bounded set, unwritable dir never throws); crash relaunch verified live twice from the CLI: exactly one relaunch, no loop, and after the review fix the relaunched instance carries its predecessor profile so the crash log survives with both entries. Review gate confirmed four findings, all fixed: three silent error paths now play the error cue, the volume slider commits on settle instead of flooding writes, the cue channels joined the IPC source of truth, and the isolated-run sweep no longer destroys the log the relaunch just wrote. Remaining live: LaBroi hears the cues (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-06: cues synthesized live with WebAudio (no files), gated by the sounds setting, scaled by volume, near-silent smoke check green; autostart round-trips loginItemSettings in smoke without changing state, applies on setting changes, packaged-only; RotatingLog unit tested (append, cap rotation, bounded set, unwritable dir never throws); crash relaunch verified live twice from the CLI: exactly one relaunch, no loop, and after the review fix the relaunched instance carries its predecessor profile so the crash log survives with both entries. Review gate confirmed four findings, all fixed: three silent error paths now play the error cue, the volume slider commits on settle instead of flooding writes, the cue channels joined the IPC source of truth, and the isolated-run sweep no longer destroys the log the relaunch just wrote. Remaining live: LaBroi hears the cues (HANDOFF.md). LaBroi confirmed live 2026-09-06: cues work at his volume in real dictation."
     },
     {
       "id": "US-023",
@@ -439,7 +439,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "automated criteria progress 2026-09-06: NSIS one-click per-user config builds cross-platform from the Mac: murmur-0.1.0-arm64.exe produced and signed by electron-builder tooling. The arm64 exe matches this build host; an x64 build for LaBroi's machine is one command (npx electron-builder --win --x64) once his Windows hardware is confirmed. Remaining: silent /S install, autostart survival, and the live loop on real Windows."
+      "notes": "automated criteria progress 2026-09-06: NSIS one-click per-user config builds cross-platform from the Mac: murmur-0.1.0-arm64.exe produced and signed by electron-builder tooling. The arm64 exe matches this build host; an x64 build for LaBroi's machine is one command (npx electron-builder --win --x64) once his Windows hardware is confirmed. Remaining: silent /S install, autostart survival, and the live loop on real Windows. Update 2026-09-06: LaBroi asked for both PC arches instead of picking one; the win target now builds x64 and arm64 NSIS installers in one pass, so no arch question blocks anyone. Remaining: silent /S install, autostart survival, and the live loop on real Windows."
     },
     {
       "id": "US-026",

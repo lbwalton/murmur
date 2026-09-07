@@ -11,9 +11,9 @@ The ladder follows the adult BJJ system: white, blue, purple, brown, black, each
 
 A monster weekend cannot skip you up the ladder; only showing up can. The journey tab shows both gates, your dated promotion history, and how your lifetime words compare to famous books (a rotating line: today it might be The Hobbit, tomorrow War and Peace).
 
-## Why can nobody earn the tenth degree?
+## Why can nobody earn the 10th degree?
 
-In BJJ, the red belt's tenth degree belonged only to the art's founding pioneers. murmur keeps that rule: the tenth degree is the founder's belt, held by exactly one person, the founder of murmur. The ladder for everyone else tops out at the ninth degree red belt, which is itself a lifetime of dictation.
+In BJJ, the red belt's 10th degree belonged only to the art's founding pioneers. murmur keeps that rule: the 10th degree is the founder's belt, held by exactly one person, the founder of murmur. It renders the way the IBJJF describes it: solid red fabric with no rank bar. The ladder for everyone else tops out at the 9th degree red belt, which is itself a lifetime of dictation.
 
 ## What are achievements?
 

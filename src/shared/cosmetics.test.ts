@@ -58,11 +58,12 @@ describe('cosmetic unlocks', () => {
     expect(unlocked.accents.find((a) => a.id === 'ember')?.unlocked).toBe(true)
   })
 
-  it('the founder has everything and wears gold', () => {
+  it('the founder has everything; the belt fabric is solid red, not gold', () => {
     const progress = computeProgress([], LADDER, { founder: true })
     const report = computeCosmetics(SPEC, progress, [])
     expect(report.overlayStyles.every((s) => s.unlocked)).toBe(true)
-    expect(report.beltColor).toBe(SPEC.founderGold)
+    expect(report.beltColor).toBe(SPEC.beltColors.red)
+    expect(report.accents.find((a) => a.id === 'gold')?.unlocked).toBe(true)
   })
 })
 
@@ -78,8 +79,11 @@ describe('resolveAccentColor', () => {
     expect(resolveAccentColor('belt', SPEC, progress, [])).toBe(SPEC.beltColors.blue)
   })
 
-  it('a founder belt accent resolves to gold', () => {
+  it('a founder belt accent resolves to red; gold is its own accent', () => {
     const progress = computeProgress([], LADDER, { founder: true })
-    expect(resolveAccentColor('belt', SPEC, progress, [])).toBe(SPEC.founderGold)
+    expect(resolveAccentColor('belt', SPEC, progress, [])).toBe(SPEC.beltColors.red)
+    expect(resolveAccentColor('gold', SPEC, progress, [])).toBe(SPEC.founderGold)
+    const mortal = computeProgress([], LADDER)
+    expect(resolveAccentColor('gold', SPEC, mortal, [])).toBe('#f0a44b')
   })
 })

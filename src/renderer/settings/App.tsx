@@ -252,7 +252,11 @@ export function App(): React.JSX.Element {
     const loadCosmetics = (): void => {
       void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
         setCosmetics(c)
-        setInsignia({ color: c.beltColor, stripes: p.rank.stripes, founder: p.founder })
+        setInsignia({
+          color: c.beltColor,
+          stripes: p.rank.belt === 'red' ? 0 : p.rank.stripes,
+          founder: p.founder
+        })
       })
     }
     loadCosmetics()

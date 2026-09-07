@@ -15,14 +15,19 @@ interface AchievementDef {
   hint: string
 }
 
-function Belt(props: { color: string; stripes: number; founder: boolean }): React.JSX.Element {
+function Belt(props: { color: string; belt: string; stripes: number; founder: boolean }): React.JSX.Element {
+  // 9th and 10th degree belts are solid red fabric with no rank bar,
+  // which is what sets them apart from every rank below.
+  const solid = props.belt === 'red'
   return (
     <div className="belt" style={{ background: props.color }}>
-      <div className="belt-bar">
-        {Array.from({ length: Math.min(props.stripes, 6) }, (_, i) => (
-          <span className="belt-stripe" key={i} />
-        ))}
-      </div>
+      {!solid && (
+        <div className="belt-bar">
+          {Array.from({ length: Math.min(props.stripes, 6) }, (_, i) => (
+            <span className="belt-stripe" key={i} />
+          ))}
+        </div>
+      )}
       {props.founder && <span className="belt-crown">♛</span>}
     </div>
   )
@@ -95,11 +100,13 @@ export function JourneyView(): React.JSX.Element {
       ctx.beginPath()
       ctx.roundRect(64, 112, 320, 44, 8)
       ctx.fill()
-      ctx.fillStyle = progress.rank.belt === 'white' ? ink : 'rgba(0, 0, 0, 0.55)'
-      ctx.fillRect(300, 112, 60, 44)
-      ctx.fillStyle = text
-      for (let i = 0; i < Math.min(progress.rank.stripes, 6); i++) {
-        ctx.fillRect(308 + i * 8, 118, 4, 32)
+      if (progress.rank.belt !== 'red') {
+        ctx.fillStyle = progress.rank.belt === 'white' ? ink : 'rgba(0, 0, 0, 0.55)'
+        ctx.fillRect(300, 112, 60, 44)
+        ctx.fillStyle = text
+        for (let i = 0; i < Math.min(progress.rank.stripes, 6); i++) {
+          ctx.fillRect(308 + i * 8, 118, 4, 32)
+        }
       }
 
       ctx.fillStyle = text
@@ -146,7 +153,7 @@ export function JourneyView(): React.JSX.Element {
           </button>
         </div>
         <div className="journey-hero">
-          <Belt color={cosmetics.beltColor} stripes={progress.rank.stripes} founder={progress.founder} />
+          <Belt color={cosmetics.beltColor} belt={progress.rank.belt} stripes={progress.rank.stripes} founder={progress.founder} />
           <div>
             <h2 className="journey-rank">{progress.rank.label}</h2>
             <p className="dim journey-title">"{progress.rank.title}"</p>

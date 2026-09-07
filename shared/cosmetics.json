@@ -13,19 +13,95 @@
   },
   "founderGold": "#e0b64f",
   "overlayStyles": [
-    { "id": "bars", "name": "bars", "hint": "the classic", "unlock": null },
-    { "id": "speckle", "name": "speckle", "hint": "dust that vibrates", "unlock": null },
-    { "id": "pulse", "name": "pulse", "hint": "earn your white belt", "unlock": { "rank": "white" } }
+    {
+      "id": "bars",
+      "name": "bars",
+      "hint": "the classic",
+      "unlock": null
+    },
+    {
+      "id": "speckle",
+      "name": "speckle",
+      "hint": "dust that vibrates",
+      "unlock": null
+    },
+    {
+      "id": "pulse",
+      "name": "pulse",
+      "hint": "earn your white belt",
+      "unlock": {
+        "rank": "white"
+      }
+    }
   ],
   "accents": [
-    { "id": "amber", "name": "signal amber", "hint": "the original", "color": "#f0a44b", "unlock": null },
-    { "id": "belt", "name": "your belt color", "hint": "earn your white belt; follows your rank", "color": null, "unlock": { "rank": "white" } },
-    { "id": "ember", "name": "ember red", "hint": "hold a dictation past five minutes", "color": "#e06a4f", "unlock": { "achievement": "marathon" } },
-    { "id": "moonlight", "name": "moonlight", "hint": "dictate between midnight and four", "color": "#9fb8e8", "unlock": { "achievement": "night-owl" } },
-    { "id": "dawn", "name": "dawn", "hint": "dictate before six in the morning", "color": "#e8c9a0", "unlock": { "achievement": "early-bird" } }
+    {
+      "id": "amber",
+      "name": "signal amber",
+      "hint": "the original",
+      "color": "#f0a44b",
+      "unlock": null
+    },
+    {
+      "id": "belt",
+      "name": "your belt color",
+      "hint": "earn your white belt; follows your rank",
+      "color": null,
+      "unlock": {
+        "rank": "white"
+      }
+    },
+    {
+      "id": "ember",
+      "name": "ember red",
+      "hint": "hold a dictation past five minutes",
+      "color": "#e06a4f",
+      "unlock": {
+        "achievement": "marathon"
+      }
+    },
+    {
+      "id": "moonlight",
+      "name": "moonlight",
+      "hint": "dictate between midnight and four",
+      "color": "#9fb8e8",
+      "unlock": {
+        "achievement": "night-owl"
+      }
+    },
+    {
+      "id": "dawn",
+      "name": "dawn",
+      "hint": "dictate before six in the morning",
+      "color": "#e8c9a0",
+      "unlock": {
+        "achievement": "early-bird"
+      }
+    },
+    {
+      "id": "gold",
+      "name": "founder gold",
+      "hint": "reserved for the 10th degree",
+      "color": "#e0b64f",
+      "unlock": {
+        "rank": "red-10"
+      }
+    }
   ],
   "uiThemes": [
-    { "id": "ember", "name": "night studio", "hint": "the original", "unlock": null },
-    { "id": "mist", "name": "morning mist", "hint": "earn your blue belt", "unlock": { "rank": "blue" } }
+    {
+      "id": "ember",
+      "name": "night studio",
+      "hint": "the original",
+      "unlock": null
+    },
+    {
+      "id": "mist",
+      "name": "morning mist",
+      "hint": "earn your blue belt",
+      "unlock": {
+        "rank": "blue"
+      }
+    }
   ]
 }

@@ -53,7 +53,9 @@ export interface CosmeticsReport {
   overlayStyles: Array<CosmeticItem & { unlocked: boolean }>
   accents: Array<CosmeticItem & { unlocked: boolean }>
   uiThemes: Array<CosmeticItem & { unlocked: boolean }>
-  /** The belt color for the current rank (founder gets gold). */
+  /** The belt fabric color for the current rank. A 10th degree belt is
+   *  solid red per IBJJF; founder gold lives on the crown and in the
+   *  founder-only accent, never on the fabric. */
   beltColor: string
 }
 
@@ -68,9 +70,7 @@ export function computeCosmetics(
     overlayStyles: tag(spec.overlayStyles),
     accents: tag(spec.accents),
     uiThemes: tag(spec.uiThemes),
-    beltColor: progress.founder
-      ? spec.founderGold
-      : (spec.beltColors[progress.rank.belt] ?? spec.beltColors.none)
+    beltColor: spec.beltColors[progress.rank.belt] ?? spec.beltColors.none
   }
 }
 
@@ -89,9 +89,7 @@ export function resolveAccentColor(
   const fallback = spec.accents.find((a) => !a.unlock)?.color ?? '#f0a44b'
   if (!item || !isUnlocked(item, progress, earned)) return fallback
   if (item.id === 'belt' || item.color === null || item.color === undefined) {
-    return progress.founder
-      ? spec.founderGold
-      : (spec.beltColors[progress.rank.belt] ?? fallback)
+    return spec.beltColors[progress.rank.belt] ?? fallback
   }
   return item.color
 }

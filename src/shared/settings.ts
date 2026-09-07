@@ -25,6 +25,7 @@ export interface Settings {
   cosmetics: {
     accent: string
     uiTheme: string
+    heat: 'cream' | 'belt'
   }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>
@@ -82,7 +83,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   cosmetics: {
     accent: 'amber',
-    uiTheme: 'ember'
+    uiTheme: 'ember',
+    heat: 'cream'
   },
   dictionary: [],
   expansions: [],
