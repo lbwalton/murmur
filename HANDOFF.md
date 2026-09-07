@@ -6,7 +6,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 - [ ] A private note was removed before the repo went public.
 - [ ] Undertone switchover (rebrand shipped 2026-09-05): Undertone.app is in /Applications with a violet icon, same permissions. When ready: quit the old Murmur.app, launch Undertone (your settings and history migrate automatically), re-enter your Groq key once (the encrypted store follows the app name), then drag Murmur.app to the Trash.
-- [ ] Old iOS App Store listing (US-113/114 in the undertone repo) is still under the Murmur name. Pause any submission; redo as Undertone or drop it.
+- [ ] Old iOS App Store listing (US-113/114 in the undertone repo) is still under the Murmur name. Decision 2026-09-06: keep it paused, then rename it to Undertone or retire it. murmur iOS will be a brand-new app record with a new bundle id when its phase opens (US-034).
+- [ ] US-033 notarization: create an App Store Connect API key (Users and Access, then Integrations) for the Eze Media LLC team, or an app-specific password at appleid.apple.com. Hand me the values as environment variables and I run the first notarized build plus a clean-Mac open test. Until then, mac builds keep working exactly as today.
 - [ ] The undertone repo has 5 Dependabot alerts (4 high). Legacy app, so decide: patch or ignore.
 - [ ] Decide when the new `lbwalton/murmur` repo flips from private to public.
 

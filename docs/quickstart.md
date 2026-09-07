@@ -18,3 +18,11 @@ Say **"period"**, **"comma"**, or **"new line"** to punctuate. Say **"scratch th
 ## If something misbehaves
 
 The settings tab shows a checklist; anything red is clickable and takes you to the fix. See [settings.md](./settings.md) for every control and [providers.md](./providers.md) for provider issues.
+
+## Is murmur in the Mac App Store?
+
+No, and it never will be. The Mac App Store requires sandboxing, and the sandbox forbids exactly what murmur does: listening for a global hotkey, using Accessibility permission, and typing text into other apps at your cursor. GPLv3 software also conflicts with App Store terms. Instead, murmur for Mac ships as a Developer ID signed and notarized dmg you download directly (verified against Apple's Gatekeeper requirements for macOS 10.15+, 2026-09-06). Windows installers come the same direct way.
+
+## Will there be an iOS app?
+
+Yes, planned as its own phase after the desktop launch. It will be a fresh app built to the same standards as the desktop version.

@@ -53,7 +53,8 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "murmur records your voice while you hold the hotkey and sends it only to the transcription provider you configured.",
         "LSUIElement": true
-      }
+      },
+      "notarize": true
     },
     "win": {
       "target": [
