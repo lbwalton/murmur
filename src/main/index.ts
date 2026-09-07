@@ -217,6 +217,8 @@ app.whenReady().then(async () => {
   initHistory(() => settingsWindow)
   initAudio()
   initOverlay()
+  const { initUpdater } = await import('./updater')
+  initUpdater()
   initTranscribe()
   initFormatter()
   initRecap({

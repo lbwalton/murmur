@@ -522,6 +522,21 @@
       "passes": true,
       "needs_human": false,
       "notes": "Verified 2026-09-07: first run green on both runners via gh run watch (typecheck, lint scripts, 258 tests on macOS and Windows; full smoke on macOS). Only annotation is GitHub's node 20 deprecation notice on checkout@v4 and setup-node@v4, cosmetic, bump to v5 when convenient."
+    },
+    {
+      "id": "US-037",
+      "title": "Self-update from GitHub releases",
+      "description": "The delivery half of the 2026-09-06 distribution decision: murmur updates itself from GitHub releases via electron-updater (pure JS, no native build). Updates download quietly, a notification announces one is ready, and it installs on quit. Fail open everywhere: an update problem must never affect dictation. Dev, smoke, and unpublished builds no-op.",
+      "acceptance": [
+        "electron-updater is wired with the GitHub publish config and inits packaged-only, fail-open",
+        "A smoke check proves the updater module loads and exposes its check entry point",
+        "An update-downloaded notification announces the version and installs on quit",
+        "Live verification: after the repo goes public and two releases exist, an installed older version updates itself to the newer one",
+        "docs answer how murmur updates itself"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds."
     }
   ]
 }

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (31/36 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (31/37 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -41,6 +41,7 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-020** Recap notifications and wrap-up page
+- [ ] **US-037** Self-update from GitHub releases
 
 ## To do
 
