@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import ranks from '../../shared/ranks.json'
 import type { SessionEvent } from './history'
-import { type RanksFile, computeProgress } from './ranks'
+import { type RanksFile, computeProgress, levelFor } from './ranks'
 
 const SPEC = ranks as unknown as RanksFile
 const DAY = 24 * 60 * 60 * 1000
@@ -114,5 +114,24 @@ describe('computeProgress', () => {
     const shuffled = [session(3, 1000), session(0, 150), session(2, 1000), session(1, 1000)]
     const ordered = [session(0, 150), session(1, 1000), session(2, 1000), session(3, 1000)]
     expect(computeProgress(shuffled, SPEC)).toEqual(computeProgress(ordered, SPEC))
+  })
+})
+
+describe('levels', () => {
+  it('one level per hundred thousand words, starting at one', () => {
+    expect(levelFor(0)).toBe(1)
+    expect(levelFor(99_999)).toBe(1)
+    expect(levelFor(100_000)).toBe(2)
+    expect(levelFor(350_000)).toBe(4)
+    expect(levelFor(10_000_000)).toBe(101)
+  })
+
+  it('rides the progress report for mortals and the founder alike', () => {
+    const quiet = computeProgress([session(0, 150)], SPEC)
+    expect(quiet.level).toBe(1)
+    const founder = computeProgress([session(0, 150)], SPEC, { founder: true })
+    expect(founder.level).toBe(1)
+    const wordy = Array.from({ length: 5 }, (_, i) => session(i, 50_000))
+    expect(computeProgress(wordy, SPEC).level).toBe(3)
   })
 })

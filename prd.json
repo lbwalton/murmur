@@ -495,6 +495,20 @@
       "passes": false,
       "needs_human": true,
       "notes": "Deferred until desktop v1 ships. The clean-room provenance rules in CLAUDE.md apply to the old iOS app exactly as they do to undertone desktop."
+    },
+    {
+      "id": "US-035",
+      "title": "Levels: the infinite ladder",
+      "description": "Alongside the belt system, an infinite level ladder requested by LaBroi 2026-09-07: one level per hundred thousand lifetime words, starting at level 1, no cap. The level renders as a quiet mono chip (lvl. n) next to the belt on the journey page and on the share card. Cosmetic and informational only; unlocks nothing.",
+      "acceptance": [
+        "levelFor computes floor(words / 100000) + 1 with no upper bound, covered by tests",
+        "The progress report carries the level for mortals and the founder alike",
+        "The journey hero and the share card show lvl. n next to the rank label",
+        "docs/journey.md explains levels"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-07, automated criteria verified: levelFor and report tests green, typecheck, full test suite, smoke. Visual confirmation of the chip rides the US-032 journey look check. Same batch recenters the founder crown onto the belt fabric (it previously floated beside the rank text and read as a stray glyph) with a hover tooltip naming it."
     }
   ]
 }

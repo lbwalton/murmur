@@ -28,7 +28,11 @@ function Belt(props: { color: string; belt: string; stripes: number; founder: bo
           ))}
         </div>
       )}
-      {props.founder && <span className="belt-crown">♛</span>}
+      {props.founder && (
+        <span className="belt-crown" title="the founder">
+          ♛
+        </span>
+      )}
     </div>
   )
 }
@@ -112,6 +116,10 @@ export function JourneyView(): React.JSX.Element {
       ctx.fillStyle = text
       ctx.font = `bold 34px ${body}`
       ctx.fillText(progress.rank.label, 64, 216)
+      const labelWidth = ctx.measureText(progress.rank.label).width
+      ctx.fillStyle = dim
+      ctx.font = `14px ${mono}`
+      ctx.fillText(`lvl. ${progress.level.toLocaleString()}`, 64 + labelWidth + 16, 216)
       ctx.fillStyle = dim
       ctx.font = `italic 17px ${body}`
       ctx.fillText(`"${progress.rank.title}"`, 64, 248)
@@ -129,9 +137,12 @@ export function JourneyView(): React.JSX.Element {
         ctx.fillText(line.length > 88 ? `${line.slice(0, 88)}…` : line, 64, 336)
       }
       if (progress.founder) {
+        // Centered on the solid red belt, matching the live view.
         ctx.fillStyle = token('--founder-gold', cosmetics.beltColor)
         ctx.font = `26px ${body}`
-        ctx.fillText('♛', 396, 144)
+        ctx.textAlign = 'center'
+        ctx.fillText('♛', 224, 143)
+        ctx.textAlign = 'start'
       }
       ctx.fillStyle = dim
       ctx.font = `11px ${mono}`
@@ -155,7 +166,12 @@ export function JourneyView(): React.JSX.Element {
         <div className="journey-hero">
           <Belt color={cosmetics.beltColor} belt={progress.rank.belt} stripes={progress.rank.stripes} founder={progress.founder} />
           <div>
-            <h2 className="journey-rank">{progress.rank.label}</h2>
+            <h2 className="journey-rank">
+              {progress.rank.label}
+              <span className="level-chip" title="one level per hundred thousand words">
+                lvl. {progress.level.toLocaleString()}
+              </span>
+            </h2>
             <p className="dim journey-title">"{progress.rank.title}"</p>
           </div>
         </div>

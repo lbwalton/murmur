@@ -45,6 +45,16 @@ export interface ProgressReport {
   totals: { words: number; activeDays: number }
   promotions: Promotion[]
   founder: boolean
+  /** Infinite ladder alongside the belts: one level per hundred
+   *  thousand lifetime words, starting at level one. */
+  level: number
+}
+
+export const WORDS_PER_LEVEL = 100_000
+
+/** Level for a lifetime word count: 1 at zero, +1 per hundred thousand. */
+export function levelFor(words: number): number {
+  return Math.floor(Math.max(0, words) / WORDS_PER_LEVEL) + 1
 }
 
 function earnable(rank: RankSpec): boolean {
@@ -92,6 +102,7 @@ export function computeProgress(
   }
 
   const totals = { words, activeDays: daysSeen.size }
+  const level = levelFor(totals.words)
 
   if (options.founder) {
     const founderRank = ladder.find((r) => r.founderOnly) ?? ladder[ladder.length - 1]
@@ -103,7 +114,8 @@ export function computeProgress(
       activeDays: null,
       totals,
       promotions,
-      founder: true
+      founder: true,
+      level
     }
   }
 
@@ -124,6 +136,7 @@ export function computeProgress(
     activeDays: next ? gate(totals.activeDays, next.activeDays) : null,
     totals,
     promotions,
-    founder: false
+    founder: false,
+    level
   }
 }

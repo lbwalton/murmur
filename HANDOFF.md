@@ -13,7 +13,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
-- [ ] US-032 journey: open the journey tab, check your belt (want the founder crown? run: touch "$HOME/Library/Application Support/murmur-dev/founder" and reopen), try the share card, and bless or veto the look.
+- [ ] US-032 journey (also covers US-035): open the journey tab, check your belt, the gold crown now centered on it, and the lvl. chip next to your rank; try the share card; bless or veto the look.
 - [ ] US-031 cosmetics: dictate enough to hit white belt (a real session does it), watch pulse and the belt accent unlock, try the morning mist theme at blue.
 
 - [ ] US-024 packaged mac app: open release/murmur-0.1.0-arm64.dmg, drag murmur to Applications, quit the dev version first, launch, grant permissions fresh, dictate. Cleanest if you retire the legacy Murmur.app beforehand (its data dir shares the packaged app name; murmur handles it safely either way).

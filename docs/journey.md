@@ -30,3 +30,7 @@ A button on the journey tab renders your belt, title, totals, and badge count in
 ## Can I cheat?
 
 Locally, sure: it is your machine and murmur is open source; edit files and you can wear whatever you like on your own wall. The rank system's honesty comes from the same place BJJ's does: a belt only means something in rooms where it was earned. Verified profiles arrive with murmur's future cloud tier.
+
+## What are levels?
+
+Levels run alongside the belts as an infinite ladder: you gain one level for every hundred thousand words you dictate, starting at level 1. Your level shows next to your belt on the journey page and on the share card. Belts are the milestones with dual gates; levels are the odometer that never stops. Levels unlock nothing; like everything in the journey, they are proof of practice.

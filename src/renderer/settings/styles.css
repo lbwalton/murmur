@@ -586,12 +586,29 @@ select.field {
 }
 
 .belt-crown {
+  /* Centered on the solid red fabric: the founder mark, worn, not
+     floating beside the text. Identity, not a live state: founder
+     gold, never signal amber. */
   position: absolute;
-  right: -26px;
-  top: 3px;
-  font-size: 18px;
-  /* Identity, not a live state: founder gold, never signal amber. */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
+  font-size: 17px;
+  line-height: 1;
   color: var(--founder-gold);
+}
+
+.level-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  padding: 2px 7px;
+  margin-left: 10px;
+  vertical-align: 4px;
+  white-space: nowrap;
 }
 
 .journey-rank {

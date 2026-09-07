@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (22/34 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (22/35 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -38,6 +38,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-020** Recap notifications and wrap-up page
 - [ ] **US-032** Journey page and share card
 - [ ] **US-023** Night studio design pass
+- [ ] **US-035** Levels: the infinite ladder
 
 ## To do
 
