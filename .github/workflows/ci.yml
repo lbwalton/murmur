@@ -1,0 +1,30 @@
+# CI gates: the same checks the process law demands before any commit,
+# enforced by machinery on every push. Smoke boots the whole app
+# headlessly; it runs on macOS here and can join Windows once the
+# runner's input-hook permissions are proven out.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: smoke
+        if: runner.os == 'macOS'
+        run: npm run smoke

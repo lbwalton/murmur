@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (29/35 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (30/36 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -15,6 +15,7 @@
 - [x] **US-009** Overlay: waveform pill and live timer
 - [x] **US-010** Transcription provider
 - [x] **US-011** Insertion at the cursor
+- [x] **US-012** Silence never inserts text
 - [x] **US-013** Format spec and shared test vectors
 - [x] **US-028** Provider and model controls
 - [x] **US-014** LLM formatter that fails open
@@ -38,7 +39,6 @@
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
-- [ ] **US-012** Silence never inserts text
 - [ ] **US-020** Recap notifications and wrap-up page
 
 ## To do
@@ -47,3 +47,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-025** Windows packaging
 - [ ] **US-033** Notarized mac distribution
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
+- [ ] **US-036** CI: every push proves the gates
