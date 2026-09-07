@@ -755,6 +755,21 @@ select.field {
   min-width: 0;
 }
 
+/* The default scrollbar paints a bright track on ink; keep it quiet. */
+.heat-scroll::-webkit-scrollbar {
+  height: 7px;
+  background: transparent;
+}
+
+.heat-scroll::-webkit-scrollbar-thumb {
+  background: var(--cream-14);
+  border-radius: 4px;
+}
+
+.heat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .heat-months {
   display: grid;
   grid-auto-flow: column;

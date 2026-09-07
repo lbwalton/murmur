@@ -278,7 +278,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       summary.lifetime.sessions >= 1 &&
       summary.lifetime.estCostUsd > 0 &&
       summary.days.length === 14 &&
-      wall.days.length === 365 &&
+      wall.days.length >= 365 &&
       wall.totalWords >= 1 &&
       wall.years.length >= 1
     )

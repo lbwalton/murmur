@@ -124,7 +124,10 @@ function ActivityWall(props: {
   onSettings: (s: Settings) => void
 }): React.JSX.Element {
   const { wall, settings, cosmetics } = props
-  const todayKey = props.year === null ? wall.days.at(-1)?.day : undefined
+  // Outline today whenever the rendered period reaches it (lifetime
+  // and the current calendar year both end on today's cell).
+  const now = new Date()
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   const heatMax = Math.max(1, ...wall.days.map((d) => d.words))
   const heatLevel = (words: number): number => {
@@ -180,7 +183,7 @@ function ActivityWall(props: {
   const beltUnlocked = cosmetics?.accents.find((a) => a.id === 'belt')?.unlocked ?? false
   const beltChoices = cosmetics?.accents.filter((a) => a.id.startsWith('belt-')) ?? []
   const gold = cosmetics?.accents.find((a) => a.id === 'gold')
-  const periodLabel = wall.period === 'last-year' ? 'in the last year' : `in ${wall.period}`
+  const periodLabel = wall.period === 'lifetime' ? 'lifetime' : `in ${wall.period}`
 
   return (
     <section className="panel">
@@ -208,11 +211,11 @@ function ActivityWall(props: {
           )}
           <select
             className="field heat-picker"
-            value={props.year === null ? 'last-year' : String(props.year)}
-            onChange={(e) => props.onYear(e.target.value === 'last-year' ? null : Number(e.target.value))}
+            value={props.year === null ? 'lifetime' : String(props.year)}
+            onChange={(e) => props.onYear(e.target.value === 'lifetime' ? null : Number(e.target.value))}
             aria-label="period"
           >
-            <option value="last-year">last year</option>
+            <option value="lifetime">lifetime</option>
             {[...wall.years].reverse().map((y) => (
               <option value={String(y)} key={y}>
                 {y}

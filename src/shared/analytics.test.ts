@@ -83,13 +83,24 @@ describe('aggregate', () => {
 })
 
 describe('heatmap', () => {
-  it('covers a rolling 365 days ending today with zero-filled cells', () => {
+  it('lifetime pads a young profile back to a full year of cells', () => {
     const hm = heatmap([event(NOW - 1000, 200)], { now: () => NOW })
     expect(hm.days.length).toBe(365)
     expect(hm.days.at(-1)?.day).toBe('2026-09-05')
     expect(hm.days.at(-1)?.words).toBe(200)
     expect(hm.totalWords).toBe(200)
-    expect(hm.period).toBe('last-year')
+    expect(hm.period).toBe('lifetime')
+  })
+
+  it('lifetime reaches back to the first dictation when older than a year', () => {
+    const first = event(new Date(2024, 2, 10, 9, 0).getTime(), 60)
+    const recent = event(NOW - 1000, 40)
+    const hm = heatmap([first, recent], { now: () => NOW })
+    expect(hm.days[0]?.day).toBe('2024-03-10')
+    expect(hm.days.at(-1)?.day).toBe('2026-09-05')
+    expect(hm.days.length).toBeGreaterThan(730)
+    expect(hm.totalWords).toBe(100)
+    expect(hm.years).toEqual([2024, 2026])
   })
 
   it('renders a calendar year from January first, clipped at today', () => {

@@ -148,15 +148,17 @@ export interface HeatmapData {
   totalWords: number
   /** Calendar years holding at least one session, oldest first. */
   years: number[]
-  /** What was rendered: the rolling last year, or one calendar year. */
-  period: 'last-year' | number
+  /** What was rendered: the lifetime view, or one calendar year. */
+  period: 'lifetime' | number
 }
 
 /**
- * The activity-wall series. With no year, the rolling last 365 days
- * ending today; with a year, that calendar year (clipped at today for
- * the current one). Day attribution uses the stored local day on each
- * event, so past sessions never re-bucket when the timezone changes.
+ * The activity-wall series. With no year, the lifetime view: from the
+ * first dictation through today, padded back to at least a full year
+ * so the wall keeps its body for new profiles. With a year, that
+ * calendar year alone (clipped at today for the current one). Day
+ * attribution uses the stored local day on each event, so past
+ * sessions never re-bucket when the timezone changes.
  */
 export function heatmap(
   events: readonly SessionEvent[],
@@ -183,7 +185,12 @@ export function heatmap(
     end = yearEnd.getTime() < today.getTime() ? yearEnd : today
   } else {
     end = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate())
-    start = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - 364)
+    const yearAgo = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - 364)
+    const firstKey = [...wordsByDay.keys()].sort()[0]
+    const firstDay = firstKey
+      ? new Date(Number(firstKey.slice(0, 4)), Number(firstKey.slice(5, 7)) - 1, Number(firstKey.slice(8, 10)))
+      : yearAgo
+    start = firstDay.getTime() < yearAgo.getTime() ? firstDay : yearAgo
   }
 
   const days: HeatDay[] = []
@@ -201,6 +208,6 @@ export function heatmap(
     days,
     totalWords,
     years: [...yearSet].sort((a, b) => a - b),
-    period: year ?? 'last-year'
+    period: year ?? 'lifetime'
   }
 }

@@ -101,7 +101,7 @@ Settings, history, and analytics live in your platform's application data folder
 
 A GitHub-style activity wall. Every square is a day; the deeper the fill, the more words you dictated that day, scaled against your busiest day in the period. Today carries an outline, month and weekday labels frame the grid, hovering a square shows its date and word count, and the line above the wall totals the words for the whole period.
 
-The period picker shows the rolling last year by default and can jump to any calendar year back to your first dictation.
+The period picker shows lifetime by default (everything since your first dictation, padded back to at least a full year so young walls keep their shape) and can jump to any single calendar year back to your first dictation.
 
 The color picker chooses the fill: cream (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Cosmetic only; it changes nothing about what is counted.
 
