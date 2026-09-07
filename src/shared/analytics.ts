@@ -135,3 +135,72 @@ export function aggregate(
 
   return { lifetime: round(lifetime), month: round(month), today: round(today), days }
 }
+
+export interface HeatDay {
+  day: string
+  words: number
+}
+
+export interface HeatmapData {
+  /** Chronological, zero-filled days covering the whole period. */
+  days: HeatDay[]
+  /** Words dictated inside the period. */
+  totalWords: number
+  /** Calendar years holding at least one session, oldest first. */
+  years: number[]
+  /** What was rendered: the rolling last year, or one calendar year. */
+  period: 'last-year' | number
+}
+
+/**
+ * The activity-wall series. With no year, the rolling last 365 days
+ * ending today; with a year, that calendar year (clipped at today for
+ * the current one). Day attribution uses the stored local day on each
+ * event, so past sessions never re-bucket when the timezone changes.
+ */
+export function heatmap(
+  events: readonly SessionEvent[],
+  options: { now?: () => number; year?: number | null } = {}
+): HeatmapData {
+  const { now = () => Date.now(), year = null } = options
+  const nowDate = new Date(now())
+  const todayKey = dayKey(now())
+
+  const wordsByDay = new Map<string, number>()
+  const yearSet = new Set<number>()
+  for (const event of events) {
+    const key = eventDay(event)
+    wordsByDay.set(key, (wordsByDay.get(key) ?? 0) + event.words)
+    yearSet.add(Number(key.slice(0, 4)))
+  }
+
+  let start: Date
+  let end: Date
+  if (year !== null) {
+    start = new Date(year, 0, 1)
+    const yearEnd = new Date(year, 11, 31)
+    const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate())
+    end = yearEnd.getTime() < today.getTime() ? yearEnd : today
+  } else {
+    end = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate())
+    start = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - 364)
+  }
+
+  const days: HeatDay[] = []
+  let totalWords = 0
+  for (let d = start; d.getTime() <= end.getTime(); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    const key = dayKey(d.getTime())
+    const words = wordsByDay.get(key) ?? 0
+    days.push({ day: key, words })
+    totalWords += words
+  }
+  // A brand-new profile still gets the current year as a destination.
+  if (yearSet.size === 0) yearSet.add(Number(todayKey.slice(0, 4)))
+
+  return {
+    days,
+    totalWords,
+    years: [...yearSet].sort((a, b) => a - b),
+    period: year ?? 'last-year'
+  }
+}

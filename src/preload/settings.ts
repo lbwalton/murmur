@@ -62,6 +62,9 @@ const api = {
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
   },
+  getHeatmap: (year: number | null): Promise<import('../shared/analytics').HeatmapData> => {
+    return ipcRenderer.invoke('analytics:heatmap', year)
+  },
   testRecap: (): Promise<string> => ipcRenderer.invoke('recap:test'),
   getRankProgress: (): Promise<import('../shared/ranks').ProgressReport> => {
     return ipcRenderer.invoke('ranks:progress')

@@ -1,18 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The analytics view: monthly usage card with the live cost estimate,
-// lifetime totals, and a fourteen-day activity chart. Pure presentation
-// over the computed summary; transcripts never enter this view.
+// lifetime totals, a fourteen-day activity chart, and the activity
+// wall. Pure presentation over computed summaries; transcripts never
+// enter this view.
 import { useEffect, useState } from 'react'
-import type { AnalyticsSummary } from '../../shared/analytics'
+import type { AnalyticsSummary, HeatDay, HeatmapData } from '../../shared/analytics'
 import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { Settings } from '../../shared/settings'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 function money(usd: number): string {
   if (usd < 0.01 && usd > 0) return '<$0.01'
   return `$${usd.toFixed(2)}`
+}
+
+function monthOf(day: string): number {
+  return Number(day.slice(5, 7)) - 1
+}
+
+function prettyDay(day: string): string {
+  return `${MONTHS[monthOf(day)]} ${Number(day.slice(8, 10))}`
 }
 
 // Fill strength per heat level. Level 0 keeps the resting cell color;
@@ -27,55 +38,26 @@ function heatFill(level: number, base: string): string | undefined {
 
 export function AnalyticsView(): React.JSX.Element {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [wall, setWall] = useState<HeatmapData | null>(null)
+  const [year, setYear] = useState<number | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [cosmetics, setCosmetics] = useState<CosmeticsReport | null>(null)
 
   useEffect(() => {
     const load = (): void => {
       void bridge().getAnalytics().then(setSummary)
+      void bridge().getHeatmap(year).then(setWall)
       void bridge().getSettings().then(setSettings)
       void bridge().getCosmetics().then(setCosmetics)
     }
     load()
     return bridge().onHistoryAppended(() => load())
-  }, [])
+  }, [year])
 
   if (!summary) return <div className="home" />
 
   const recent = summary.days.slice(-14)
   const maxWords = Math.max(1, ...recent.map((d) => d.words))
-  const heatMax = Math.max(1, ...summary.days.map((d) => d.words))
-  const todayKey = summary.days.at(-1)?.day
-  // Pad the heat grid so weeks align into columns of seven.
-  const firstDay = summary.days[0]
-  const pad = firstDay
-    ? new Date(
-        Number(firstDay.day.slice(0, 4)),
-        Number(firstDay.day.slice(5, 7)) - 1,
-        Number(firstDay.day.slice(8, 10))
-      ).getDay()
-    : 0
-  const heatCells: Array<(typeof summary.days)[number] | null> = [
-    ...Array.from({ length: pad }, () => null),
-    ...summary.days
-  ]
-  const heatLevel = (words: number): number => {
-    if (words === 0) return 0
-    const r = words / heatMax
-    if (r > 0.75) return 4
-    if (r > 0.5) return 3
-    if (r > 0.25) return 2
-    return 1
-  }
-  const beltUnlocked = cosmetics?.accents.find((a) => a.id === 'belt')?.unlocked ?? false
-  const useBelt = settings?.cosmetics.heat === 'belt' && beltUnlocked && cosmetics
-  const heatBase = useBelt ? cosmetics.beltColor : 'var(--text)'
-  const setHeat = (heat: Settings['cosmetics']['heat']): void => {
-    if (!settings) return
-    void bridge()
-      .updateSettings({ cosmetics: { ...settings.cosmetics, heat } })
-      .then(setSettings)
-  }
 
   return (
     <div className="home">
@@ -97,7 +79,7 @@ export function AnalyticsView(): React.JSX.Element {
         <p className="micro-label">last 14 days</p>
         <div className="chart" aria-hidden="true">
           {recent.map((day) => (
-            <div className="chart-col" key={day.day} title={`${day.day}: ${day.words} words`}>
+            <div className="chart-col" key={day.day} title={`${day.words} words on ${prettyDay(day.day)}`}>
               <div
                 className={`chart-bar ${day.words > 0 ? 'chart-bar-live' : ''}`}
                 style={{ height: `${Math.max(3, Math.round((day.words / maxWords) * 72))}px` }}
@@ -108,46 +90,16 @@ export function AnalyticsView(): React.JSX.Element {
         </div>
       </section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <p className="micro-label">getting active · last 18 weeks</p>
-          {settings && (
-            <select
-              className="field heat-picker"
-              value={settings.cosmetics.heat}
-              onChange={(e) => setHeat(e.target.value as Settings['cosmetics']['heat'])}
-              aria-label="heatmap color"
-            >
-              <option value="cream">cream</option>
-              <option value="belt" disabled={!beltUnlocked}>
-                {beltUnlocked ? 'your belt color' : 'your belt color (earn your white belt)'}
-              </option>
-            </select>
-          )}
-        </div>
-        <div className="heat" aria-hidden="true">
-          {heatCells.map((cell, i) =>
-            cell === null ? (
-              <span className="heat-cell heat-pad" key={`pad-${i}`} />
-            ) : (
-              <span
-                className={`heat-cell ${cell.day === todayKey ? 'heat-today' : ''}`}
-                key={cell.day}
-                style={{ background: heatFill(heatLevel(cell.words), heatBase) }}
-                title={`${cell.day}: ${cell.words.toLocaleString()} words`}
-              />
-            )
-          )}
-        </div>
-        <div className="heat-legend" aria-hidden="true">
-          <span className="chart-tick">less</span>
-          {HEAT_PCT.map((_, level) => (
-            <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase) }} />
-          ))}
-          <span className="chart-tick">more</span>
-        </div>
-        <p className="row-desc rates-note">Every square is a day; depth is words. Show up and the wall fills.</p>
-      </section>
+      {wall && (
+        <ActivityWall
+          wall={wall}
+          year={year}
+          onYear={setYear}
+          settings={settings}
+          cosmetics={cosmetics}
+          onSettings={setSettings}
+        />
+      )}
 
       <section className="panel">
         <p className="micro-label">lifetime</p>
@@ -160,6 +112,159 @@ export function AnalyticsView(): React.JSX.Element {
         </div>
       </section>
     </div>
+  )
+}
+
+function ActivityWall(props: {
+  wall: HeatmapData
+  year: number | null
+  onYear: (year: number | null) => void
+  settings: Settings | null
+  cosmetics: CosmeticsReport | null
+  onSettings: (s: Settings) => void
+}): React.JSX.Element {
+  const { wall, settings, cosmetics } = props
+  const todayKey = props.year === null ? wall.days.at(-1)?.day : undefined
+
+  const heatMax = Math.max(1, ...wall.days.map((d) => d.words))
+  const heatLevel = (words: number): number => {
+    if (words === 0) return 0
+    const r = words / heatMax
+    if (r > 0.75) return 4
+    if (r > 0.5) return 3
+    if (r > 0.25) return 2
+    return 1
+  }
+
+  // Pad so weeks align into columns of seven, Sunday on top.
+  const firstDay = wall.days[0]
+  const pad = firstDay
+    ? new Date(
+        Number(firstDay.day.slice(0, 4)),
+        Number(firstDay.day.slice(5, 7)) - 1,
+        Number(firstDay.day.slice(8, 10))
+      ).getDay()
+    : 0
+  const cells: Array<HeatDay | null> = [...Array.from({ length: pad }, () => null), ...wall.days]
+  const weeks: Array<Array<HeatDay | null>> = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  // A month label sits over any week containing the first of a month,
+  // the way GitHub draws it; the opening partial month goes unlabeled
+  // rather than crowd its neighbor.
+  const monthLabels = weeks.map((week) => {
+    const first = week.find((c) => c && c.day.slice(8, 10) === '01')
+    return first ? MONTHS[monthOf(first.day)] : ''
+  })
+
+  // Resolve the wall's fill color: cream, the current belt, or any
+  // earned belt-color accent. Locked or unknown choices stay cream.
+  const heatId = settings?.cosmetics.heat ?? 'cream'
+  const heatBase = ((): string => {
+    if (heatId === 'cream' || !cosmetics) return 'var(--text)'
+    if (heatId === 'belt') {
+      const belt = cosmetics.accents.find((a) => a.id === 'belt')
+      return belt?.unlocked ? cosmetics.beltColor : 'var(--text)'
+    }
+    const item = cosmetics.accents.find((a) => a.id === heatId)
+    return item?.unlocked && item.color ? item.color : 'var(--text)'
+  })()
+
+  const setHeat = (heat: string): void => {
+    if (!settings) return
+    void bridge()
+      .updateSettings({ cosmetics: { ...settings.cosmetics, heat } })
+      .then(props.onSettings)
+  }
+
+  const beltUnlocked = cosmetics?.accents.find((a) => a.id === 'belt')?.unlocked ?? false
+  const beltChoices = cosmetics?.accents.filter((a) => a.id.startsWith('belt-')) ?? []
+  const gold = cosmetics?.accents.find((a) => a.id === 'gold')
+  const periodLabel = wall.period === 'last-year' ? 'in the last year' : `in ${wall.period}`
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <p className="micro-label">getting active</p>
+        <div className="heat-controls">
+          {settings && (
+            <select
+              className="field heat-picker"
+              value={heatId}
+              onChange={(e) => setHeat(e.target.value)}
+              aria-label="wall color"
+            >
+              <option value="cream">cream</option>
+              <option value="belt" disabled={!beltUnlocked}>
+                {beltUnlocked ? 'your belt color' : 'your belt color (earn your white belt)'}
+              </option>
+              {beltChoices.map((a) => (
+                <option value={a.id} key={a.id} disabled={!a.unlocked}>
+                  {a.unlocked ? a.name : `${a.name} (locked: ${a.hint})`}
+                </option>
+              ))}
+              {gold?.unlocked && <option value="gold">founder gold</option>}
+            </select>
+          )}
+          <select
+            className="field heat-picker"
+            value={props.year === null ? 'last-year' : String(props.year)}
+            onChange={(e) => props.onYear(e.target.value === 'last-year' ? null : Number(e.target.value))}
+            aria-label="period"
+          >
+            <option value="last-year">last year</option>
+            {[...wall.years].reverse().map((y) => (
+              <option value={String(y)} key={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="heat-total">
+        {wall.totalWords.toLocaleString()} words {periodLabel}
+      </p>
+      <div className="heat-wrap">
+        <div className="heat-daynames" aria-hidden="true">
+          {['', 'mon', '', 'wed', '', 'fri', ''].map((name, i) => (
+            <span className="chart-tick" key={i}>
+              {name}
+            </span>
+          ))}
+        </div>
+        <div className="heat-scroll">
+          <div className="heat-months" aria-hidden="true">
+            {monthLabels.map((name, i) => (
+              <span className="chart-tick" key={i}>
+                {name}
+              </span>
+            ))}
+          </div>
+          <div className="heat" aria-hidden="true">
+            {cells.map((cell, i) =>
+              cell === null ? (
+                <span className="heat-cell heat-pad" key={`pad-${i}`} />
+              ) : (
+                <span
+                  className={`heat-cell ${cell.day === todayKey ? 'heat-today' : ''}`}
+                  key={cell.day}
+                  style={{ background: heatFill(heatLevel(cell.words), heatBase) }}
+                  title={`${cell.words.toLocaleString()} words on ${prettyDay(cell.day)}`}
+                />
+              )
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="heat-legend" aria-hidden="true">
+        <span className="chart-tick">less</span>
+        {HEAT_PCT.map((_, level) => (
+          <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase) }} />
+        ))}
+        <span className="chart-tick">more</span>
+      </div>
+      <p className="row-desc rates-note">Every square is a day; depth is words. Show up and the wall fills.</p>
+    </section>
   )
 }
 

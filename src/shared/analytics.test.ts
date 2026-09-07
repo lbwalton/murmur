@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import rates from '../../shared/rates.json'
 import type { SessionEvent } from './history'
-import { type RatesSpec, aggregate, sessionCostUsd } from './analytics'
+import { type RatesSpec, aggregate, heatmap, sessionCostUsd } from './analytics'
 
 const RATES = rates as unknown as RatesSpec
 
@@ -79,5 +79,42 @@ describe('aggregate', () => {
     const summary = aggregate([event(NOW - 1000, 100, 90_000)], RATES, { now: () => NOW })
     expect(summary.lifetime.minutes).toBe(1.5)
     expect(Number.isInteger(summary.lifetime.sessions)).toBe(true)
+  })
+})
+
+describe('heatmap', () => {
+  it('covers a rolling 365 days ending today with zero-filled cells', () => {
+    const hm = heatmap([event(NOW - 1000, 200)], { now: () => NOW })
+    expect(hm.days.length).toBe(365)
+    expect(hm.days.at(-1)?.day).toBe('2026-09-05')
+    expect(hm.days.at(-1)?.words).toBe(200)
+    expect(hm.totalWords).toBe(200)
+    expect(hm.period).toBe('last-year')
+  })
+
+  it('renders a calendar year from January first, clipped at today', () => {
+    const jan = event(new Date(2026, 0, 15, 9, 0).getTime(), 50)
+    const hm = heatmap([jan], { now: () => NOW, year: 2026 })
+    expect(hm.days[0]?.day).toBe('2026-01-01')
+    expect(hm.days.at(-1)?.day).toBe('2026-09-05')
+    expect(hm.days.find((d) => d.day === '2026-01-15')?.words).toBe(50)
+    expect(hm.period).toBe(2026)
+  })
+
+  it('renders a past year in full and counts only its words', () => {
+    const old = event(new Date(2025, 5, 10, 9, 0).getTime(), 80)
+    const recent = event(NOW - 1000, 40)
+    const hm = heatmap([old, recent], { now: () => NOW, year: 2025 })
+    expect(hm.days.length).toBe(365)
+    expect(hm.days[0]?.day).toBe('2025-01-01')
+    expect(hm.days.at(-1)?.day).toBe('2025-12-31')
+    expect(hm.totalWords).toBe(80)
+    expect(hm.years).toEqual([2025, 2026])
+  })
+
+  it('offers the current year even with an empty log', () => {
+    const hm = heatmap([], { now: () => NOW })
+    expect(hm.years).toEqual([2026])
+    expect(hm.totalWords).toBe(0)
   })
 })

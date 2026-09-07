@@ -396,8 +396,24 @@ export function App(): React.JSX.Element {
   ]
   const allOk = steps.every((s) => s.ok)
 
+  // The chosen accent recolors data emphasis across the GUI (chart
+  // bars, gate fills) via one CSS variable. Amber stays reserved for
+  // live states, so the default accent keeps the quiet cream look.
+  const guiAccent = ((): string | null => {
+    if (!settings || !cosmetics) return null
+    const id = settings.cosmetics.accent
+    if (id === 'amber') return null
+    const item = cosmetics.accents.find((a) => a.id === id)
+    if (!item?.unlocked) return null
+    if (item.id === 'belt' || !item.color) return cosmetics.beltColor
+    return item.color
+  })()
+
   return (
-    <main className="shell">
+    <main
+      className="shell"
+      style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
+    >
       <header className="masthead">
         <div className="mast-top">
           <p className="micro-label">

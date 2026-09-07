@@ -25,7 +25,10 @@ export interface Settings {
   cosmetics: {
     accent: string
     uiTheme: string
-    heat: 'cream' | 'belt'
+    /** Activity-wall fill: 'cream', 'belt' (follows rank), or any
+     *  earned belt-color accent id. Unknown or locked ids fall back
+     *  to cream at render time. */
+    heat: string
   }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>

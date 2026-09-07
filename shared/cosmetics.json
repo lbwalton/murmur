@@ -79,6 +79,78 @@
       }
     },
     {
+      "id": "belt-white",
+      "name": "white belt",
+      "hint": "earn your white belt",
+      "color": "#efece4",
+      "unlock": {
+        "rank": "white"
+      }
+    },
+    {
+      "id": "belt-blue",
+      "name": "blue belt",
+      "hint": "earn your blue belt",
+      "color": "#5b82d9",
+      "unlock": {
+        "rank": "blue"
+      }
+    },
+    {
+      "id": "belt-purple",
+      "name": "purple belt",
+      "hint": "earn your purple belt",
+      "color": "#9a6fd9",
+      "unlock": {
+        "rank": "purple"
+      }
+    },
+    {
+      "id": "belt-brown",
+      "name": "brown belt",
+      "hint": "earn your brown belt",
+      "color": "#a97a4f",
+      "unlock": {
+        "rank": "brown"
+      }
+    },
+    {
+      "id": "belt-black",
+      "name": "black belt",
+      "hint": "earn your black belt",
+      "color": "#2e2c33",
+      "unlock": {
+        "rank": "black"
+      }
+    },
+    {
+      "id": "belt-coral-black",
+      "name": "red and black coral",
+      "hint": "reach the 7th degree",
+      "color": "#d94f4f",
+      "unlock": {
+        "rank": "coral-7"
+      }
+    },
+    {
+      "id": "belt-coral-white",
+      "name": "red and white coral",
+      "hint": "reach the 8th degree",
+      "color": "#e8b9b9",
+      "unlock": {
+        "rank": "coral-8"
+      }
+    },
+    {
+      "id": "belt-red",
+      "name": "red belt",
+      "hint": "reach the 9th degree",
+      "color": "#c93a3a",
+      "unlock": {
+        "rank": "red-9"
+      }
+    },
+    {
       "id": "gold",
       "name": "founder gold",
       "hint": "reserved for the 10th degree",

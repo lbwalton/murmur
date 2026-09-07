@@ -99,6 +99,12 @@ Settings, history, and analytics live in your platform's application data folder
 
 ## What is the "getting active" grid on the analytics page?
 
-A GitHub-style activity heatmap covering your last 18 weeks. Every square is a day; the deeper the fill, the more words you dictated that day, scaled against your own busiest day. Today carries an outline.
+A GitHub-style activity wall. Every square is a day; the deeper the fill, the more words you dictated that day, scaled against your busiest day in the period. Today carries an outline, month and weekday labels frame the grid, hovering a square shows its date and word count, and the line above the wall totals the words for the whole period.
 
-The picker on the panel chooses the fill color: cream (the default) or your belt color. The belt option unlocks with your white belt and then follows your rank as you are promoted. Cosmetic only; it changes nothing about what is counted.
+The period picker shows the rolling last year by default and can jump to any calendar year back to your first dictation.
+
+The color picker chooses the fill: cream (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Cosmetic only; it changes nothing about what is counted.
+
+## Can my accent color change the rest of the app?
+
+Yes. The accent you pick in settings (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the 14-day chart bars and the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look in charts.

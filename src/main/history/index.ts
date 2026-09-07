@@ -237,9 +237,16 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const settings = getSettings()
     return aggregate(log?.readAll() ?? [], rates as never, {
       sttModel: settings.provider.sttModel,
-      llmModel: settings.provider.llmModel,
-      dayCount: 126
+      llmModel: settings.provider.llmModel
     })
+  })
+
+  // The activity wall gets its own channel: it spans up to a full year
+  // and the renderer picks the period (rolling year or a calendar year).
+  ipcMain.handle('analytics:heatmap', async (_event, year: unknown) => {
+    const { heatmap } = await import('../../shared/analytics')
+    const picked = typeof year === 'number' && Number.isInteger(year) ? year : null
+    return heatmap(log?.readAll() ?? [], { year: picked })
   })
 
   registerSmokeCheck('history', () => {
@@ -258,17 +265,22 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   registerSmokeCheck('analytics', async () => {
-    const { aggregate } = await import('../../shared/analytics')
+    const { aggregate, heatmap } = await import('../../shared/analytics')
     const rates = (await import('../../../shared/rates.json')).default
-    const summary = aggregate(log?.readAll() ?? [], rates as never, {
+    const events = log?.readAll() ?? []
+    const summary = aggregate(events, rates as never, {
       sttModel: 'whisper-large-v3-turbo',
       llmModel: 'llama-3.3-70b-versatile'
     })
+    const wall = heatmap(events)
     // The history smoke probe has already appended at least one event.
     return (
       summary.lifetime.sessions >= 1 &&
       summary.lifetime.estCostUsd > 0 &&
-      summary.days.length === 14
+      summary.days.length === 14 &&
+      wall.days.length === 365 &&
+      wall.totalWords >= 1 &&
+      wall.years.length >= 1
     )
   })
 }

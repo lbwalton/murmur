@@ -21,6 +21,8 @@ export const IpcChannels = {
   overlayLevel: 'overlay:level',
   overlayConfig: 'overlay:config',
   overlayPreview: 'overlay:preview',
+  analyticsSummary: 'analytics:summary',
+  analyticsHeatmap: 'analytics:heatmap',
   providerTest: 'provider:test',
   permsStatus: 'perms:status',
   permsOpen: 'perms:open',

@@ -49,6 +49,17 @@ describe('cosmetic unlocks', () => {
     expect(report.beltColor).toBe(SPEC.beltColors.blue)
   })
 
+  it('past belt colors stay earned after promotion', () => {
+    const progress = computeProgress(sessions(14, 2000), LADDER)
+    expect(progress.rank.id).toBe('blue')
+    const report = computeCosmetics(SPEC, progress, [])
+    expect(report.accents.find((a) => a.id === 'belt-white')?.unlocked).toBe(true)
+    expect(report.accents.find((a) => a.id === 'belt-blue')?.unlocked).toBe(true)
+    expect(report.accents.find((a) => a.id === 'belt-purple')?.unlocked).toBe(false)
+    expect(resolveAccentColor('belt-white', SPEC, progress, [])).toBe(SPEC.beltColors.white)
+    expect(resolveAccentColor('belt-purple', SPEC, progress, [])).toBe('#f0a44b')
+  })
+
   it('achievement-gated accents follow earned badges', () => {
     const progress = computeProgress(sessions(1, 200), LADDER)
     const locked = computeCosmetics(SPEC, progress, [])
