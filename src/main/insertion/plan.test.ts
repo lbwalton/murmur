@@ -3,24 +3,24 @@ import { describe, expect, it } from 'vitest'
 import { pasteCommand, planRestore } from './plan'
 
 describe('planRestore', () => {
-  it('restores the original text after a clean insertion', () => {
-    const plan = planRestore({ text: 'their stuff', hasNonText: false }, 'dictated', 'dictated')
-    expect(plan).toEqual({ restore: true, value: 'their stuff' })
+  it('prefers wholesale item restore after a clean insertion', () => {
+    expect(planRestore({ text: 'their stuff', itemCount: 1 }, 'dictated', 'dictated')).toBe('items')
   })
 
-  it('restores an empty original clipboard too', () => {
-    const plan = planRestore({ text: '', hasNonText: false }, 'dictated', 'dictated')
-    expect(plan).toEqual({ restore: true, value: '' })
+  it('restores rich content even when it had no text flavor (a screenshot)', () => {
+    expect(planRestore({ text: '', itemCount: 1 }, 'dictated', 'dictated')).toBe('items')
   })
 
-  it('never touches a clipboard that held non-text content', () => {
-    const plan = planRestore({ text: '', hasNonText: true }, 'dictated', 'dictated')
-    expect(plan.restore).toBe(false)
+  it('falls back to text when item capture failed', () => {
+    expect(planRestore({ text: 'their stuff', itemCount: 0 }, 'dictated', 'dictated')).toBe('text')
+  })
+
+  it('leaves a truly empty clipboard alone', () => {
+    expect(planRestore({ text: '', itemCount: 0 }, 'dictated', 'dictated')).toBe('none')
   })
 
   it('yields to something the user copied mid-insertion', () => {
-    const plan = planRestore({ text: 'old', hasNonText: false }, 'user copied this', 'dictated')
-    expect(plan.restore).toBe(false)
+    expect(planRestore({ text: 'old', itemCount: 2 }, 'user copied this', 'dictated')).toBe('none')
   })
 })
 

@@ -5,31 +5,29 @@
 
 export interface ClipboardSnapshot {
   text: string
-  /** The clipboard held a non-text payload (image, files) before we touched it. */
-  hasNonText: boolean
+  /** Fully captured clipboard entries available for wholesale restore. */
+  itemCount: number
 }
 
-export interface RestorePlan {
-  restore: boolean
-  value: string
-}
+export type RestoreMode = 'items' | 'text' | 'none'
 
 /**
- * Decide whether to restore the pre-insertion clipboard.
+ * Decide how to restore the pre-insertion clipboard.
  * currentText is what the clipboard holds after the paste settled.
+ * Wholesale item restore is preferred (it brings back images and rich
+ * flavors); text is the fallback; a mid-insertion copy by the user
+ * always wins and suppresses any restore.
  */
 export function planRestore(
   snapshot: ClipboardSnapshot,
   currentText: string,
   insertedText: string
-): RestorePlan {
-  // An image or file payload was there before: writing text over it
-  // already cost it, and writing text again cannot bring it back.
-  // Leave the inserted text in place rather than pretend.
-  if (snapshot.hasNonText) return { restore: false, value: '' }
+): RestoreMode {
   // The user copied something new while we worked: theirs wins.
-  if (currentText !== insertedText) return { restore: false, value: '' }
-  return { restore: true, value: snapshot.text }
+  if (currentText !== insertedText) return 'none'
+  if (snapshot.itemCount > 0) return 'items'
+  if (snapshot.text) return 'text'
+  return 'none'
 }
 
 /** Build the platform paste-keystroke command. Pure for testing. */
