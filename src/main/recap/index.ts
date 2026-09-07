@@ -55,9 +55,16 @@ function recapBody(): string {
 }
 
 function fireNotification(): void {
-  if (isSmoke || !Notification.isSupported()) return
+  if (isSmoke) return
+  // Counts only in these logs, never transcript text. The show event
+  // proves delivery to the OS; silence past that point means macOS is
+  // suppressing it (permission, Focus, or the Electron identity).
+  const supported = Notification.isSupported()
+  console.log('[murmur] recap notification: supported =', supported)
+  if (!supported) return
   const notification = new Notification({ title: 'murmur recap', body: recapBody() })
   notification.on('click', () => onOpenWrapup?.())
+  notification.on('show', () => console.log('[murmur] recap notification: handed to the OS'))
   notification.show()
 }
 

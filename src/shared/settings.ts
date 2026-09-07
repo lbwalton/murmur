@@ -29,6 +29,9 @@ export interface Settings {
      *  rank), or any earned belt-color accent id. Unknown or locked
      *  ids fall back to orange at render time. */
     heat: string
+    /** Paper mode for the wall: white squares, fills darken. Earned
+     *  with the black belt; dark fills invert automatically anyway. */
+    heatInverted: boolean
   }
   dictionary: Array<{ from: string; to: string }>
   expansions: Array<{ trigger: string; text: string }>
@@ -87,7 +90,8 @@ export const DEFAULT_SETTINGS: Settings = {
   cosmetics: {
     accent: 'amber',
     uiTheme: 'ember',
-    heat: 'orange'
+    heat: 'orange',
+    heatInverted: false
   },
   dictionary: [],
   expansions: [],

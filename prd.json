@@ -127,9 +127,9 @@
         "Resume and device-change events re-arm the stream without an app restart",
         "Live: LaBroi confirms the first word of a fast press-and-speak is captured"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: 8 WAV unit tests (encoder header fields, byte lengths, clamping, downsample 48k to 16k, parse rejects garbage). Smoke recording check green 3 consecutive runs: hidden capture window with synthetic oscillator produces valid 16k mono PCM16 WAV with pre-roll included, nonzero peak. Smoke recordingRearm green: main-driven rearm round trip re-arms the graph. powerMonitor resume triggers rearm; a dead track re-arms itself. Found and fixed: sandboxed preloads cannot load shared rollup chunks, channel literals now live inline per preload. Remaining live: first-syllable capture with a real mic (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-05: 8 WAV unit tests (encoder header fields, byte lengths, clamping, downsample 48k to 16k, parse rejects garbage). Smoke recording check green 3 consecutive runs: hidden capture window with synthetic oscillator produces valid 16k mono PCM16 WAV with pre-roll included, nonzero peak. Smoke recordingRearm green: main-driven rearm round trip re-arms the graph. powerMonitor resume triggers rearm; a dead track re-arms itself. Found and fixed: sandboxed preloads cannot load shared rollup chunks, channel literals now live inline per preload. Remaining live: first-syllable capture with a real mic (HANDOFF.md). LaBroi live-verified 2026-09-07: fast press-and-speak captures the first word."
     },
     {
       "id": "US-009",
@@ -169,9 +169,9 @@
         "Copy-only mode puts the text on the clipboard and skips the keystroke",
         "Live: LaBroi verifies insertion in three real apps per platform without focus loss"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: 7 unit tests on the pure restore plan (clean restore, empty original, non-text payload untouched, user copy mid-insertion wins) and the platform keystroke builders (osascript cmd+v, powershell SendKeys, null elsewhere). Smoke insertion check runs the copy path end to end and restores the user clipboard; keystrokes are never fired in smoke by design. Paste failure fails open to copied, so text is never lost. Copy-only mode is a setting (insertion.mode). Remaining live: paste into three real apps per platform without focus loss (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-05: 7 unit tests on the pure restore plan (clean restore, empty original, non-text payload untouched, user copy mid-insertion wins) and the platform keystroke builders (osascript cmd+v, powershell SendKeys, null elsewhere). Smoke insertion check runs the copy path end to end and restores the user clipboard; keystrokes are never fired in smoke by design. Paste failure fails open to copied, so text is never lost. Copy-only mode is a setting (insertion.mode). Remaining live: paste into three real apps per platform without focus loss (HANDOFF.md). LaBroi live-verified 2026-09-07: insertion confirmed in real apps, focus intact, clipboard restored."
     },
     {
       "id": "US-012",
@@ -293,9 +293,9 @@
         "The chip state is part of the overlay state machine tests",
         "Live: LaBroi sees the WPM chip after a real dictation"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-05: wpm carried through the overlay state machine only on inserted (unit tested), chip renders wpm or falls back to inserted, wpm stored per session in the history log since US-017 (math unit tested there). Remaining live: LaBroi sees the chip after a real dictation (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-05: wpm carried through the overlay state machine only on inserted (unit tested), chip renders wpm or falls back to inserted, wpm stored per session in the history log since US-017 (math unit tested there). Remaining live: LaBroi sees the chip after a real dictation (HANDOFF.md). LaBroi live-verified 2026-09-07: wpm chip shows after dictations."
     },
     {
       "id": "US-020",
@@ -309,7 +309,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-06: 9 scheduler unit tests (parse, same-local-day fire time, fires late after sleep, once per day, malformed time never fires). Recap fires via a minute tick with a corrupt-tolerant state file, notification click opens the wrap-up tab, Test button fires without consuming the daily recap, smoke recap check validates math and the wrap-up query with no UI. Wrap-up tab: day stats, best wpm, takes list, live refresh. Review gate confirmed two findings, fixed: the native time input could persist an empty value mid-edit and silently kill the schedule forever while Test masked it (valid-only commits with snap-back now), and the time-saved line could assert a false positive claim on slow sessions (now only renders when genuinely positive). Remaining live: LaBroi receives a scheduled recap and lands on wrap-up by clicking it (HANDOFF.md). Update 2026-09-07: LaBroi reported seeing no notifications; the recap Test button doubles as the general notification test (same pipe as promotions and achievements), the settings UI now says so with the macOS permission fix inline, and docs gained the troubleshooting answer (dev builds appear as Electron in System Settings)."
+      "notes": "automated criteria verified 2026-09-06: 9 scheduler unit tests (parse, same-local-day fire time, fires late after sleep, once per day, malformed time never fires). Recap fires via a minute tick with a corrupt-tolerant state file, notification click opens the wrap-up tab, Test button fires without consuming the daily recap, smoke recap check validates math and the wrap-up query with no UI. Wrap-up tab: day stats, best wpm, takes list, live refresh. Review gate confirmed two findings, fixed: the native time input could persist an empty value mid-edit and silently kill the schedule forever while Test masked it (valid-only commits with snap-back now), and the time-saved line could assert a false positive claim on slow sessions (now only renders when genuinely positive). Remaining live: LaBroi receives a scheduled recap and lands on wrap-up by clicking it (HANDOFF.md). Update 2026-09-07: LaBroi reported seeing no notifications; the recap Test button doubles as the general notification test (same pipe as promotions and achievements), the settings UI now says so with the macOS permission fix inline, and docs gained the troubleshooting answer (dev builds appear as Electron in System Settings). 2026-09-07: LaBroi reports the Test notification never appears even with Electron allowed in System Settings. fireNotification now logs the supported flag and the show event so the next Test click pinpoints whether macOS receives and suppresses it."
     },
     {
       "id": "US-029",
@@ -352,7 +352,7 @@
       ],
       "passes": true,
       "needs_human": false,
-      "notes": "Verified 2026-09-06: shared/cosmetics.json registry (belt colors, founder gold, overlay styles, accents including the rank-following belt accent, ui themes) with pure unlock logic and 8 tests; pickers render locked items disabled with earn hints; the waveform accent resolves in main with locked-falls-back-to-amber; the pulse overlay style (unlocked at white belt) and morning mist theme (blue belt) shipped; accents apply to bars, speckle, and pulse. Review gate findings fixed: accent resolution no longer re-reads the whole log on every unrelated settings save (keyed cache plus refresh after each recorded session), and the founder crown wears founder gold, never signal amber."
+      "notes": "Verified 2026-09-06: shared/cosmetics.json registry (belt colors, founder gold, overlay styles, accents including the rank-following belt accent, ui themes) with pure unlock logic and 8 tests; pickers render locked items disabled with earn hints; the waveform accent resolves in main with locked-falls-back-to-amber; the pulse overlay style (unlocked at white belt) and morning mist theme (blue belt) shipped; accents apply to bars, speckle, and pulse. Review gate findings fixed: accent resolution no longer re-reads the whole log on every unrelated settings save (keyed cache plus refresh after each recorded session), and the founder crown wears founder gold, never signal amber. LaBroi live-verified 2026-09-07: cosmetics unlocks blessed."
     },
     {
       "id": "US-032",
@@ -365,9 +365,9 @@
         "Share card PNG generates locally with belt, title, stats, and badges, and saves via dialog",
         "Live: LaBroi approves the look of the page and the card"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-06: journey tab with the drawn belt and stripes, rank and title, dual gate bars, rotating equivalents line (7 tests on the shared engine: percentage, about-the-length, multiples tiers, truthfulness floor), badge grid with hints, dated promotion timeline; masthead insignia with belt color, stripes, and founder crown refreshing on history appends; share card drawn from design tokens on canvas (roundRect verified available, label widths verified against panel bounds) and saved through a dialog-mediated handler with no renderer-controlled paths. Remaining live: LaBroi approves the look of the page and the card (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-06: journey tab with the drawn belt and stripes, rank and title, dual gate bars, rotating equivalents line (7 tests on the shared engine: percentage, about-the-length, multiples tiers, truthfulness floor), badge grid with hints, dated promotion timeline; masthead insignia with belt color, stripes, and founder crown refreshing on history appends; share card drawn from design tokens on canvas (roundRect verified available, label widths verified against panel bounds) and saved through a dialog-mediated handler with no renderer-controlled paths. Remaining live: LaBroi approves the look of the page and the card (HANDOFF.md). LaBroi live-verified 2026-09-07: journey, belt, centered crown, share card blessed."
     },
     {
       "id": "US-021",
@@ -380,9 +380,9 @@
         "Live: LaBroi completes first run on a clean profile through a real test dictation",
         "Settings shows the persistent checklist: green check per completed step, red x overall indicator when anything is broken, and clicking a failing step highlights the exact field to fix"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Checklist half shipped 2026-09-05 (LaBroi spec): six live steps (key, connection, mic, accessibility, input monitoring, hotkey), overall all-set or needs-attention chip, click-to-scroll with a flash highlight, connection auto-tested when a key exists. Hotkey capture moved to the main process via before-input-event so menu accelerators like Cmd+W can never steal the combo, with Escape cancel, 10s timeout, parse validation, and the global trigger suppressed during capture. The first-run wizard remains. Wizard shipped 2026-09-06: pure machine (9 tests: platform-aware steps, hard gates, back-nav, offer logic), guided UI (welcome, key with live save-and-test, macOS permissions with deep links and polling, hotkey capture, try box, done), auto-offered once on fresh profiles, skip marks onboarding complete while the checklist keeps tracking reality, re-runnable from settings. Smoke wizard check walks the machine and confirms the DOM offer on a fresh profile. Review gate confirmed two findings, fixed: a returning user with a saved key was stranded at the key gate because connected never auto-verified on remount (now mirrors the main page auto-test), and completed progress dots wore amber (now cream for done, amber only for the active step). Visual capture verified. Remaining live: LaBroi completes first run on a clean profile through a real test dictation."
+      "notes": "Checklist half shipped 2026-09-05 (LaBroi spec): six live steps (key, connection, mic, accessibility, input monitoring, hotkey), overall all-set or needs-attention chip, click-to-scroll with a flash highlight, connection auto-tested when a key exists. Hotkey capture moved to the main process via before-input-event so menu accelerators like Cmd+W can never steal the combo, with Escape cancel, 10s timeout, parse validation, and the global trigger suppressed during capture. The first-run wizard remains. Wizard shipped 2026-09-06: pure machine (9 tests: platform-aware steps, hard gates, back-nav, offer logic), guided UI (welcome, key with live save-and-test, macOS permissions with deep links and polling, hotkey capture, try box, done), auto-offered once on fresh profiles, skip marks onboarding complete while the checklist keeps tracking reality, re-runnable from settings. Smoke wizard check walks the machine and confirms the DOM offer on a fresh profile. Review gate confirmed two findings, fixed: a returning user with a saved key was stranded at the key gate because connected never auto-verified on remount (now mirrors the main page auto-test), and completed progress dots wore amber (now cream for done, amber only for the active step). Visual capture verified. Remaining live: LaBroi completes first run on a clean profile through a real test dictation. LaBroi live-verified 2026-09-07: wizard walkthrough blessed."
     },
     {
       "id": "US-022",
@@ -409,9 +409,9 @@
         "Animations respect prefers-reduced-motion",
         "Live: LaBroi approves the look on both the window and the overlay"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria verified 2026-09-06: src/renderer/tokens.css is the single color and type source (ground, cream alpha ladder, signals, glass, font stacks); both stylesheets fully tokenized and SpeckleWave reads tokens from computed styles; scripts/check-design.js fails any raw hex outside tokens.css and runs inside npm test; reviewer audited every amber use as genuinely live or active with zero violations, verified token value integrity and import resolution in the built bundles, and confirmed one finding: the processing pulse escaped prefers-reduced-motion (fixed with a steady mid-opacity). The canvas rgb fallback strings match tokens exactly and are accepted as written per the hex-only criterion, noted for follow-up if tokens ever change. Before and after captures pixel-consistent. Remaining live: LaBroi approves the look (HANDOFF.md)."
+      "notes": "automated criteria verified 2026-09-06: src/renderer/tokens.css is the single color and type source (ground, cream alpha ladder, signals, glass, font stacks); both stylesheets fully tokenized and SpeckleWave reads tokens from computed styles; scripts/check-design.js fails any raw hex outside tokens.css and runs inside npm test; reviewer audited every amber use as genuinely live or active with zero violations, verified token value integrity and import resolution in the built bundles, and confirmed one finding: the processing pulse escaped prefers-reduced-motion (fixed with a steady mid-opacity). The canvas rgb fallback strings match tokens exactly and are accepted as written per the hex-only criterion, noted for follow-up if tokens ever change. Before and after captures pixel-consistent. Remaining live: LaBroi approves the look (HANDOFF.md). LaBroi live-verified 2026-09-07: design blessed."
     },
     {
       "id": "US-024",
@@ -425,7 +425,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner."
+      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner. 2026-09-07: dev-to-packaged profile migration built (src/main/migrate.ts): first packaged launch copies settings, history, announced gamification state, and the founder marker from murmur-dev, once ever, never overwriting; the encrypted key intentionally stays behind (different OS keychain identities) and is re-entered once. Five vitest cases cover copy, no-overwrite, once-ever, missing source, and key exclusion. The dmg needs rebuilding to carry it before the install test."
     },
     {
       "id": "US-025",
@@ -480,7 +480,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Config landed 2026-09-06: mac.notarize true, verified against electron.build primary docs (the step activates only when APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER or APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID are set; App Store Connect API key is the recommended route). Hardened runtime and entitlements were already in place. Needs LaBroi: an App Store Connect API key (or an app-specific password) for the Eze Media LLC team, then one notarized build and a clean-Mac open test."
+      "notes": "Config landed 2026-09-06: mac.notarize true, verified against electron.build primary docs (the step activates only when APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER or APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID are set; App Store Connect API key is the recommended route). Hardened runtime and entitlements were already in place. Needs LaBroi: an App Store Connect API key (or an app-specific password) for the Eze Media LLC team, then one notarized build and a clean-Mac open test. 2026-09-07: the active team key [key id removed before public] was found in the standard private_keys folder, so no new key is needed. Remaining human step: a Developer ID Application certificate (none in the keychain), then the notarized build runs."
     },
     {
       "id": "US-034",
@@ -506,9 +506,9 @@
         "The journey hero and the share card show lvl. n next to the rank label",
         "docs/journey.md explains levels"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: levelFor and report tests green, typecheck, full test suite, smoke. Visual confirmation of the chip rides the US-032 journey look check. Same batch recenters the founder crown onto the belt fabric (it previously floated beside the rank text and read as a stray glyph) with a hover tooltip naming it."
+      "notes": "Built 2026-09-07, automated criteria verified: levelFor and report tests green, typecheck, full test suite, smoke. Visual confirmation of the chip rides the US-032 journey look check. Same batch recenters the founder crown onto the belt fabric (it previously floated beside the rank text and read as a stray glyph) with a hover tooltip naming it. LaBroi live-verified 2026-09-07: level chip blessed with the journey look."
     }
   ]
 }

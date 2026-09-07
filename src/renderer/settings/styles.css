@@ -722,6 +722,21 @@ select.field {
 .heat-controls {
   display: flex;
   gap: 6px;
+  align-items: center;
+}
+
+.heat-invert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.heat-invert:has(input:disabled) {
+  opacity: 0.45;
 }
 
 .heat-total {

@@ -198,6 +198,21 @@ app.whenReady().then(async () => {
     Menu.setApplicationMenu(null)
   }
 
+  // First packaged launch inherits the dev profile (belts, history,
+  // founder marker) so the journey continues unbroken; must run before
+  // any subsystem reads its files. Dev and smoke never migrate.
+  if (app.isPackaged && !isSmoke) {
+    try {
+      const { migrateFromDev } = await import('./migrate')
+      const userData = app.getPath('userData')
+      const { migrated } = migrateFromDev(join(userData, '..', 'murmur-dev'), userData)
+      if (migrated.length > 0) console.log('[murmur] migrated from dev profile:', migrated.join(', '))
+    } catch (error) {
+      // A failed migration must never block the app; it just starts fresh.
+      console.error('[murmur] dev profile migration failed:', error)
+    }
+  }
+
   initSettings()
   initHistory(() => settingsWindow)
   initAudio()

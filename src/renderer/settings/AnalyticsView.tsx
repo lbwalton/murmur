@@ -34,20 +34,20 @@ function prettyDay(day: string): string {
 const HEAT_PCT = [0, 20, 40, 65, 95]
 const HEAT_PCT_INVERTED = [0, 35, 55, 75, 95]
 
-function isDarkHex(color: string): boolean {
+function hexLuminance(color: string): number | null {
   const match = /^#([0-9a-f]{6})$/i.exec(color)
-  if (!match) return false
+  if (!match) return null
   const n = parseInt(match[1], 16)
   const r = (n >> 16) & 255
   const g = (n >> 8) & 255
   const b = n & 255
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.25
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 }
 
 function heatFill(level: number, base: string, inverted: boolean): string | undefined {
   if (inverted) {
-    if (level === 0) return 'var(--cream-60)'
-    return `color-mix(in srgb, ${base} ${HEAT_PCT_INVERTED[level]}%, var(--text))`
+    if (level === 0) return 'var(--heat-invert-bg)'
+    return `color-mix(in srgb, ${base} ${HEAT_PCT_INVERTED[level]}%, var(--heat-invert-bg))`
   }
   if (level === 0) return undefined
   return `color-mix(in srgb, ${base} ${HEAT_PCT[level]}%, transparent)`
@@ -190,7 +190,13 @@ function ActivityWall(props: {
     const item = cosmetics.accents.find((a) => a.id === heatId)
     return item?.unlocked && item.color ? item.color : 'var(--heat-default)'
   })()
-  const inverted = isDarkHex(heatBase)
+  // Inversion: automatic for dark fills (the black belt would vanish
+  // into ink), and a manual option once the black belt is earned. A
+  // near-white fill never inverts; it would vanish into the paper.
+  const luminance = hexLuminance(heatBase)
+  const invertUnlocked = cosmetics?.accents.find((a) => a.id === 'belt-black')?.unlocked ?? false
+  const wantsInvert = settings?.cosmetics.heatInverted === true && invertUnlocked
+  const inverted = (luminance !== null && luminance < 0.25) || (wantsInvert && (luminance === null || luminance <= 0.85))
 
   const setHeat = (heat: string): void => {
     if (!settings) return
@@ -227,6 +233,24 @@ function ActivityWall(props: {
               ))}
               {gold?.unlocked && <option value="gold">founder gold</option>}
             </select>
+          )}
+          {settings && (
+            <label
+              className="heat-invert"
+              title={invertUnlocked ? 'paper mode: white squares, any fill' : 'locked: earn your black belt'}
+            >
+              <input
+                type="checkbox"
+                checked={settings.cosmetics.heatInverted === true && invertUnlocked}
+                disabled={!invertUnlocked}
+                onChange={(e) =>
+                  void bridge()
+                    .updateSettings({ cosmetics: { ...settings.cosmetics, heatInverted: e.target.checked } })
+                    .then(props.onSettings)
+                }
+              />
+              invert
+            </label>
           )}
           <select
             className="field heat-picker"

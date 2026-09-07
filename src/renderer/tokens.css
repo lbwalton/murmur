@@ -33,6 +33,9 @@
      purpose (LaBroi, 2026-09-07): cream read as the white belt color.
      Distinct from signal amber, which stays reserved for live states. */
   --heat-default: #f97316;
+  /* The inverted wall's resting square: pure white by founder decree
+     (2026-09-07), so dark fills read like ink on paper. */
+  --heat-invert-bg: #ffffff;
   --red-edge: rgba(229, 72, 77, 0.35);
   --red-glow: rgba(229, 72, 77, 0.7);
   --red-wash: rgba(229, 72, 77, 0.06);

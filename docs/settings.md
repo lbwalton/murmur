@@ -103,7 +103,7 @@ A GitHub-style activity wall. Every square is a day; the deeper the fill, the mo
 
 The period picker shows lifetime by default (everything since your first dictation, padded back to at least a full year so young walls keep their shape) and can jump to any single calendar year back to your first dictation.
 
-The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: empty squares turn light and activity darkens them, so a dark fill never disappears into the background. Cosmetic only; it changes nothing about what is counted.
+The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: empty squares turn pure white and activity darkens them, so a dark fill never disappears into the background. Earning the black belt also unlocks the invert checkbox, which flips the wall to the white paper look for any fill color you choose (except near-white ones, which would vanish on paper). Cosmetic only; it changes nothing about what is counted.
 
 ## Can my accent color change the rest of the app?
 
