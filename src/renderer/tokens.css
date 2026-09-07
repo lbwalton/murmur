@@ -28,6 +28,11 @@
   --amber-soft: rgba(240, 164, 75, 0.55);
   --red: #e5484d;
   --red-soft: rgba(229, 72, 77, 0.55);
+
+  /* data emphasis: the activity wall's default fill. Vibrant orange on
+     purpose (LaBroi, 2026-09-07): cream read as the white belt color.
+     Distinct from signal amber, which stays reserved for live states. */
+  --heat-default: #f97316;
   --red-edge: rgba(229, 72, 77, 0.35);
   --red-glow: rgba(229, 72, 77, 0.7);
   --red-wash: rgba(229, 72, 77, 0.06);

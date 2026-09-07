@@ -25,9 +25,9 @@ export interface Settings {
   cosmetics: {
     accent: string
     uiTheme: string
-    /** Activity-wall fill: 'cream', 'belt' (follows rank), or any
-     *  earned belt-color accent id. Unknown or locked ids fall back
-     *  to cream at render time. */
+    /** Activity-wall fill: 'orange' (the default), 'belt' (follows
+     *  rank), or any earned belt-color accent id. Unknown or locked
+     *  ids fall back to orange at render time. */
     heat: string
   }
   dictionary: Array<{ from: string; to: string }>
@@ -87,7 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cosmetics: {
     accent: 'amber',
     uiTheme: 'ember',
-    heat: 'cream'
+    heat: 'orange'
   },
   dictionary: [],
   expansions: [],

@@ -877,6 +877,12 @@ export function App(): React.JSX.Element {
             </button>
           </div>
         </Row>
+        <p className="row-desc rates-note">
+          Test fires a real notification through the same pipe as belt promotions and
+          achievements. Nothing appearing on a Mac? System Settings, Notifications: allow
+          Electron while running from source (the installed app shows as murmur) and pick
+          the Banners style.
+        </p>
       </section>
 
       {isMac && (

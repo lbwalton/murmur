@@ -103,8 +103,12 @@ A GitHub-style activity wall. Every square is a day; the deeper the fill, the mo
 
 The period picker shows lifetime by default (everything since your first dictation, padded back to at least a full year so young walls keep their shape) and can jump to any single calendar year back to your first dictation.
 
-The color picker chooses the fill: cream (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Cosmetic only; it changes nothing about what is counted.
+The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: empty squares turn light and activity darkens them, so a dark fill never disappears into the background. Cosmetic only; it changes nothing about what is counted.
 
 ## Can my accent color change the rest of the app?
 
 Yes. The accent you pick in settings (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the 14-day chart bars and the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look in charts.
+
+## Why don't I see murmur notifications on my Mac?
+
+Almost always a macOS permission. The Test button in the recap section fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.

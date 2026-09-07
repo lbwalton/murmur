@@ -28,10 +28,27 @@ function prettyDay(day: string): string {
 
 // Fill strength per heat level. Level 0 keeps the resting cell color;
 // the rest mix the chosen base color over transparency so the ladder
-// reads the same whether the base is cream or a belt color.
+// reads the same for any bright base. Dark bases (the black belt)
+// invert instead: empty squares go light and activity darkens them,
+// so the fill never vanishes into the ink.
 const HEAT_PCT = [0, 20, 40, 65, 95]
+const HEAT_PCT_INVERTED = [0, 35, 55, 75, 95]
 
-function heatFill(level: number, base: string): string | undefined {
+function isDarkHex(color: string): boolean {
+  const match = /^#([0-9a-f]{6})$/i.exec(color)
+  if (!match) return false
+  const n = parseInt(match[1], 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.25
+}
+
+function heatFill(level: number, base: string, inverted: boolean): string | undefined {
+  if (inverted) {
+    if (level === 0) return 'var(--cream-60)'
+    return `color-mix(in srgb, ${base} ${HEAT_PCT_INVERTED[level]}%, var(--text))`
+  }
   if (level === 0) return undefined
   return `color-mix(in srgb, ${base} ${HEAT_PCT[level]}%, transparent)`
 }
@@ -160,18 +177,20 @@ function ActivityWall(props: {
     return first ? MONTHS[monthOf(first.day)] : ''
   })
 
-  // Resolve the wall's fill color: cream, the current belt, or any
-  // earned belt-color accent. Locked or unknown choices stay cream.
-  const heatId = settings?.cosmetics.heat ?? 'cream'
+  // Resolve the wall's fill color: the vibrant orange default, the
+  // current belt, or any earned belt-color accent. Locked or unknown
+  // choices (including the retired cream id) fall back to orange.
+  const heatId = settings?.cosmetics.heat ?? 'orange'
   const heatBase = ((): string => {
-    if (heatId === 'cream' || !cosmetics) return 'var(--text)'
+    if (heatId === 'orange' || !cosmetics) return 'var(--heat-default)'
     if (heatId === 'belt') {
       const belt = cosmetics.accents.find((a) => a.id === 'belt')
-      return belt?.unlocked ? cosmetics.beltColor : 'var(--text)'
+      return belt?.unlocked ? cosmetics.beltColor : 'var(--heat-default)'
     }
     const item = cosmetics.accents.find((a) => a.id === heatId)
-    return item?.unlocked && item.color ? item.color : 'var(--text)'
+    return item?.unlocked && item.color ? item.color : 'var(--heat-default)'
   })()
+  const inverted = isDarkHex(heatBase)
 
   const setHeat = (heat: string): void => {
     if (!settings) return
@@ -197,7 +216,7 @@ function ActivityWall(props: {
               onChange={(e) => setHeat(e.target.value)}
               aria-label="wall color"
             >
-              <option value="cream">cream</option>
+              <option value="orange">vibrant orange</option>
               <option value="belt" disabled={!beltUnlocked}>
                 {beltUnlocked ? 'your belt color' : 'your belt color (earn your white belt)'}
               </option>
@@ -251,7 +270,7 @@ function ActivityWall(props: {
                 <span
                   className={`heat-cell ${cell.day === todayKey ? 'heat-today' : ''}`}
                   key={cell.day}
-                  style={{ background: heatFill(heatLevel(cell.words), heatBase) }}
+                  style={{ background: heatFill(heatLevel(cell.words), heatBase, inverted) }}
                   title={`${cell.words.toLocaleString()} words on ${prettyDay(cell.day)}`}
                 />
               )
@@ -262,7 +281,7 @@ function ActivityWall(props: {
       <div className="heat-legend" aria-hidden="true">
         <span className="chart-tick">less</span>
         {HEAT_PCT.map((_, level) => (
-          <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase) }} />
+          <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase, inverted) }} />
         ))}
         <span className="chart-tick">more</span>
       </div>
