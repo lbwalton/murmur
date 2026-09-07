@@ -519,9 +519,9 @@
         "The smoke harness runs in CI on at least macOS and passes",
         "The workflow run for the introducing commit is green, verified via the GitHub API"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-09-07: first run green on both runners via gh run watch (typecheck, lint scripts, 258 tests on macOS and Windows; full smoke on macOS). Only annotation is GitHub's node 20 deprecation notice on checkout@v4 and setup-node@v4, cosmetic, bump to v5 when convenient."
     }
   ]
 }
