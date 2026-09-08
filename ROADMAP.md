@@ -41,11 +41,11 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-020** Recap notifications and wrap-up page
+- [ ] **US-033** Notarized mac distribution
 - [ ] **US-037** Self-update from GitHub releases
 
 ## To do
 
 - [ ] **US-024** macOS packaging and permissions flow
 - [ ] **US-025** Windows packaging
-- [ ] **US-033** Notarized mac distribution
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD

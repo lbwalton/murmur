@@ -6,7 +6,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 - [ ] Undertone switchover (rebrand shipped 2026-09-05): Undertone.app is in /Applications with a violet icon, same permissions. When ready: quit the old Murmur.app, launch Undertone (your settings and history migrate automatically), re-enter your Groq key once (the encrypted store follows the app name), then drag Murmur.app to the Trash.
 - [x] Old iOS App Store listing renamed to Undertone Voice Dictation (2026-09-07). Its bundle id and SKU are frozen by Apple and invisible to users; murmur iOS gets a fresh app record later (US-034).
-- [ ] US-033 notarization: certificate created, key recovered, first signed and notarized build running. When it lands, install THAT dmg for US-024 and open it like any download; no Gatekeeper override should be needed.
+- [ ] US-033 + US-024 install: the notarized, stapled dmg is ready and opened on your screen. Drag murmur to Applications, launch it (no Gatekeeper override should appear), allow notifications when asked, re-enter your Groq key once, and dictate. Your belt, level, history, and founder crown migrate automatically on first launch. Then click the recap Test button in the installed app to close US-020.
 - [x] The undertone repo's 5 Dependabot alerts: patched by an agent 2026-09-07, awaiting GitHub's rescan to confirm they close.
 - [ ] Decide when the new `lbwalton/murmur` repo flips from private to public.
 
