@@ -594,7 +594,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-09-08, automated criteria verified: verify and reject paths tested (ephemeral keypairs, six cases), smoke check guards the reject path, keypair generated on LaBroi's machine at ~/.config/murmur/license-signing.pem (chmod 600), public key committed in shared/pro.json. Awaiting LaBroi: Payment Link creation, pricing confirmation, first Pro conveniences, live purchase test."
+      "notes": "Built 2026-09-08, automated criteria verified: verify and reject paths tested (ephemeral keypairs, six cases), smoke check guards the reject path, keypair generated on LaBroi's machine at ~/.config/murmur/license-signing.pem (chmod 600), public key committed in shared/pro.json. Awaiting LaBroi: Payment Link creation, pricing confirmation, first Pro conveniences, live purchase test. 2026-09-08: Stripe configured end to end in LaBroi's session: product murmur Pro at 49 dollars (Downloadable Software tax category), Payment Link with Managed Payments enabled (merchant of record, tax handled, sold through Link) and promotion codes allowed, coupon Founders (10 dollars off once) with code FOUNDERS. The link is live in shared/pro.json, so the Get Pro button ships in the next release. The issue script now appends every key to a private ledger at ~/.config/murmur/issued-licenses.jsonl for reissue and support lookups. Remaining human steps: pricing window decision on when FOUNDERS retires, first Pro conveniences, and the live purchase test."
     }
   ]
 }

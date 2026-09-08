@@ -30,4 +30,14 @@ const payload = Buffer.from(
   JSON.stringify(email ? { id: orderId, at: Date.now(), to: email } : { id: orderId, at: Date.now() })
 )
 const sig = sign(null, payload, privateKey)
-console.log(`MURMUR-${b64u(payload)}.${b64u(sig)}`)
+const key = `MURMUR-${b64u(payload)}.${b64u(sig)}`
+
+// Ledger: every issued key is recorded beside the signing key, one
+// JSON line per issuance, so reissues and support lookups have a
+// source of truth. Private founder data; never in the repo.
+const { appendFileSync, openSync, closeSync, existsSync } = require('node:fs')
+const ledger = join(homedir(), '.config', 'murmur', 'issued-licenses.jsonl')
+if (!existsSync(ledger)) closeSync(openSync(ledger, 'a', 0o600))
+appendFileSync(ledger, JSON.stringify({ id: orderId, to: email ?? null, at: Date.now(), key }) + '\n')
+
+console.log(key)
