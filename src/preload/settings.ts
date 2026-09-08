@@ -32,6 +32,13 @@ export interface HotkeysStatus {
 const api = {
   appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   openLicense: (): Promise<void> => ipcRenderer.invoke('app:license'),
+  getLicenseStatus: (): Promise<import('../main/license').LicenseStatus> => {
+    return ipcRenderer.invoke('license:status')
+  },
+  setLicenseKey: (key: string): Promise<import('../main/license').LicenseStatus> => {
+    return ipcRenderer.invoke('license:set', key)
+  },
+  openBuyPage: (): Promise<void> => ipcRenderer.invoke('license:buy'),
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   updateSettings: (partial: Partial<Settings>): Promise<Settings> => {
     return ipcRenderer.invoke('settings:update', partial)

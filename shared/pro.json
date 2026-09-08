@@ -1,0 +1,5 @@
+{
+  "comment": "murmur Pro configuration. The public key verifies license signatures offline in the app; it is public by nature. The private signing key lives ONLY on the founder's machine, never in this repo. buyUrl is the Stripe Payment Link shown in settings; empty hides the buy button.",
+  "publicKey": "MCowBQYDK2VwAyEAQYwuMp9BzIpiuEdZTwE20xIG73dpFNUZB4o8robTgTY=",
+  "buyUrl": ""
+}

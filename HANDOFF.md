@@ -11,6 +11,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-041 pro unlock, three things: (1) in the Stripe dashboard create a Payment Link for murmur Pro ($49; add a founders promo code for $39 if you want the launch window) and paste its URL into shared/pro.json buyUrl, then tell me and I ship it in v0.1.1. (2) decide the first Pro conveniences (nothing already free gets removed; cosmetics stay earned). (3) after a real test purchase, run: node scripts/issue-license.js <order-id> <buyer-email> and activate the printed key in settings.
+
 
 
 - [ ] US-037 self-update: once lbwalton/murmur is public and two releases are published, install the older release and confirm it checks, downloads, and installs the newer one on quit without any manual step.

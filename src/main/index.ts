@@ -219,6 +219,8 @@ app.whenReady().then(async () => {
   initOverlay()
   const { initUpdater } = await import('./updater')
   initUpdater()
+  const { initLicense } = await import('./license')
+  initLicense()
   initTranscribe()
   initFormatter()
   initRecap({

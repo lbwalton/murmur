@@ -579,6 +579,22 @@
       "passes": true,
       "needs_human": true,
       "notes": "Audit found exactly two history items needing a rewrite: a private lawyer note in HANDOFF across 49 commits, and the signing key id across 12. Neither is a usable credential and no case number exists anywhere. Tree fixes landed 2026-09-07; the filter-repo rewrite awaits LaBroi's go, cheap while private, impossible after. Completed 2026-09-08: LaBroi approved the rewrite; filter-repo removed both items; an adversarial rescan of all 62 commits, 519 blobs, reflog, and dangling objects returned clean to publish; the old remote was archived private and a fresh lbwalton/murmur received the clean history (avoiding GitHub's retained-object leak via Actions logs); a fresh clone from GitHub re-verified zero residue; the repo flipped PUBLIC with description, topics, Dependabot alerts, automated security fixes, secret scanning with push protection, and branch protection; release v0.1.0 published with the notarized dmg, mac zip, three Windows installers, and updater manifests."
+    },
+    {
+      "id": "US-041",
+      "title": "murmur Pro: offline license keys and the unlock flow",
+      "description": "The one-time Pro unlock, built on the launch-day payments decision: Stripe Managed Payments (merchant of record) sells via a Payment Link, and murmur issues its OWN license keys, ed25519 signatures the app verifies offline against a public key shipped in shared/pro.json. No licensing server, no phone-home, nothing to outlive the company. The private signing key lives only on LaBroi's machine; scripts/issue-license.js signs a key per order. Settings gains a murmur pro section: paste and activate, supporter status when active, a Get Pro button when the Payment Link URL is configured. Cosmetics stay earned, never bought; Pro is support and convenience.",
+      "acceptance": [
+        "A signed key activates offline and survives restarts; tampered, forged, and malformed keys are rejected, covered by tests and a smoke check",
+        "The private signing key exists nowhere in the repo or its history",
+        "Settings shows the pro section: activation when unlicensed, supporter status when licensed, and the buy button only when a Payment Link is configured",
+        "LaBroi creates the Stripe Payment Link ($49 list, $39 founders window) and its URL lands in shared/pro.json",
+        "A real end-to-end purchase issues a key that activates in a shipped build",
+        "LaBroi decides the first Pro conveniences; nothing already free gets taken away"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-08, automated criteria verified: verify and reject paths tested (ephemeral keypairs, six cases), smoke check guards the reject path, keypair generated on LaBroi's machine at ~/.config/murmur/license-signing.pem (chmod 600), public key committed in shared/pro.json. Awaiting LaBroi: Payment Link creation, pricing confirmation, first Pro conveniences, live purchase test."
     }
   ]
 }

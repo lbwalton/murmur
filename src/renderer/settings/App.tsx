@@ -10,6 +10,7 @@ import type {
   SettingsApi
 } from '../../preload/settings'
 import { parseRecapTime } from '../../shared/recap'
+import proConfig from '../../../shared/pro.json'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
@@ -972,6 +973,11 @@ export function App(): React.JSX.Element {
       )}
 
       <section className="panel">
+        <p className="micro-label">murmur pro</p>
+        <ProSection />
+      </section>
+
+      <section className="panel">
         <p className="micro-label">try it</p>
         <Row
           label="Test dictation"
@@ -991,5 +997,63 @@ export function App(): React.JSX.Element {
         · copyright LaBroi Walton
       </footer>
     </main>
+  )
+}
+
+function ProSection(): React.JSX.Element {
+  const [status, setStatus] = useState<import('../../main/license').LicenseStatus | null>(null)
+  const [draft, setDraft] = useState('')
+  const [rejected, setRejected] = useState(false)
+
+  useEffect(() => {
+    void bridge().getLicenseStatus().then(setStatus)
+  }, [])
+
+  if (!status) return <div />
+  if (status.pro) {
+    return (
+      <p className="row-desc">
+        Pro is active. Thank you for supporting free software; your belts stay earned, never
+        bought, and every Pro convenience lands here first. Supporter since{' '}
+        {new Date(status.since).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.
+      </p>
+    )
+  }
+
+  const activate = async (): Promise<void> => {
+    const next = await bridge().setLicenseKey(draft)
+    setStatus(next)
+    setRejected(!next.pro)
+  }
+
+  return (
+    <Row
+      label="License key"
+      desc={
+        rejected
+          ? 'That key did not verify. Check for missing characters and try again.'
+          : 'One-time purchase, verified offline, yours forever. Cosmetics stay earned, never bought.'
+      }
+    >
+      <div className="inline">
+        <input
+          className="field"
+          placeholder="MURMUR-…"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            setRejected(false)
+          }}
+        />
+        <button className="btn" onClick={() => void activate()} disabled={draft.trim().length === 0}>
+          Activate
+        </button>
+        {proConfig.buyUrl && (
+          <button className="btn quiet-btn" onClick={() => void bridge().openBuyPage()}>
+            Get Pro
+          </button>
+        )}
+      </div>
+    </Row>
   )
 }

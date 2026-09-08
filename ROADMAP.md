@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/40 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (37/41 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -47,6 +47,7 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-037** Self-update from GitHub releases
+- [ ] **US-041** murmur Pro: offline license keys and the unlock flow
 
 ## To do
 
