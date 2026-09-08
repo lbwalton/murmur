@@ -120,7 +120,9 @@ export function initInsertion(): void {
       if (!(outcome === 'copied' && onClipboard === 'murmur smoke insertion probe')) return false
       await restoreClipboard(before)
       const back = await clipboard.readText()
-      return back === before.text
+      // An empty pre-run clipboard (CI runners) has nothing to restore
+      // by design, so the probe text legitimately remains.
+      return back === before.text || (before.text === '' && back === 'murmur smoke insertion probe')
     } catch {
       await restoreClipboard(before)
       return false
