@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (35/39 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (36/39 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -24,6 +24,7 @@
 - [x] **US-017** History: append-only log and home transcription view
 - [x] **US-018** Usage analytics and live cost card
 - [x] **US-019** Post-session WPM in the overlay
+- [x] **US-020** Recap notifications and wrap-up page
 - [x] **US-029** Progression engine: BJJ belts and stripes
 - [x] **US-030** Achievements
 - [x] **US-031** The dojo: unlockable cosmetics
@@ -44,7 +45,6 @@
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
-- [ ] **US-020** Recap notifications and wrap-up page
 - [ ] **US-037** Self-update from GitHub releases
 
 ## To do
