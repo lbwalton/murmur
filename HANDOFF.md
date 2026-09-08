@@ -12,6 +12,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-038 brand gold: open any page in the app; the section labels, the murmur wordmark, and the active tab now wear the icon's gold while live states stay amber. Bless or veto.
+
 - [ ] US-037 self-update: once lbwalton/murmur is public and two releases are published, install the older release and confirm it checks, downloads, and installs the newer one on quit without any manual step.
 
 

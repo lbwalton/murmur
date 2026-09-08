@@ -23,6 +23,12 @@
   --cream-55: rgba(236, 233, 228, 0.55);
   --cream-60: rgba(236, 233, 228, 0.6);
 
+  /* brand: burnished gold, the icon's metal at label luminance.
+     Headlines, micro-labels, and static highlights wear it; it sits
+     deliberately below signal amber in brightness so the live needle
+     still outshines the hardware (LaBroi direction, 2026-09-07). */
+  --brand: #d9a441;
+
   /* signals */
   --amber: #f0a44b;
   --amber-soft: rgba(240, 164, 75, 0.55);

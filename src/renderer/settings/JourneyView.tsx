@@ -95,7 +95,7 @@ export function JourneyView(): React.JSX.Element {
       ctx.roundRect(28, 28, 784, 384, 22)
       ctx.fill()
 
-      ctx.fillStyle = dim
+      ctx.fillStyle = token('--brand', dim)
       ctx.font = `12px ${mono}`
       ctx.fillText('m u r m u r', 64, 84)
 

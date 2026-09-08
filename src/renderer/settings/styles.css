@@ -58,7 +58,7 @@ body {
 }
 
 .nav-active {
-  color: var(--text);
+  color: var(--brand);
   background: var(--panel);
   border: 1px solid var(--panel-edge);
 }
@@ -238,7 +238,8 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.18em;
-  color: var(--text-dim);
+  /* Gold silkscreen on the hardware: the brand metal, not the signal. */
+  color: var(--brand);
   margin-bottom: 12px;
 }
 

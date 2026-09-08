@@ -537,6 +537,20 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds."
+    },
+    {
+      "id": "US-038",
+      "title": "Brand gold: the icon's metal becomes the primary",
+      "description": "LaBroi direction 2026-09-07: the logo's gold becomes the app's primary color for headlines and attention highlights. Design resolution: a two-metal system. Burnished brand gold (#d9a441, the icon family at label luminance) colors every panel eyebrow, the murmur wordmark, and the active nav tab; signal amber stays reserved for live states and always outshines the brand metal, so recording still pops; founder gold stays identity-only. Everything else stays quiet cream.",
+      "acceptance": [
+        "A brand token exists and colors micro-labels, the wordmark, and the active nav tab",
+        "Signal amber remains exclusively for live/active states and is brighter than brand gold",
+        "The design law in CLAUDE.md records the three-metal hierarchy",
+        "LaBroi blesses the look"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-07, automated criteria verified: token added, three surfaces recolored, design lint and all gates green, CLAUDE.md law updated. Awaiting LaBroi's visual blessing."
     }
   ]
 }
