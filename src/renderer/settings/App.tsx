@@ -700,40 +700,63 @@ export function App(): React.JSX.Element {
           </select>
         </Row>
 
-        <Row label="Accent" desc="The color of your waveform. Earned, never bought.">
-          <select
-            className="field"
-            value={settings.cosmetics.accent}
-            onChange={(e) =>
-              void update({
-                cosmetics: { ...settings.cosmetics, accent: e.target.value }
-              })
-            }
-          >
-            {(cosmetics?.accents ?? []).map((item) => (
-              <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-              </option>
-            ))}
-          </select>
+        <Row
+          label="Accent"
+          desc="Your default accent everywhere it earns attention: the waveform, chart bars, and progress fills. The activity wall in analytics keeps its own picker. Earned, never bought."
+        >
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.cosmetics.accent}
+              onChange={(e) =>
+                void update({
+                  cosmetics: { ...settings.cosmetics, accent: e.target.value }
+                })
+              }
+            >
+              {(cosmetics?.accents ?? []).map((item) => (
+                <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                  {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                </option>
+              ))}
+            </select>
+            {(() => {
+              const chosen = cosmetics?.accents.find((a) => a.id === settings.cosmetics.accent)
+              const color = chosen ? (chosen.color ?? cosmetics?.beltColor) : null
+              return color ? <span className="swatch" style={{ background: color }} title={chosen?.name} /> : null
+            })()}
+          </div>
         </Row>
 
         <Row label="Theme" desc="The window itself. More arrive with rank.">
-          <select
-            className="field"
-            value={settings.cosmetics.uiTheme}
-            onChange={(e) =>
-              void update({
-                cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
-              })
-            }
-          >
-            {(cosmetics?.uiThemes ?? []).map((item) => (
-              <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-              </option>
-            ))}
-          </select>
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.cosmetics.uiTheme}
+              onChange={(e) =>
+                void update({
+                  cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
+                })
+              }
+            >
+              {(cosmetics?.uiThemes ?? []).map((item) => (
+                <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                  {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                </option>
+              ))}
+            </select>
+            {(() => {
+              const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
+              const p = chosen?.preview
+              return p && p.length >= 2 ? (
+                <span
+                  className="swatch"
+                  style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
+                  title={chosen?.name}
+                />
+              ) : null
+            })()}
+          </div>
         </Row>
 
         <Row label="Overlay" desc="See the pill without dictating.">

@@ -425,7 +425,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner. 2026-09-07: dev-to-packaged profile migration built (src/main/migrate.ts): first packaged launch copies settings, history, announced gamification state, and the founder marker from murmur-dev, once ever, never overwriting; the encrypted key intentionally stays behind (different OS keychain identities) and is re-entered once. Five vitest cases cover copy, no-overwrite, once-ever, missing source, and key exclusion. The dmg needs rebuilding to carry it before the install test."
+      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner. 2026-09-07: dev-to-packaged profile migration built (src/main/migrate.ts): first packaged launch copies settings, history, announced gamification state, and the founder marker from murmur-dev, once ever, never overwriting; the encrypted key intentionally stays behind (different OS keychain identities) and is re-entered once. Five vitest cases cover copy, no-overwrite, once-ever, missing source, and key exclusion. The dmg needs rebuilding to carry it before the install test. 2026-09-07 night: LaBroi's install crashed at launch with SIGTRAP in V8. Root cause: hardened runtime without the allow-jit entitlement, required by Electron on Apple Silicon; the entitlements file even said JIT-less, a wrong assumption dev builds never exposed. allow-jit added, rebuild and re-notarization in flight. Also found the legacy app's data directory squatting on the packaged profile path (it would have blocked settings migration); moved aside as murmur-legacy-2026-09-07-backup."
     },
     {
       "id": "US-025",
@@ -551,6 +551,20 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-09-07, automated criteria verified: token added, three surfaces recolored, design lint and all gates green, CLAUDE.md law updated. Awaiting LaBroi's visual blessing."
+    },
+    {
+      "id": "US-039",
+      "title": "Settings color previews and accent clarity",
+      "description": "LaBroi requests 2026-09-07: live swatches next to the accent and theme dropdowns so the choice is visible before it lands, and copy making clear the accent is the app-wide default while the activity wall keeps its own picker. Design counsel: the 14-day chart already follows the global accent, so it gets no separate picker (one default plus one showcase override is the whole hierarchy); themes stay a small curated set of rooms with rank gates rather than one per belt, since accents already carry belt personalization.",
+      "acceptance": [
+        "A color swatch beside the accent select shows the currently chosen accent, resolving the belt accent to the current belt color",
+        "A two-tone swatch beside the theme select previews the theme's ink and panel from data",
+        "The accent row copy states it is the app-wide default and points at the wall's own picker",
+        "LaBroi blesses the look"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-07, automated criteria verified: swatches render from cosmetics data (theme previews added as data, CosmeticItem gains an optional preview field), gates green. Awaiting LaBroi's visual blessing."
     }
   ]
 }

@@ -165,7 +165,11 @@
       "id": "ember",
       "name": "night studio",
       "hint": "the original",
-      "unlock": null
+      "unlock": null,
+      "preview": [
+        "#0f0e11",
+        "#17161b"
+      ]
     },
     {
       "id": "mist",
@@ -173,7 +177,11 @@
       "hint": "earn your blue belt",
       "unlock": {
         "rank": "blue"
-      }
+      },
+      "preview": [
+        "#10131a",
+        "#191d26"
+      ]
     }
   ]
 }

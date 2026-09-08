@@ -3,8 +3,13 @@
 <plist version="1.0">
   <dict>
     <!-- Hardened runtime entitlements for murmur. The mic is the only
-         sensitive capability; JIT-less, no debugging, no dyld tricks. -->
+         sensitive capability. Electron's V8 requires JIT on Apple
+         Silicon; without allow-jit a hardened build dies with SIGTRAP
+         at boot (found the hard way, 2026-09-07). No debugging, no
+         dyld tricks. -->
     <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>

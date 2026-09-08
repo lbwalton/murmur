@@ -726,6 +726,14 @@ select.field {
   align-items: center;
 }
 
+.swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-edge);
+  flex: none;
+}
+
 .heat-invert {
   display: inline-flex;
   align-items: center;

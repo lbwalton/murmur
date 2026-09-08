@@ -16,6 +16,8 @@ export interface CosmeticItem {
   name: string
   hint: string
   color?: string | null
+  /** Swatch colors for the settings preview (themes: ink and panel). */
+  preview?: string[]
   unlock: UnlockRule | null
 }
 
