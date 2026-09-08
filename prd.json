@@ -423,9 +423,9 @@
         "The packaged app passes a full live dictation loop",
         "Live: LaBroi verifies mic, accessibility, and input monitoring prompts on a clean grant state"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner. 2026-09-07: dev-to-packaged profile migration built (src/main/migrate.ts): first packaged launch copies settings, history, announced gamification state, and the founder marker from murmur-dev, once ever, never overwriting; the encrypted key intentionally stays behind (different OS keychain identities) and is re-entered once. Five vitest cases cover copy, no-overwrite, once-ever, missing source, and key exclusion. The dmg needs rebuilding to carry it before the install test. 2026-09-07 night: LaBroi's install crashed at launch with SIGTRAP in V8. Root cause: hardened runtime without the allow-jit entitlement, required by Electron on Apple Silicon; the entitlements file even said JIT-less, a wrong assumption dev builds never exposed. allow-jit added, rebuild and re-notarization in flight. Also found the legacy app's data directory squatting on the packaged profile path (it would have blocked settings migration); moved aside as murmur-legacy-2026-09-07-backup."
+      "notes": "automated criteria progress 2026-09-06: builder config complete (dmg and zip, hardened runtime with mic entitlement, LSUIElement, tray icons as extraResources, artifact naming); murmur-0.1.0-arm64.dmg builds signed (Apple Development identity, runtime flags verified) with uiohook auto-unpacked. Permissions screen shipped back in the settings work. Remaining: LaBroi installs the dmg, grants permissions on the packaged app, runs the live loop. Morning note: the packaged app shares the userData name with the legacy Murmur data dir until Undertone fully replaces the old install; the type-resilient settings merge keeps this safe but retiring Murmur.app first is cleaner. 2026-09-07: dev-to-packaged profile migration built (src/main/migrate.ts): first packaged launch copies settings, history, announced gamification state, and the founder marker from murmur-dev, once ever, never overwriting; the encrypted key intentionally stays behind (different OS keychain identities) and is re-entered once. Five vitest cases cover copy, no-overwrite, once-ever, missing source, and key exclusion. The dmg needs rebuilding to carry it before the install test. 2026-09-07 night: LaBroi's install crashed at launch with SIGTRAP in V8. Root cause: hardened runtime without the allow-jit entitlement, required by Electron on Apple Silicon; the entitlements file even said JIT-less, a wrong assumption dev builds never exposed. allow-jit added, rebuild and re-notarization in flight. Also found the legacy app's data directory squatting on the packaged profile path (it would have blocked settings migration); moved aside as murmur-legacy-2026-09-07-backup. LaBroi live-verified 2026-09-07 night: installed from the notarized dmg, launched clean, dictated; migration delivered belt, history, and founder marker."
     },
     {
       "id": "US-025",
@@ -478,9 +478,9 @@
         "A fresh download opens on a clean Mac without a Gatekeeper override",
         "docs explain how murmur is distributed and why it is not in the Mac App Store"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Config landed 2026-09-06: mac.notarize true, verified against electron.build primary docs (the step activates only when APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER or APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID are set; App Store Connect API key is the recommended route). Hardened runtime and entitlements were already in place. Needs LaBroi: an App Store Connect API key (or an app-specific password) for the Eze Media LLC team, then one notarized build and a clean-Mac open test. 2026-09-07: the active team key [key id removed before public] was found in the standard private_keys folder, so no new key is needed. Remaining human step: a Developer ID Application certificate (none in the keychain), then the notarized build runs. 2026-09-07 later: LaBroi created the Developer ID Application certificate (in the login keychain, verified via find-identity); the first signed and notarized build is running with the recovered team key. 2026-09-07 evening: first notarization complete. Apple accepted both the zip and the dmg (the first submission from the new identity took hours; that trust delay is one time). The dmg is stapled and validated, and spctl assesses the app as accepted, source Notarized Developer ID. Remaining acceptance: LaBroi opens the download on a Mac and it launches without a Gatekeeper override, automated criteria verified otherwise. 2026-09-07 late: the corrected build (allow-jit) notarized in minutes, confirming the first submission's hours were the one-time identity trust delay. Final dmg and app both stapled; spctl reads Notarized Developer ID. automated criteria verified; the open test on LaBroi's screen is the last step."
+      "notes": "Config landed 2026-09-06: mac.notarize true, verified against electron.build primary docs (the step activates only when APPLE_API_KEY/APPLE_API_KEY_ID/APPLE_API_ISSUER or APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID are set; App Store Connect API key is the recommended route). Hardened runtime and entitlements were already in place. Needs LaBroi: an App Store Connect API key (or an app-specific password) for the Eze Media LLC team, then one notarized build and a clean-Mac open test. 2026-09-07: the active team key [key id removed before public] was found in the standard private_keys folder, so no new key is needed. Remaining human step: a Developer ID Application certificate (none in the keychain), then the notarized build runs. 2026-09-07 later: LaBroi created the Developer ID Application certificate (in the login keychain, verified via find-identity); the first signed and notarized build is running with the recovered team key. 2026-09-07 evening: first notarization complete. Apple accepted both the zip and the dmg (the first submission from the new identity took hours; that trust delay is one time). The dmg is stapled and validated, and spctl assesses the app as accepted, source Notarized Developer ID. Remaining acceptance: LaBroi opens the download on a Mac and it launches without a Gatekeeper override, automated criteria verified otherwise. 2026-09-07 late: the corrected build (allow-jit) notarized in minutes, confirming the first submission's hours were the one-time identity trust delay. Final dmg and app both stapled; spctl reads Notarized Developer ID. automated criteria verified; the open test on LaBroi's screen is the last step. LaBroi live-verified 2026-09-07 night: the download opened with no Gatekeeper override. Story complete."
     },
     {
       "id": "US-034",
@@ -548,9 +548,9 @@
         "The design law in CLAUDE.md records the three-metal hierarchy",
         "LaBroi blesses the look"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: token added, three surfaces recolored, design lint and all gates green, CLAUDE.md law updated. Awaiting LaBroi's visual blessing."
+      "notes": "Built 2026-09-07, automated criteria verified: token added, three surfaces recolored, design lint and all gates green, CLAUDE.md law updated. Awaiting LaBroi's visual blessing. LaBroi blessed the gold in the installed app, 2026-09-07 night."
     },
     {
       "id": "US-039",
@@ -562,9 +562,9 @@
         "The accent row copy states it is the app-wide default and points at the wall's own picker",
         "LaBroi blesses the look"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: swatches render from cosmetics data (theme previews added as data, CosmeticItem gains an optional preview field), gates green. Awaiting LaBroi's visual blessing."
+      "notes": "Built 2026-09-07, automated criteria verified: swatches render from cosmetics data (theme previews added as data, CosmeticItem gains an optional preview field), gates green. Awaiting LaBroi's visual blessing. LaBroi blessed the swatches in the installed app, 2026-09-07 night."
     }
   ]
 }
