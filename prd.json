@@ -536,7 +536,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds."
+      "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds. 2026-09-08: the repo is public and v0.1.0 is live with latest-mac.yml and latest.yml, so the updater is armed; the live self-update test happens when v0.1.1 ships."
     },
     {
       "id": "US-038",
@@ -576,9 +576,9 @@
         "History is rewritten to remove the private legal note and key id, re-scanned clean, and force-pushed while still private, with LaBroi's explicit approval",
         "package.json carries repository, homepage, and bugs; the flip-day checklist in HANDOFF is executed when LaBroi says go"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Audit found exactly two history items needing a rewrite: a private lawyer note in HANDOFF across 49 commits, and the signing key id across 12. Neither is a usable credential and no case number exists anywhere. Tree fixes landed 2026-09-07; the filter-repo rewrite awaits LaBroi's go, cheap while private, impossible after."
+      "notes": "Audit found exactly two history items needing a rewrite: a private lawyer note in HANDOFF across 49 commits, and the signing key id across 12. Neither is a usable credential and no case number exists anywhere. Tree fixes landed 2026-09-07; the filter-repo rewrite awaits LaBroi's go, cheap while private, impossible after. Completed 2026-09-08: LaBroi approved the rewrite; filter-repo removed both items; an adversarial rescan of all 62 commits, 519 blobs, reflog, and dangling objects returned clean to publish; the old remote was archived private and a fresh lbwalton/murmur received the clean history (avoiding GitHub's retained-object leak via Actions logs); a fresh clone from GitHub re-verified zero residue; the repo flipped PUBLIC with description, topics, Dependabot alerts, automated security fixes, secret scanning with push protection, and branch protection; release v0.1.0 published with the notarized dmg, mac zip, three Windows installers, and updater manifests."
     }
   ]
 }

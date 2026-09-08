@@ -14,7 +14,7 @@ The name is always lowercase: murmur.
 
 ## Getting started
 
-1. Install murmur (build from source below; packaged installers are coming)
+1. Install murmur: grab the notarized dmg (macOS, Apple Silicon) or the Windows installer from [Releases](https://github.com/lbwalton/murmur/releases), or build from source below. Installed builds keep themselves current automatically.
 2. Launch it: a guided wizard walks you through the rest
 3. Get a free key at [console.groq.com/keys](https://console.groq.com/keys) and paste it in
 4. Grant the OS permissions the wizard asks for (macOS: microphone, accessibility, input monitoring)

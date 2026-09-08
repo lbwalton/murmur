@@ -7,7 +7,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [ ] Undertone switchover (rebrand shipped 2026-09-05): Undertone.app is in /Applications with a violet icon, same permissions. When ready: quit the old Murmur.app, launch Undertone (your settings and history migrate automatically), re-enter your Groq key once (the encrypted store follows the app name), then drag Murmur.app to the Trash.
 - [x] Old iOS App Store listing renamed to Undertone Voice Dictation (2026-09-07). Its bundle id and SKU are frozen by Apple and invisible to users; murmur iOS gets a fresh app record later (US-034).
 - [x] The undertone repo's 5 Dependabot alerts: patched by an agent 2026-09-07, awaiting GitHub's rescan to confirm they close.
-- [ ] US-040 go public, two decisions: (1) approve the one-time history rewrite (removes the lawyer note and the signing key id from old commits; I run it, re-scan, and force-push while the repo is still private; any other machine with a clone must re-clone after). (2) Say when to flip visibility; the flip-day checklist (description, topics, Dependabot, secret scanning, branch protection, the v0.1.0 release) then runs the same day.
+- [x] US-040 done 2026-09-08: history rewritten and rescanned clean, repo recreated fresh and flipped PUBLIC, v0.1.0 released. If any other machine has an old clone of murmur, re-clone it; the archive lives private at lbwalton/murmur-prerewrite-archive and can be deleted once you are comfortable.
 
 ## Live verification queue
 
