@@ -46,6 +46,24 @@ describe('validatePolish', () => {
     expect(v).toEqual({ ok: true, text: INPUT })
   })
 
+  it('accepts a cleanup that drops a fabricated trailing filler', () => {
+    // Twelve input words on purpose: this must walk the ratio branch,
+    // not the short-utterance delta branch.
+    const v = validatePolish(
+      'Are we going to use something else entirely in the meantime? Okay.',
+      'Are we going to use something else entirely in the meantime?'
+    )
+    expect(v).toMatchObject({ ok: true })
+  })
+
+  it('still rejects a model that deletes real sentences as filler', () => {
+    const v = validatePolish(
+      'Send the deck by noon and copy the whole team on it. I will follow up tomorrow.',
+      'Send the deck by noon.'
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
+  })
+
   it('is lenient on short dictations but not unbounded', () => {
     expect(validatePolish('sounds good', 'Sounds good!')).toMatchObject({ ok: true })
     expect(
