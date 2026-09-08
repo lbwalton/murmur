@@ -3,18 +3,18 @@ import { describe, expect, it } from 'vitest'
 import { applyExpansions } from './expansions'
 
 const entries = [
-  { trigger: 'insert my email', text: 'lbwalton@gmail.com' },
+  { trigger: 'insert my email', text: 'lb@example.com' },
   { trigger: 'sign off', text: 'Best,\nLaBroi' },
   { trigger: 'sign off formal', text: 'Sincerely,\nLaBroi Walton' }
 ]
 
 describe('applyExpansions', () => {
   it('expands a trigger phrase, keeping surrounding punctuation', () => {
-    expect(applyExpansions('Insert my email.', entries)).toBe('lbwalton@gmail.com.')
+    expect(applyExpansions('Insert my email.', entries)).toBe('lb@example.com.')
   })
 
   it('matches case-insensitively but inserts the snippet verbatim', () => {
-    expect(applyExpansions('INSERT MY EMAIL now', entries)).toBe('lbwalton@gmail.com now')
+    expect(applyExpansions('INSERT MY EMAIL now', entries)).toBe('lb@example.com now')
   })
 
   it('longest trigger wins at the same position', () => {
@@ -23,7 +23,7 @@ describe('applyExpansions', () => {
 
   it('expands multiple positions independently', () => {
     expect(applyExpansions('sign off and insert my email', entries)).toBe(
-      'Best,\nLaBroi and lbwalton@gmail.com'
+      'Best,\nLaBroi and lb@example.com'
     )
   })
 

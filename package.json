@@ -95,5 +95,13 @@
   "dependencies": {
     "electron-updater": "^6.8.9",
     "uiohook-napi": "^1.5.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lbwalton/murmur.git"
+  },
+  "homepage": "https://github.com/lbwalton/murmur#readme",
+  "bugs": {
+    "url": "https://github.com/lbwalton/murmur/issues"
   }
 }

@@ -230,12 +230,12 @@
         "expansions": [
           {
             "trigger": "insert my email",
-            "text": "lbwalton@gmail.com"
+            "text": "lb@example.com"
           }
         ]
       },
       "input": "insert my email period thanks",
-      "expected": "lbwalton@gmail.com. Thanks."
+      "expected": "lb@example.com. Thanks."
     },
     {
       "name": "longest expansion trigger wins",

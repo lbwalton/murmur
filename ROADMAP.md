@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (36/39 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (36/40 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -51,3 +51,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-025** Windows packaging
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
+- [ ] **US-040** Repo public readiness
