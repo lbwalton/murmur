@@ -60,7 +60,7 @@
       ],
       "passes": true,
       "needs_human": false,
-      "notes": "Verified 2026-09-05: rm -rf build + npm install regenerates all 18 files via postinstall (9 app png, icns, ico, icon.png, 6 tray variants). git ls-files shows zero binary assets. Three runs produce identical shasums. Visually inspected icon-256 (ink rounded square, amber five-bar waveform) and 32px tray template, both read clean; macOS template recolors for light and dark, tray-light.png covers Windows dark taskbars. Pure Node PNG encoder plus icns and ico packers, zero deps."
+      "notes": "Verified 2026-09-05: rm -rf build + npm install regenerates all 18 files via postinstall (9 app png, icns, ico, icon.png, 6 tray variants). git ls-files shows zero binary assets. Three runs produce identical shasums. Visually inspected icon-256 (ink rounded square, amber five-bar waveform) and 32px tray template, both read clean; macOS template recolors for light and dark, tray-light.png covers Windows dark taskbars. Pure Node PNG encoder plus icns and ico packers, zero deps. Update 2026-09-09 (issue 1): light Windows taskbars were never actually covered; the warm-white icon ghosted on them. A tray-dark ink variant now pairs with tray-light, chosen at runtime from nativeTheme.shouldUseDarkColorsForSystemIntegratedUI (the shell theme, not app mode, since Windows themes them separately) with a live theme listener. Verified: full smoke green on the Windows CI runner, and LaBroi confirms on his PC when v0.1.1 lands."
     },
     {
       "id": "US-004",

@@ -1,7 +1,7 @@
 # CI gates: the same checks the process law demands before any commit,
 # enforced by machinery on every push. Smoke boots the whole app
-# headlessly; it runs on macOS here and can join Windows once the
-# runner's input-hook permissions are proven out.
+# headlessly on both platforms; Windows joined after issue 1 proved a
+# renderer can break there while macOS stays green.
 name: ci
 
 on:
@@ -26,5 +26,4 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: smoke
-        if: runner.os == 'macOS'
         run: npm run smoke

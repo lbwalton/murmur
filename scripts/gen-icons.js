@@ -219,13 +219,17 @@ function main() {
   writeFileSync(join(root, 'build', 'icon.ico'), buildIco(pngBySize, [16, 24, 32, 48, 64, 128, 256]))
   writeFileSync(join(root, 'build', 'icon.png'), pngBySize[512])
 
-  // Tray set. macOS gets template images (black + alpha, system recolors),
-  // Windows gets warm-white, and both get a red recording variant.
+  // Tray set. macOS gets template images (black + alpha, system recolors).
+  // Windows picks warm-white or ink at runtime to match the taskbar theme
+  // (a white icon on a light taskbar reads as a ghost outline), and both
+  // platforms get a red recording variant.
   const trayVariants = [
     ['trayTemplate.png', 16, BLACK],
     ['trayTemplate@2x.png', 32, BLACK],
     ['tray-light.png', 16, WHITE],
     ['tray-light@2x.png', 32, WHITE],
+    ['tray-dark.png', 16, INK],
+    ['tray-dark@2x.png', 32, INK],
     ['tray-recording.png', 16, RED],
     ['tray-recording@2x.png', 32, RED]
   ]

@@ -62,6 +62,14 @@ if (!app.isPackaged) {
   }
 }
 
+// Windows GPU drivers (11th-gen Intel Iris Xe among them, issue 1)
+// can leave an Electron window painted blank. murmur's windows are
+// small and simple, so software rendering costs nothing perceptible
+// and works on every driver. Must run before app ready.
+if (process.platform === 'win32') {
+  app.disableHardwareAcceleration()
+}
+
 // Last-resort net: an uncaught main-process exception logs to a
 // rotating file and relaunches the app exactly once. A crash on the
 // relaunched instance logs and degrades visibly instead of looping.
