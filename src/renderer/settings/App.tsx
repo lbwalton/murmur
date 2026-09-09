@@ -355,6 +355,7 @@ export function App(): React.JSX.Element {
         </header>
         <WizardView
           settings={settings}
+          onSettings={setSettings}
           onFinish={() => {
             setWizardOpen(false)
             void update({ onboarding: { completed: true } })

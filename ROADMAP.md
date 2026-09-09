@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/42 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (38/42 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -33,6 +33,7 @@
 - [x] **US-022** Sounds, autostart, resilience
 - [x] **US-023** Night studio design pass
 - [x] **US-024** macOS packaging and permissions flow
+- [x] **US-025** Windows packaging
 - [x] **US-026** README and coworker docs
 - [x] **US-027** GPLv3 compliance pass
 - [x] **US-033** Notarized mac distribution
@@ -52,5 +53,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-025** Windows packaging
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD

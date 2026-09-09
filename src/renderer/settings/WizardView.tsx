@@ -18,6 +18,7 @@ const bridge = (): SettingsApi => window.murmur
 
 export function WizardView(props: {
   settings: Settings
+  onSettings: (settings: Settings) => void
   onFinish: () => void
 }): React.JSX.Element {
   const [step, setStep] = useState<WizardStep>('welcome')
@@ -87,7 +88,13 @@ export function WizardView(props: {
     setCapturing(true)
     try {
       const result = await bridge().captureHotkey()
-      if (result.ok) await refreshFacts()
+      if (result.ok) {
+        // The captured binding lands in main state; pull it back so the
+        // wizard shows the new hotkey immediately (issue 3: the box kept
+        // showing the old binding while the backend had the new one).
+        props.onSettings(await bridge().getSettings())
+        await refreshFacts()
+      }
     } finally {
       setCapturing(false)
     }
