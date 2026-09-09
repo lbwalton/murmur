@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (38/42 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (39/42 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -39,6 +39,7 @@
 - [x] **US-033** Notarized mac distribution
 - [x] **US-035** Levels: the infinite ladder
 - [x] **US-036** CI: every push proves the gates
+- [x] **US-037** Self-update from GitHub releases
 - [x] **US-038** Brand gold: the icon's metal becomes the primary
 - [x] **US-039** Settings color previews and accent clarity
 - [x] **US-040** Repo public readiness
@@ -47,7 +48,6 @@
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
-- [ ] **US-037** Self-update from GitHub releases
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
 - [ ] **US-042** Pro conveniences: provider profiles and the founders promise
 

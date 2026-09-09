@@ -534,9 +534,9 @@
         "Live verification: after the repo goes public and two releases exist, an installed older version updates itself to the newer one",
         "docs answer how murmur updates itself"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds. 2026-09-08: the repo is public and v0.1.0 is live with latest-mac.yml and latest.yml, so the updater is armed; the live self-update test happens when v0.1.1 ships."
+      "notes": "Built 2026-09-07, automated criteria verified: typecheck, tests, and smoke green with the new updater check; electron-updater 6.8.9 confirmed prebuilt-free (no gypfile, no install script). Live update loop waits on the repo going public with two published releases; until then checkForUpdates fails open silently in packaged builds. 2026-09-08: the repo is public and v0.1.0 is live with latest-mac.yml and latest.yml, so the updater is armed; the live self-update test happens when v0.1.1 ships. Live-verified 2026-09-09: v0.1.2 through v0.1.4 each arrived on LaBroi's Mac and PC through the self-updater alone (quit, relaunch, new version), including the wizard fix he confirmed working after an automatic update. The full loop: check, quiet download, install on quit, both platforms."
     },
     {
       "id": "US-038",
