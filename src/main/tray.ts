@@ -14,7 +14,10 @@ function trayIconPath(): string {
     : join(app.getAppPath(), 'build', 'icons', 'tray')
   if (process.platform === 'darwin') return join(base, 'trayTemplate.png')
   // Dark taskbar wants the light icon; light taskbar wants the dark one.
-  return join(base, nativeTheme.shouldUseDarkColors ? 'tray-light.png' : 'tray-dark.png')
+  // Windows themes the SHELL separately from apps, so this must read the
+  // system integrated UI flag, not shouldUseDarkColors (app mode): a
+  // split theme would otherwise ghost the icon exactly like issue 1.
+  return join(base, nativeTheme.shouldUseDarkColorsForSystemIntegratedUI ? 'tray-light.png' : 'tray-dark.png')
 }
 
 export interface TrayHandlers {
