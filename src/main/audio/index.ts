@@ -4,6 +4,7 @@
 // resume triggers a re-arm so the warm mic survives sleep.
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, powerMonitor } from 'electron'
+import { watchWindow } from '../window-watch'
 import { IpcChannels } from '../../shared/ipc'
 import { parseWav } from '../../shared/wav'
 import { isSmoke, registerSmokeCheck } from '../smoke'
@@ -44,6 +45,7 @@ export function initAudio(): void {
   })
 
   const query = isSmoke ? { synthetic: '1' } : undefined
+  watchWindow(audioWindow, 'audio')
   const devServer = process.env.ELECTRON_RENDERER_URL
   if (devServer) {
     const suffix = isSmoke ? '?synthetic=1' : ''

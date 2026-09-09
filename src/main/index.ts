@@ -24,6 +24,7 @@ import { initRecap } from './recap'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
+import { watchWindow } from './window-watch'
 import { createTray, getTray } from './tray'
 
 // Development builds get their own userData so the lock, settings, and
@@ -120,6 +121,8 @@ function createSettingsWindow(): BrowserWindow {
       sandbox: true
     }
   })
+
+  watchWindow(win, 'settings')
 
   // Closing the window hides it; the app lives in the tray.
   win.on('close', (event) => {

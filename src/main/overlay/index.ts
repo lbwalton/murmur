@@ -4,6 +4,7 @@
 // insertion into the target app, so focusable stays false forever.
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, screen } from 'electron'
+import { watchWindow } from '../window-watch'
 import { IpcChannels } from '../../shared/ipc'
 import { OverlayMachine, type OverlayPhase, type OverlayState } from '../../shared/overlay-state'
 import { getSettings, onSettingsChanged } from '../settings'
@@ -55,6 +56,7 @@ function createOverlayWindow(): BrowserWindow {
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
+  watchWindow(win, 'overlay')
   const devServer = process.env.ELECTRON_RENDERER_URL
   if (devServer) {
     void win.loadURL(`${devServer}/overlay/index.html`)
