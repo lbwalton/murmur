@@ -608,6 +608,8 @@ export function App(): React.JSX.Element {
             onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
           />
         </Row>
+
+        <ProfilesRow settings={settings} onSettings={setSettings} />
       </section>
 
       <section className="panel">
@@ -1013,8 +1015,11 @@ function ProSection(): React.JSX.Element {
   if (status.pro) {
     return (
       <p className="row-desc">
-        Pro is active. Thank you for supporting free software; your belts stay earned, never
-        bought, and every Pro convenience lands here first. Supporter since{' '}
+        {status.founder
+          ? 'Founding member. A permanent ten percent discount on every future paid product is yours, cloud included. '
+          : 'Pro is active. '}
+        Thank you for supporting free software; your belts stay earned, never bought, and every
+        Pro convenience lands here first. Supporter since{' '}
         {new Date(status.since).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.
       </p>
     )
@@ -1053,6 +1058,99 @@ function ProSection(): React.JSX.Element {
             Get Pro
           </button>
         )}
+      </div>
+    </Row>
+  )
+}
+
+function ProfilesRow(props: {
+  settings: Settings
+  onSettings: (s: Settings) => void
+}): React.JSX.Element {
+  const [pro, setPro] = useState<boolean | null>(null)
+  const [name, setName] = useState('')
+  const [chosen, setChosen] = useState('')
+  const profiles = props.settings.provider.profiles
+
+  useEffect(() => {
+    void bridge().getLicenseStatus().then((s) => setPro(s.pro))
+  }, [])
+
+  if (pro === null) return <div />
+  if (!pro) {
+    return (
+      <Row
+        label="Profiles"
+        desc="murmur Pro: save this whole setup (endpoint, models, and key) under a name and switch providers in one click."
+      >
+        {proConfig.buyUrl ? (
+          <button className="btn quiet-btn" onClick={() => void bridge().openBuyPage()}>
+            Get Pro
+          </button>
+        ) : (
+          <span className="dim">Pro feature</span>
+        )}
+      </Row>
+    )
+  }
+
+  const handle = (result: import('../../main/profiles').ProfileResult): void => {
+    if (result.ok) props.onSettings(result.settings)
+  }
+
+  return (
+    <Row
+      label="Profiles"
+      desc="Each profile carries its endpoint, models, and key. Applying one swaps the whole setup."
+    >
+      <div className="inline profiles-stack">
+        {profiles.length > 0 && (
+          <div className="inline">
+            <select className="field" value={chosen} onChange={(e) => setChosen(e.target.value)}>
+              <option value="">choose a profile…</option>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn"
+              disabled={!chosen}
+              onClick={() => void bridge().applyProviderProfile(chosen).then(handle)}
+            >
+              Apply
+            </button>
+            <button
+              className="btn quiet-btn"
+              disabled={!chosen}
+              onClick={() => {
+                void bridge().deleteProviderProfile(chosen).then(handle)
+                setChosen('')
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        )}
+        <div className="inline">
+          <input
+            className="field"
+            placeholder="name this setup…"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button
+            className="btn"
+            disabled={name.trim().length === 0}
+            onClick={() => {
+              void bridge().saveProviderProfile(name.trim()).then(handle)
+              setName('')
+            }}
+          >
+            Save current
+          </button>
+        </div>
       </div>
     </Row>
   )

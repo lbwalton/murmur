@@ -726,6 +726,12 @@ select.field {
   align-items: center;
 }
 
+.profiles-stack {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .swatch {
   width: 18px;
   height: 18px;

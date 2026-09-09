@@ -55,6 +55,13 @@ export function initSettings(): void {
 
   ipcMain.handle(IpcChannels.settingsGet, () => settingsStore?.get())
   ipcMain.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
+    // provider.profiles is written ONLY by the dedicated Pro-gated
+    // profiles handlers; the generic channel must never carry it, or a
+    // renderer could inject entries whose ids feed file paths.
+    if (partial && typeof partial === 'object') {
+      const p = partial as { provider?: { profiles?: unknown } }
+      if (p.provider && typeof p.provider === 'object') delete p.provider.profiles
+    }
     return updateSettings(partial)
   })
   ipcMain.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {

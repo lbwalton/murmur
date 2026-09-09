@@ -18,9 +18,12 @@ export interface LicensePayload {
   id: string
   at: number
   to?: string
+  /** Founding member: bought during the founders window; carries a
+   *  permanent ten percent discount on future paid products. */
+  f?: boolean
 }
 
-export type LicenseStatus = { pro: false } | { pro: true; since: number; id: string }
+export type LicenseStatus = { pro: false } | { pro: true; since: number; id: string; founder: boolean }
 
 function b64uToBuf(s: string): Buffer {
   return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
@@ -43,7 +46,12 @@ export function verifyLicense(key: string, publicKeyB64: string): LicensePayload
     if (typeof parsed !== 'object' || parsed === null) return null
     const p = parsed as Record<string, unknown>
     if (typeof p.id !== 'string' || typeof p.at !== 'number') return null
-    return { id: p.id, at: p.at, to: typeof p.to === 'string' ? p.to : undefined }
+    return {
+      id: p.id,
+      at: p.at,
+      to: typeof p.to === 'string' ? p.to : undefined,
+      f: typeof p.f === 'boolean' ? p.f : undefined
+    }
   } catch {
     return null
   }
@@ -53,17 +61,18 @@ function licenseFile(): string {
   return join(app.getPath('userData'), 'license.key')
 }
 
-function readStatus(): LicenseStatus {
+export function readLicenseStatus(): LicenseStatus {
   try {
     if (!existsSync(licenseFile())) return { pro: false }
     const key = readFileSync(licenseFile(), 'utf8')
     const payload = verifyLicense(key, pro.publicKey)
     if (!payload) return { pro: false }
-    return { pro: true, since: payload.at, id: payload.id }
+    return { pro: true, since: payload.at, id: payload.id, founder: payload.f === true }
   } catch {
     return { pro: false }
   }
 }
+const readStatus = readLicenseStatus
 
 export function initLicense(): void {
   ipcMain.handle('license:status', () => readStatus())

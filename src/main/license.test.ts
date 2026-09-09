@@ -49,6 +49,13 @@ describe('verifyLicense', () => {
     }
   })
 
+  it('carries the founding member flag through verification', () => {
+    const payload = verifyLicense(issue({ id: 'ord_f', at: 5, f: true }), PUB)
+    expect(payload?.f).toBe(true)
+    const plain = verifyLicense(issue({ id: 'ord_p', at: 5 }), PUB)
+    expect(plain?.f).toBeUndefined()
+  })
+
   it('rejects a signed payload missing required fields', () => {
     expect(verifyLicense(issue({ to: 'x@example.com' }), PUB)).toBeNull()
   })

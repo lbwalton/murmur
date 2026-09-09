@@ -11,7 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
-- [ ] US-041 pro unlock, what remains: (1) decide the first Pro conveniences (nothing already free gets removed; cosmetics stay earned). (2) make one real test purchase at the live Payment Link (code FOUNDERS takes it to 39 dollars), then run: node scripts/issue-license.js <order-id> <buyer-email> and activate the printed key in settings. (3) decide when the FOUNDERS code retires. The product, link, Managed Payments, and coupon were all configured 2026-09-08.
+- [ ] US-041 pro unlock, what remains: (1) decide the first Pro conveniences (nothing already free gets removed; cosmetics stay earned). (2) make one real test purchase at the live Payment Link (code FOUNDERS takes it to 39 dollars), then run: node scripts/issue-license.js <order-id> <buyer-email> --founder and activate the printed key in settings (the founder flag marks you a founding member with the permanent ten percent). Then try profiles: save your Groq setup under a name, change the base URL, and apply the profile to snap back (US-042). (3) decide when the FOUNDERS code retires. The product, link, Managed Payments, and coupon were all configured 2026-09-08.
 
 
 

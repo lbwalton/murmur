@@ -11,6 +11,10 @@ export interface Settings {
     baseUrl: string
     sttModel: string
     llmModel: string
+    /** Saved provider setups (murmur Pro): switch endpoint, models,
+     *  and the matching key in one click. The active fields above stay
+     *  the single source of truth for what runs. */
+    profiles: Array<{ id: string; name: string; baseUrl: string; sttModel: string; llmModel: string }>
   }
   formatting: {
     level: 'off' | 'light' | 'full'
@@ -75,7 +79,8 @@ export const DEFAULT_SETTINGS: Settings = {
     sttModel: 'whisper-large-v3-turbo',
     // Groq decommissioned the llama defaults 2026-08-16; gpt-oss-120b is
     // their documented replacement (console.groq.com/docs/deprecations).
-    llmModel: 'openai/gpt-oss-120b'
+    llmModel: 'openai/gpt-oss-120b',
+    profiles: []
   },
   formatting: {
     level: 'full',

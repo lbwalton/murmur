@@ -112,3 +112,7 @@ Yes. The accent you pick in settings (any earned belt color, or the special acce
 ## Why don't I see murmur notifications on my Mac?
 
 Almost always a macOS permission. The Test button in the recap section fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
+
+## What are provider profiles?
+
+A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from the provider section. The key travels with each profile as an encrypted copy; plaintext never surfaces. The free single provider setup is unchanged, profiles are additive.

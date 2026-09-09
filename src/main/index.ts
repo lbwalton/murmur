@@ -221,6 +221,8 @@ app.whenReady().then(async () => {
   initUpdater()
   const { initLicense } = await import('./license')
   initLicense()
+  const { initProfiles } = await import('./profiles')
+  initProfiles()
   initTranscribe()
   initFormatter()
   initRecap({

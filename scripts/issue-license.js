@@ -10,9 +10,11 @@ const { readFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { homedir } = require('node:os')
 
-const [, , orderId, email] = process.argv
+const args = process.argv.slice(2).filter((a) => a !== '--founder')
+const founder = process.argv.includes('--founder')
+const [orderId, email] = args
 if (!orderId) {
-  console.error('usage: node scripts/issue-license.js <order-id> [buyer-email]')
+  console.error('usage: node scripts/issue-license.js <order-id> [buyer-email] [--founder]')
   process.exit(1)
 }
 
@@ -26,9 +28,10 @@ try {
 }
 
 const b64u = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-const payload = Buffer.from(
-  JSON.stringify(email ? { id: orderId, at: Date.now(), to: email } : { id: orderId, at: Date.now() })
-)
+const body = { id: orderId, at: Date.now() }
+if (email) body.to = email
+if (founder) body.f = true
+const payload = Buffer.from(JSON.stringify(body))
 const sig = sign(null, payload, privateKey)
 const key = `MURMUR-${b64u(payload)}.${b64u(sig)}`
 
@@ -38,6 +41,6 @@ const key = `MURMUR-${b64u(payload)}.${b64u(sig)}`
 const { appendFileSync, openSync, closeSync, existsSync } = require('node:fs')
 const ledger = join(homedir(), '.config', 'murmur', 'issued-licenses.jsonl')
 if (!existsSync(ledger)) closeSync(openSync(ledger, 'a', 0o600))
-appendFileSync(ledger, JSON.stringify({ id: orderId, to: email ?? null, at: Date.now(), key }) + '\n')
+appendFileSync(ledger, JSON.stringify({ id: orderId, to: email ?? null, founder, at: Date.now(), key }) + '\n')
 
 console.log(key)
