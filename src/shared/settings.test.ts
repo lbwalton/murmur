@@ -64,3 +64,26 @@ describe('maskKey', () => {
     expect(maskKey('gsk_abcdefghijklmnop')).toBe('gsk_…mnop')
   })
 })
+
+describe('sanitized entry lists', () => {
+  it('drops malformed dictionary and expansion entries on load', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      dictionary: [{ from: 'a', to: 'b' }, { from: 'x' }, 'junk', null, 42],
+      expansions: [{ trigger: 'sig', text: 'Best, LB' }, { trigger: 'broken' }, { text: 'orphan' }]
+    })
+    expect(merged.dictionary).toEqual([{ from: 'a', to: 'b' }])
+    expect(merged.expansions).toEqual([{ trigger: 'sig', text: 'Best, LB' }])
+  })
+
+  it('drops malformed provider profiles the same way', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      provider: { profiles: [
+        { id: 'abcd1234', name: 'groq', baseUrl: 'https://x', sttModel: 'w', llmModel: 'l' },
+        { id: 'oops' },
+        'garbage'
+      ] }
+    })
+    expect(merged.provider.profiles.length).toBe(1)
+    expect(merged.provider.profiles[0]?.id).toBe('abcd1234')
+  })
+})

@@ -785,7 +785,7 @@ export function App(): React.JSX.Element {
             {settings.dictionary.map((entry, i) => (
               <div className="dict-row" key={i}>
                 <span className="dict-pair mono-inline">
-                  {entry.from} → {entry.to}
+                  {String(entry.from ?? '')} → {String(entry.to ?? '')}
                 </span>
                 <button
                   className="btn quiet-btn"
@@ -815,7 +815,10 @@ export function App(): React.JSX.Element {
             {settings.expansions.map((entry, i) => (
               <div className="dict-row" key={i}>
                 <span className="dict-pair mono-inline">
-                  {entry.trigger} → {entry.text.length > 24 ? `${entry.text.slice(0, 24)}…` : entry.text}
+                  {String(entry.trigger ?? '')} →{' '}
+                  {String(entry.text ?? '').length > 24
+                    ? `${String(entry.text ?? '').slice(0, 24)}…`
+                    : String(entry.text ?? '')}
                 </span>
                 <button
                   className="btn quiet-btn"

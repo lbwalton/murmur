@@ -145,7 +145,36 @@ export function mergeSettings<T extends object>(defaults: T, stored: unknown): T
     if (base !== undefined && typeof base !== typeof value) continue
     out[key] = structuredClone(value)
   }
-  return out as T
+  return sanitizeEntryLists(out) as T
+}
+
+// Entry lists must hold exactly their declared shapes: a malformed
+// entry that slips into the stored file (issue 1 killed the whole
+// settings window over an expansion with no text) is dropped on load
+// rather than trusted. Fail open: the rest of the file survives.
+function stringPair(value: unknown, a: string, b: string): boolean {
+  if (!isPlainObject(value)) return false
+  const v = value as Record<string, unknown>
+  return typeof v[a] === 'string' && typeof v[b] === 'string'
+}
+
+function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(out.dictionary)) {
+    out.dictionary = out.dictionary.filter((e) => stringPair(e, 'from', 'to'))
+  }
+  if (Array.isArray(out.expansions)) {
+    out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
+  }
+  const provider = out.provider as Record<string, unknown> | undefined
+  if (provider && Array.isArray(provider.profiles)) {
+    provider.profiles = provider.profiles.filter(
+      (p) =>
+        stringPair(p, 'id', 'name') &&
+        stringPair(p, 'baseUrl', 'sttModel') &&
+        typeof (p as Record<string, unknown>).llmModel === 'string'
+    )
+  }
+  return out
 }
 
 /** Mask an API key for display: never send the real key to a renderer. */
