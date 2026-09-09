@@ -11,6 +11,14 @@ declare global {
 
 const params = new URLSearchParams(window.location.search)
 const synthetic = params.get('synthetic') === '1'
+// Smoke tightens the watchdog so recovery proves itself in seconds.
+// The knobs only exist in synthetic mode; production always runs the
+// liveness defaults.
+const msParam = (name: string): number | undefined => {
+  if (!synthetic) return undefined
+  const value = Number(params.get(name))
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
 
 const bridge = window.murmurAudio
 
@@ -19,6 +27,9 @@ let pendingLevel = 0
 let lastLevelSentAt = 0
 const recorder = new Recorder({
   synthetic,
+  watchTickMs: msParam('watchTickMs'),
+  stallMs: msParam('stallMs'),
+  armTimeoutMs: msParam('armTimeoutMs'),
   onLevel: (rms) => {
     pendingLevel = Math.max(pendingLevel, rms)
     const now = performance.now()
@@ -43,8 +54,20 @@ bridge.onCancel(() => {
 })
 
 bridge.onRearm(() => {
-  void recorder.rearm().then((ok) => bridge.armed(ok))
+  void recorder
+    .rearm()
+    .then((ok) => bridge.armed(ok))
+    .catch(() => bridge.armed(false))
 })
+
+if (synthetic) {
+  bridge.onSimulateOutage((failures) => {
+    recorder.simulateOutage(failures)
+    // Ack so the smoke check can prove the graph was actually broken
+    // before it credits the recovery.
+    bridge.armed(false)
+  })
+}
 
 // Sound cues share this window's audio stack. A dedicated context so
 // cue playback never touches the capture graph.
@@ -60,7 +83,14 @@ bridge.onCue((cue, volume) => {
   })()
 })
 
-void recorder
-  .arm()
-  .then(() => bridge.ready())
-  .catch(() => bridge.armed(false))
+// Ready means the page is wired and the first arm attempt has settled,
+// not that it succeeded: a wake-time reload often fails its first arm
+// and the watchdog recovers after. Welding ready to arm success would
+// leave main "not ready" forever in exactly that case.
+void recorder.arm().then(
+  () => bridge.ready(),
+  () => {
+    bridge.armed(false)
+    bridge.ready()
+  }
+)

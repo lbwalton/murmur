@@ -19,6 +19,9 @@ const api = {
   onRearm: (cb: () => void): void => {
     ipcRenderer.on('audio:rearm', () => cb())
   },
+  onSimulateOutage: (cb: (failures: number) => void): void => {
+    ipcRenderer.on('audio:simulate-outage', (_e, failures: number) => cb(Number(failures)))
+  },
   ready: (): void => {
     ipcRenderer.send('audio:ready')
   },

@@ -16,6 +16,8 @@ function aliveAudio(): BrowserWindow | null {
 }
 let readyResolvers: Array<() => void> = []
 let ready = false
+let reviveCount = 0
+let lastCrashAt = 0
 
 function whenAudioReady(): Promise<void> {
   if (ready) return Promise.resolve()
@@ -44,11 +46,31 @@ export function initAudio(): void {
     aliveAudio()?.webContents.send(IpcChannels.audioRearm)
   })
 
-  const query = isSmoke ? { synthetic: '1' } : undefined
+  // A dead capture renderer (GPU reset, OS kill during sleep) means no
+  // dictation until it comes back, so bring it back. The delay
+  // escalates by crash spacing, so a rapid crash loop backs off toward
+  // 30s while an isolated crash revives fast; ready arriving cannot
+  // reset the loop because escalation keys off the crashes themselves.
+  audioWindow.webContents.on('render-process-gone', () => {
+    ready = false
+    const now = Date.now()
+    if (now - lastCrashAt > 60_000) reviveCount = 0
+    lastCrashAt = now
+    const delay = Math.min(30_000, 250 * 2 ** reviveCount)
+    reviveCount++
+    setTimeout(() => {
+      aliveAudio()?.webContents.reload()
+    }, delay)
+  })
+
+  // Smoke tightens the liveness watchdog so outage recovery proves
+  // itself inside the per-check timeout.
+  const smokeParams = 'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500'
+  const query = isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : undefined
   watchWindow(audioWindow, 'audio')
   const devServer = process.env.ELECTRON_RENDERER_URL
   if (devServer) {
-    const suffix = isSmoke ? '?synthetic=1' : ''
+    const suffix = isSmoke ? `?${smokeParams}` : ''
     void audioWindow.loadURL(`${devServer}/audio/index.html${suffix}`)
   } else {
     void audioWindow.loadFile(join(__dirname, '../renderer/audio/index.html'), { query })
@@ -96,6 +118,58 @@ export function initAudio(): void {
     })
     aliveAudio()?.webContents.send(IpcChannels.audioRearm)
     return armed
+  })
+
+  registerSmokeCheck('recordingRecovery', async () => {
+    // The sleep/wake scenario end to end: the graph dies silently (no
+    // events, chunks just stop) and the first re-arm attempts fail the
+    // way a waking audio stack fails getUserMedia. The recorder must
+    // recover on its own; main sends no rearm here on purpose.
+    await whenAudioReady()
+    // The renderer acks the outage with armed=false; without the ack the
+    // check cannot distinguish "recovered" from "never damaged".
+    const acked = new Promise<boolean>((resolve) => {
+      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+    })
+    aliveAudio()?.webContents.send(IpcChannels.audioSimulateOutage, 2)
+    if (!(await acked)) {
+      console.error('smoke recordingRecovery: outage was not acknowledged')
+      return false
+    }
+    // Outage teardown + stall detection + two failed attempts + rebuild,
+    // then a beat for the pre-roll to refill.
+    await new Promise((resolve) => setTimeout(resolve, 2_000))
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const wav = await stopRecording()
+    if (!wav) {
+      console.error('smoke recordingRecovery: stop returned null')
+      return false
+    }
+    const info = parseWav(wav)
+    return info.sampleCount > 1_000 && info.peak > 0.05
+  })
+
+  registerSmokeCheck('recordingRevive', async () => {
+    // A dead audio renderer process (GPU reset, OS kill during sleep)
+    // must come back on its own, and with it the warm mic.
+    await whenAudioReady()
+    const revived = new Promise<void>((resolve) => {
+      ipcMain.once(IpcChannels.audioReady, () => resolve())
+    })
+    aliveAudio()?.webContents.forcefullyCrashRenderer()
+    await revived
+    // Let the fresh graph fill its pre-roll before recording through it.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const wav = await stopRecording()
+    if (!wav) {
+      console.error('smoke recordingRevive: stop returned null')
+      return false
+    }
+    const info = parseWav(wav)
+    return info.sampleCount > 1_000 && info.peak > 0.05
   })
 }
 
