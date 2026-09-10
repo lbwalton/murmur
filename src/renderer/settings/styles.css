@@ -697,6 +697,57 @@ select.field {
   align-items: baseline;
 }
 
+/* The full belt ladder: quiet by default, one disclosure away. */
+.ladder-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.ladder-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ladder-summary::after {
+  content: '▸';
+  margin-left: 8px;
+  color: var(--text-dim);
+}
+
+details[open] > .ladder-summary::after {
+  content: '▾';
+}
+
+.ladder-row {
+  display: flex;
+  gap: 12px;
+  padding: 5px 0;
+  align-items: baseline;
+}
+
+.ladder-mark {
+  width: 14px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.ladder-name {
+  flex: 1;
+  font-size: 13px;
+}
+
+.ladder-row-done .ladder-name {
+  color: var(--text-dim);
+}
+
+.ladder-row-current .ladder-mark,
+.ladder-row-current .ladder-name {
+  color: var(--brand);
+}
+
+.ladder-gates {
+  white-space: nowrap;
+}
+
 .insignia {
   display: inline-flex;
   align-items: center;

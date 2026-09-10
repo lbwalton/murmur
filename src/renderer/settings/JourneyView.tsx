@@ -2,12 +2,16 @@
 // The journey: your belt, drawn; the road to the next one; the story of
 // how far your voice has carried; the badges along the way.
 import { useEffect, useRef, useState } from 'react'
+import ranksFile from '../../../shared/ranks.json'
 import type { EarnedAchievement } from '../../shared/achievements'
 import type { CosmeticsReport } from '../../shared/cosmetics'
-import type { ProgressReport } from '../../shared/ranks'
+import type { ProgressReport, RankSpec } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
+
+// The same file the engine promotes from, so this list can never drift.
+const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
 
 interface AchievementDef {
   id: string
@@ -215,6 +219,43 @@ export function JourneyView(): React.JSX.Element {
           </p>
         </section>
       )}
+
+      <section className="panel">
+        <details className="ladder">
+          <summary className="micro-label ladder-summary">the full ladder</summary>
+          <p className="row-desc">
+            Every promotion needs both gates: lifetime words dictated AND distinct days you
+            dictated. Levels are separate and have no day gate: one level per hundred thousand
+            words.
+          </p>
+          <div className="log-list">
+            {LADDER.filter((rank) => rank.id !== 'none').map((rank) => {
+              const earned =
+                rank.words !== null &&
+                rank.activeDays !== null &&
+                progress.totals.words >= rank.words &&
+                progress.totals.activeDays >= rank.activeDays
+              const current = rank.founderOnly ? progress.founder : rank.id === progress.rank.id
+              return (
+                <div
+                  className={`ladder-row${current ? ' ladder-row-current' : ''}${earned && !current ? ' ladder-row-done' : ''}`}
+                  key={rank.id}
+                >
+                  <span className="ladder-mark mono-inline">
+                    {rank.founderOnly ? '♛' : current ? '●' : earned ? '✓' : '·'}
+                  </span>
+                  <span className="ladder-name">{rank.label}</span>
+                  <span className="mono-inline dim ladder-gates">
+                    {rank.words === null || rank.activeDays === null
+                      ? 'founder only'
+                      : `${rank.words.toLocaleString()} words · ${rank.activeDays.toLocaleString()} days`}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </details>
+      </section>
 
       <section className="panel">
         <p className="micro-label">achievements</p>
