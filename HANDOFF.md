@@ -24,6 +24,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 - [ ] US-020 recap, two quick steps in the installed app: (1) click the recap Test button once more now that notifications are allowed; a murmur recap banner with today's numbers should appear instantly. (2) For the full loop: turn Daily recap on, set a time two minutes out, wait for the banner, click it, confirm you land on the wrap-up tab.
 
+## Known follow-ups (not blocking)
+
+- [ ] Synthetic smoke can flake on a real Mac (seen 2026-09-10 evening): the recording, recordingRecovery, recordingRevive, and dictationLoop checks all failed locally while pristine HEAD and CI stayed green. Cause is smoke-only: the muted oscillator feeding the hidden audio window stops being rendered by Chromium after ~2 quantums when the machine's audio state shifts (e.g. display asleep), so the watchdog reads it as a real stall. A live mic does not hit this (the input device clocks the graph). If it starts flaking in CI, make the synthetic source self-clocked instead of destination-pulled (e.g. drive the worklet without depending on ctx.destination consumption). Product capture code is unaffected.
+
 ## Standing needs
 
 - A real Groq API key on this Mac for live transcription tests (never committed, entered through the app).
