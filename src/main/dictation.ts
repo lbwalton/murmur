@@ -93,7 +93,7 @@ export async function dictationStop(): Promise<void> {
     const formatting = settings.formatting
     const formatted = formatTranscript(
       corrected,
-      { level: formatting.level, numbers: formatting.numbers },
+      { level: formatting.level, numbers: formatting.numbers, smartLists: formatting.smartLists },
       formatSpec as unknown as FormatSpec
     )
     const { maybePolish } = await import('./formatter')

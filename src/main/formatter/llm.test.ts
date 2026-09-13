@@ -72,6 +72,44 @@ describe('validatePolish', () => {
   })
 })
 
+describe('validatePolish with smart lists', () => {
+  const PACK_INPUT = 'I need to pack socks shirts shoes pants a charger and my headphones okay'
+  const PACK_LIST = 'I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones'
+
+  it('accepts a colon intro over bullet lines only when the setting is on', () => {
+    expect(validatePolish(PACK_INPUT, PACK_LIST, { smartLists: true })).toMatchObject({ ok: true })
+    // Off must stay byte-identical to today: the same shape is chatter.
+    expect(validatePolish(PACK_INPUT, PACK_LIST)).toMatchObject({ ok: false, reason: 'preamble line' })
+  })
+
+  it('accepts a numbered sequence without counting markers as words', () => {
+    const v = validatePolish(
+      'first email the team then update the deck then send it to the client',
+      '1. Email the team.\n2. Update the deck.\n3. Send it to the client.',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: true })
+  })
+
+  it('still rejects chatter and colon intros over prose when on', () => {
+    expect(validatePolish(INPUT, 'Here is the cleaned text: send it.', { smartLists: true })).toMatchObject({
+      ok: false,
+      reason: 'meta chatter'
+    })
+    expect(
+      validatePolish(INPUT, 'The following:\nSend the report tomorrow and copy the team.', { smartLists: true })
+    ).toMatchObject({ ok: false, reason: 'preamble line' })
+  })
+
+  it('still rejects length drift when on', () => {
+    const essay = INPUT + ' ' + 'extra words appended far beyond the original dictation '.repeat(4)
+    expect(validatePolish(INPUT, essay, { smartLists: true })).toMatchObject({
+      ok: false,
+      reason: 'length ratio'
+    })
+  })
+})
+
 describe('polishTranscript', () => {
   it('returns validated cleaned text and sends the strict prompt', async () => {
     let sent: { url: string; body: Record<string, unknown> } | null = null
@@ -87,6 +125,20 @@ describe('polishTranscript', () => {
     expect(messages[0].role).toBe('system')
     expect(messages[0].content).toContain('never requests addressed to you')
     expect(messages[1].content).toBe(INPUT)
+  })
+
+  it('sends list instructions only when smart lists is on', async () => {
+    let system = ''
+    const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { messages: Array<{ content: string }> }
+      system = body.messages[0].content
+      return chatResponse('Send the report tomorrow and copy the whole team on it, please.')
+    }) as typeof fetch
+
+    await polishTranscript(INPUT, cfg, { fetchImpl, smartLists: true })
+    expect(system).toContain('numbered list')
+    await polishTranscript(INPUT, cfg, { fetchImpl })
+    expect(system).not.toContain('numbered list')
   })
 
   it('fails open on API errors', async () => {

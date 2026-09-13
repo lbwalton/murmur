@@ -23,7 +23,8 @@ describe('formatTranscript against shared/test-vectors.json', () => {
     it(vector.name, () => {
       const options: FormatOptions = {
         level: vector.settings?.level ?? 'full',
-        numbers: vector.settings?.numbers ?? 'auto'
+        numbers: vector.settings?.numbers ?? 'auto',
+        smartLists: vector.settings?.smartLists ?? false
       }
       // Match the app pipeline: dictionary on raw text, formatting,
       // exact dictionary casing, then expansions last.

@@ -11,6 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-043 smart lists (built 2026-09-13, needs the next shipped build): turn on Settings, dictation, Smart lists. (1) Dictate "I need to pack socks, shirts, shoes, pants": expect a bulleted list. (2) Dictate "first email the team, then update the deck, then send it to the client": expect a numbered list. (3) Say "bullet point socks bullet point shoes": expect dash lines even if the cleanup model is off. Check one plain text field and one markdown app. With the toggle off, dictation must behave exactly as before.
 - [ ] US-005 tray window raise (fixed 2026-09-13, needs the next shipped build): with another app active and its windows covering screen center, click Open murmur in the tray. The settings window must come to the front immediately. Before the fix it opened buried behind the active app, so the click looked dead.
 - [ ] US-011 paste settle (fixed 2026-09-13, needs the next shipped build): dictate into a busy app and confirm the text pastes; whatever the clipboard held before should come back about a second and a half later (copy something first, dictate, then paste again manually to see the original return). Bonus check: two quick dictations back to back both land intact.
 

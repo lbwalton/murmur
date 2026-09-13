@@ -1,13 +1,23 @@
 {
   "version": 1,
-  "comment": "Single source of truth for deterministic formatter rules on every platform. The pipeline order is: trim, fillers, spoken punctuation, scratch-that, whitespace, numbers, capitalization, terminal punctuation. Spoken punctuation runs before scratch-that so sentence boundaries exist. Levels: off applies nothing but a trim; light applies fillers, whitespace, capitalization; full applies everything. Change behavior here or nowhere.",
+  "comment": "Single source of truth for deterministic formatter rules on every platform. The pipeline order is: trim, fillers, spoken punctuation, scratch-that, whitespace, numbers, capitalization, terminal punctuation. Spoken punctuation runs before scratch-that so sentence boundaries exist. Levels: off applies nothing but a trim; light applies fillers, whitespace, capitalization; full applies everything. List commands apply at full only when the smart lists setting is on, in the same stage as spoken punctuation. Change behavior here or nowhere.",
   "fillers": {
     "comment": "Standalone filler words removed at light and full. Word-boundary, case-insensitive. Never part of another word.",
-    "words": ["um", "uh", "uhm", "uhh", "erm", "mhm"]
+    "words": [
+      "um",
+      "uh",
+      "uhm",
+      "uhh",
+      "erm",
+      "mhm"
+    ]
   },
   "scratchThat": {
     "comment": "Full level: each trigger deletes the current sentence up to and including the trigger, keeping what follows. Sentence start is the position after the previous . ! ? or newline.",
-    "triggers": ["scratch that", "strike that"]
+    "triggers": [
+      "scratch that",
+      "strike that"
+    ]
   },
   "spokenPunctuation": {
     "comment": "Full level: spoken commands become symbols. Longest phrase wins. Terminal symbols capitalize the next word. Newline commands also swallow surrounding spaces. This is a command vocabulary: speaking the word literally converts, which is the accepted tradeoff of deterministic dictation.",
@@ -21,6 +31,14 @@
       "comma": ",",
       "colon": ":",
       "semicolon": ";"
+    }
+  },
+  "listCommands": {
+    "comment": "Full level, smart lists setting on: spoken commands start a dash list line. Same command-vocabulary tradeoff as spokenPunctuation, and the same matching rules (longest phrase wins, optional trailing comma or period swallowed). A text whose last line is a list item never receives appended terminal punctuation.",
+    "map": {
+      "bullet point": "\n- ",
+      "next bullet": "\n- ",
+      "next item": "\n- "
     }
   },
   "numbers": {

@@ -624,7 +624,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-09-13. Toggle formatting.smartLists (default false) in settings schema, UI row in the dictation panel, wired through dictationStop and maybePolish. Deterministic side: listCommands in shared/format-spec.json (bullet point, next bullet, next item map to newline dash lines) applied in the spokenPunctuation stage only when the toggle is on; ensureTerminal never staples a period onto a final list line; 5 new shared vectors in test-vectors.json cover on, off-by-default, synonyms, leading-command, and prose-unchanged cases. Polish side: SMART_LISTS_PROMPT appended to the system prompt only when on; validatePolish gains a smartLists opt that allows a colon intro directly over list lines and excludes list markers from the length-ratio word counts; chatter, colon-over-prose, and length-drift rejections unchanged and re-tested with the flag on. Verified: typecheck clean, 288 unit tests green (5 new vectors, 5 new llm tests), smoke green. One test expectation corrected during build: a Cleaned text colon intro rejects as meta chatter (the earlier guard), so the preamble-rule case uses a neutral colon intro. Remaining live criterion: LaBroi dictates both list shapes into a plain text field and a markdown app (HANDOFF.md). Review gate 2026-09-13 confirmed one finding, fixed: the no-period-on-list-endings rule in ensureTerminal ran unconditionally, so a raw transcript already starting a line with a dash would have changed output with the toggle off; the rule is now gated on smartLists and two parity vectors lock both directions. Re-verified after the fix: typecheck clean, 290 unit tests, smoke green."
     },
     {
       "id": "US-044",

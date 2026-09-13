@@ -47,6 +47,15 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 The cleanup pass fails open: if the model is slow, wrong, or chatty, murmur inserts the deterministically formatted text instead. A dictation is never lost or delayed indefinitely because of the cleanup model.
 
+## What is Smart lists, and how do I dictate a list?
+
+Smart lists turns spoken structure into real structure. It is off by default (dictation behaves exactly as it always has) and lives in Settings, dictation, Smart lists. With it on and formatting at Full, murmur formats lists two ways:
+
+- **Automatically.** Speak a sequence ("first I want to email the team, then update the deck, then send it to the client") and it becomes a numbered list, one step per line. Run through items ("I need to pack socks, shirts, shoes, pants") and it becomes a bulleted list, one item per line. Ordinary prose stays prose; the cleanup model is instructed never to force a list onto normal sentences.
+- **By command.** Say "bullet point", "next item", or "next bullet" to start a dash line yourself, the same way "period" and "new line" work today. Commands are deterministic: they work even when the cleanup model is unreachable.
+
+Lists use plain text markers ("- " and "1. "), so they paste correctly everywhere, and markdown apps render them as lists. Automatic list recognition needs the cleanup pass (Full formatting and a working cleanup model); the spoken commands only need Full formatting. Verified against format-spec version 1 (2026-09-13).
+
 ## What does the analytics tab show, and how is the cost estimated?
 
 The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at Groq's published rates (verified 2026-09-05, in `shared/rates.json`): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.

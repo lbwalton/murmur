@@ -26,7 +26,10 @@ export async function maybePolish(text: string): Promise<string> {
       model: settings.provider.llmModel,
       apiKey
     },
-    hint ? { hints: [hint] } : {}
+    {
+      smartLists: settings.formatting.smartLists,
+      ...(hint ? { hints: [hint] } : {})
+    }
   )
   return polished ?? text
 }

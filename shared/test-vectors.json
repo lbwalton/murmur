@@ -266,6 +266,56 @@
       },
       "input": "my address",
       "expected": "my address is 1 Main St"
+    },
+    {
+      "name": "smart lists on: bullet point commands become dash lines with no stapled period",
+      "settings": {
+        "smartLists": true
+      },
+      "input": "I need to pack colon bullet point socks bullet point shirts bullet point pants",
+      "expected": "I need to pack:\n- socks\n- shirts\n- pants"
+    },
+    {
+      "name": "smart lists off by default: bullet point stays literal words",
+      "input": "I need to pack colon bullet point socks bullet point shirts bullet point pants",
+      "expected": "I need to pack: bullet point socks bullet point shirts bullet point pants."
+    },
+    {
+      "name": "smart lists on: next item starts a dash line",
+      "settings": {
+        "smartLists": true
+      },
+      "input": "first grab the badge next item email the team",
+      "expected": "First grab the badge\n- email the team"
+    },
+    {
+      "name": "smart lists on: a leading bullet point opens the list cleanly",
+      "settings": {
+        "smartLists": true
+      },
+      "input": "bullet point socks next bullet shoes",
+      "expected": "- socks\n- shoes"
+    },
+    {
+      "name": "smart lists on leaves plain prose exactly as before",
+      "settings": {
+        "smartLists": true
+      },
+      "input": "send the report tomorrow",
+      "expected": "Send the report tomorrow."
+    },
+    {
+      "name": "smart lists off: a raw dash line still gets terminal punctuation exactly as before",
+      "input": "- send the report tomorrow",
+      "expected": "- send the report tomorrow."
+    },
+    {
+      "name": "smart lists on: a raw dash line is treated as a list ending, no stapled period",
+      "settings": {
+        "smartLists": true
+      },
+      "input": "- send the report tomorrow",
+      "expected": "- send the report tomorrow"
     }
   ]
 }

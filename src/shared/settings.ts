@@ -19,6 +19,10 @@ export interface Settings {
   formatting: {
     level: 'off' | 'light' | 'full'
     numbers: 'auto' | 'words' | 'digits'
+    /** Smart lists: spoken sequences and item run-ons become real lists
+     *  (polish prompt plus spoken list commands). Off keeps today's
+     *  behavior exactly. */
+    smartLists: boolean
   }
   insertion: {
     mode: 'paste' | 'copy'
@@ -84,7 +88,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   formatting: {
     level: 'full',
-    numbers: 'auto'
+    numbers: 'auto',
+    smartLists: false
   },
   insertion: {
     mode: 'paste'

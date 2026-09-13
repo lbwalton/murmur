@@ -7,6 +7,7 @@ export interface FormatSpec {
   fillers: { words: string[] }
   scratchThat: { triggers: string[] }
   spokenPunctuation: { map: Record<string, string> }
+  listCommands: { map: Record<string, string> }
   numbers: {
     units: Record<string, number>
     tens: Record<string, number>
@@ -17,6 +18,8 @@ export interface FormatSpec {
 export interface FormatOptions {
   level: 'off' | 'light' | 'full'
   numbers: 'auto' | 'words' | 'digits'
+  /** Smart lists setting: spoken list commands convert only when true. */
+  smartLists?: boolean
 }
 
 function escapeRegExp(s: string): string {
@@ -114,8 +117,15 @@ function capitalizeSentences(text: string): string {
   return out
 }
 
-function ensureTerminal(text: string, minWords: number, append: string): string {
+function ensureTerminal(text: string, minWords: number, append: string, smartLists: boolean): string {
   if (text.length === 0) return text
+  // A list never gets a period stapled onto its last item. Gated on the
+  // setting: with smart lists off, even a raw transcript that happens to
+  // start a line with a dash must format byte-identically to before.
+  if (smartLists) {
+    const lastLine = text.slice(text.lastIndexOf('\n') + 1)
+    if (/^- /.test(lastLine)) return text
+  }
   const words = text.split(/\s+/).filter((w) => w.length > 0)
   if (words.length < minWords) return text
   if (/[\w)]$/.test(text)) return text + append
@@ -133,6 +143,8 @@ export function formatTranscript(raw: string, options: FormatOptions, spec: Form
     // Punctuation first: scratch-that needs real sentence boundaries to
     // know where the current sentence starts.
     out = applySpokenPunctuation(out, spec.spokenPunctuation.map)
+    // List commands share spoken punctuation's matching rules and stage.
+    if (options.smartLists) out = applySpokenPunctuation(out, spec.listCommands.map)
     out = applyScratchThat(out, spec.scratchThat.triggers)
   }
 
@@ -148,7 +160,12 @@ export function formatTranscript(raw: string, options: FormatOptions, spec: Form
   out = capitalizeSentences(out)
 
   if (options.level === 'full') {
-    out = ensureTerminal(out, spec.terminalPunctuation.minWords, spec.terminalPunctuation.append)
+    out = ensureTerminal(
+      out,
+      spec.terminalPunctuation.minWords,
+      spec.terminalPunctuation.append,
+      options.smartLists === true
+    )
   }
   return out
 }

@@ -688,6 +688,27 @@ export function App(): React.JSX.Element {
           </select>
         </Row>
 
+        <Row
+          label="Smart lists"
+          desc="At Full formatting, spoken sequences (first, then, then) become numbered lists, item run-ons become bullets, and saying bullet point or next item starts a dash line. Off keeps dictation exactly as it is today."
+        >
+          <select
+            className="field"
+            value={settings.formatting.smartLists ? 'on' : 'off'}
+            onChange={(e) =>
+              void update({
+                formatting: {
+                  ...settings.formatting,
+                  smartLists: e.target.value === 'on'
+                } as Settings['formatting']
+              })
+            }
+          >
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
+        </Row>
+
         <Row label="Waveform" desc="How the pill visualizes your voice. Locked styles show how to earn them.">
           <select
             className="field"
