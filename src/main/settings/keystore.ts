@@ -22,10 +22,11 @@ export class KeyStore {
 
   constructor(
     dir: string,
-    private readonly cipher: KeyCipher
+    private readonly cipher: KeyCipher,
+    file = 'key.enc'
   ) {
     mkdirSync(dir, { recursive: true })
-    this.file = join(dir, 'key.enc')
+    this.file = join(dir, file)
   }
 
   set(key: string): void {

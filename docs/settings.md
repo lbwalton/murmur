@@ -58,7 +58,7 @@ Lists use plain text markers ("- " and "1. "), so they paste correctly everywher
 
 ## What does the analytics tab show, and how is the cost estimated?
 
-The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at Groq's published rates (verified 2026-09-05, in `shared/rates.json`): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
+The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
 
 ## How does the custom dictionary work?
 
@@ -121,6 +121,14 @@ Yes. The accent you pick in settings (any earned belt color, or the special acce
 ## Why don't I see murmur notifications on my Mac?
 
 Almost always a macOS permission. The Test button in the recap section fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
+
+## What is the Price refresh setting?
+
+murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. With Price refresh on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
+
+## What is the cleanup connection?
+
+By default one provider handles both transcription and the cleanup pass. Setting Cleanup connection to Separate provider gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, DeepSeek cleanup). Details and per-provider setup live in the [providers guide](providers.md).
 
 ## What are provider profiles?
 

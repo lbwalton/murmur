@@ -231,6 +231,8 @@ app.whenReady().then(async () => {
   }
 
   initSettings()
+  const { initCatalog } = await import('./catalog')
+  initCatalog()
   initHistory(() => settingsWindow)
   initAudio()
   initOverlay()

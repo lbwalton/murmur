@@ -1,0 +1,54 @@
+# Weekly rate check for shared/provider-catalog.json: an agent reads
+# each provider's primary pricing source, compares against the catalog,
+# and opens a PR only when a number drifted. A human approves every
+# number that ships; the app itself never scrapes vendors. Requires the
+# ANTHROPIC_API_KEY repo secret (see HANDOFF.md).
+name: pricing-watch
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-rates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--allowedTools "Bash(curl:*),Bash(git:*),Bash(gh:*),Read,Edit,Write"'
+          prompt: |
+            You are murmur's weekly pricing watcher. The file
+            shared/provider-catalog.json holds provider rates, each
+            provider carrying a verifiedOn date and a sources list of
+            primary pricing pages.
+
+            For every provider with priced models: fetch each URL in
+            its sources list (curl -sL) and compare the published rates
+            against the catalog's numbers (sttModels perHourUsd per
+            audio hour; llmModels inputPerMTok and outputPerMTok per
+            million tokens, in the entry's currency, USD when absent).
+
+            If every number still matches, update nothing and exit
+            without creating a branch; say only that rates are current.
+
+            If any number drifted or a listed model was renamed or
+            retired: edit shared/provider-catalog.json with the new
+            values, set that provider's verifiedOn to today's date,
+            update the top-level verifiedOn to today, and keep
+            catalogVersion at 1 and the JSON shape unchanged. Never
+            invent a rate a source does not state; if a source page is
+            unreachable or ambiguous, leave that provider untouched and
+            note it in the PR body. Then create a branch named
+            pricing-watch/<today's date>, commit with message
+            "catalog: rate drift found by pricing-watch" (no em dashes
+            anywhere in prose), push it, and open a PR to main with gh
+            pr create, listing each changed number as before and after
+            with its source URL. The product name is always lowercase
+            murmur.

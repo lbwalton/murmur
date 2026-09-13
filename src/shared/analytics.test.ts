@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import rates from '../../shared/rates.json'
+import bundled from '../../shared/provider-catalog.json'
+import { ratesFromCatalog, validateCatalog } from './catalog'
 import type { SessionEvent } from './history'
 import { type RatesSpec, aggregate, heatmap, sessionCostUsd } from './analytics'
 
-const RATES = rates as unknown as RatesSpec
+const RATES: RatesSpec = ratesFromCatalog(validateCatalog(bundled)!)
 
 function event(at: number, words = 100, durationMs = 60_000): SessionEvent {
   return { at, durationMs, rawText: 'r', finalText: 'f', words, wpm: 100 }

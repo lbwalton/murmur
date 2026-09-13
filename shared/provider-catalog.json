@@ -1,0 +1,145 @@
+{
+  "comment": "Single source of truth for provider presets, model rates, and billing nuances. Estimates only; every provider bills you directly and murmur never sees it. Refreshed weekly by .github/workflows/pricing-watch.yml, which re-checks each rate against the vendor's primary source and opens a PR when a number drifts; the app can also fetch this file from the repo at launch (Settings, Price refresh). Rates without a currency are USD.",
+  "catalogVersion": 1,
+  "verifiedOn": "2026-09-13",
+  "estimate": {
+    "comment": "Cleanup-pass token model shared with analytics: roughly 1.35 tokens per word each way plus a fixed per-session prompt overhead, amortized here as sessionsPer1kWords typical dictation sessions. fallbackWpm seeds the cost preview before any history exists.",
+    "tokensPerWord": 1.35,
+    "promptOverheadTokens": 180,
+    "sessionsPer1kWords": 10,
+    "fallbackWpm": 130
+  },
+  "providers": [
+    {
+      "id": "groq",
+      "name": "Groq",
+      "kinds": ["stt", "llm"],
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "keyUrl": "https://console.groq.com/keys",
+      "verifiedOn": "2026-09-13",
+      "sources": [
+        "https://console.groq.com/docs/models",
+        "https://console.groq.com/docs/billing-faqs"
+      ],
+      "nuances": [
+        "The free tier bills nothing: no card needed, hard rate limits instead. The console shows dollar-equivalent usage, but nothing is charged.",
+        "The developer tier bills only once lifetime usage passes 50 cents, then at 1, 10, 100, 500, and 1,000 dollar thresholds."
+      ],
+      "sttModels": [
+        { "id": "whisper-large-v3-turbo", "label": "fastest", "perHourUsd": 0.04, "minimumBillableSeconds": 10 },
+        { "id": "whisper-large-v3", "label": "highest accuracy", "perHourUsd": 0.111, "minimumBillableSeconds": 10 }
+      ],
+      "llmModels": [
+        { "id": "openai/gpt-oss-120b", "label": "thorough", "inputPerMTok": 0.15, "outputPerMTok": 0.6 },
+        { "id": "openai/gpt-oss-20b", "label": "fastest", "inputPerMTok": 0.075, "outputPerMTok": 0.3 }
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "kinds": ["stt", "llm"],
+      "baseUrl": "https://api.openai.com/v1",
+      "keyUrl": "https://platform.openai.com/api-keys",
+      "verifiedOn": "2026-09-13",
+      "sources": ["https://developers.openai.com/api/docs/pricing"],
+      "nuances": [
+        "The API has no free tier; usage is billed against prepaid credits from the first request."
+      ],
+      "sttModels": [
+        { "id": "gpt-transcribe", "label": "recommended", "perHourUsd": 0.27 },
+        { "id": "gpt-4o-mini-transcribe", "label": "cheapest", "perHourUsd": 0.18 },
+        { "id": "whisper-1", "label": "classic", "perHourUsd": 0.36 }
+      ],
+      "llmModels": [
+        { "id": "gpt-5.6-luna", "label": "recommended", "inputPerMTok": 0.2, "outputPerMTok": 1.2 },
+        { "id": "gpt-5-nano", "label": "cheapest", "inputPerMTok": 0.05, "outputPerMTok": 0.4 }
+      ]
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral",
+      "kinds": ["stt", "llm"],
+      "baseUrl": "https://api.mistral.ai/v1",
+      "keyUrl": "https://console.mistral.ai",
+      "verifiedOn": "2026-09-13",
+      "sources": [
+        "https://mistral.ai/pricing/api/",
+        "https://docs.mistral.ai/inference/pricing",
+        "https://docs.mistral.ai/api/endpoint/audio/transcriptions"
+      ],
+      "nuances": [
+        "Voxtral Mini Transcribe is billed per audio minute (0.003 dollars) with a published word error rate around 4 percent.",
+        "Chat models are priced in euros on Mistral's docs pricing page; the estimate shown uses those euro rates."
+      ],
+      "sttModels": [
+        { "id": "voxtral-mini-latest", "label": "recommended", "perHourUsd": 0.18 }
+      ],
+      "llmModels": [
+        { "id": "mistral-small-latest", "label": "recommended", "inputPerMTok": 0.12, "outputPerMTok": 0.5, "currency": "EUR" }
+      ]
+    },
+    {
+      "id": "local",
+      "name": "Local (your machine)",
+      "kinds": ["stt", "llm"],
+      "free": true,
+      "baseUrl": "http://localhost:8000/v1",
+      "llmBaseUrl": "http://localhost:11434/v1",
+      "verifiedOn": "2026-09-13",
+      "sources": [
+        "https://github.com/speaches-ai/speaches",
+        "https://ollama.com"
+      ],
+      "nuances": [
+        "Free, offline, and private: audio never leaves your machine. Needs a local server first: speaches or faster-whisper-server for speech (default port 8000), Ollama (port 11434) or LM Studio (port 1234) for cleanup.",
+        "Model ids come from whatever your local server has pulled; type the id your server reports."
+      ],
+      "sttModels": [],
+      "llmModels": []
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "kinds": ["llm"],
+      "baseUrl": "https://api.deepseek.com",
+      "keyUrl": "https://platform.deepseek.com",
+      "verifiedOn": "2026-09-13",
+      "sources": ["https://api-docs.deepseek.com/quick_start/pricing"],
+      "nuances": [
+        "Billed from a prepaid balance. Rates halve during Beijing-time off-peak hours; the estimate shown uses the full peak rate."
+      ],
+      "sttModels": [],
+      "llmModels": [
+        { "id": "deepseek-flash", "label": "recommended", "inputPerMTok": 0.3, "outputPerMTok": 1.2 }
+      ]
+    },
+    {
+      "id": "cerebras",
+      "name": "Cerebras",
+      "kinds": ["llm"],
+      "baseUrl": "https://api.cerebras.ai/v1",
+      "keyUrl": "https://cloud.cerebras.ai",
+      "verifiedOn": "2026-09-13",
+      "sources": ["https://www.cerebras.ai"],
+      "nuances": [
+        "Extremely fast inference with drop-in OpenAI compatibility. The model lineup moves quickly: pick a current model id and rates from Cerebras's own pages."
+      ],
+      "sttModels": [],
+      "llmModels": []
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "kinds": ["llm"],
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "keyUrl": "https://openrouter.ai/keys",
+      "verifiedOn": "2026-09-13",
+      "sources": ["https://openrouter.ai/models"],
+      "nuances": [
+        "One key routes to hundreds of models from many vendors, billed through prepaid credits. Model ids look like vendor/model; per-model rates live on the OpenRouter models page."
+      ],
+      "sttModels": [],
+      "llmModels": []
+    }
+  ]
+}

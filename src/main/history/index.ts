@@ -233,11 +233,16 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // the full transcript log to draw charts and the cost card.
   ipcMain.handle('analytics:summary', async () => {
     const { aggregate } = await import('../../shared/analytics')
-    const rates = (await import('../../../shared/rates.json')).default
+    const { ratesFromCatalog, validateCatalog } = await import('../../shared/catalog')
+    const { effectiveLlmModel } = await import('../formatter')
+    const catalog = validateCatalog((await import('../../../shared/provider-catalog.json')).default)
+    if (!catalog) throw new Error('bundled provider catalog failed validation')
     const settings = getSettings()
-    return aggregate(log?.readAll() ?? [], rates as never, {
+    return aggregate(log?.readAll() ?? [], ratesFromCatalog(catalog), {
       sttModel: settings.provider.sttModel,
-      llmModel: settings.provider.llmModel
+      // Priced with the same rule the pipeline routes with: an active
+      // separate cleanup connection is what these sessions actually ran.
+      llmModel: effectiveLlmModel(settings)
     })
   })
 
@@ -266,9 +271,11 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
 
   registerSmokeCheck('analytics', async () => {
     const { aggregate, heatmap } = await import('../../shared/analytics')
-    const rates = (await import('../../../shared/rates.json')).default
+    const { ratesFromCatalog, validateCatalog } = await import('../../shared/catalog')
+    const catalog = validateCatalog((await import('../../../shared/provider-catalog.json')).default)
+    if (!catalog) return false
     const events = log?.readAll() ?? []
-    const summary = aggregate(events, rates as never, {
+    const summary = aggregate(events, ratesFromCatalog(catalog), {
       sttModel: 'whisper-large-v3-turbo',
       llmModel: 'llama-3.3-70b-versatile'
     })

@@ -75,6 +75,21 @@ describe('sanitized entry lists', () => {
     expect(merged.expansions).toEqual([{ trigger: 'sig', text: 'Best, LB' }])
   })
 
+  it('migrates a pre-connections settings file to the new slots untouched', () => {
+    // A stored file from before the polish slot and catalog refresh
+    // existed: everything it held survives, the new fields land on
+    // their defaults, and behavior stays exactly as it was (polish
+    // disabled means cleanup rides the provider block).
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      provider: { baseUrl: 'https://api.groq.com/openai/v1', sttModel: 'whisper-large-v3', llmModel: 'openai/gpt-oss-20b' },
+      formatting: { level: 'full', numbers: 'digits' }
+    })
+    expect(merged.provider.sttModel).toBe('whisper-large-v3')
+    expect(merged.provider.llmModel).toBe('openai/gpt-oss-20b')
+    expect(merged.polish).toEqual({ enabled: false, baseUrl: '', llmModel: '' })
+    expect(merged.catalogRefresh).toBe(true)
+  })
+
   it('drops malformed provider profiles the same way', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, {
       provider: { profiles: [

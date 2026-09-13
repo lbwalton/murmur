@@ -55,7 +55,14 @@ const api = {
   setApiKey: (key: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:set', key),
   clearApiKey: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clear'),
   getApiKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:status'),
+  setPolishKey: (key: string): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:set', key),
+  clearPolishKey: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:clear'),
+  getPolishKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:status'),
   testProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:test'),
+  testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
+  getCatalog: (): Promise<import('../shared/catalog').ProviderCatalog> => {
+    return ipcRenderer.invoke('catalog:get')
+  },
   getPermissions: (): Promise<PermissionsStatus> => ipcRenderer.invoke('perms:status'),
   openPermissionPane: (pane: 'microphone' | 'accessibility' | 'input'): Promise<void> => {
     return ipcRenderer.invoke('perms:open', pane)

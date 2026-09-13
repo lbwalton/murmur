@@ -10,6 +10,7 @@ import { SettingsStore } from './store'
 
 let settingsStore: SettingsStore | null = null
 let keyStore: KeyStore | null = null
+let polishKeyStore: KeyStore | null = null
 
 type SettingsListener = (settings: Settings) => void
 const listeners = new Set<SettingsListener>()
@@ -41,6 +42,7 @@ export function initSettings(): void {
     decrypt: (buf) => safeStorage.decryptString(buf)
   }
   keyStore = new KeyStore(dir, cipher)
+  polishKeyStore = new KeyStore(dir, cipher, 'polish-key.enc')
 
   // Migrate decommissioned Groq model ids (shut down 2026-08-16, per
   // console.groq.com/docs/deprecations) to their documented replacements
@@ -74,16 +76,30 @@ export function initSettings(): void {
   })
   ipcMain.handle(IpcChannels.apiKeyStatus, () => keyStore?.status())
 
+  // The cleanup connection's own key, in its own encrypted file. Same
+  // rules as the primary key: never logged, never sent to a renderer
+  // in plaintext.
+  ipcMain.handle('polishkey:set', (_event, key: unknown) => {
+    polishKeyStore?.set(String(key))
+    return polishKeyStore?.status()
+  })
+  ipcMain.handle('polishkey:clear', () => {
+    polishKeyStore?.clear()
+    return polishKeyStore?.status()
+  })
+  ipcMain.handle('polishkey:status', () => polishKeyStore?.status())
+
   // Connection test: a cheap authorized GET against the provider's model
   // list. Proves base URL and key together without spending audio.
-  ipcMain.handle('provider:test', async () => {
-    const key = keyStore?.get()
+  const probeConnection = async (
+    baseUrl: string,
+    key: string | null
+  ): Promise<{ ok: boolean; detail: string }> => {
     if (!key) return { ok: false, detail: 'no key saved yet' }
-    const baseUrl = settingsStore?.get().provider.baseUrl.replace(/\/$/, '')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10_000)
     try {
-      const response = await fetch(`${baseUrl}/models`, {
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/models`, {
         headers: { Authorization: `Bearer ${key}` },
         signal: controller.signal
       })
@@ -99,6 +115,14 @@ export function initSettings(): void {
     } finally {
       clearTimeout(timer)
     }
+  }
+  ipcMain.handle('provider:test', async () => {
+    return probeConnection(settingsStore?.get().provider.baseUrl ?? '', keyStore?.get() ?? null)
+  })
+  ipcMain.handle('provider:testPolish', async () => {
+    const polish = settingsStore?.get().polish
+    if (!polish?.baseUrl) return { ok: false, detail: 'no cleanup base URL set' }
+    return probeConnection(polish.baseUrl, polishKeyStore?.get() ?? null)
   })
 
   registerSmokeCheck('settings', () => {
@@ -123,6 +147,11 @@ export function initSettings(): void {
 /** Main-process access for later subsystems. Never expose to renderers. */
 export function getApiKey(): string | null {
   return keyStore?.get() ?? null
+}
+
+/** The cleanup connection's key, or null when none is saved. */
+export function getPolishApiKey(): string | null {
+  return polishKeyStore?.get() ?? null
 }
 
 export function getSettings(): Settings {

@@ -11,6 +11,7 @@ import type {
 } from '../../preload/settings'
 import { parseRecapTime } from '../../shared/recap'
 import proConfig from '../../../shared/pro.json'
+import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
@@ -216,6 +217,9 @@ export function App(): React.JSX.Element {
   const [keyDraft, setKeyDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
+  const [catalog, setCatalog] = useState<ProviderCatalog | null>(null)
+  const [avgWpm, setAvgWpm] = useState(0)
+  const [polishKeyStatus, setPolishKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
   const [perms, setPerms] = useState<PermissionsStatus | null>(null)
   const [hotkeys, setHotkeys] = useState<HotkeysStatus | null>(null)
   const [capturing, setCapturing] = useState(false)
@@ -250,6 +254,11 @@ export function App(): React.JSX.Element {
       if (target === 'wrapup') setPage('wrapup')
     })
     void bridge().appVersion().then(setVersion)
+    void bridge().getCatalog().then(setCatalog)
+    void bridge()
+      .getAnalytics()
+      .then((a) => setAvgWpm(a.lifetime.avgWpm))
+    void bridge().getPolishKeyStatus().then(setPolishKeyStatus)
     const loadCosmetics = (): void => {
       void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
         setCosmetics(c)
@@ -346,6 +355,23 @@ export function App(): React.JSX.Element {
   }
 
   if (!settings) return <main className="shell" />
+
+  // Catalog-derived view of the active connections: which preset the
+  // base URLs match, the model rate entries, and the pace-aware cost
+  // preview. All local math; nothing here leaves the machine.
+  const sttProvider = catalog ? providerForBaseUrl(catalog, settings.provider.baseUrl) : null
+  const polishActive = settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== ''
+  const llmProvider =
+    catalog && polishActive ? providerForBaseUrl(catalog, settings.polish.baseUrl) : sttProvider
+  const activeLlmModel = polishActive ? settings.polish.llmModel : settings.provider.llmModel
+  const costParts = catalog
+    ? costPer1kWords(
+        sttProvider?.sttModels.find((m) => m.id === settings.provider.sttModel) ?? null,
+        llmProvider?.llmModels.find((m) => m.id === activeLlmModel) ?? null,
+        catalog.estimate,
+        avgWpm
+      )
+    : null
 
   if (wizardOpen) {
     return (
@@ -574,6 +600,33 @@ export function App(): React.JSX.Element {
           )}
         </div>
 
+        <Row label="Provider" desc="A preset fills the base URL and model suggestions. Custom keeps whatever you type.">
+          <select
+            className="field"
+            value={sttProvider?.id ?? 'custom'}
+            onChange={(e) => {
+              const preset = catalog?.providers.find(
+                (p) => p.id === e.target.value && p.kinds.includes('stt')
+              )
+              if (!preset) return
+              void update({
+                provider: {
+                  baseUrl: preset.baseUrl,
+                  sttModel: preset.sttModels[0]?.id ?? settings.provider.sttModel,
+                  llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
+                } as Settings['provider']
+              })
+            }}
+          >
+            <option value="custom">Custom</option>
+            {(catalog?.providers.filter((p) => p.kinds.includes('stt')) ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </Row>
+
         <Row
           label="Base URL"
           desc="Any OpenAI-compatible endpoint. Groq by default; point it at OpenAI, a proxy, or a local server. Run Test connection after changing."
@@ -593,7 +646,11 @@ export function App(): React.JSX.Element {
           <TextSetting
             value={settings.provider.sttModel}
             listId="stt-models"
-            options={['whisper-large-v3-turbo', 'whisper-large-v3']}
+            options={
+              sttProvider && sttProvider.sttModels.length > 0
+                ? sttProvider.sttModels.map((m) => m.id)
+                : ['whisper-large-v3-turbo', 'whisper-large-v3']
+            }
             onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
           />
         </Row>
@@ -605,12 +662,54 @@ export function App(): React.JSX.Element {
           <TextSetting
             value={settings.provider.llmModel}
             listId="llm-models"
-            options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
+            options={
+              sttProvider && sttProvider.llmModels.length > 0
+                ? sttProvider.llmModels.map((m) => m.id)
+                : ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+            }
             onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
           />
         </Row>
 
+        <PolishRows
+          settings={settings}
+          catalog={catalog}
+          keyStatus={polishKeyStatus}
+          onKeyStatus={setPolishKeyStatus}
+          onUpdate={update}
+        />
+
+        {catalog && (
+          <p className="row-desc rates-note">
+            {sttProvider?.free
+              ? 'Free: this preset runs on your machine, nothing is billed.'
+              : costParts
+                ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
+                    avgWpm > 0 ? `your pace (${avgWpm} wpm)` : `a typical pace (${catalog.estimate.fallbackWpm} wpm)`
+                  }. `
+                : 'No published rates for this setup; check your provider. '}
+            {(sttProvider ? [sttProvider, ...(llmProvider && llmProvider !== sttProvider ? [llmProvider] : [])] : [])
+              .flatMap((p) => p.nuances)
+              .join(' ')}
+            {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
+          </p>
+        )}
+
         <ProfilesRow settings={settings} onSettings={setSettings} />
+
+        <Row
+          label="Price refresh"
+          desc="At launch, murmur fetches the newest provider rate sheet from the murmur repo: a read-only file download from the same place updates come from, with nothing about you attached. Off uses the rates this version shipped with."
+        >
+          <select
+            className="field"
+            value={settings.catalogRefresh ? 'on' : 'off'}
+            onChange={(e) => void update({ catalogRefresh: e.target.value === 'on' })}
+          >
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </Row>
       </section>
 
       <section className="panel">
@@ -1085,6 +1184,158 @@ function ProSection(): React.JSX.Element {
         )}
       </div>
     </Row>
+  )
+}
+
+function currencySymbol(code: string): string {
+  if (code === 'USD') return '$'
+  if (code === 'EUR') return '€'
+  return `${code} `
+}
+
+function formatCostParts(parts: Array<{ amount: number; currency: string }>): string {
+  return parts
+    .map((p) => `${currencySymbol(p.currency)}${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(2)}`)
+    .join(' + ')
+}
+
+function PolishRows(props: {
+  settings: Settings
+  catalog: ProviderCatalog | null
+  keyStatus: KeyStatus
+  onKeyStatus: (status: KeyStatus) => void
+  onUpdate: (partial: Partial<Settings>) => Promise<void>
+}): React.JSX.Element {
+  const { settings, catalog } = props
+  const [draft, setDraft] = useState('')
+  const [test, setTest] = useState<ProviderTestResult | null>(null)
+  const [testing, setTesting] = useState(false)
+  const llmProviders = catalog?.providers.filter((p) => p.kinds.includes('llm')) ?? []
+  const matched = catalog ? providerForBaseUrl(catalog, settings.polish.baseUrl) : null
+
+  const save = async (): Promise<void> => {
+    if (draft.trim().length === 0) return
+    props.onKeyStatus(await bridge().setPolishKey(draft.trim()))
+    setDraft('')
+    setTest(null)
+  }
+  const run = async (): Promise<void> => {
+    setTesting(true)
+    try {
+      setTest(await bridge().testPolishProvider())
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  return (
+    <>
+      <Row
+        label="Cleanup connection"
+        desc="Same runs cleanup on your speech provider. Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example."
+      >
+        <select
+          className="field"
+          value={settings.polish.enabled ? 'separate' : 'same'}
+          onChange={(e) =>
+            void props.onUpdate({
+              polish: { ...settings.polish, enabled: e.target.value === 'separate' }
+            })
+          }
+        >
+          <option value="same">Same as speech</option>
+          <option value="separate">Separate provider</option>
+        </select>
+      </Row>
+      {settings.polish.enabled && (
+        <>
+          <Row label="Cleanup provider" desc="A preset fills the base URL and a recommended model.">
+            <select
+              className="field"
+              value={matched?.id ?? 'custom'}
+              onChange={(e) => {
+                const preset = llmProviders.find((p) => p.id === e.target.value)
+                if (!preset) return
+                void props.onUpdate({
+                  polish: {
+                    ...settings.polish,
+                    baseUrl: preset.llmBaseUrl ?? preset.baseUrl,
+                    llmModel: preset.llmModels[0]?.id ?? settings.polish.llmModel
+                  }
+                })
+              }}
+            >
+              <option value="custom">Custom</option>
+              {llmProviders.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Row>
+          <Row label="Cleanup base URL" desc="Any OpenAI-compatible chat endpoint.">
+            <TextSetting
+              wide
+              value={settings.polish.baseUrl}
+              placeholder="https://api.deepseek.com"
+              onCommit={(baseUrl) => void props.onUpdate({ polish: { ...settings.polish, baseUrl } })}
+            />
+          </Row>
+          <Row label="Cleanup model id" desc="Pick a suggestion or type any model id this provider offers.">
+            <TextSetting
+              value={settings.polish.llmModel}
+              listId="polish-llm-models"
+              options={matched?.llmModels.map((m) => m.id) ?? []}
+              placeholder="deepseek-flash"
+              onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
+            />
+          </Row>
+          <Row
+            label="Cleanup key"
+            desc={
+              props.keyStatus.present
+                ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
+                : 'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.'
+            }
+          >
+            <div className="inline">
+              <input
+                type="password"
+                className="field"
+                placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void save()
+                }}
+              />
+              <button className="btn" onClick={() => void save()} disabled={draft.trim() === ''}>
+                Save
+              </button>
+              {props.keyStatus.present && (
+                <button
+                  className="btn quiet-btn"
+                  onClick={() => {
+                    void bridge().clearPolishKey().then(props.onKeyStatus)
+                    setTest(null)
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+              <button className="btn" onClick={() => void run()} disabled={!props.keyStatus.present || testing}>
+                {testing ? 'Testing…' : 'Test'}
+              </button>
+              {test && (
+                <span className={test.ok ? 'status-ok' : 'status-bad'}>
+                  {test.ok ? 'connected' : test.detail}
+                </span>
+              )}
+            </div>
+          </Row>
+        </>
+      )}
+    </>
   )
 }
 

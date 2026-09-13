@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Aggregations over the session log: totals, the monthly usage card,
 // the daily series, and the live cost estimate. Pure functions; rates
-// come from shared/rates.json and costs are estimates at today's rates.
+// derive from shared/provider-catalog.json (see shared/catalog.ts) and
+// costs are estimates at today's rates.
 import { type SessionEvent, dayKey, eventDay } from './history'
 
 export interface RatesSpec {

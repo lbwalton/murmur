@@ -16,6 +16,16 @@ export interface Settings {
      *  the single source of truth for what runs. */
     profiles: Array<{ id: string; name: string; baseUrl: string; sttModel: string; llmModel: string }>
   }
+  /** Separate cleanup connection, so speech and cleanup can run on
+   *  different providers (Groq speech, DeepSeek cleanup). It joins the
+   *  pipeline only when enabled AND fully configured with its own key;
+   *  anything less and cleanup rides the provider block above, exactly
+   *  as before the slot existed. */
+  polish: {
+    enabled: boolean
+    baseUrl: string
+    llmModel: string
+  }
   formatting: {
     level: 'off' | 'light' | 'full'
     numbers: 'auto' | 'words' | 'digits'
@@ -56,6 +66,10 @@ export interface Settings {
   }
   autostart: boolean
   showDockIcon: boolean
+  /** Refresh the bundled provider catalog (rates, presets, nuances)
+   *  from the murmur repo at launch: a read-only file fetch to the same
+   *  GitHub host the updater already contacts, carrying no user data. */
+  catalogRefresh: boolean
   onboarding: {
     completed: boolean
   }
@@ -85,6 +99,11 @@ export const DEFAULT_SETTINGS: Settings = {
     // their documented replacement (console.groq.com/docs/deprecations).
     llmModel: 'openai/gpt-oss-120b',
     profiles: []
+  },
+  polish: {
+    enabled: false,
+    baseUrl: '',
+    llmModel: ''
   },
   formatting: {
     level: 'full',
@@ -118,6 +137,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   autostart: false,
   showDockIcon: false,
+  catalogRefresh: true,
   onboarding: {
     completed: false
   }

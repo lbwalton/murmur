@@ -3,9 +3,40 @@
 // only at Full formatting, only outside smoke, and only with a key;
 // every other path is the deterministic formatter alone.
 import { dictionaryHint } from '../../shared/dictionary'
-import { getApiKey, getSettings } from '../settings'
+import type { Settings } from '../../shared/settings'
+import { getApiKey, getPolishApiKey, getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { polishTranscript } from './llm'
+import { type PolishConfig, polishTranscript } from './llm'
+
+// The polish slot is in force only when complete: enabled, base URL,
+// model, and its own saved key. ONE predicate feeds both the pipeline
+// routing and the analytics pricing, so what runs and what gets priced
+// can never disagree (review gate finding, 2026-09-14).
+function polishSlotActive(settings: Settings): boolean {
+  const polish = settings.polish
+  return polish.enabled && polish.baseUrl !== '' && polish.llmModel !== '' && getPolishApiKey() !== null
+}
+
+/** The model the cleanup pass actually bills against right now. */
+export function effectiveLlmModel(settings: Settings): string {
+  return polishSlotActive(settings) ? settings.polish.llmModel : settings.provider.llmModel
+}
+
+// Anything less than a complete polish slot falls back to the primary
+// provider connection, so a half-set-up slot degrades to exactly the
+// old behavior instead of silently losing the cleanup pass.
+function resolvePolishConnection(settings: Settings): PolishConfig | null {
+  if (polishSlotActive(settings)) {
+    const key = getPolishApiKey()
+    if (key) return { baseUrl: settings.polish.baseUrl, model: settings.polish.llmModel, apiKey: key }
+  }
+  if (settings.polish.enabled) {
+    console.error('[murmur] cleanup connection enabled but incomplete; using the primary provider')
+  }
+  const apiKey = getApiKey()
+  if (!apiKey) return null
+  return { baseUrl: settings.provider.baseUrl, model: settings.provider.llmModel, apiKey }
+}
 
 /**
  * Polish deterministic output through the configured cleanup model.
@@ -16,21 +47,13 @@ export async function maybePolish(text: string): Promise<string> {
   if (isSmoke) return text
   const settings = getSettings()
   if (settings.formatting.level !== 'full') return text
-  const apiKey = getApiKey()
-  if (!apiKey) return text
+  const connection = resolvePolishConnection(settings)
+  if (!connection) return text
   const hint = dictionaryHint(settings.dictionary)
-  const polished = await polishTranscript(
-    text,
-    {
-      baseUrl: settings.provider.baseUrl,
-      model: settings.provider.llmModel,
-      apiKey
-    },
-    {
-      smartLists: settings.formatting.smartLists,
-      ...(hint ? { hints: [hint] } : {})
-    }
-  )
+  const polished = await polishTranscript(text, connection, {
+    smartLists: settings.formatting.smartLists,
+    ...(hint ? { hints: [hint] } : {})
+  })
   return polished ?? text
 }
 
