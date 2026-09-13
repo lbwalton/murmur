@@ -1176,7 +1176,7 @@ export function App(): React.JSX.Element {
         <button className="link-btn" onClick={() => void bridge().openLicense()}>
           GPL-3.0-only
         </button>{' '}
-        · copyright LaBroi Walton
+        · copyright Eze Media LLC
       </footer>
     </main>
   )
@@ -1194,14 +1194,45 @@ function ProSection(): React.JSX.Element {
   if (!status) return <div />
   if (status.pro) {
     return (
-      <p className="row-desc">
-        {status.founder
-          ? 'Founding member. A permanent ten percent discount on every future paid product is yours, cloud included. '
-          : 'Pro is active. '}
-        Thank you for supporting free software; your belts stay earned, never bought, and every
-        Pro convenience lands here first. Supporter since{' '}
-        {new Date(status.since).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.
-      </p>
+      <>
+        <p className="row-desc">
+          {status.founder
+            ? 'Founding member. A permanent ten percent discount on every future paid product is yours, cloud included. '
+            : 'Pro is active. '}
+          Thank you for supporting free software; your belts stay earned, never bought, and every
+          Pro convenience lands here first. Supporter since{' '}
+          {new Date(status.since).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.
+        </p>
+        <Row
+          label="Pro state"
+          desc="Deactivate to preview the free experience. Your key stays saved on this machine, one click from coming back."
+        >
+          <button
+            className="btn quiet-btn"
+            onClick={() => void bridge().deactivateLicense().then(setStatus)}
+          >
+            Deactivate
+          </button>
+        </Row>
+      </>
+    )
+  }
+
+  if (status.retained) {
+    return (
+      <Row
+        label="License key"
+        desc="Pro is deactivated, but your key is still saved on this machine. Forget key deletes it; you would need the original key to activate again."
+      >
+        <div className="inline">
+          <button className="btn" onClick={() => void bridge().reactivateLicense().then(setStatus)}>
+            Reactivate Pro
+          </button>
+          <button className="btn quiet-btn" onClick={() => void bridge().removeLicense().then(setStatus)}>
+            Forget key
+          </button>
+        </div>
+      </Row>
     )
   }
 

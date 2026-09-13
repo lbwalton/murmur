@@ -8,7 +8,7 @@
 // hyphen there would parse ambiguously.
 // Cosmetics stay earned, never bought; Pro is support and convenience.
 import { createPublicKey, verify as cryptoVerify } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, ipcMain } from 'electron'
 import pro from '../../shared/pro.json'
@@ -23,7 +23,11 @@ export interface LicensePayload {
   f?: boolean
 }
 
-export type LicenseStatus = { pro: false } | { pro: true; since: number; id: string; founder: boolean }
+export type LicenseStatus =
+  /** retained: a key is deactivated but still saved on this machine,
+   *  one click from coming back. */
+  | { pro: false; retained: boolean }
+  | { pro: true; since: number; id: string; founder: boolean }
 
 function b64uToBuf(s: string): Buffer {
   return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
@@ -61,18 +65,54 @@ function licenseFile(): string {
   return join(app.getPath('userData'), 'license.key')
 }
 
+// A deactivated key parks here: still on the machine, out of force.
+function retainedFile(): string {
+  return join(app.getPath('userData'), 'license.key.off')
+}
+
 export function readLicenseStatus(): LicenseStatus {
   try {
-    if (!existsSync(licenseFile())) return { pro: false }
+    if (!existsSync(licenseFile())) return { pro: false, retained: existsSync(retainedFile()) }
     const key = readFileSync(licenseFile(), 'utf8')
     const payload = verifyLicense(key, pro.publicKey)
-    if (!payload) return { pro: false }
+    if (!payload) return { pro: false, retained: existsSync(retainedFile()) }
     return { pro: true, since: payload.at, id: payload.id, founder: payload.f === true }
   } catch {
-    return { pro: false }
+    return { pro: false, retained: false }
   }
 }
 const readStatus = readLicenseStatus
+
+/**
+ * Deactivate Pro but keep the key parked on this machine: previewing
+ * the free experience must never mean hunting the key down again. The
+ * status read reports whatever the files actually say, so a failed
+ * move is loud in logs and honest in the UI.
+ */
+export function deactivateLicense(): LicenseStatus {
+  try {
+    if (existsSync(licenseFile())) renameSync(licenseFile(), retainedFile())
+  } catch (error) {
+    console.error('[murmur] license deactivate failed:', error)
+  }
+  return readStatus()
+}
+
+export function reactivateLicense(): LicenseStatus {
+  try {
+    if (existsSync(retainedFile())) renameSync(retainedFile(), licenseFile())
+  } catch (error) {
+    console.error('[murmur] license reactivate failed:', error)
+  }
+  return readStatus()
+}
+
+/** Forget the key entirely, active or parked (handing off a machine). */
+export function removeLicense(): LicenseStatus {
+  rmSync(licenseFile(), { force: true })
+  rmSync(retainedFile(), { force: true })
+  return readStatus()
+}
 
 export function initLicense(): void {
   ipcMain.handle('license:status', () => readStatus())
@@ -83,11 +123,32 @@ export function initLicense(): void {
     await shell.openExternal(pro.buyUrl)
   })
   ipcMain.handle('license:set', (_event, key: unknown) => {
-    if (typeof key !== 'string') return { pro: false }
+    if (typeof key !== 'string') return readStatus()
     const payload = verifyLicense(key, pro.publicKey)
-    if (!payload) return { pro: false }
+    if (!payload) return readStatus()
     writeFileSync(licenseFile(), key.trim())
+    // A fresh activation supersedes any parked key; two keys on disk
+    // would make the retained state ambiguous.
+    rmSync(retainedFile(), { force: true })
     return readStatus()
+  })
+  ipcMain.handle('license:deactivate', () => deactivateLicense())
+  ipcMain.handle('license:reactivate', () => reactivateLicense())
+  ipcMain.handle('license:remove', () => removeLicense())
+
+  registerSmokeCheck('licenseSwitch', () => {
+    // Pure file mechanics on the hermetic smoke profile: a deactivate
+    // round trip preserves the key bytes, remove forgets everything.
+    // Key validity is irrelevant here; verification is the status
+    // read's job and the real signing key never exists in smoke.
+    writeFileSync(licenseFile(), 'MURMUR-probe.notasignature')
+    const off = deactivateLicense()
+    const offOk = off.pro === false && off.retained === true && !existsSync(licenseFile())
+    reactivateLicense()
+    const backOk =
+      existsSync(licenseFile()) && readFileSync(licenseFile(), 'utf8') === 'MURMUR-probe.notasignature'
+    const gone = removeLicense()
+    return offOk && backOk && gone.pro === false && gone.retained === false
   })
 
   registerSmokeCheck('license', () => {

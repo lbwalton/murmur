@@ -3,7 +3,7 @@
   "version": "0.1.5",
   "description": "Push-to-talk dictation that lives in your tray. BYOK, Windows and macOS.",
   "license": "GPL-3.0-only",
-  "author": "LaBroi Walton",
+  "author": "Eze Media LLC",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {

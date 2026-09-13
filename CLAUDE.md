@@ -8,7 +8,7 @@ The product name is always lowercase: murmur. Even at the start of a sentence, i
 
 ## Provenance (non-negotiable)
 
-This is a clean rebuild. Copyright LaBroi Walton, GPLv3 from commit one, written entirely on LaBroi's personal machine.
+This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walton on his personal machine and assigned to his LLC, 2026-09-14), GPLv3 from commit one.
 
 - Never copy code, prose, specs, scripts, or assets from `~/Projects/undertone` (the prior app), `~/Projects/the-peoples-voice-flow` (VFlow, an MIT fork of OpenWhisp), or `~/Projects/OpenWhisp`. Do not open files in those repos while building this one.
 - Concepts, feature ideas, and lessons learned are fine; artifacts are not. Everything here is implemented fresh from prd.json.

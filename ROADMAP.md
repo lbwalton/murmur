@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/45 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (37/46 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -57,3 +57,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-043** Smart lists: spoken structure becomes real structure, behind a toggle
 - [ ] **US-044** Provider connections: mix engines, see real costs
 - [ ] **US-045** Paste the last dictation with its own shortcut
+- [ ] **US-046** What's new: a changelog users can actually find

@@ -18,6 +18,12 @@ Everyone who buys Pro during the founders window (the FOUNDERS code era) is a fo
 
 Your key is a cryptographic signature that murmur verifies on your machine, offline. There is no licensing server, no account, and no phone-home: if murmur's servers vanished tomorrow, your key would keep working forever. Activate it in settings under murmur pro by pasting the key and clicking Activate.
 
+## How do I deactivate Pro, and can I come back without my key?
+
+Yes. Click **Deactivate** in settings under murmur pro: the app switches to the free experience, and your key stays parked on this machine. **Reactivate Pro** brings everything back in one click, no key hunting. This is handy for previewing what free users see, or for troubleshooting.
+
+**Forget key** is different: it deletes the key from this machine entirely, active or parked. Use it when you are selling or handing off the computer. After Forget key, activating again means pasting your original key (see the lost-key answer below if you no longer have it).
+
 ## I lost my key. What do I do?
 
 Email support with your order id or receipt and a fresh key is issued. Keys are free to reissue for the same purchase.

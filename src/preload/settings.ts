@@ -40,6 +40,15 @@ const api = {
     return ipcRenderer.invoke('license:set', key)
   },
   openBuyPage: (): Promise<void> => ipcRenderer.invoke('license:buy'),
+  deactivateLicense: (): Promise<import('../main/license').LicenseStatus> => {
+    return ipcRenderer.invoke('license:deactivate')
+  },
+  reactivateLicense: (): Promise<import('../main/license').LicenseStatus> => {
+    return ipcRenderer.invoke('license:reactivate')
+  },
+  removeLicense: (): Promise<import('../main/license').LicenseStatus> => {
+    return ipcRenderer.invoke('license:remove')
+  },
   saveProviderProfile: (name: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:save', name)
   },

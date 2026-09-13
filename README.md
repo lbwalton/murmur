@@ -53,4 +53,4 @@ Packaging: `npm run dist:mac` or `npm run dist:win`.
 
 ## License
 
-GPL-3.0-only. Copyright (c) 2026 LaBroi Walton. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+GPL-3.0-only. Copyright (c) 2026 Eze Media LLC. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
