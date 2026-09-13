@@ -37,7 +37,7 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 ## What do the insert modes do?
 
-**Paste at cursor** places the finished text wherever your cursor is, then restores whatever your clipboard held before (an image or file on the clipboard is never destroyed, and anything you copy mid-dictation wins). **Copy only** skips the paste and leaves the text on the clipboard for you to place manually. If pasting ever fails (a revoked permission, an unusual app), murmur falls back to copy so the dictation is never lost.
+**Paste at cursor** places the finished text wherever your cursor is, then restores whatever your clipboard held before about a second and a half after the paste lands, giving even a busy target app time to read it (an image or file on the clipboard is never destroyed, and anything you copy mid-dictation wins). **Copy only** skips the paste and leaves the text on the clipboard for you to place manually. If pasting ever fails (a revoked permission, an unusual app), murmur falls back to copy so the dictation is never lost.
 
 ## What do the formatting levels mean?
 

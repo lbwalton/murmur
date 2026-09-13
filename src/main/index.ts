@@ -144,10 +144,16 @@ function createSettingsWindow(): BrowserWindow {
 function showSettingsWindow(): void {
   if (!settingsWindow || settingsWindow.isDestroyed()) {
     settingsWindow = createSettingsWindow()
-    return
+  } else {
+    settingsWindow.show()
+    settingsWindow.focus()
   }
-  settingsWindow.show()
-  settingsWindow.focus()
+  // With the Dock icon hidden murmur is an accessory app, and macOS does
+  // not raise an accessory app's window above the active app on show()
+  // alone: the window opens buried behind other windows and the tray
+  // click looks dead (found live 2026-09-12). Only an app-level focus
+  // steal actually brings it forward.
+  if (process.platform === 'darwin') app.focus({ steal: true })
 }
 
 function whenLoaded(win: BrowserWindow): Promise<void> {

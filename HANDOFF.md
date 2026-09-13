@@ -11,6 +11,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-005 tray window raise (fixed 2026-09-13, needs the next shipped build): with another app active and its windows covering screen center, click Open murmur in the tray. The settings window must come to the front immediately. Before the fix it opened buried behind the active app, so the click looked dead.
+- [ ] US-011 paste settle (fixed 2026-09-13, needs the next shipped build): dictate into a busy app and confirm the text pastes; whatever the clipboard held before should come back about a second and a half later (copy something first, dictate, then paste again manually to see the original return). Bonus check: two quick dictations back to back both land intact.
+
 - [x] US-008 sleep recovery (v0.1.5): shipped notarized to both platforms, and LaBroi live-verified 2026-09-12 that the hotkey captures audio again after real sleep and wake on both the Mac and the PC. Story complete.
 
 - [ ] US-041 pro unlock, what remains: (1) decide the first Pro conveniences (nothing already free gets removed; cosmetics stay earned). (2) make one real test purchase at the live Payment Link (code FOUNDERS takes it to 39 dollars), then run: node scripts/issue-license.js <order-id> <buyer-email> --founder and activate the printed key in settings (the founder flag marks you a founding member with the permanent ten percent). Then try profiles: save your Groq setup under a name, change the base URL, and apply the profile to snap back (US-042). (3) decide when the FOUNDERS code retires. The product, link, Managed Payments, and coupon were all configured 2026-09-08.

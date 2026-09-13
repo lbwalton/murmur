@@ -14,7 +14,15 @@ import { pasteCommand, planRestore } from './plan'
 
 export type InsertOutcome = 'inserted' | 'copied' | 'error'
 
-const PASTE_SETTLE_MS = 250
+// How long the paste keystroke gets to be processed before the old
+// clipboard comes back. There is no OS signal for "the target app read
+// the pasteboard" (reading does not bump the change count), so the
+// restore can only outwait the event. 250ms lost that race on a loaded
+// system (2026-09-12: a macOS update install starved apps enough that
+// the restore landed first and the paste delivered stale content). The
+// settle runs in the background and a follow-on insertion flushes it
+// early, so the longer wait costs nothing in perceived latency.
+const PASTE_SETTLE_MS = 1_500
 const KEYSTROKE_TIMEOUT_MS = 3_000
 // A clipboard payload beyond this is not worth holding in memory for
 // the restore; the text fallback still applies.
@@ -65,6 +73,37 @@ async function restoreClipboard(captured: Captured): Promise<void> {
   if (captured.text) await clipboard.writeText(captured.text).catch(() => undefined)
 }
 
+// The one restore in flight. Awaited before any new insertion touches
+// the clipboard, so back-to-back dictations can never interleave a
+// pending restore with a fresh capture (the restore would clobber the
+// successor's text mid-paste).
+let pendingRestore: Promise<void> = Promise.resolve()
+
+// Set only while a settle sleep is pending; calling it skips the rest
+// of the sleep so a follow-on insertion is never stalled behind it.
+let flushSettle: (() => void) | null = null
+
+async function settleAndRestore(captured: Captured, insertedText: string): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      flushSettle = null
+      resolve()
+    }, PASTE_SETTLE_MS)
+    flushSettle = () => {
+      clearTimeout(timer)
+      flushSettle = null
+      resolve()
+    }
+  })
+  const mode = planRestore(
+    { text: captured.text, itemCount: captured.items.length },
+    await clipboard.readText().catch(() => ''),
+    insertedText
+  )
+  if (mode === 'items') await restoreClipboard(captured)
+  else if (mode === 'text') await clipboard.writeText(captured.text).catch(() => undefined)
+}
+
 function sendPasteKeystroke(): Promise<boolean> {
   const cmd = pasteCommand(process.platform)
   if (!cmd) return Promise.resolve(false)
@@ -87,6 +126,12 @@ export async function insertText(text: string): Promise<InsertOutcome> {
     return 'copied'
   }
 
+  // Flush any settle still sleeping so this wait is milliseconds, not
+  // the remainder of the window. By the time a second dictation reaches
+  // here, its predecessor's paste has had a whole record-and-transcribe
+  // round to land.
+  flushSettle?.()
+  await pendingRestore
   const captured = await captureClipboard()
 
   await clipboard.writeText(text)
@@ -97,14 +142,13 @@ export async function insertText(text: string): Promise<InsertOutcome> {
     return 'copied'
   }
 
-  await new Promise((resolve) => setTimeout(resolve, PASTE_SETTLE_MS))
-  const mode2 = planRestore(
-    { text: captured.text, itemCount: captured.items.length },
-    await clipboard.readText(),
-    text
-  )
-  if (mode2 === 'items') await restoreClipboard(captured)
-  else if (mode2 === 'text') await clipboard.writeText(captured.text).catch(() => undefined)
+  // Settle and restore in the background: the paste already happened,
+  // and holding the overlay in processing for the settle would only
+  // delay the inserted feedback. A failed restore never breaks the
+  // dictation, but it must be loud in logs.
+  pendingRestore = settleAndRestore(captured, text).catch((error) => {
+    console.error('[murmur] clipboard restore failed:', error)
+  })
   return 'inserted'
 }
 
