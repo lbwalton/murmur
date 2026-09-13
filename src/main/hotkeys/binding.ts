@@ -88,6 +88,26 @@ export function isSafeBinding(binding: ParsedBinding): boolean {
   return binding.keyName !== null && /^f([1-9]|1[0-9]|2[0-4])$/.test(binding.keyName)
 }
 
+/**
+ * Rules for the paste-last chord, which rides a hook that only listens
+ * and can never swallow keys. It must carry a regular key (a
+ * modifier-only tap fires by accident too easily), and its modifiers
+ * must not contain a modifier-only dictation binding: holding the
+ * chord would start a recording before the key lands.
+ */
+export function pasteBindingRefusal(
+  pasteBinding: ParsedBinding,
+  dictationBinding: ParsedBinding | null
+): 'needs-key' | 'collides' | null {
+  if (pasteBinding.code === null) return 'needs-key'
+  if (dictationBinding && dictationBinding.code === null) {
+    const names = ['ctrl', 'alt', 'shift', 'meta'] as const
+    const contains = names.every((name) => !dictationBinding[name] || pasteBinding[name])
+    if (contains) return 'collides'
+  }
+  return null
+}
+
 /** Exact match for keyed bindings: the bound key with exactly the bound modifiers. */
 export function matchesEvent(binding: ParsedBinding, event: KeyEventLike): boolean {
   return (

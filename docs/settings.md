@@ -31,6 +31,12 @@ Click the hotkey field, then press the combo you want. Two kinds work:
 
 Escape cancels capture. **Reset** restores the platform default. Bare letters and digits are refused on purpose: a hotkey of plain `H` would trigger every time you typed the letter. Function keys (F1 to F24) may stand alone.
 
+## How do I paste my last dictation again?
+
+Set a chord under Settings, dictation, Paste last dictation. Pressing it pastes your newest history entry wherever your cursor is, through the same insertion pipeline as a live dictation: handy when a busy app missed the original paste, or you want the same text somewhere else. The feature is off until you capture a chord, and Clear disarms it again.
+
+Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fire by accident), and it must not contain your dictation hotkey's modifiers (holding Ctrl+Alt+V with a Ctrl+Alt dictation hotkey would start a recording before the V lands), so murmur refuses those at capture and says why. murmur listens globally without swallowing keys, so pick a combo your apps ignore: a modifier plus an F-key (Ctrl+F12) is the safest shape. Holding the chord pastes once, and it does nothing while a recording or transcription is in flight. With empty history it plays the soft no-speech cue and touches nothing.
+
 ## What is the difference between hold to talk and toggle?
 
 **Hold to talk**: recording runs while the hotkey is held, stops when released. Best for short, frequent dictations. **Toggle**: tap once to start, tap again to stop. Best for long passages. Rapid accidental double-taps are absorbed.

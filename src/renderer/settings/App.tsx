@@ -224,6 +224,8 @@ export function App(): React.JSX.Element {
   const [hotkeys, setHotkeys] = useState<HotkeysStatus | null>(null)
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
+  const [pasteCapturing, setPasteCapturing] = useState(false)
+  const [pasteCaptureNote, setPasteCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
   const [version, setVersion] = useState('')
   const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
@@ -345,6 +347,26 @@ export function App(): React.JSX.Element {
       }
     } finally {
       setCapturing(false)
+    }
+  }
+
+  const startPasteCapture = async (): Promise<void> => {
+    if (pasteCapturing) return
+    setPasteCapturing(true)
+    setPasteCaptureNote(null)
+    try {
+      const result = await bridge().captureHotkey('pasteLast')
+      if (result.ok) {
+        await refresh()
+      } else if (result.reason === 'needs-key') {
+        setPasteCaptureNote('this chord needs a regular key too, like Ctrl+F12; modifiers alone fire by accident')
+      } else if (result.reason === 'collides') {
+        setPasteCaptureNote('that combo contains your dictation hotkey, so holding it would start a recording; pick another')
+      } else {
+        setPasteCaptureNote('not captured; click and try again, Esc cancels')
+      }
+    } finally {
+      setPasteCapturing(false)
     }
   }
 
@@ -753,6 +775,40 @@ export function App(): React.JSX.Element {
                 }}
               >
                 Reset
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <Row
+          label="Paste last dictation"
+          desc={
+            pasteCaptureNote ??
+            (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
+              ? 'This chord is currently disarmed: it clashes with your dictation hotkey or no longer parses. Capture a new one.'
+              : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one. Pick a combo your apps ignore; a modifier plus an F-key is safest.')
+          }
+        >
+          <div className="inline">
+            <button
+              className={`field capture ${pasteCapturing ? 'capture-live' : ''}`}
+              onClick={() => void startPasteCapture()}
+            >
+              {pasteCapturing
+                ? 'press keys…'
+                : settings.hotkey.pasteLastBinding === ''
+                  ? 'not set'
+                  : settings.hotkey.pasteLastBinding}
+            </button>
+            {settings.hotkey.pasteLastBinding !== '' && (
+              <button
+                className="btn quiet-btn"
+                onClick={() => {
+                  setPasteCaptureNote(null)
+                  void update({ hotkey: { pasteLastBinding: '' } as Settings['hotkey'] })
+                }}
+              >
+                Clear
               </button>
             )}
           </div>

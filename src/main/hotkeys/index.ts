@@ -7,7 +7,14 @@ import { UiohookKey, uIOhook } from 'uiohook-napi'
 import type { Settings } from '../../shared/settings'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
-import { type ParsedBinding, buildKeyMap, isSafeBinding, parseBinding } from './binding'
+import {
+  type ParsedBinding,
+  buildKeyMap,
+  isSafeBinding,
+  matchesEvent,
+  parseBinding,
+  pasteBindingRefusal
+} from './binding'
 import { HotkeyDispatcher, type ModifierCodes } from './dispatch'
 import { type DictationCallbacks, HoldMachine, ToggleMachine, type TriggerMachine } from './machines'
 
@@ -23,6 +30,11 @@ const MODIFIER_CODES: ModifierCodes = {
 let binding: ParsedBinding | null = null
 let machine: TriggerMachine | null = null
 let dispatcher: HotkeyDispatcher | null = null
+let pasteBinding: ParsedBinding | null = null
+// Key auto-repeat fires keydown again while the chord is held; the
+// paste must land once per press, so the chord latches until its key
+// comes back up.
+let pasteChordHeld = false
 let hookStarted = false
 let suppressed = false
 
@@ -37,6 +49,19 @@ export function isBindingParseable(bindingString: string): boolean {
   return parsed !== null && isSafeBinding(parsed)
 }
 
+/**
+ * Why a candidate paste-last chord cannot be saved, or null when it
+ * can. Checked against the CURRENT dictation binding at capture time;
+ * apply() re-checks on every settings change, so a later dictation
+ * rebind that creates a collision just disarms the paste chord.
+ */
+export function pasteBindingProblem(bindingString: string): 'invalid' | 'needs-key' | 'collides' | null {
+  const parsed = parseBinding(bindingString, keyMap)
+  if (!parsed || !isSafeBinding(parsed)) return 'invalid'
+  const dictation = parseBinding(getSettings().hotkey.binding, keyMap)
+  return pasteBindingRefusal(parsed, dictation)
+}
+
 function apply(settings: Settings, callbacks: DictationCallbacks): void {
   // A live hold must not leak a stuck recording across a rebind.
   if (machine?.isActive()) callbacks.stop()
@@ -47,24 +72,51 @@ function apply(settings: Settings, callbacks: DictationCallbacks): void {
   machine =
     settings.hotkey.mode === 'hold' ? new HoldMachine(callbacks) : new ToggleMachine(callbacks)
   dispatcher = binding ? new HotkeyDispatcher(binding, machine, MODIFIER_CODES) : null
+
+  // The paste-last chord arms only when set and valid against the
+  // dictation binding that was just applied; anything else disarms it.
+  pasteBinding = null
+  pasteChordHeld = false
+  const pasteRaw = settings.hotkey.pasteLastBinding
+  if (pasteRaw !== '') {
+    const pasteParsed = parseBinding(pasteRaw, keyMap)
+    if (pasteParsed && isSafeBinding(pasteParsed) && pasteBindingRefusal(pasteParsed, parsed) === null) {
+      pasteBinding = pasteParsed
+    }
+  }
 }
 
 export interface HotkeysStatus {
   hookStarted: boolean
   bindingValid: boolean
+  /** False only when a paste-last chord is saved but disarmed (a later
+   *  dictation rebind made it collide, or it stopped parsing); the
+   *  settings row must say so instead of showing a dead chord. */
+  pasteBindingValid: boolean
 }
 
-export function initHotkeys(callbacks: DictationCallbacks): HotkeysStatus {
+function pasteBindingValid(): boolean {
+  return getSettings().hotkey.pasteLastBinding === '' || pasteBinding !== null
+}
+
+export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => void }): HotkeysStatus {
   apply(getSettings(), callbacks)
   onSettingsChanged((settings) => apply(settings, callbacks))
 
   uIOhook.on('keydown', (event) => {
     if (suppressed) return
     dispatcher?.keydown(event)
+    if (pasteBinding && matchesEvent(pasteBinding, event)) {
+      if (!pasteChordHeld) {
+        pasteChordHeld = true
+        callbacks.pasteLast?.()
+      }
+    }
   })
   uIOhook.on('keyup', (event) => {
     if (suppressed) return
     dispatcher?.keyup(event)
+    if (pasteBinding && event.keycode === pasteBinding.code) pasteChordHeld = false
   })
 
   try {
@@ -92,7 +144,7 @@ export function initHotkeys(callbacks: DictationCallbacks): HotkeysStatus {
     return rebound && restored
   })
 
-  return { hookStarted, bindingValid: binding !== null }
+  return { hookStarted, bindingValid: binding !== null, pasteBindingValid: pasteBindingValid() }
 }
 
 export function stopHotkeys(): void {
@@ -104,7 +156,7 @@ export function stopHotkeys(): void {
 
 /** Live status for the settings surface. */
 export function getHotkeysStatus(): HotkeysStatus {
-  return { hookStarted, bindingValid: binding !== null }
+  return { hookStarted, bindingValid: binding !== null, pasteBindingValid: pasteBindingValid() }
 }
 
 // ------------------------------------------------------------- capture ---

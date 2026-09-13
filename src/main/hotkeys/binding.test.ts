@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { buildKeyMap, isSafeBinding, matchesEvent, parseBinding } from './binding'
+import { buildKeyMap, isSafeBinding, matchesEvent, parseBinding, pasteBindingRefusal } from './binding'
 
 const keyMap = { space: 57, a: 30, f19: 102 }
 
@@ -90,5 +90,32 @@ describe('isSafeBinding', () => {
 describe('buildKeyMap', () => {
   it('lowercases names and keeps only numeric values', () => {
     expect(buildKeyMap({ Space: 57, A: 30, toString: () => '' })).toEqual({ space: 57, a: 30 })
+  })
+})
+
+describe('pasteBindingRefusal', () => {
+  const km = { v: 47, f12: 88 }
+  const parse = (s: string) => parseBinding(s, km)!
+
+  it('refuses a chord without a regular key', () => {
+    expect(pasteBindingRefusal(parse('Ctrl+Shift'), null)).toBe('needs-key')
+  })
+
+  it('refuses a chord whose modifiers contain a modifier-only dictation binding', () => {
+    expect(pasteBindingRefusal(parse('Ctrl+Alt+V'), parse('Ctrl+Alt'))).toBe('collides')
+    expect(pasteBindingRefusal(parse('Ctrl+Alt+Shift+V'), parse('Ctrl+Alt'))).toBe('collides')
+  })
+
+  it('allows a chord that avoids the dictation modifiers', () => {
+    expect(pasteBindingRefusal(parse('Ctrl+F12'), parse('Ctrl+Alt'))).toBeNull()
+    expect(pasteBindingRefusal(parse('Shift+V'), parse('Ctrl+Alt'))).toBeNull()
+  })
+
+  it('never collides with a keyed dictation binding or a missing one', () => {
+    const spaceMap = { space: 57, v: 47 }
+    expect(
+      pasteBindingRefusal(parseBinding('Alt+V', spaceMap)!, parseBinding('Alt+Space', spaceMap))
+    ).toBeNull()
+    expect(pasteBindingRefusal(parse('Ctrl+V'), null)).toBeNull()
   })
 })

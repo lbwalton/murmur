@@ -6,6 +6,9 @@ export interface Settings {
   hotkey: {
     mode: 'hold' | 'toggle'
     binding: string
+    /** Chord that pastes the newest history entry. Empty means the
+     *  feature is disarmed; it only works once the user captures one. */
+    pasteLastBinding: string
   }
   provider: {
     baseUrl: string
@@ -90,7 +93,8 @@ function isMacPlatform(): boolean {
 export const DEFAULT_SETTINGS: Settings = {
   hotkey: {
     mode: 'hold',
-    binding: isMacPlatform() ? 'Alt+Space' : 'Ctrl+Space'
+    binding: isMacPlatform() ? 'Alt+Space' : 'Ctrl+Space',
+    pasteLastBinding: ''
   },
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',

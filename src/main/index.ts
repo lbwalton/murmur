@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Menu, app, clipboard, ipcMain } from 'electron'
 import { initAudio } from './audio'
-import { dictationStart, dictationStop, initDictation } from './dictation'
+import { dictationStart, dictationStop, initDictation, pasteLastDictation } from './dictation'
 import {
   captureHotkeyViaHook,
   initHotkeys,
@@ -257,6 +257,9 @@ app.whenReady().then(async () => {
     start: dictationStart,
     stop: () => {
       void dictationStop()
+    },
+    pasteLast: () => {
+      void pasteLastDictation()
     }
   })
   initPermissions()
@@ -291,9 +294,12 @@ app.whenReady().then(async () => {
 
   // Capture a new hotkey: global trigger paused, keys intercepted ahead
   // of menu accelerators, binding validated against the real key map,
-  // and saved through the normal settings path on success.
-  ipcMain.handle('hotkeys:capture', async () => {
+  // and saved through the normal settings path on success. The target
+  // picks which binding is being set: the dictation trigger, or the
+  // paste-last chord with its stricter rules.
+  ipcMain.handle('hotkeys:capture', async (_event, target: unknown) => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
+    const forPasteLast = target === 'pasteLast'
     setHotkeysSuppressed(true)
     try {
       // Prefer the global hook (the same source the trigger reads, and
@@ -302,8 +308,15 @@ app.whenReady().then(async () => {
       const outcome =
         (await captureHotkeyViaHook()) ?? (await captureHotkeyFromWindow(settingsWindow))
       if (!outcome.binding) return { ok: false, reason: outcome.reason ?? 'cancelled' }
-      if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }
       const { updateSettings } = await import('./settings')
+      if (forPasteLast) {
+        const { pasteBindingProblem } = await import('./hotkeys')
+        const problem = pasteBindingProblem(outcome.binding)
+        if (problem) return { ok: false, reason: problem }
+        updateSettings({ hotkey: { pasteLastBinding: outcome.binding } })
+        return { ok: true, binding: outcome.binding }
+      }
+      if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }
       updateSettings({ hotkey: { binding: outcome.binding } })
       return { ok: true, binding: outcome.binding }
     } finally {

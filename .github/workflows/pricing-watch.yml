@@ -1,8 +1,10 @@
 # Weekly rate check for shared/provider-catalog.json: an agent reads
 # each provider's primary pricing source, compares against the catalog,
 # and opens a PR only when a number drifted. A human approves every
-# number that ships; the app itself never scrapes vendors. Requires the
-# ANTHROPIC_API_KEY repo secret (see HANDOFF.md).
+# number that ships; the app itself never scrapes vendors. Auth: the
+# CLAUDE_CODE_OAUTH_TOKEN repo secret, minted from LaBroi's Claude
+# subscription with claude setup-token (one-year lifetime, usage counts
+# against the subscription; see HANDOFF.md).
 name: pricing-watch
 
 on:
@@ -21,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowedTools "Bash(curl:*),Bash(git:*),Bash(gh:*),Read,Edit,Write"'
           prompt: |
             You are murmur's weekly pricing watcher. The file

@@ -27,6 +27,7 @@ export interface PermissionsStatus {
 export interface HotkeysStatus {
   hookStarted: boolean
   bindingValid: boolean
+  pasteBindingValid: boolean
 }
 
 const api = {
@@ -68,8 +69,10 @@ const api = {
     return ipcRenderer.invoke('perms:open', pane)
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
-  captureHotkey: (): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
-    return ipcRenderer.invoke('hotkeys:capture')
+  captureHotkey: (
+    target: 'dictation' | 'pasteLast' = 'dictation'
+  ): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
+    return ipcRenderer.invoke('hotkeys:capture', target)
   },
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),

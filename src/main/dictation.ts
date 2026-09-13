@@ -131,6 +131,32 @@ export function dictationCancel(): void {
   setOverlayPhase('idle')
 }
 
+/**
+ * Paste the newest history entry at the cursor: the paste-last chord's
+ * action. Rides the whole insertion pipeline (clipboard capture,
+ * keystroke, settle, restore, copy-mode fallback). A live dictation
+ * owns the pipeline, so recording and processing ignore the chord.
+ */
+export async function pasteLastDictation(): Promise<void> {
+  const phase = getOverlayPhase()
+  if (phase === 'recording' || phase === 'processing') return
+  const { readHistory } = await import('./history')
+  const events = readHistory()
+  const last = events[events.length - 1]
+  if (!last || last.finalText.length === 0) {
+    playCue('nospeech')
+    return
+  }
+  try {
+    const outcome = await insertText(last.finalText)
+    if (outcome === 'error') playCue('error')
+    else playCue('insert')
+  } catch (error) {
+    console.error('[murmur] paste last dictation failed:', error)
+    playCue('error')
+  }
+}
+
 export function initDictation(): void {
   registerSmokeCheck('silenceGuard', async () => {
     const { encodeWavPcm16 } = await import('../shared/wav')
@@ -140,6 +166,27 @@ export function initDictation(): void {
       isHallucination('Thank you.', hallucinations.phrases) &&
       !isHallucination('send the invoice tomorrow', hallucinations.phrases)
     )
+  })
+
+  registerSmokeCheck('pasteLast', async () => {
+    // The chord's action end to end on the synthetic pipeline: newest
+    // history entry lands on the clipboard (smoke insertion is copy
+    // mode). The history smoke probe has already appended an entry.
+    const clipboardBefore = await clipboard.readText()
+    try {
+      const { readHistory, recordSession } = await import('./history')
+      recordSession({
+        startedAt: Date.now() - 2_000,
+        rawText: 'paste last smoke probe',
+        finalText: 'Paste last smoke probe.'
+      })
+      await pasteLastDictation()
+      const delivered = await clipboard.readText()
+      const events = readHistory()
+      return delivered === 'Paste last smoke probe.' && events[events.length - 1]?.finalText === delivered
+    } finally {
+      await clipboard.writeText(clipboardBefore)
+    }
   })
 
   registerSmokeCheck('dictationLoop', async () => {
