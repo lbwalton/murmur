@@ -610,6 +610,39 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-09-08, automated criteria verified: gates green with the new profilesGate smoke check and founder flag tests. Live verification rides LaBroi's test purchase: issue his key with --founder, activate, then save and switch a profile."
+    },
+    {
+      "id": "US-043",
+      "title": "Smart lists: spoken structure becomes real structure, behind a toggle",
+      "description": "At Full formatting with the new Smart lists toggle ON (default off; today's behavior is untouched when off), dictations that speak a sequence (first, then, then) come out as a numbered list, and item run-ons (I need to pack socks, shirts, shoes) come out as dash bullets, one item per line; plain prose stays prose. Implemented in the polish prompt plus validator allowances for list shapes (a colon intro line before list lines is legitimate, list markers are excluded from the length sanity counts), and deterministic spoken commands (bullet point, next item, numbered list) in shared/format-spec.json gated by the same toggle. Output uses plain dash and number prefixes only, no markdown assumptions. The formatter still fails open: a rejected polish falls back to the deterministic text, and the deterministic path never depends on the model. Decided with LaBroi 2026-09-13.",
+      "acceptance": [
+        "Smart lists toggle in settings, default off; with it off, formatter output and the polish prompt are unchanged from today (unit-tested)",
+        "With it on, the polish prompt carries the list instructions and validatePolish accepts a well-formed list transformation (colon intro plus dash or numbered lines) while still rejecting chatter, length abuse, and injected content (unit tests cover accept and reject cases)",
+        "Spoken commands (bullet point, next item) produce list lines deterministically at Full with the toggle on, specced in shared/format-spec.json and covered in shared/test-vectors.json",
+        "Docs updated: what the toggle does, both list shapes with examples",
+        "Live: LaBroi dictates a packing list and a first-second-third sequence; both render as lists in a plain text field and in a markdown-aware app"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-044",
+      "title": "Provider connections: mix engines, see real costs",
+      "description": "BYOK grows from one shared endpoint to two connection slots: a speech-to-text connection and a polish connection, each with its own base URL, safeStorage-encrypted key, and model dropdown, so Groq transcription can pair with a DeepSeek polish. Curated launch presets: Groq (default), OpenAI, Mistral (Voxtral), and a Local preset (speaches or faster-whisper-server for STT, Ollama or LM Studio for polish); polish-only presets: DeepSeek, Cerebras, OpenRouter. The custom OpenAI-compatible endpoint field stays for everything else. Gemini and non-OpenAI-compatible STT APIs (Deepgram, AssemblyAI, ElevenLabs) are deferred. A provider catalog at shared/provider-catalog.json carries models, rates, free-tier and billing nuances, and a verified-on date per fact; a weekly scheduled GitHub Action re-verifies rates against vendor primary sources and opens a PR only when a number changed, so LaBroi approves every number that ships. The app bundles the catalog and refreshes it from the repo at launch (on by default with a settings off switch; a read-only file fetch to the same GitHub host the updater already contacts, carrying no user data). Setup shows an estimated cost per 1,000 dictated words computed locally from the user's own average pace in history (fallback 130 wpm before history exists) next to each model, labeled with the verified-on date. Free tier keeps the full setup, dropdowns, and cost estimates; Pro adds saved profiles and one-click switching (US-042). Decided with LaBroi 2026-09-13.",
+      "acceptance": [
+        "Two connection slots (STT, polish) with per-slot base URL, encrypted key, and model; existing single-provider setups migrate automatically and behave exactly as today (migration unit-tested)",
+        "Curated presets fill base URLs and model dropdowns from shared/provider-catalog.json; the custom endpoint path still accepts any OpenAI-compatible base URL",
+        "Cost per 1k words is computed locally from history average wpm plus catalog rates, shown per model with the rates' verified-on date; no usage data leaves the machine",
+        "provider-catalog.json exists with per-fact verified-on dates; a weekly GitHub Action re-verifies rates against vendor primary sources and opens a PR only on change; the app itself never scrapes or calls vendors for pricing",
+        "Catalog refresh at launch: latest catalog fetched from the repo with bundled fallback, on by default, off switch in settings, documented; failures log and never block dictation",
+        "Billing nuance notes render in setup: Groq free tier bills nothing and rate-limits instead (developer tier bills only past 50 cents), OpenAI API has no free tier, Mistral Voxtral rates, DeepSeek peak and off-peak rates, Local is free",
+        "Docs: per-provider setup page (base URL, key, model ids, rates with verified-on dates) for every preset, per the documentation product-surface rule",
+        "Live: LaBroi pairs Groq STT with a different provider's polish and dictates end to end"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
     }
   ]
 }

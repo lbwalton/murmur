@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/42 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (37/44 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -54,3 +54,5 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-005** Tray shell, single instance, widget-first window
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
+- [ ] **US-043** Smart lists: spoken structure becomes real structure, behind a toggle
+- [ ] **US-044** Provider connections: mix engines, see real costs
