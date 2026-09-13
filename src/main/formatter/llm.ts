@@ -36,10 +36,16 @@ export const POLISH_SYSTEM_PROMPT = [
 
 // Appended only when the smart lists setting is on. Plain markers only:
 // pasted text must read correctly in apps that never render markdown.
+// The layout-only line is load-bearing: without it the model tends to
+// drop a spoken intro like "I want to make a checklist", and losing
+// those words trips the length-ratio guard, so the whole
+// transformation gets rejected and the user sees prose (live-found
+// 2026-09-14, reproduced against the same model).
 export const SMART_LISTS_PROMPT = [
-  'When the speaker dictates a sequence of steps (first, then, next, finally), format the steps as a numbered list: each step on its own line starting with 1. 2. 3. in order.',
-  'When the speaker runs through a set of items, such as a packing or shopping list, format the items as a bulleted list: each item on its own line starting with a dash and a space. A short intro phrase before the items may end with a colon.',
-  'Use plain dash and number prefixes only, never asterisks or other markers. Never force a list onto ordinary prose; when in doubt, keep sentences as sentences. Keep each item wording exactly as spoken.'
+  'When the speaker dictates a sequence of steps (first, then, next, finally), lay the steps out as a numbered list: each step on its own line starting with 1. 2. 3. in order.',
+  'When the speaker runs through a set of items, such as a packing or shopping list, lay the items out as a bulleted list: each item on its own line starting with a dash and a space. A short intro phrase before the items may end with a colon.',
+  'Forming a list changes the layout only, never the words: a spoken intro such as I want to make a list stays in place as the intro line, and no spoken words are dropped.',
+  'Use plain dash and number prefixes only, never asterisks or other markers. Never force a list onto ordinary prose; when in doubt, keep sentences as sentences.'
 ].join(' ')
 
 const META_OPENERS = [
