@@ -318,15 +318,18 @@ export function App(): React.JSX.Element {
     if (settings) document.documentElement.dataset.theme = settings.cosmetics.uiTheme
   }, [settings])
 
-  // A sticky Custom pick survives only until the base URL actually
-  // changes: whole-config actions (Reset to Groq defaults, applying a
-  // profile, the wizard) land on real presets and the select must go
-  // back to telling the truth (review gate finding, 2026-09-14).
+  // A base URL change resets what no longer holds: the sticky Custom
+  // pick (whole-config actions land on real presets and the select
+  // must tell the truth) and the connection verdict (a green
+  // "connected" earned against the OLD provider would otherwise keep
+  // vouching for the new one; live-found 2026-09-14 with a Groq key
+  // shown connected under an OpenAI base URL).
   const prevBaseUrl = useRef<string | null>(null)
   useEffect(() => {
     const current = settings?.provider.baseUrl ?? null
     if (prevBaseUrl.current !== null && current !== null && current !== prevBaseUrl.current) {
       setCustomPreset(false)
+      setTest(null)
     }
     prevBaseUrl.current = current
   }, [settings?.provider.baseUrl])
@@ -713,32 +716,40 @@ export function App(): React.JSX.Element {
           label="Speech model"
           desc="Transcribes your voice. Pick a suggestion or type any model id your provider offers."
         >
-          <TextSetting
-            value={settings.provider.sttModel}
-            listId="stt-models"
-            options={
-              sttProvider && sttProvider.sttModels.length > 0
-                ? sttProvider.sttModels.map((m) => m.id)
-                : ['whisper-large-v3-turbo', 'whisper-large-v3']
-            }
-            onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
-          />
+          {sttProvider && sttProvider.sttModels.length > 0 ? (
+            <ModelPicker
+              value={settings.provider.sttModel}
+              options={sttProvider.sttModels.map((m) => m.id)}
+              onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+            />
+          ) : (
+            <TextSetting
+              value={settings.provider.sttModel}
+              listId="stt-models"
+              options={['whisper-large-v3-turbo', 'whisper-large-v3']}
+              onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+            />
+          )}
         </Row>
 
         <Row
           label="Cleanup model"
           desc="Polishes transcripts at Full formatting. If it misbehaves, murmur falls back to built-in cleanup."
         >
-          <TextSetting
-            value={settings.provider.llmModel}
-            listId="llm-models"
-            options={
-              sttProvider && sttProvider.llmModels.length > 0
-                ? sttProvider.llmModels.map((m) => m.id)
-                : ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']
-            }
-            onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
-          />
+          {sttProvider && sttProvider.llmModels.length > 0 ? (
+            <ModelPicker
+              value={settings.provider.llmModel}
+              options={sttProvider.llmModels.map((m) => m.id)}
+              onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+            />
+          ) : (
+            <TextSetting
+              value={settings.provider.llmModel}
+              listId="llm-models"
+              options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
+              onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+            />
+          )}
         </Row>
 
         <PolishRows
@@ -1321,6 +1332,63 @@ function ProSection(props: {
   )
 }
 
+function ModelPicker(props: {
+  value: string
+  options: string[]
+  placeholder?: string
+  onCommit: (value: string) => void
+}): React.JSX.Element {
+  // A real select instead of a datalist: datalists filter suggestions
+  // by the text already in the field, so a filled field hides every
+  // other model (live-found 2026-09-14). The last entry opens a free
+  // text field for any id the provider serves. pending mirrors a
+  // commit until the settings round trip lands, so the control never
+  // flashes the old value for a render (same class of problem
+  // TextSetting's draft state solves).
+  const [typing, setTyping] = useState(false)
+  const [pending, setPending] = useState<string | null>(null)
+  useEffect(() => {
+    if (pending !== null && props.value === pending) setPending(null)
+  }, [props.value, pending])
+  const effective = pending ?? props.value
+  const known = props.options.includes(effective)
+  return (
+    <div className="inline">
+      <select
+        className="field"
+        value={!typing && known ? effective : 'custom'}
+        onChange={(e) => {
+          if (e.target.value === 'custom') {
+            setTyping(true)
+            return
+          }
+          setTyping(false)
+          setPending(e.target.value)
+          props.onCommit(e.target.value)
+        }}
+      >
+        {props.options.map((id) => (
+          <option key={id} value={id}>
+            {id}
+          </option>
+        ))}
+        <option value="custom">type a model id…</option>
+      </select>
+      {(typing || !known) && (
+        <TextSetting
+          value={effective}
+          placeholder={props.placeholder}
+          onCommit={(v) => {
+            setPending(v)
+            if (props.options.includes(v)) setTyping(false)
+            props.onCommit(v)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
 function currencySymbol(code: string): string {
   if (code === 'USD') return '$'
   if (code === 'EUR') return '€'
@@ -1346,6 +1414,15 @@ function PolishRows(props: {
   const [testing, setTesting] = useState(false)
   const llmProviders = catalog?.providers.filter((p) => p.kinds.includes('llm')) ?? []
   const matched = catalog ? providerForBaseUrl(catalog, settings.polish.baseUrl) : null
+
+  // Same rule as the primary connection: a verdict earned against one
+  // base URL never vouches for another.
+  const prevPolishUrl = useRef<string | null>(null)
+  useEffect(() => {
+    const current = settings.polish.baseUrl
+    if (prevPolishUrl.current !== null && current !== prevPolishUrl.current) setTest(null)
+    prevPolishUrl.current = current
+  }, [settings.polish.baseUrl])
 
   const save = async (): Promise<void> => {
     if (draft.trim().length === 0) return
@@ -1416,13 +1493,20 @@ function PolishRows(props: {
             />
           </Row>
           <Row label="Cleanup model id" desc="Pick a suggestion or type any model id this provider offers.">
-            <TextSetting
-              value={settings.polish.llmModel}
-              listId="polish-llm-models"
-              options={matched?.llmModels.map((m) => m.id) ?? []}
-              placeholder="deepseek-flash"
-              onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
-            />
+            {matched && matched.llmModels.length > 0 ? (
+              <ModelPicker
+                value={settings.polish.llmModel}
+                options={matched.llmModels.map((m) => m.id)}
+                placeholder="deepseek-flash"
+                onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
+              />
+            ) : (
+              <TextSetting
+                value={settings.polish.llmModel}
+                placeholder="deepseek-flash"
+                onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
+              />
+            )}
           </Row>
           <Row
             label="Cleanup key"
