@@ -93,10 +93,13 @@ If the provider advertises an OpenAI-compatible API and hosts a Whisper-class sp
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Test connection says `key rejected (401)` | Wrong key, or a key from a different provider than the base URL | Regenerate the key at the provider that matches your base URL |
+| Test connection says `key rejected (http 401)` | Wrong key, or a key from a different provider than the base URL | Regenerate the key at the provider that matches your base URL |
+| Test connection says `key rejected (http 403)` | The provider blocked the request: an account restriction, region rule, or network in between | Check your provider account status and try without a VPN |
 | Test connection says `network error` or `timed out` | Typo in the base URL, or a local server that is not running | Check the URL ends with the provider's version path (usually `/v1`) |
 | Dictation shows the red error state | The speech model id is not valid at your provider | Copy the exact id from the provider's models page |
 | Transcripts appear but cleanup never changes anything | The cleanup model id is invalid, so murmur fails open to its built-in formatting | Fix the cleanup model id; murmur never blocks your dictation on it |
 | Everything worked yesterday, fails today | Provider outage or a retired model id | Check the provider's status page, then their models page |
+| Dictation errors right after switching providers | Your saved key belongs to the previous provider; every provider needs its own key | Paste the new provider's key in setup (the key field names the active provider), then Test connection |
+| Any error you cannot place | The diagnostics log names every transcription failure | Open `logs/murmur.log` in murmur's data folder: the `[transcribe]` line carries the status, model, and base URL |
 
 A failed transcription never loses your audio: murmur saves the recording under its data folder in `recovery/` so nothing you said disappears.

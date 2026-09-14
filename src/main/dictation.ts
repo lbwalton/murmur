@@ -61,6 +61,24 @@ export async function dictationStop(): Promise<void> {
 
   const result = await transcribeWav(upload)
   if (!result.ok) {
+    // The overlay can only say error; the log must say why. An auth
+    // failure after a provider switch was undiagnosable without this
+    // (live-found 2026-09-14: a Groq key sent to OpenAI showed the
+    // same silent error pill as a dead microphone).
+    try {
+      const { getSettings } = await import('./settings')
+      const { writeAppLog } = await import('./window-watch')
+      const provider = getSettings().provider
+      const hint =
+        result.kind === 'auth'
+          ? ' hint=the saved API key does not authenticate at this base URL; each provider needs its own key'
+          : ''
+      writeAppLog(
+        `[transcribe] failed kind=${result.kind} detail=${result.detail} model=${provider.sttModel} baseUrl=${provider.baseUrl}${hint}`
+      )
+    } catch {
+      // Diagnostics must never turn a failed dictation into a crash.
+    }
     setOverlayPhase('error')
     playCue('error')
     return

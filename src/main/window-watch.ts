@@ -33,6 +33,12 @@ function logger(): RotatingLog {
   return log
 }
 
+/** One diagnostics line into logs/murmur.log, the file users can
+ *  actually find. Never log key material through this. */
+export function writeAppLog(message: string): void {
+  logger().write(message)
+}
+
 export function watchWindow(win: BrowserWindow, name: string): void {
   const wc = win.webContents
   wc.on('did-fail-load', (_e, code, description, url) => {

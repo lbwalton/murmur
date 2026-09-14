@@ -104,7 +104,9 @@ export function initSettings(): void {
         signal: controller.signal
       })
       if (response.status === 401 || response.status === 403) {
-        return { ok: false, detail: 'key rejected (401)' }
+        // The real status matters: 403 can mean a blocked network or
+        // account state, not a wrong key.
+        return { ok: false, detail: `key rejected (http ${response.status})` }
       }
       return response.ok
         ? { ok: true, detail: 'connected' }
