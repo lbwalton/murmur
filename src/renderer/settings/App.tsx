@@ -337,6 +337,9 @@ export function App(): React.JSX.Element {
   const saveKey = async (): Promise<void> => {
     if (keyDraft.trim().length === 0) return
     setKeyStatus(await bridge().setApiKey(keyDraft.trim()))
+    // The save also records which provider the key belongs to; pull
+    // the settings so the mismatch surfaces update immediately.
+    setSettings(await bridge().getSettings())
     setKeyDraft('')
     setTest(null)
     setTesting(true)
@@ -406,6 +409,18 @@ export function App(): React.JSX.Element {
   // base URLs match, the model rate entries, and the pace-aware cost
   // preview. All local math; nothing here leaves the machine.
   const sttProvider = catalog ? providerForBaseUrl(catalog, settings.provider.baseUrl) : null
+  // The saved key remembers which base URL it was saved under, so a
+  // provider switch stops every surface from vouching for the wrong
+  // key (live-found 2026-09-14: a Groq key read as all set on OpenAI).
+  const normalizeUrl = (u: string): string => u.replace(/\/$/, '')
+  const keyMismatch =
+    keyStatus.present &&
+    settings.provider.keySavedForBaseUrl !== '' &&
+    normalizeUrl(settings.provider.keySavedForBaseUrl) !== normalizeUrl(settings.provider.baseUrl)
+  const keySavedForName =
+    catalog && settings.provider.keySavedForBaseUrl !== ''
+      ? (providerForBaseUrl(catalog, settings.provider.keySavedForBaseUrl)?.name ?? null)
+      : null
   const polishActive = settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== ''
   const llmProvider =
     catalog && polishActive ? providerForBaseUrl(catalog, settings.polish.baseUrl) : sttProvider
@@ -442,7 +457,12 @@ export function App(): React.JSX.Element {
   const micOk = perms?.microphone === 'granted'
 
   const steps: SetupStep[] = [
-    { id: 'key', label: 'API key saved', ok: keyStatus.present, anchor: 'row-key' },
+    {
+      id: 'key',
+      label: keyMismatch ? 'Key matches provider' : 'API key saved',
+      ok: keyStatus.present && !keyMismatch,
+      anchor: 'row-key'
+    },
     {
       id: 'conn',
       label: 'Provider connected',
@@ -576,7 +596,9 @@ export function App(): React.JSX.Element {
           highlight={highlighted === 'row-key'}
           desc={
             keyStatus.present
-              ? `Saved and encrypted (${keyStatus.masked ?? ''})`
+              ? keyMismatch
+                ? `The saved key (${keyStatus.masked ?? ''}) was added for ${keySavedForName ?? 'a different provider'}. ${sttProvider?.name ?? 'This endpoint'} needs its own key${sttProvider?.keyUrl ? `, from ${sttProvider.keyUrl.replace('https://', '')}` : ''}.`
+                : `Saved and encrypted (${keyStatus.masked ?? ''})`
               : `Paste a key from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}. Stored encrypted, never leaves this machine except to your provider.`
           }
         >
@@ -584,7 +606,15 @@ export function App(): React.JSX.Element {
             <input
               type="password"
               className="field"
-              placeholder={keyStatus.present ? 'replace key' : 'gsk_…'}
+              placeholder={
+                keyMismatch
+                  ? `paste a ${sttProvider?.name ?? 'matching'} key`
+                  : keyStatus.present
+                    ? 'replace key'
+                    : sttProvider?.id === 'groq'
+                      ? 'gsk_…'
+                      : 'key…'
+              }
               value={keyDraft}
               onChange={(e) => setKeyDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -598,7 +628,12 @@ export function App(): React.JSX.Element {
               <button
                 className="btn quiet-btn"
                 onClick={() => {
-                  void bridge().clearApiKey().then(setKeyStatus)
+                  void bridge()
+                    .clearApiKey()
+                    .then(async (s) => {
+                      setKeyStatus(s)
+                      setSettings(await bridge().getSettings())
+                    })
                   setTest(null)
                 }}
               >
@@ -670,6 +705,16 @@ export function App(): React.JSX.Element {
                   llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
                 } as Settings['provider']
               })
+              // Walk the user to the next step: the saved key will not
+              // work here, and the flash says where to go.
+              const savedFor = settings.provider.keySavedForBaseUrl
+              if (
+                keyStatus.present &&
+                savedFor !== '' &&
+                normalizeUrl(savedFor) !== normalizeUrl(preset.baseUrl)
+              ) {
+                jumpTo('row-provider-key')
+              }
             }}
           >
             <option value="custom">Custom</option>
@@ -683,10 +728,14 @@ export function App(): React.JSX.Element {
 
         <Row
           label="API key"
+          anchor="row-provider-key"
+          highlight={highlighted === 'row-provider-key'}
           desc={
-            keyStatus.present
-              ? `This provider's key is saved (${keyStatus.masked ?? ''}). Enter or replace it on the setup tab.`
-              : 'No key saved yet. After switching providers, save the matching key on the setup tab.'
+            keyMismatch
+              ? `The saved key belongs to ${keySavedForName ?? 'another provider'}. Save a ${sttProvider?.name ?? 'matching'} key on the setup tab before dictating.`
+              : keyStatus.present
+                ? `This provider's key is saved (${keyStatus.masked ?? ''}). Enter or replace it on the setup tab.`
+                : 'No key saved yet. After switching providers, save the matching key on the setup tab.'
           }
         >
           <button

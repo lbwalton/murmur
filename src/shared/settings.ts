@@ -14,6 +14,11 @@ export interface Settings {
     baseUrl: string
     sttModel: string
     llmModel: string
+    /** The base URL that was active when the API key was saved. Not a
+     *  secret: it lets every surface say honestly that the saved key
+     *  belongs to a different provider after a switch. Empty means
+     *  unknown (keys saved before this field existed). */
+    keySavedForBaseUrl: string
     /** Saved provider setups (murmur Pro): switch endpoint, models,
      *  and the matching key in one click. The active fields above stay
      *  the single source of truth for what runs. */
@@ -98,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',
+    keySavedForBaseUrl: '',
     sttModel: 'whisper-large-v3-turbo',
     // Groq decommissioned the llama defaults 2026-08-16; gpt-oss-120b is
     // their documented replacement (console.groq.com/docs/deprecations).

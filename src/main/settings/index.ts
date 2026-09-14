@@ -68,10 +68,15 @@ export function initSettings(): void {
   })
   ipcMain.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {
     keyStore?.set(String(key))
+    // Remember which provider this key was saved under (the base URL,
+    // never the key), so a later provider switch can say honestly that
+    // the saved key belongs elsewhere.
+    updateSettings({ provider: { keySavedForBaseUrl: settingsStore?.get().provider.baseUrl ?? '' } })
     return keyStore?.status()
   })
   ipcMain.handle(IpcChannels.apiKeyClear, () => {
     keyStore?.clear()
+    updateSettings({ provider: { keySavedForBaseUrl: '' } })
     return keyStore?.status()
   })
   ipcMain.handle(IpcChannels.apiKeyStatus, () => keyStore?.status())

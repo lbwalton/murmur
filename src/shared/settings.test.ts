@@ -88,6 +88,8 @@ describe('sanitized entry lists', () => {
     expect(merged.provider.llmModel).toBe('openai/gpt-oss-20b')
     expect(merged.polish).toEqual({ enabled: false, baseUrl: '', llmModel: '' })
     expect(merged.catalogRefresh).toBe(true)
+    // Keys saved before provenance existed stay unknown, never wrong.
+    expect(merged.provider.keySavedForBaseUrl).toBe('')
   })
 
   it('drops malformed provider profiles the same way', () => {
