@@ -36,16 +36,17 @@ export const POLISH_SYSTEM_PROMPT = [
 
 // Appended only when the smart lists setting is on. Plain markers only:
 // pasted text must read correctly in apps that never render markdown.
-// The layout-only line is load-bearing: without it the model tends to
-// drop a spoken intro like "I want to make a checklist", and losing
-// those words trips the length-ratio guard, so the whole
-// transformation gets rejected and the user sees prose (live-found
-// 2026-09-14, reproduced against the same model).
+// The scaffolding rule and the example are load-bearing: without them
+// the model either keeps enumeration words inside items (1. then
+// bacon) or collapses the list into a comma run, and the intro line
+// must survive or the length guard rejects the whole transformation
+// (live-found 2026-09-14, both shapes reproduced against the model).
 export const SMART_LISTS_PROMPT = [
-  'When the speaker dictates a sequence of steps (first, then, next, finally), lay the steps out as a numbered list: each step on its own line starting with 1. 2. 3. in order.',
-  'When the speaker runs through a set of items, such as a packing or shopping list, lay the items out as a bulleted list: each item on its own line starting with a dash and a space. A short intro phrase before the items may end with a colon.',
-  'Forming a list changes the layout only, never the words: a spoken intro such as I want to make a list stays in place as the intro line, and no spoken words are dropped.',
-  'Use plain dash and number prefixes only, never asterisks or other markers. Never force a list onto ordinary prose; when in doubt, keep sentences as sentences.'
+  'When the speaker dictates a sequence of steps (first, then, next, finally) or runs through a set of items, lay them out as a numbered list (1. 2. 3.) for sequences or dash bullets for item runs, each entry on its own line.',
+  'A spoken intro such as I want to make a list stays in place as the intro line, ending with a colon.',
+  'Entries keep only the words that name them: enumeration words (first, then, next, also, finally) and lead-ins (I want, I want to add, I need to have) dissolve into the list shape. This is the one exception to keeping every word. Never drop an entry, and never change the words that name it.',
+  'Use plain dash and number prefixes only, never asterisks or other markers. Never force a list onto ordinary prose; when in doubt, keep sentences as sentences.',
+  'Example: I want to make a list. First I want to add eggs, then bacon, then toast. becomes: I want to make a list:\n1. eggs\n2. bacon\n3. toast'
 ].join(' ')
 
 const META_OPENERS = [
@@ -80,6 +81,32 @@ const LIST_LINE = /^(?:- |\d+\. )/
 function isListBody(lines: string[]): boolean {
   const body = lines.slice(1).filter((line) => line.trim().length > 0)
   return body.length > 0 && body.every((line) => LIST_LINE.test(line))
+}
+
+// A whole output that IS a list: at least two list lines, and at most
+// one prose line, which must be the intro at the top.
+function isListShaped(lines: string[]): boolean {
+  const nonEmpty = lines.filter((line) => line.trim().length > 0)
+  const listLines = nonEmpty.filter((line) => LIST_LINE.test(line))
+  if (listLines.length < 2) return false
+  const prose = nonEmpty.filter((line) => !LIST_LINE.test(line))
+  return prose.length === 0 || (prose.length === 1 && nonEmpty[0] === prose[0])
+}
+
+function listLineCount(lines: string[]): number {
+  return lines.filter((line) => LIST_LINE.test(line)).length
+}
+
+// How many entries the spoken enumeration implies: the stronger of the
+// enumerator-word count and the comma-run count. Word ratios cannot see
+// a silently dropped item (review gate finding, 2026-09-14), but the
+// speech itself says how many entries there should be. Overcounting
+// from decorative commas only forces the prose fallback, the safe
+// direction.
+function impliedEntryCount(input: string): number {
+  const enums = input.match(/\b(?:first|then|next|finally)\b/gi)?.length ?? 0
+  const commas = input.match(/,/g)?.length ?? 0
+  return Math.max(enums, commas >= 2 ? commas + 1 : 0)
 }
 
 /**
@@ -124,9 +151,21 @@ export function validatePolish(
   const countable = opts.smartLists ? text.replace(/^(?:- |\d+\. )/gm, '') : text
   const inputWords = input.split(/\s+/).filter((w) => w.length > 0).length
   const outputWords = countable.split(/\s+/).filter((w) => w.length > 0).length
+  // Scaffolding legitimately dissolves into a list (the smart lists
+  // prompt's one exception to keeping every word), so a list-shaped
+  // output earns a deeper ratio floor, but ONLY when the input itself
+  // enumerated (two or more implied entries) AND the output carries at
+  // least that many entries: a list missing an item, or prose restyled
+  // into a fake list, never rides the exception.
+  const implied = opts.smartLists && isListShaped(lines) ? impliedEntryCount(input) : 0
+  const earnedListFloor = implied >= 2
+  if (earnedListFloor && listLineCount(lines) < implied) {
+    return { ok: false, reason: 'missing entries' }
+  }
   if (inputWords >= 12) {
     const ratio = outputWords / inputWords
-    if (ratio < 0.6 || ratio > 1.4) return { ok: false, reason: 'length ratio' }
+    const floor = earnedListFloor ? 0.4 : 0.6
+    if (ratio < floor || ratio > 1.4) return { ok: false, reason: 'length ratio' }
   } else if (Math.abs(outputWords - inputWords) > 8) {
     return { ok: false, reason: 'length delta' }
   }

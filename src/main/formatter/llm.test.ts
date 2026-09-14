@@ -108,6 +108,53 @@ describe('validatePolish with smart lists', () => {
       reason: 'length ratio'
     })
   })
+
+  it('accepts a clean list where scaffolding dissolved into the shape', () => {
+    const v = validatePolish(
+      'I want to make a list. First I want to add eggs, then bacon, then toast.',
+      'I want to make a list:\n1. eggs\n2. bacon\n3. toast',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: true })
+  })
+
+  it('keeps the strict floor for prose even when the setting is on', () => {
+    const v = validatePolish(
+      'Send the deck by noon and copy the whole team on it. I will follow up tomorrow.',
+      'Send the deck by noon.',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
+  })
+
+  it('rejects a list that lost too much even at the deeper floor', () => {
+    const v = validatePolish(
+      'I need to pack socks shirts shoes pants a charger and my headphones okay',
+      'Packing:\n- socks\n- shirts',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
+  })
+
+  it('rejects a list that silently dropped an entry the speech implied', () => {
+    const v = validatePolish(
+      'I want to make a list. First I want to add eggs, then bacon, then toast.',
+      'I want to make a list:\n1. eggs\n2. bacon',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'missing entries' })
+  })
+
+  it('never grants the deeper floor to prose the speaker did not enumerate', () => {
+    // No enumerators, no comma run: restyling this as a trimmed fake
+    // list must still fail the strict prose floor.
+    const v = validatePolish(
+      'Send the deck by noon and copy the whole team on it because I will follow up tomorrow',
+      'Deck:\n- send by noon\n- copy the team',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
+  })
 })
 
 describe('polishTranscript', () => {

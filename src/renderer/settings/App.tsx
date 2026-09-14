@@ -220,6 +220,13 @@ export function App(): React.JSX.Element {
   const [catalog, setCatalog] = useState<ProviderCatalog | null>(null)
   const [avgWpm, setAvgWpm] = useState(0)
   const [polishKeyStatus, setPolishKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
+  // License status lives at the app level so every surface that gates
+  // on Pro (the pro panel, the profiles row) reads ONE truth and an
+  // activation or deactivation updates them all at once (live-found
+  // 2026-09-14: the profiles row cached its own copy from mount and
+  // kept selling Get Pro to a fresh founding member).
+  const [license, setLicense] = useState<import('../../main/license').LicenseStatus | null>(null)
+  const [customPreset, setCustomPreset] = useState(false)
   const [perms, setPerms] = useState<PermissionsStatus | null>(null)
   const [hotkeys, setHotkeys] = useState<HotkeysStatus | null>(null)
   const [capturing, setCapturing] = useState(false)
@@ -261,6 +268,7 @@ export function App(): React.JSX.Element {
       .getAnalytics()
       .then((a) => setAvgWpm(a.lifetime.avgWpm))
     void bridge().getPolishKeyStatus().then(setPolishKeyStatus)
+    void bridge().getLicenseStatus().then(setLicense)
     const loadCosmetics = (): void => {
       void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
         setCosmetics(c)
@@ -309,6 +317,19 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     if (settings) document.documentElement.dataset.theme = settings.cosmetics.uiTheme
   }, [settings])
+
+  // A sticky Custom pick survives only until the base URL actually
+  // changes: whole-config actions (Reset to Groq defaults, applying a
+  // profile, the wizard) land on real presets and the select must go
+  // back to telling the truth (review gate finding, 2026-09-14).
+  const prevBaseUrl = useRef<string | null>(null)
+  useEffect(() => {
+    const current = settings?.provider.baseUrl ?? null
+    if (prevBaseUrl.current !== null && current !== null && current !== prevBaseUrl.current) {
+      setCustomPreset(false)
+    }
+    prevBaseUrl.current = current
+  }, [settings?.provider.baseUrl])
 
   const saveKey = async (): Promise<void> => {
     if (keyDraft.trim().length === 0) return
@@ -547,13 +568,13 @@ export function App(): React.JSX.Element {
         </div>
 
         <Row
-          label="Groq API key"
+          label={sttProvider ? `${sttProvider.name} API key` : 'API key'}
           anchor="row-key"
           highlight={highlighted === 'row-key'}
           desc={
             keyStatus.present
               ? `Saved and encrypted (${keyStatus.masked ?? ''})`
-              : 'Paste a key from console.groq.com/keys. Stored encrypted, never leaves this machine except to your provider.'
+              : `Paste a key from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}. Stored encrypted, never leaves this machine except to your provider.`
           }
         >
           <div className="inline">
@@ -622,15 +643,23 @@ export function App(): React.JSX.Element {
           )}
         </div>
 
-        <Row label="Provider" desc="A preset fills the base URL and model suggestions. Custom keeps whatever you type.">
+        <Row
+          label="Provider"
+          desc="A preset fills the base URL and model suggestions. Custom keeps whatever you type in the fields below; edit them freely."
+        >
           <select
             className="field"
-            value={sttProvider?.id ?? 'custom'}
+            value={customPreset ? 'custom' : (sttProvider?.id ?? 'custom')}
             onChange={(e) => {
+              if (e.target.value === 'custom') {
+                setCustomPreset(true)
+                return
+              }
               const preset = catalog?.providers.find(
                 (p) => p.id === e.target.value && p.kinds.includes('stt')
               )
               if (!preset) return
+              setCustomPreset(false)
               void update({
                 provider: {
                   baseUrl: preset.baseUrl,
@@ -647,6 +676,25 @@ export function App(): React.JSX.Element {
               </option>
             ))}
           </select>
+        </Row>
+
+        <Row
+          label="API key"
+          desc={
+            keyStatus.present
+              ? `This provider's key is saved (${keyStatus.masked ?? ''}). Enter or replace it on the setup tab.`
+              : 'No key saved yet. After switching providers, save the matching key on the setup tab.'
+          }
+        >
+          <button
+            className="btn quiet-btn"
+            onClick={() => {
+              setPage('setup')
+              setTimeout(() => jumpTo('row-key'), 80)
+            }}
+          >
+            Open setup
+          </button>
         </Row>
 
         <Row
@@ -717,7 +765,7 @@ export function App(): React.JSX.Element {
           </p>
         )}
 
-        <ProfilesRow settings={settings} onSettings={setSettings} />
+        <ProfilesRow settings={settings} onSettings={setSettings} pro={license === null ? null : license.pro} />
 
         <Row
           label="Price refresh"
@@ -1156,7 +1204,7 @@ export function App(): React.JSX.Element {
 
       <section className="panel">
         <p className="micro-label">murmur pro</p>
-        <ProSection />
+        <ProSection status={license} onStatus={setLicense} />
       </section>
 
       <section className="panel">
@@ -1182,14 +1230,13 @@ export function App(): React.JSX.Element {
   )
 }
 
-function ProSection(): React.JSX.Element {
-  const [status, setStatus] = useState<import('../../main/license').LicenseStatus | null>(null)
+function ProSection(props: {
+  status: import('../../main/license').LicenseStatus | null
+  onStatus: (s: import('../../main/license').LicenseStatus) => void
+}): React.JSX.Element {
+  const { status, onStatus: setStatus } = props
   const [draft, setDraft] = useState('')
   const [rejected, setRejected] = useState(false)
-
-  useEffect(() => {
-    void bridge().getLicenseStatus().then(setStatus)
-  }, [])
 
   if (!status) return <div />
   if (status.pro) {
@@ -1429,15 +1476,13 @@ function PolishRows(props: {
 function ProfilesRow(props: {
   settings: Settings
   onSettings: (s: Settings) => void
+  /** Shared app-level license truth; null while it loads. */
+  pro: boolean | null
 }): React.JSX.Element {
-  const [pro, setPro] = useState<boolean | null>(null)
+  const pro = props.pro
   const [name, setName] = useState('')
   const [chosen, setChosen] = useState('')
   const profiles = props.settings.provider.profiles
-
-  useEffect(() => {
-    void bridge().getLicenseStatus().then((s) => setPro(s.pro))
-  }, [])
 
   if (pro === null) return <div />
   if (!pro) {
