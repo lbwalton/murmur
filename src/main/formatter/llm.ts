@@ -21,6 +21,9 @@ export interface PolishOptions {
    *  allowed only when true. Off keeps prompt and validation exactly as
    *  they were. */
   smartLists?: boolean
+  /** Called with a short reason whenever the pass falls back, so the
+   *  caller can log WHY without this module knowing about log files. */
+  onFallback?: (reason: string) => void
 }
 
 export const POLISH_SYSTEM_PROMPT = [
@@ -105,8 +108,19 @@ function listLineCount(lines: string[]): number {
 // direction.
 function impliedEntryCount(input: string): number {
   const enums = input.match(/\b(?:first|then|next|finally)\b/gi)?.length ?? 0
+  // Item-separating commas plus one: N items in comma phrasing carry
+  // N minus 1 commas, and the plus one reconstructs N. A comma that
+  // starts a clause instead of an item (For my grocery list, I want)
+  // must not count, or a perfect list gets rejected as missing an
+  // entry (live-found 2026-09-15). When the heuristics are wrong the
+  // bias must OVERCOUNT: an over-rejected list falls back to prose
+  // and loses nothing, while an undercounted one can silently accept
+  // a dropped entry, which the iron law forbids (review gate proof,
+  // same day).
   const commas = input.match(/,/g)?.length ?? 0
-  return Math.max(enums, commas >= 2 ? commas + 1 : 0)
+  const clauseCommas = input.match(/,\s*(?:i|we|you|let's|please)\b/gi)?.length ?? 0
+  const itemCommas = Math.max(0, commas - clauseCommas)
+  return Math.max(enums, itemCommas >= 2 ? itemCommas + 1 : 0)
 }
 
 /**
@@ -197,7 +211,11 @@ export async function polishTranscript(
   cfg: PolishConfig,
   options: PolishOptions = {}
 ): Promise<string | null> {
-  const { fetchImpl = fetch, timeoutMs = 8_000, hints = [], smartLists = false } = options
+  const { fetchImpl = fetch, timeoutMs = 8_000, hints = [], smartLists = false, onFallback } = options
+  const fallback = (reason: string): null => {
+    onFallback?.(reason)
+    return null
+  }
   const systemPrompt = [POLISH_SYSTEM_PROMPT, ...(smartLists ? [SMART_LISTS_PROMPT] : []), ...hints].join(' ')
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -218,14 +236,14 @@ export async function polishTranscript(
       }),
       signal: controller.signal
     })
-    if (!response.ok) return null
+    if (!response.ok) return fallback(`http ${response.status}`)
     const body = (await response.json()) as {
       choices?: Array<{ message?: { content?: unknown } }>
     }
     const content = body.choices?.[0]?.message?.content
-    if (typeof content !== 'string') return null
+    if (typeof content !== 'string') return fallback('response missing text')
     const verdict = validatePolish(text, content, { smartLists })
-    if (!verdict.ok) return null
+    if (!verdict.ok) return fallback(`validate: ${verdict.reason}`)
     // Hint-leak sentinel: hint lines all start with "Preferred spellings"
     // (see dictionaryHint), so any echo of hint text into the output is
     // detectable even when it slips the shape checks.
@@ -234,11 +252,12 @@ export async function polishTranscript(
       verdict.text.toLowerCase().includes('preferred spellings') &&
       !text.toLowerCase().includes('preferred spellings')
     ) {
-      return null
+      return fallback('hint echo')
     }
     return verdict.text
-  } catch {
-    return null
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === 'AbortError'
+    return fallback(aborted ? 'timeout' : 'network')
   } finally {
     clearTimeout(timer)
   }

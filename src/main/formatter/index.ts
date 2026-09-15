@@ -52,6 +52,14 @@ export async function maybePolish(text: string): Promise<string> {
   const hint = dictionaryHint(settings.dictionary)
   const polished = await polishTranscript(text, connection, {
     smartLists: settings.formatting.smartLists,
+    // Fail open AND say why: without the reason in the log, a rejected
+    // list and a network blip look identical (2026-09-15, a perfect
+    // grocery list was silently rejected for days of debugging).
+    onFallback: (reason) => {
+      void import('../window-watch').then(({ writeAppLog }) => {
+        writeAppLog(`[polish] fell back reason=${reason} model=${connection.model}`)
+      })
+    },
     ...(hint ? { hints: [hint] } : {})
   })
   return polished ?? text

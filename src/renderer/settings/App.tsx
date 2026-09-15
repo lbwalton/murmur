@@ -198,10 +198,16 @@ function Row(props: {
   desc?: string
   anchor?: string
   highlight?: boolean
+  /** flash is the red fix-this pulse; glow is the amber go-here-next
+   *  nudge. Guidance and alarm must not share a color. */
+  highlightStyle?: 'flash' | 'glow'
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <div className={`row ${props.highlight ? 'row-flash' : ''}`} id={props.anchor}>
+    <div
+      className={`row ${props.highlight ? (props.highlightStyle === 'glow' ? 'row-glow' : 'row-flash') : ''}`}
+      id={props.anchor}
+    >
       <div className="row-text">
         <div className="row-label">{props.label}</div>
         {props.desc && <div className="row-desc">{props.desc}</div>}
@@ -705,14 +711,15 @@ export function App(): React.JSX.Element {
                   llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
                 } as Settings['provider']
               })
-              // Walk the user to the next step: the saved key will not
-              // work here, and the flash says where to go.
+              // Walk the user to the next step whenever the saved key
+              // is not KNOWN to match the new provider: a mismatched
+              // key or one saved before provenance existed both earn
+              // the nudge (live-found 2026-09-15: requiring a known
+              // mismatch meant older keys never glowed at all).
               const savedFor = settings.provider.keySavedForBaseUrl
-              if (
-                keyStatus.present &&
-                savedFor !== '' &&
-                normalizeUrl(savedFor) !== normalizeUrl(preset.baseUrl)
-              ) {
+              const knownMatch =
+                savedFor !== '' && normalizeUrl(savedFor) === normalizeUrl(preset.baseUrl)
+              if (keyStatus.present && !knownMatch) {
                 jumpTo('row-provider-key')
               }
             }}
@@ -730,6 +737,7 @@ export function App(): React.JSX.Element {
           label="API key"
           anchor="row-provider-key"
           highlight={highlighted === 'row-provider-key'}
+          highlightStyle="glow"
           desc={
             keyMismatch
               ? `The saved key belongs to ${keySavedForName ?? 'another provider'}. Save a ${sttProvider?.name ?? 'matching'} key on the setup tab before dictating.`

@@ -136,6 +136,28 @@ describe('validatePolish with smart lists', () => {
     expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
   })
 
+  it('never lets an intro or Oxford comma overcount the implied entries', () => {
+    // Live-found 2026-09-15: the comma after "list" counted toward the
+    // implied entries and a perfect four line answer was rejected.
+    const v = validatePolish(
+      'For my grocery list, I want eggs, bacon, and toast, and then sausage.',
+      'For my grocery list:\n1. eggs\n2. bacon\n3. toast\n4. sausage',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: true })
+  })
+
+  it('still catches a dropped entry in a plain Oxford comma run', () => {
+    // Review gate proof 2026-09-15: N items in comma phrasing carry
+    // N minus 1 commas, so the reconstruction must keep its plus one.
+    const v = validatePolish(
+      'So today for my grocery list I definitely need to remember to grab apples, bananas, cherries, dates, and bread',
+      'So today for my grocery list I definitely need to remember to grab:\n1. apples\n2. bananas\n3. cherries\n4. dates',
+      { smartLists: true }
+    )
+    expect(v).toMatchObject({ ok: false, reason: 'missing entries' })
+  })
+
   it('rejects a list that silently dropped an entry the speech implied', () => {
     const v = validatePolish(
       'I want to make a list. First I want to add eggs, then bacon, then toast.',
@@ -207,6 +229,22 @@ describe('polishTranscript', () => {
       })
     }) as typeof fetch
     expect(await polishTranscript(INPUT, cfg, { fetchImpl, timeoutMs: 20 })).toBeNull()
+  })
+
+  it('reports the fallback reason to the caller', async () => {
+    const reasons: string[] = []
+    const onFallback = (r: string): void => {
+      reasons.push(r)
+    }
+    await polishTranscript(INPUT, cfg, {
+      fetchImpl: (async () => chatResponse('Here is the cleaned text: hi.')) as typeof fetch,
+      onFallback
+    })
+    await polishTranscript(INPUT, cfg, {
+      fetchImpl: (async () => new Response('{}', { status: 500 })) as typeof fetch,
+      onFallback
+    })
+    expect(reasons).toEqual(['validate: meta chatter', 'http 500'])
   })
 
   it('fails open when the model chats instead of cleaning', async () => {
