@@ -11,6 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-047 diagnostics (built 2026-09-15, in the next installed build): tap the mute ring on the Wave:3 (or unplug the mic), dictate, and check logs/murmur.log shows a nospeech line with a near-zero peak; then Save report from Settings, setup, Diagnostics and read the file: version, hook state, settings summary with counts only, log tail, and none of your words anywhere.
 - [ ] Copyright assignment paperwork: the app, README, and package.json now credit Eze Media LLC. Make it accurate on paper: sign the one-page assignment drafted at ~/Documents/murmur-copyright-assignment-2026.md (you to your LLC), date it, keep it with your LLC records. Not legal advice; have a lawyer glance at it if you want certainty.
 - [ ] US-041 license switching (built 2026-09-14, needs the next build): activate your founder key, then Deactivate on the setup tab. The app should show the free experience with a Reactivate Pro button; Reactivate must restore Pro without re-entering the key. Forget key only when you actually mean to delete it.
 - [ ] US-045 paste-last chord (built 2026-09-14, needs the next shipped build): capture a chord under Settings, dictation, Paste last dictation (Ctrl+F12 is a safe pick; Ctrl+Alt+V will be refused because it contains your dictation hotkey). Then: dictate something, click into another app, press the chord, the text pastes again. Hold the chord: exactly one paste. Press it mid-recording: nothing.

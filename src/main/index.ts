@@ -252,6 +252,8 @@ app.whenReady().then(async () => {
   })
   initInsertion()
   initDictation()
+  const { initDiagnostics } = await import('./diagnostics')
+  initDiagnostics(() => settingsWindow)
 
   initHotkeys({
     start: dictationStart,

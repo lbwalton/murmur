@@ -128,6 +128,16 @@ export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => 
     hookStarted = false
   }
 
+  // One boot breadcrumb: with this line a dead hook and a silent mic
+  // finally read differently in the diagnostics log.
+  void import('../window-watch')
+    .then(({ writeAppLog }) => {
+      writeAppLog(
+        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()}`
+      )
+    })
+    .catch(() => undefined)
+
   registerSmokeCheck('hotkeys', () => {
     // Wiring: binding parsed, machine built, listeners attached.
     const attached = uIOhook.listenerCount('keydown') > 0 && uIOhook.listenerCount('keyup') > 0

@@ -69,6 +69,8 @@ const api = {
   clearPolishKey: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:clear'),
   getPolishKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:status'),
   testProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:test'),
+  saveDiagnostics: (): Promise<boolean> => ipcRenderer.invoke('diag:save'),
+  openLogFolder: (): Promise<void> => ipcRenderer.invoke('diag:openLogs'),
   testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
   getCatalog: (): Promise<import('../shared/catalog').ProviderCatalog> => {
     return ipcRenderer.invoke('catalog:get')

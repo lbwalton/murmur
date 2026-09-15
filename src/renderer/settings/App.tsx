@@ -650,6 +650,20 @@ export function App(): React.JSX.Element {
         </Row>
 
         <Row
+          label="Diagnostics"
+          desc="A dictation trail lives in a local log with no transcript text or keys, ever. Save report writes one file you can read and choose to share; nothing sends on its own."
+        >
+          <div className="inline">
+            <button className="btn quiet-btn" onClick={() => void bridge().saveDiagnostics()}>
+              Save report…
+            </button>
+            <button className="btn quiet-btn" onClick={() => void bridge().openLogFolder()}>
+              Open log folder
+            </button>
+          </div>
+        </Row>
+
+        <Row
           label="Connection"
           anchor="row-conn"
           highlight={highlighted === 'row-conn'}

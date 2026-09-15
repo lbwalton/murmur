@@ -675,6 +675,21 @@
       "passes": false,
       "needs_human": true,
       "notes": ""
+    },
+    {
+      "id": "US-047",
+      "title": "Diagnostics the user can hand to support",
+      "description": "Requested by LaBroi 2026-09-15 after a mic mystery the logs could not answer. Two halves. Logging: every dictation attempt leaves a content-free trail in logs/murmur.log: the hotkey hook state at boot, capture failures, the nospeech gate with duration and peak level (so silence-from-the-mic and a gate bug read differently), and the delivery outcome (inserted or copied, word count), joining the existing transcribe and polish failure lines. No transcript text, no key material, ever. Surface: a Diagnostics row in setup with Save report (a save dialog writes one text file: app version, OS, uptime, hotkey and connection state, a settings summary with counts instead of contents, and the recent log tail) and Open log folder. Nothing auto-sends; the report exists only where the user saves it and goes only where the user sends it. This is also the tool for the Windows reports (wake freezes, missed insertions) once v0.1.6 ships there.",
+      "acceptance": [
+        "Every dictation attempt logs an outcome line: capture-failed, nospeech (with durationMs and peak), error kinds via the existing transcribe line, or delivered (outcome and word count); no transcript content or key material appears in any line (unit-checkable by construction, smoke-checked for the delivered path)",
+        "The hotkey hook state logs once at boot",
+        "Save report writes a single text file via the save dialog containing version, platform, uptime, hotkeys status, settings summary (counts for dictionary and expansions, booleans for key presence), and the log tail; Open log folder reveals logs/murmur.log",
+        "Docs: a troubleshooting question explaining what the report contains, what it never contains, and that it only leaves the machine by the user's own hand",
+        "Live: LaBroi reproduces a silent-mic dictation and the log names it (nospeech with a near-zero peak), then saves a report and reads it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-09-15. Logging: logDictation breadcrumbs in dictation.ts (capture-failed; nospeech with durationMs and the measured peak sample level, so a muted mic reads near zero while a misjudged gate would read high; delivered with outcome and word count, where outcome=copied is the missed-insertion trail Windows reports need), plus a [hotkeys] boot line (hookStarted, bindingValid, pasteBindingValid), joining the existing [transcribe] and [polish] lines; all content-free by construction. Surface: src/main/diagnostics.ts builds the report (version, platform, os, uptime, hotkeys state, settings summary with counts for dictionary and expansions and no key material, 200-line log tail), diag:save writes it through a save dialog, diag:openLogs reveals the log file; setup gains the Diagnostics row with Save report and Open log folder. Smoke check diagnostics asserts the report shape and that no dictionary entry text leaks into it. Docs: troubleshooting leads with the how-do-I-send-diagnostics question and the never-sends-itself promise. Verified: typecheck clean, 311 tests, smoke green including the new check. Remaining live criterion in HANDOFF. Review gate confirmed two findings, both fixed: the save dialog now parents to the settings window (a parentless dialog from a Dock-hidden accessory app can open buried, the same class as the tray raise bug), and the leak assertion now seeds a recognizable dictionary entry and proves the report carries its count but never its text (the empty-dictionary version was vacuous); the check also asserts the delivered breadcrumb landed in the log during the same smoke boot, and the docs framing line moved back under the page title."
     }
   ]
 }

@@ -16,6 +16,17 @@ import { registerSmokeCheck } from './smoke'
 
 let sessionStartedAt = 0
 
+// One content-free breadcrumb per dictation outcome. Never transcript
+// text, never key material; failures here never break a dictation.
+async function logDictation(line: string): Promise<void> {
+  try {
+    const { writeAppLog } = await import('./window-watch')
+    writeAppLog(`[dictation] ${line}`)
+  } catch {
+    // Diagnostics stay best-effort.
+  }
+}
+
 export function dictationStart(): void {
   const phase = getOverlayPhase()
   if (phase !== 'idle' && phase !== 'inserted' && phase !== 'error' && phase !== 'nospeech') {
@@ -33,6 +44,7 @@ export async function dictationStop(): Promise<void> {
   playCue('stop')
   const wav = await stopRecording()
   if (!wav) {
+    void logDictation('capture-failed')
     setOverlayPhase('error')
     playCue('error')
     return
@@ -46,6 +58,17 @@ export async function dictationStop(): Promise<void> {
   try {
     const samples = wavSamples(wav)
     if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
+      // Peak level makes silence diagnosable: near zero means the mic
+      // delivered nothing (muted, wrong device); a healthy peak here
+      // would mean the gate itself misjudged real speech.
+      let peak = 0
+      for (let i = 0; i < samples.length; i++) {
+        const magnitude = Math.abs(samples[i])
+        if (magnitude > peak) peak = magnitude
+      }
+      void logDictation(
+        `nospeech durationMs=${Date.now() - sessionStartedAt} peak=${peak.toFixed(4)}`
+      )
       setOverlayPhase('nospeech')
       playCue('nospeech')
       return
@@ -132,6 +155,10 @@ export async function dictationStop(): Promise<void> {
     } else {
       const { recordSession } = await import('./history')
       const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
+      // outcome=copied means the paste keystroke failed and the text
+      // waits on the clipboard: the exact trail the Windows missed
+      // insertion reports need. Never the text itself.
+      void logDictation(`delivered outcome=${outcome} words=${event?.words ?? 0}`)
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       // A session can change rank, and rank can change the belt accent.

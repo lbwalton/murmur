@@ -2,6 +2,10 @@
 
 Short answers first, details after. If a problem is not listed here, open an issue at github.com/lbwalton/murmur/issues.
 
+## How do I send diagnostics when something goes wrong?
+
+Settings, setup, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
+
 ## Why did murmur stop hearing me after my computer went to sleep?
 
 Since v0.1.5 it recovers on its own. When a computer sleeps, the operating system tears down the audio stack, and for a few seconds after waking the microphone can refuse to open at all. murmur watches its own capture stream continuously: the microphone proves it is alive by delivering audio data many times a second, and the moment that flow stops for more than a few seconds, murmur rebuilds the capture pipeline and keeps retrying until the microphone answers again. This covers laptop lid closes, desktop sleep, Windows modern standby, unplugged microphones, and audio driver resets. You do not need to restart the app.
