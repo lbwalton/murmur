@@ -940,3 +940,37 @@ details[open] > .ladder-summary::after {
   font-size: 11px;
   padding: 3px 8px;
 }
+
+/* What's new: one quiet line until asked; the amber dot is the only
+   thing that changes when a new version lands. */
+.whats-new-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.whats-new-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+
+.whats-new-body {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim, inherit);
+}

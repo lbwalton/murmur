@@ -240,6 +240,9 @@ export function App(): React.JSX.Element {
   const [pasteCapturing, setPasteCapturing] = useState(false)
   const [pasteCaptureNote, setPasteCaptureNote] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState<string | null>(null)
+  // Red flash means fix this, amber glow means go here next; jumps
+  // carry the tone so one anchor can serve both meanings.
+  const [highlightTone, setHighlightTone] = useState<'flash' | 'glow'>('flash')
   const [version, setVersion] = useState('')
   const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
   const [insignia, setInsignia] = useState<{ color: string; stripes: number; founder: boolean } | null>(null)
@@ -403,8 +406,9 @@ export function App(): React.JSX.Element {
     }
   }
 
-  const jumpTo = (anchor: string): void => {
+  const jumpTo = (anchor: string, tone: 'flash' | 'glow' = 'flash'): void => {
     document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightTone(tone)
     setHighlighted(anchor)
     setTimeout(() => setHighlighted((h) => (h === anchor ? null : h)), 2600)
   }
@@ -600,6 +604,7 @@ export function App(): React.JSX.Element {
           label={sttProvider ? `${sttProvider.name} API key` : 'API key'}
           anchor="row-key"
           highlight={highlighted === 'row-key'}
+          highlightStyle={highlightTone}
           desc={
             keyStatus.present
               ? keyMismatch
@@ -725,16 +730,16 @@ export function App(): React.JSX.Element {
                   llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
                 } as Settings['provider']
               })
-              // Walk the user to the next step whenever the saved key
-              // is not KNOWN to match the new provider: a mismatched
-              // key or one saved before provenance existed both earn
-              // the nudge (live-found 2026-09-15: requiring a known
-              // mismatch meant older keys never glowed at all).
+              // Walk the user straight to the real key field whenever
+              // the saved key is not KNOWN to match the new provider
+              // (mismatched, or saved before provenance existed). The
+              // field lives on this same page, so no intermediate row
+              // and no button hop (LaBroi feedback 2026-09-15).
               const savedFor = settings.provider.keySavedForBaseUrl
               const knownMatch =
                 savedFor !== '' && normalizeUrl(savedFor) === normalizeUrl(preset.baseUrl)
               if (keyStatus.present && !knownMatch) {
-                jumpTo('row-provider-key')
+                jumpTo('row-key', 'glow')
               }
             }}
           >
@@ -745,30 +750,6 @@ export function App(): React.JSX.Element {
               </option>
             ))}
           </select>
-        </Row>
-
-        <Row
-          label="API key"
-          anchor="row-provider-key"
-          highlight={highlighted === 'row-provider-key'}
-          highlightStyle="glow"
-          desc={
-            keyMismatch
-              ? `The saved key belongs to ${keySavedForName ?? 'another provider'}. Save a ${sttProvider?.name ?? 'matching'} key on the setup tab before dictating.`
-              : keyStatus.present
-                ? `This provider's key is saved (${keyStatus.masked ?? ''}). Enter or replace it on the setup tab.`
-                : 'No key saved yet. After switching providers, save the matching key on the setup tab.'
-          }
-        >
-          <button
-            className="btn quiet-btn"
-            onClick={() => {
-              setPage('setup')
-              setTimeout(() => jumpTo('row-key'), 80)
-            }}
-          >
-            Open setup
-          </button>
         </Row>
 
         <Row

@@ -128,6 +128,10 @@ Yes. The accent you pick in settings (any earned belt color, or the special acce
 
 Almost always a macOS permission. The Test button in the recap section fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
 
+## Where do I see what changed in an update?
+
+The home tab keeps a quiet what's new line; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.
+
 ## What is the Price refresh setting?
 
 murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. With Price refresh on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.

@@ -11,6 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-046 what's new (built 2026-09-16, in the next installed build): the home tab should show a "what's new in 0.1.6" line with an amber dot; open it, read the release story, and the dot should stay gone across restarts. The full-loop check comes free with the next real update after v0.1.6.
 - [ ] US-048 silent-stream heal (built 2026-09-16, in the next installed build): with murmur running, quit and reopen Wave Link, then dictate. Expect one soft no-speech flash (the heal fires here) and the very next dictation delivering normally, no murmur relaunch. The log shows the pair: a nospeech with peak near 0.000 plus the re-arming line, then a delivered line with a healthy peak.
 - [ ] US-047 diagnostics (built 2026-09-15, in the next installed build): tap the mute ring on the Wave:3 (or unplug the mic), dictate, and check logs/murmur.log shows a nospeech line with a near-zero peak; then Save report from Settings, setup, Diagnostics and read the file: version, hook state, settings summary with counts only, log tail, and none of your words anywhere.
 - [ ] Copyright assignment paperwork: the app, README, and package.json now credit Eze Media LLC. Make it accurate on paper: sign the one-page assignment drafted at ~/Documents/murmur-copyright-assignment-2026.md (you to your LLC), date it, keep it with your LLC records. Not legal advice; have a lawyer glance at it if you want certainty.

@@ -2,11 +2,48 @@
 // The home view: your transcription log, grouped by day, newest first,
 // updating live as dictations land.
 import { useEffect, useState } from 'react'
+import changelogRaw from '../../../CHANGELOG.md?raw'
+import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, groupByDay } from '../../shared/history'
 import type { SettingsApi } from '../../preload/settings'
 import type { Settings } from '../../shared/settings'
 
 const bridge = (): SettingsApi => window.murmur
+
+function WhatsNew(props: {
+  settings: Settings
+  onUpdateSettings: (partial: Partial<Settings>) => Promise<void>
+}): React.JSX.Element | null {
+  const [version, setVersion] = useState('')
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    void bridge().appVersion().then(setVersion)
+  }, [])
+
+  const section = version ? sectionFor(changelogRaw, version) : null
+  if (!section) return null
+  const unseen = props.settings.whatsNewSeenVersion !== version
+
+  return (
+    <section className="panel whats-new">
+      <button
+        className="whats-new-head"
+        onClick={() => {
+          setOpen((o) => !o)
+          if (unseen) void props.onUpdateSettings({ whatsNewSeenVersion: version })
+        }}
+      >
+        <span className="micro-label">
+          what&apos;s new in {version}
+          {unseen && <span className="whats-new-dot" aria-label="unread" />}
+        </span>
+        <span className="dim">{open ? 'hide' : 'show'}</span>
+      </button>
+      {open && <pre className="whats-new-body">{section}</pre>}
+    </section>
+  )
+}
 
 function timeOf(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -48,6 +85,7 @@ export function HomeView(props: {
 
   return (
     <div className="home">
+      <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
       {grouped.length === 0 && (
         <section className="panel empty-log">
           <p className="micro-label">transcriptions</p>

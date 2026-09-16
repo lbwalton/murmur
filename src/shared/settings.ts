@@ -78,6 +78,9 @@ export interface Settings {
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
   catalogRefresh: boolean
+  /** Last app version whose what's new section the user opened; the
+   *  home tab shows a quiet marker while it trails the running one. */
+  whatsNewSeenVersion: string
   onboarding: {
     completed: boolean
   }
@@ -148,6 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   showDockIcon: false,
   catalogRefresh: true,
+  whatsNewSeenVersion: '',
   onboarding: {
     completed: false
   }
