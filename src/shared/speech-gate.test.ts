@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import hallucinations from './hallucinations.json'
-import { hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs } from './speech-gate'
+import { hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs, isDeadStream, peakLevel } from './speech-gate'
 
 const RATE = 16_000
 
@@ -137,5 +137,24 @@ describe('stripTrailingHallucinations', () => {
   it('leaves clean transcripts untouched', () => {
     const text = 'Ship it today. I will follow up tomorrow.'
     expect(stripTrailingHallucinations(text, tails)).toBe(text)
+  })
+})
+
+describe('peakLevel and the dead stream threshold', () => {
+  it('reads a dead capture stream as dead and a quiet room as alive', () => {
+    // A hijacked device delivers this: technically nonzero, humanly
+    // nothing (the live incident measured 0.0002).
+    const dead = new Float32Array(16_000).fill(0.0002)
+    // A real quiet room's noise floor sits well above the threshold.
+    const quietRoom = new Float32Array(16_000)
+    for (let i = 0; i < quietRoom.length; i++) quietRoom[i] = 0.004 * Math.sin(i / 7)
+    expect(isDeadStream(peakLevel(dead))).toBe(true)
+    expect(isDeadStream(peakLevel(quietRoom))).toBe(false)
+    expect(peakLevel(new Float32Array(0))).toBe(0)
+  })
+
+  it('peak is the true maximum magnitude, sign ignored', () => {
+    const samples = new Float32Array([0.01, -0.62, 0.3])
+    expect(peakLevel(samples)).toBeCloseTo(0.62, 6)
   })
 })

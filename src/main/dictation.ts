@@ -6,9 +6,15 @@ import { clipboard } from 'electron'
 import formatSpec from '../../shared/format-spec.json'
 import { type FormatSpec, formatTranscript } from '../shared/formatter'
 import hallucinations from '../shared/hallucinations.json'
-import { hasSpeechEnergy, isHallucination, stripTrailingHallucinations } from '../shared/speech-gate'
+import {
+  hasSpeechEnergy,
+  isDeadStream,
+  isHallucination,
+  peakLevel,
+  stripTrailingHallucinations
+} from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
-import { cancelRecording, playCue, startRecording, stopRecording } from './audio'
+import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording } from './audio'
 import { insertText } from './insertion'
 import { getOverlayPhase, refreshOverlayConfig, setOverlayPhase } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
@@ -54,21 +60,28 @@ export async function dictationStop(): Promise<void> {
   // The silent head and tail are then cut before upload: trailing
   // silence is what makes speech models hallucinate a "Thank you."
   // onto the end of real dictations.
+  // Peak level makes every outcome diagnosable: near zero on nospeech
+  // means the mic delivered nothing (muted, hijacked device); a faint
+  // peak on a delivered dictation is the Whisper hallucination zone.
+  let peak = 0
   let upload = wav
   try {
     const samples = wavSamples(wav)
+    peak = peakLevel(samples)
     if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
-      // Peak level makes silence diagnosable: near zero means the mic
-      // delivered nothing (muted, wrong device); a healthy peak here
-      // would mean the gate itself misjudged real speech.
-      let peak = 0
-      for (let i = 0; i < samples.length; i++) {
-        const magnitude = Math.abs(samples[i])
-        if (magnitude > peak) peak = magnitude
-      }
       void logDictation(
         `nospeech durationMs=${Date.now() - sessionStartedAt} peak=${peak.toFixed(4)}`
       )
+      // A dead stream, not a quiet human (see DEAD_STREAM_PEAK). The
+      // chunk watchdog cannot see this (chunks flow, they are just
+      // silent), so heal here: re-arm now and the NEXT press gets a
+      // live mic (live-found 2026-09-15, Wave Link took the device
+      // under a warm stream and only a relaunch revived capture).
+      // Worst case of a false trip is one press without its pre-roll.
+      if (isDeadStream(peak)) {
+        void logDictation('silent stream detected, re-arming capture')
+        rearmCapture()
+      }
       setOverlayPhase('nospeech')
       playCue('nospeech')
       return
@@ -158,7 +171,9 @@ export async function dictationStop(): Promise<void> {
       // outcome=copied means the paste keystroke failed and the text
       // waits on the clipboard: the exact trail the Windows missed
       // insertion reports need. Never the text itself.
-      void logDictation(`delivered outcome=${outcome} words=${event?.words ?? 0}`)
+      void logDictation(
+        `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}`
+      )
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       // A session can change rank, and rank can change the belt accent.

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/47 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (37/48 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -59,3 +59,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-045** Paste the last dictation with its own shortcut
 - [ ] **US-046** What's new: a changelog users can actually find
 - [ ] **US-047** Diagnostics the user can hand to support
+- [ ] **US-048** A silent stream heals itself

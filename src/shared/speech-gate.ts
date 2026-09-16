@@ -43,6 +43,25 @@ export function hasSpeechEnergy(
  * ("Thank you.") appended to real dictations; removing it attacks the
  * cause. Voiced audio is never cut: a spoken thank-you survives.
  */
+/** Highest absolute sample in the take: the capture health number. */
+export function peakLevel(samples: Float32Array): number {
+  let peak = 0
+  for (let i = 0; i < samples.length; i++) {
+    const magnitude = Math.abs(samples[i])
+    if (magnitude > peak) peak = magnitude
+  }
+  return peak
+}
+
+/** An order of magnitude under any real room's noise floor (and 10x
+ *  under the speech gate's own RMS threshold): a take peaking below
+ *  this is a dead capture stream, not a quiet human. */
+export const DEAD_STREAM_PEAK = 0.001
+
+export function isDeadStream(peak: number): boolean {
+  return peak < DEAD_STREAM_PEAK
+}
+
 export function trimSilence(
   samples: Float32Array,
   sampleRate: number,

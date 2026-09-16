@@ -177,6 +177,13 @@ export function startRecording(): void {
   aliveAudio()?.webContents.send(IpcChannels.audioStart)
 }
 
+/** Ask the capture window to rebuild its graph now. Safe between
+ *  dictations: the recorder's generation machinery (US-008) already
+ *  guards overlapping arms. Used by the silent-stream heal. */
+export function rearmCapture(): void {
+  aliveAudio()?.webContents.send(IpcChannels.audioRearm)
+}
+
 export function cancelRecording(): void {
   aliveAudio()?.webContents.send(IpcChannels.audioCancel)
 }
