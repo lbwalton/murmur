@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import bundled from '../../shared/provider-catalog.json'
-import { costPer1kWords, providerForBaseUrl, ratesFromCatalog, validateCatalog } from './catalog'
+import { costPer1kWords, providerForBaseUrl, providerForKeyMask, ratesFromCatalog, validateCatalog } from './catalog'
 
 describe('validateCatalog', () => {
   it('accepts the bundled catalog', () => {
@@ -69,6 +69,23 @@ describe('costPer1kWords', () => {
     expect(slow[0].amount).toBeGreaterThan(fast[0].amount)
     expect(costPer1kWords(null, null, catalog.estimate, 100)).toBeNull()
     expect(costPer1kWords({ id: 'unpriced' }, null, catalog.estimate, 100)).toBeNull()
+  })
+})
+
+describe('providerForKeyMask', () => {
+  const catalog = validateCatalog(bundled)!
+
+  it('recognizes a prefix only when it fits entirely inside the visible head', () => {
+    expect(providerForKeyMask(catalog, 'gsk_…OC9g')?.id).toBe('groq')
+  })
+
+  it('never guesses on truncated, ambiguous, or unknown formats', () => {
+    // A legacy OpenAI key can legitimately start sk-o; a prefix longer
+    // than the visible head must never count as a hit.
+    expect(providerForKeyMask(catalog, 'sk-o…abcd')).toBeNull()
+    expect(providerForKeyMask(catalog, 'sk-p…abcd')).toBeNull()
+    expect(providerForKeyMask(catalog, '••••')).toBeNull()
+    expect(providerForKeyMask(catalog, '')).toBeNull()
   })
 })
 

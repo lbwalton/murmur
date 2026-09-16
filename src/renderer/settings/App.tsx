@@ -11,7 +11,12 @@ import type {
 } from '../../preload/settings'
 import { parseRecapTime } from '../../shared/recap'
 import proConfig from '../../../shared/pro.json'
-import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
+import {
+  type ProviderCatalog,
+  costPer1kWords,
+  providerForBaseUrl,
+  providerForKeyMask
+} from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
@@ -431,6 +436,16 @@ export function App(): React.JSX.Element {
     catalog && settings.provider.keySavedForBaseUrl !== ''
       ? (providerForBaseUrl(catalog, settings.provider.keySavedForBaseUrl)?.name ?? null)
       : null
+  // When provenance is unknown (key saved before tracking existed),
+  // the key's own visible format can still betray its owner: gsk_ is
+  // only ever Groq. Inference stays display-only and never guesses on
+  // ambiguous prefixes.
+  const inferredKeyOwner =
+    catalog && keyStatus.present && keyStatus.masked && settings.provider.keySavedForBaseUrl === ''
+      ? providerForKeyMask(catalog, keyStatus.masked)
+      : null
+  const keyLooksForeign =
+    inferredKeyOwner !== null && sttProvider !== null && inferredKeyOwner.id !== sttProvider.id
   const polishActive = settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== ''
   const llmProvider =
     catalog && polishActive ? providerForBaseUrl(catalog, settings.polish.baseUrl) : sttProvider
@@ -469,8 +484,8 @@ export function App(): React.JSX.Element {
   const steps: SetupStep[] = [
     {
       id: 'key',
-      label: keyMismatch ? 'Key matches provider' : 'API key saved',
-      ok: keyStatus.present && !keyMismatch,
+      label: keyMismatch || keyLooksForeign ? 'Key matches provider' : 'API key saved',
+      ok: keyStatus.present && !keyMismatch && !keyLooksForeign,
       anchor: 'row-key'
     },
     {
@@ -609,7 +624,9 @@ export function App(): React.JSX.Element {
             keyStatus.present
               ? keyMismatch
                 ? `The saved key (${keyStatus.masked ?? ''}) was added for ${keySavedForName ?? 'a different provider'}. ${sttProvider?.name ?? 'This endpoint'} needs its own key${sttProvider?.keyUrl ? `, from ${sttProvider.keyUrl.replace('https://', '')}` : ''}.`
-                : `Saved and encrypted (${keyStatus.masked ?? ''})`
+                : keyLooksForeign
+                  ? `The saved key (${keyStatus.masked ?? ''}) looks like a ${inferredKeyOwner?.name ?? ''} key. ${sttProvider?.name ?? 'This endpoint'} needs its own key${sttProvider?.keyUrl ? `, from ${sttProvider.keyUrl.replace('https://', '')}` : ''}.`
+                  : `Saved and encrypted (${keyStatus.masked ?? ''})`
               : `Paste a key from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}. Stored encrypted, never leaves this machine except to your provider.`
           }
         >
@@ -618,7 +635,7 @@ export function App(): React.JSX.Element {
               type="password"
               className="field"
               placeholder={
-                keyMismatch
+                keyMismatch || keyLooksForeign
                   ? `paste a ${sttProvider?.name ?? 'matching'} key`
                   : keyStatus.present
                     ? 'replace key'

@@ -41,6 +41,10 @@ export interface CatalogProvider {
   nuances: string[]
   sttModels: CatalogSttModel[]
   llmModels: CatalogLlmModel[]
+  /** Key formats unique to this provider (gsk_ is only ever Groq).
+   *  Listed ONLY when unambiguous; ambiguous formats like a bare sk-
+   *  stay unlisted so inference can never guess wrong. */
+  keyPrefixes?: string[]
 }
 
 export interface CatalogEstimate {
@@ -99,6 +103,11 @@ export function validateCatalog(data: unknown): ProviderCatalog | null {
     if (!Array.isArray(p.kinds) || !p.kinds.every((k) => k === 'stt' || k === 'llm')) return null
     if (typeof p.verifiedOn !== 'string') return null
     if (!Array.isArray(p.nuances) || !p.nuances.every((n) => typeof n === 'string')) return null
+    if (p.keyPrefixes !== undefined) {
+      if (!Array.isArray(p.keyPrefixes) || !p.keyPrefixes.every((k) => typeof k === 'string' && k.length > 0)) {
+        return null
+      }
+    }
     if (!Array.isArray(p.sttModels) || !p.sttModels.every((m) => validModel(m, ['perHourUsd']))) return null
     if (!Array.isArray(p.llmModels) || !p.llmModels.every((m) => validModel(m, ['inputPerMTok', 'outputPerMTok']))) {
       return null
@@ -186,6 +195,26 @@ export function costPer1kWords(
 
   if (byCurrency.size === 0) return null
   return [...byCurrency.entries()].map(([currency, amount]) => ({ amount, currency }))
+}
+
+/**
+ * The provider a key's masked display betrays, when exactly one
+ * provider's registered prefix fits the visible start of the mask.
+ * Ambiguity returns null: this exists to catch a gsk_ key sitting
+ * under an OpenAI label, never to guess.
+ */
+export function providerForKeyMask(catalog: ProviderCatalog, masked: string): CatalogProvider | null {
+  // Only the head before the ellipsis is real key material, and a
+  // prefix must fit ENTIRELY inside it to count: matching a truncated
+  // prefix misattributed ~1.5 percent of legacy OpenAI keys to a
+  // provider whose prefix merely began the same way (review gate
+  // proof, 2026-09-16). Better no inference than a wrong one.
+  const head = masked.split('…')[0]
+  if (head.length === 0) return null
+  const matches = catalog.providers.filter((p) =>
+    (p.keyPrefixes ?? []).some((prefix) => prefix.length <= head.length && head.startsWith(prefix))
+  )
+  return matches.length === 1 ? matches[0] : null
 }
 
 /** The provider whose preset matches a base URL, if any. */
