@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Wires the settings store and key store to Electron: userData paths,
-// safeStorage cipher, IPC handlers, and smoke checks.
+// Wires the settings store and the key ring to Electron: userData
+// paths, safeStorage cipher, IPC handlers, and smoke checks. Keys live
+// one per provider base URL; the legacy single-slot files migrate into
+// the ring at boot.
 import { app, ipcMain, safeStorage } from 'electron'
+import bundledCatalog from '../../../shared/provider-catalog.json'
+import { validateCatalog } from '../../shared/catalog'
 import { IpcChannels } from '../../shared/ipc'
 import type { Settings } from '../../shared/settings'
 import { registerSmokeCheck } from '../smoke'
 import { type KeyCipher, KeyStore } from './keystore'
+import { KeyRing, type RingStatus, migrateLegacyKeys } from './keyring'
 import { SettingsStore } from './store'
 
 let settingsStore: SettingsStore | null = null
-let keyStore: KeyStore | null = null
-let polishKeyStore: KeyStore | null = null
+let ring: KeyRing | null = null
+let legacyStore: KeyStore | null = null
+let polishLegacyStore: KeyStore | null = null
 
 type SettingsListener = (settings: Settings) => void
 const listeners = new Set<SettingsListener>()
@@ -32,6 +38,15 @@ export function updateSettings(partial: unknown): Settings {
   return updated
 }
 
+function ringStatus(): RingStatus {
+  const settings = settingsStore?.get()
+  return {
+    active: ring?.status(settings?.provider.baseUrl ?? '') ?? { present: false, masked: null },
+    list: ring?.list() ?? [],
+    legacy: legacyStore?.status() ?? { present: false, masked: null }
+  }
+}
+
 export function initSettings(): void {
   const dir = app.getPath('userData')
   settingsStore = new SettingsStore(dir)
@@ -41,8 +56,9 @@ export function initSettings(): void {
     encrypt: (plain) => safeStorage.encryptString(plain),
     decrypt: (buf) => safeStorage.decryptString(buf)
   }
-  keyStore = new KeyStore(dir, cipher)
-  polishKeyStore = new KeyStore(dir, cipher, 'polish-key.enc')
+  ring = new KeyRing(dir, cipher)
+  legacyStore = new KeyStore(dir, cipher)
+  polishLegacyStore = new KeyStore(dir, cipher, 'polish-key.enc')
 
   // Migrate decommissioned Groq model ids (shut down 2026-08-16, per
   // console.groq.com/docs/deprecations) to their documented replacements
@@ -55,6 +71,22 @@ export function initSettings(): void {
   const replacement = MODEL_MIGRATIONS[storedLlm]
   if (replacement) settingsStore.update({ provider: { llmModel: replacement } })
 
+  // Legacy single-slot keys move into the ring, assigned by their own
+  // full prefix when unambiguous (the bundled catalog is the authority
+  // for prefixes; a refreshed catalog never runs this path again).
+  const catalog = validateCatalog(bundledCatalog)
+  const stored = settingsStore.get()
+  migrateLegacyKeys({
+    legacy: legacyStore,
+    polishLegacy: polishLegacyStore,
+    ring,
+    provenanceBaseUrl: stored.provider.keySavedForBaseUrl,
+    polishBaseUrl: stored.polish.baseUrl,
+    prefixOwners: (catalog?.providers ?? [])
+      .filter((p) => (p.keyPrefixes ?? []).length > 0)
+      .map((p) => ({ baseUrl: p.baseUrl, prefixes: p.keyPrefixes ?? [] }))
+  })
+
   ipcMain.handle(IpcChannels.settingsGet, () => settingsStore?.get())
   ipcMain.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
     // provider.profiles is written ONLY by the dedicated Pro-gated
@@ -66,33 +98,70 @@ export function initSettings(): void {
     }
     return updateSettings(partial)
   })
+
+  // The ring speaks for the ACTIVE provider: saving files the key
+  // under the current base URL, clearing removes only that one.
   ipcMain.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {
-    keyStore?.set(String(key))
-    // Remember which provider this key was saved under (the base URL,
-    // never the key), so a later provider switch can say honestly that
-    // the saved key belongs elsewhere.
-    updateSettings({ provider: { keySavedForBaseUrl: settingsStore?.get().provider.baseUrl ?? '' } })
-    return keyStore?.status()
+    const baseUrl = settingsStore?.get().provider.baseUrl ?? ''
+    if (baseUrl !== '') ring?.set(baseUrl, String(key))
+    return ringStatus()
   })
   ipcMain.handle(IpcChannels.apiKeyClear, () => {
-    keyStore?.clear()
-    updateSettings({ provider: { keySavedForBaseUrl: '' } })
-    return keyStore?.status()
+    ring?.clear(settingsStore?.get().provider.baseUrl ?? '')
+    return ringStatus()
   })
-  ipcMain.handle(IpcChannels.apiKeyStatus, () => keyStore?.status())
+  ipcMain.handle(IpcChannels.apiKeyStatus, () => ringStatus())
+  ipcMain.handle('apikey:removeFor', (_event, baseUrl: unknown) => {
+    if (typeof baseUrl === 'string' && baseUrl !== '') ring?.clear(baseUrl)
+    return ringStatus()
+  })
+  // The unassigned pre-ring key: the user assigns it to whatever
+  // provider is active, or removes it entirely.
+  ipcMain.handle('apikey:assignLegacy', () => {
+    const key = legacyStore?.get()
+    const baseUrl = settingsStore?.get().provider.baseUrl ?? ''
+    // Assigning must never overwrite a provider's existing key: that
+    // is the exact silent replacement this story exists to end
+    // (review gate finding). The UI hides Assign in that state; this
+    // guard holds even against a misbehaving renderer.
+    if (key && baseUrl !== '' && !ring?.status(baseUrl).present) {
+      ring?.set(baseUrl, key)
+      legacyStore?.clear()
+    }
+    return ringStatus()
+  })
+  ipcMain.handle('apikey:removeLegacy', () => {
+    legacyStore?.clear()
+    return ringStatus()
+  })
 
-  // The cleanup connection's own key, in its own encrypted file. Same
-  // rules as the primary key: never logged, never sent to a renderer
-  // in plaintext.
+  // The cleanup connection's key rides the same ring, keyed by the
+  // cleanup base URL; a not-yet-migrated polish key still answers.
   ipcMain.handle('polishkey:set', (_event, key: unknown) => {
-    polishKeyStore?.set(String(key))
-    return polishKeyStore?.status()
+    const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
+    if (baseUrl !== '') ring?.set(baseUrl, String(key))
+    return polishKeyStatus()
   })
   ipcMain.handle('polishkey:clear', () => {
-    polishKeyStore?.clear()
-    return polishKeyStore?.status()
+    const current = settingsStore?.get()
+    const polishUrl = current?.polish.baseUrl ?? ''
+    const strip = (u: string): string => u.replace(/\/$/, '')
+    // A shared base URL means ONE ring key serving both connections;
+    // the speech surface owns it, so the cleanup Remove must never
+    // delete it out from under dictation (review gate finding).
+    const shared = polishUrl !== '' && strip(polishUrl) === strip(current?.provider.baseUrl ?? '')
+    if (polishUrl !== '' && !shared) ring?.clear(polishUrl)
+    polishLegacyStore?.clear()
+    return polishKeyStatus()
   })
-  ipcMain.handle('polishkey:status', () => polishKeyStore?.status())
+  ipcMain.handle('polishkey:status', () => polishKeyStatus())
+
+  function polishKeyStatus(): { present: boolean; masked: string | null } {
+    const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
+    const inRing = ring?.status(baseUrl)
+    if (inRing?.present) return inRing
+    return polishLegacyStore?.status() ?? { present: false, masked: null }
+  }
 
   // Connection test: a cheap authorized GET against the provider's model
   // list. Proves base URL and key together without spending audio.
@@ -124,12 +193,12 @@ export function initSettings(): void {
     }
   }
   ipcMain.handle('provider:test', async () => {
-    return probeConnection(settingsStore?.get().provider.baseUrl ?? '', keyStore?.get() ?? null)
+    return probeConnection(settingsStore?.get().provider.baseUrl ?? '', getApiKey())
   })
   ipcMain.handle('provider:testPolish', async () => {
     const polish = settingsStore?.get().polish
     if (!polish?.baseUrl) return { ok: false, detail: 'no cleanup base URL set' }
-    return probeConnection(polish.baseUrl, polishKeyStore?.get() ?? null)
+    return probeConnection(polish.baseUrl, getPolishApiKey())
   })
 
   registerSmokeCheck('settings', () => {
@@ -140,28 +209,45 @@ export function initSettings(): void {
   })
 
   registerSmokeCheck('secureKey', () => {
-    if (!keyStore) return false
-    if (!safeStorage.isEncryptionAvailable()) return false
-    const probe = 'smoke-probe-key-value-1234567890'
-    keyStore.set(probe)
-    const roundTrip = keyStore.get() === probe
-    const masked = keyStore.status().masked
-    keyStore.clear()
-    return roundTrip && masked === 'smok…7890' && !keyStore.status().present
+    if (!ring || !safeStorage.isEncryptionAvailable()) return false
+    // Two providers round trip through the real cipher, list correctly,
+    // and clear without touching each other.
+    const a = 'https://smoke-a.example/v1'
+    const b = 'https://smoke-b.example/v1'
+    ring.set(a, 'smoke-ring-a-1234567890')
+    ring.set(b, 'smoke-ring-b-0987654321')
+    const isolated = ring.get(a) === 'smoke-ring-a-1234567890' && ring.get(b) === 'smoke-ring-b-0987654321'
+    const listed = ring.list().filter((e) => e.baseUrl.startsWith('https://smoke-')).length === 2
+    const maskedOk = ring.status(a).masked === 'smok…7890'
+    ring.clear(a)
+    const cleared = !ring.status(a).present && ring.get(b) !== null
+    ring.clear(b)
+    const emptied = ring.list().every((e) => !e.baseUrl.startsWith('https://smoke-'))
+    return isolated && listed && maskedOk && cleared && emptied
   })
 }
 
-/** Main-process access for later subsystems. Never expose to renderers. */
+/** The active provider's key: ring first, then the not-yet-assigned
+ *  legacy key so dictation keeps working until the user resolves it.
+ *  Never expose to renderers. */
 export function getApiKey(): string | null {
-  return keyStore?.get() ?? null
+  const baseUrl = settingsStore?.get().provider.baseUrl ?? ''
+  return ring?.get(baseUrl) ?? legacyStore?.get() ?? null
 }
 
 /** The cleanup connection's key, or null when none is saved. */
 export function getPolishApiKey(): string | null {
-  return polishKeyStore?.get() ?? null
+  const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
+  return ring?.get(baseUrl) ?? polishLegacyStore?.get() ?? null
 }
 
 export function getSettings(): Settings {
   if (!settingsStore) throw new Error('settings not initialized')
   return settingsStore.get()
+}
+
+/** Base URLs holding saved keys, for the diagnostics report. Base
+ *  URLs only; never key material. */
+export function listSavedKeyBaseUrls(): string[] {
+  return (ring?.list() ?? []).map((entry) => entry.baseUrl)
 }

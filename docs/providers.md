@@ -10,6 +10,10 @@ After any change, click **Test connection** in the setup panel. Green means your
 
 Provider facts below were verified on 2026-09-13. Model names drift; when in doubt, your provider's models page is the truth.
 
+## Do I need to re-enter my key when I switch providers?
+
+No. Each provider keeps its own key: saving a key files it under the provider you are on, and switching providers automatically switches to that provider's saved key. Every saved key is listed in setup under the key field, labeled with its provider, each with its own Remove. A key saved by an older murmur that predates this appears as one unassigned entry you can assign to the current provider or remove; nothing is ever dropped silently.
+
 ## Can I use one provider for speech and a different one for cleanup?
 
 Yes. Set **Cleanup connection** to **Separate provider** in Settings. The cleanup slot gets its own base URL, model, and its own encrypted key, so Groq can transcribe while DeepSeek, Cerebras, OpenRouter, or a local model does the cleanup. The separate connection only takes over once it is fully set up (enabled, base URL, model, and a saved key); anything less and cleanup quietly keeps using your speech provider, so a half-finished setup never costs you the cleanup pass. Speech itself always uses the main provider block.

@@ -35,12 +35,12 @@ export function WizardView(props: {
   const refreshFacts = async (): Promise<void> => {
     const b = bridge()
     const [k, p, h] = await Promise.all([b.getApiKeyStatus(), b.getPermissions(), b.getHotkeysStatus()])
-    setKeyStatus(k)
+    setKeyStatus(k.active)
     setPerms(p)
     setBindingValid(h.bindingValid)
     // A key saved in an earlier run must count as connected without
     // retyping it: verify it once automatically, like the main page does.
-    if (k.present && !autoTested.current) {
+    if (k.active.present && !autoTested.current) {
       autoTested.current = true
       setTesting(true)
       try {
@@ -74,7 +74,7 @@ export function WizardView(props: {
 
   const saveAndTestKey = async (): Promise<void> => {
     if (keyDraft.trim().length === 0) return
-    setKeyStatus(await bridge().setApiKey(keyDraft.trim()))
+    setKeyStatus((await bridge().setApiKey(keyDraft.trim())).active)
     setKeyDraft('')
     setTesting(true)
     try {

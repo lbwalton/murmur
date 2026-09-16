@@ -13,6 +13,17 @@ export interface KeyStatus {
   masked: string | null
 }
 
+export interface RingEntry {
+  baseUrl: string
+  masked: string
+}
+
+export interface RingStatus {
+  active: KeyStatus
+  list: RingEntry[]
+  legacy: KeyStatus
+}
+
 export interface ProviderTestResult {
   ok: boolean
   detail: string
@@ -62,9 +73,12 @@ const api = {
   updateSettings: (partial: Partial<Settings>): Promise<Settings> => {
     return ipcRenderer.invoke('settings:update', partial)
   },
-  setApiKey: (key: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:set', key),
-  clearApiKey: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clear'),
-  getApiKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('apikey:status'),
+  setApiKey: (key: string): Promise<RingStatus> => ipcRenderer.invoke('apikey:set', key),
+  clearApiKey: (): Promise<RingStatus> => ipcRenderer.invoke('apikey:clear'),
+  getApiKeyStatus: (): Promise<RingStatus> => ipcRenderer.invoke('apikey:status'),
+  removeKeyFor: (baseUrl: string): Promise<RingStatus> => ipcRenderer.invoke('apikey:removeFor', baseUrl),
+  assignLegacyKey: (): Promise<RingStatus> => ipcRenderer.invoke('apikey:assignLegacy'),
+  removeLegacyKey: (): Promise<RingStatus> => ipcRenderer.invoke('apikey:removeLegacy'),
   setPolishKey: (key: string): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:set', key),
   clearPolishKey: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:clear'),
   getPolishKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:status'),

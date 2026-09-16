@@ -974,3 +974,24 @@ details[open] > .ladder-summary::after {
   line-height: 1.6;
   color: var(--text-dim, inherit);
 }
+
+/* The key ring: every saved key as one quiet labeled line. */
+.key-ring {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 14px;
+}
+
+.key-ring-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.key-ring-item .btn {
+  padding: 3px 10px;
+  font-size: 11px;
+}

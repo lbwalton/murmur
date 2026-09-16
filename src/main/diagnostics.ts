@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrowserWindow, app, ipcMain } from 'electron'
 import { getHotkeysStatus } from './hotkeys'
-import { getSettings, updateSettings } from './settings'
+import { getSettings, listSavedKeyBaseUrls, updateSettings } from './settings'
 import { registerSmokeCheck } from './smoke'
 
 const LOG_TAIL_LINES = 200
@@ -46,7 +46,7 @@ export function buildDiagnosticsReport(): string {
     `provider.baseUrl: ${settings.provider.baseUrl}`,
     `provider.sttModel: ${settings.provider.sttModel}`,
     `provider.llmModel: ${settings.provider.llmModel}`,
-    `provider.keySavedForBaseUrl: ${settings.provider.keySavedForBaseUrl || '(unknown)'}`,
+    `savedKeyProviders: ${listSavedKeyBaseUrls().join(', ') || '(none)'}`,
     `polish.enabled: ${settings.polish.enabled}`,
     `polish.baseUrl: ${settings.polish.baseUrl || '(unset)'}`,
     `formatting: level=${settings.formatting.level} numbers=${settings.formatting.numbers} smartLists=${settings.formatting.smartLists}`,

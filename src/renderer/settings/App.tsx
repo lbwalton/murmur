@@ -5,18 +5,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   HotkeysStatus,
   KeyStatus,
+  RingStatus,
   PermissionsStatus,
   ProviderTestResult,
   SettingsApi
 } from '../../preload/settings'
 import { parseRecapTime } from '../../shared/recap'
 import proConfig from '../../../shared/pro.json'
-import {
-  type ProviderCatalog,
-  costPer1kWords,
-  providerForBaseUrl,
-  providerForKeyMask
-} from '../../shared/catalog'
+import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
@@ -224,7 +220,11 @@ function Row(props: {
 
 export function App(): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
+  const [keyStatus, setKeyStatus] = useState<RingStatus>({
+    active: { present: false, masked: null },
+    list: [],
+    legacy: { present: false, masked: null }
+  })
   const [keyDraft, setKeyDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
@@ -298,7 +298,7 @@ export function App(): React.JSX.Element {
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved.
-      if (k.present && !autoTested.current) {
+      if (k.active.present && !autoTested.current) {
         autoTested.current = true
         void bridge().testProvider().then(setTest)
       }
@@ -308,7 +308,7 @@ export function App(): React.JSX.Element {
         void bridge()
           .getSettings()
           .then((s) => {
-            if (!s.onboarding.completed && !k.present) setWizardOpen(true)
+            if (!s.onboarding.completed && !k.active.present) setWizardOpen(true)
           })
       }
     })
@@ -351,9 +351,6 @@ export function App(): React.JSX.Element {
   const saveKey = async (): Promise<void> => {
     if (keyDraft.trim().length === 0) return
     setKeyStatus(await bridge().setApiKey(keyDraft.trim()))
-    // The save also records which provider the key belongs to; pull
-    // the settings so the mismatch surfaces update immediately.
-    setSettings(await bridge().getSettings())
     setKeyDraft('')
     setTest(null)
     setTesting(true)
@@ -424,28 +421,10 @@ export function App(): React.JSX.Element {
   // base URLs match, the model rate entries, and the pace-aware cost
   // preview. All local math; nothing here leaves the machine.
   const sttProvider = catalog ? providerForBaseUrl(catalog, settings.provider.baseUrl) : null
-  // The saved key remembers which base URL it was saved under, so a
-  // provider switch stops every surface from vouching for the wrong
-  // key (live-found 2026-09-14: a Groq key read as all set on OpenAI).
+  // The ring is structural provenance: the active provider either has
+  // its own key or it does not, and every other saved key lists under
+  // its own provider. No inference, no guessing.
   const normalizeUrl = (u: string): string => u.replace(/\/$/, '')
-  const keyMismatch =
-    keyStatus.present &&
-    settings.provider.keySavedForBaseUrl !== '' &&
-    normalizeUrl(settings.provider.keySavedForBaseUrl) !== normalizeUrl(settings.provider.baseUrl)
-  const keySavedForName =
-    catalog && settings.provider.keySavedForBaseUrl !== ''
-      ? (providerForBaseUrl(catalog, settings.provider.keySavedForBaseUrl)?.name ?? null)
-      : null
-  // When provenance is unknown (key saved before tracking existed),
-  // the key's own visible format can still betray its owner: gsk_ is
-  // only ever Groq. Inference stays display-only and never guesses on
-  // ambiguous prefixes.
-  const inferredKeyOwner =
-    catalog && keyStatus.present && keyStatus.masked && settings.provider.keySavedForBaseUrl === ''
-      ? providerForKeyMask(catalog, keyStatus.masked)
-      : null
-  const keyLooksForeign =
-    inferredKeyOwner !== null && sttProvider !== null && inferredKeyOwner.id !== sttProvider.id
   const polishActive = settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== ''
   const llmProvider =
     catalog && polishActive ? providerForBaseUrl(catalog, settings.polish.baseUrl) : sttProvider
@@ -484,8 +463,8 @@ export function App(): React.JSX.Element {
   const steps: SetupStep[] = [
     {
       id: 'key',
-      label: keyMismatch || keyLooksForeign ? 'Key matches provider' : 'API key saved',
-      ok: keyStatus.present && !keyMismatch && !keyLooksForeign,
+      label: `${sttProvider?.name ?? 'API'} key saved`,
+      ok: keyStatus.active.present,
       anchor: 'row-key'
     },
     {
@@ -621,13 +600,9 @@ export function App(): React.JSX.Element {
           highlight={highlighted === 'row-key'}
           highlightStyle={highlightTone}
           desc={
-            keyStatus.present
-              ? keyMismatch
-                ? `The saved key (${keyStatus.masked ?? ''}) was added for ${keySavedForName ?? 'a different provider'}. ${sttProvider?.name ?? 'This endpoint'} needs its own key${sttProvider?.keyUrl ? `, from ${sttProvider.keyUrl.replace('https://', '')}` : ''}.`
-                : keyLooksForeign
-                  ? `The saved key (${keyStatus.masked ?? ''}) looks like a ${inferredKeyOwner?.name ?? ''} key. ${sttProvider?.name ?? 'This endpoint'} needs its own key${sttProvider?.keyUrl ? `, from ${sttProvider.keyUrl.replace('https://', '')}` : ''}.`
-                  : `Saved and encrypted (${keyStatus.masked ?? ''})`
-              : `Paste a key from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}. Stored encrypted, never leaves this machine except to your provider.`
+            keyStatus.active.present
+              ? `Saved and encrypted (${keyStatus.active.masked ?? ''})`
+              : `No ${sttProvider?.name ?? ''} key yet. Paste one from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}; it stays encrypted here and goes only to this provider. Each provider keeps its own key.`
           }
         >
           <div className="inline">
@@ -635,13 +610,11 @@ export function App(): React.JSX.Element {
               type="password"
               className="field"
               placeholder={
-                keyMismatch || keyLooksForeign
-                  ? `paste a ${sttProvider?.name ?? 'matching'} key`
-                  : keyStatus.present
-                    ? 'replace key'
-                    : sttProvider?.id === 'groq'
-                      ? 'gsk_…'
-                      : 'key…'
+                keyStatus.active.present
+                  ? 'replace key'
+                  : sttProvider?.id === 'groq'
+                    ? 'gsk_…'
+                    : `paste a ${sttProvider?.name ?? ''} key`
               }
               value={keyDraft}
               onChange={(e) => setKeyDraft(e.target.value)}
@@ -652,16 +625,11 @@ export function App(): React.JSX.Element {
             <button className="btn" onClick={() => void saveKey()} disabled={keyDraft.trim() === ''}>
               Save
             </button>
-            {keyStatus.present && (
+            {keyStatus.active.present && (
               <button
                 className="btn quiet-btn"
                 onClick={() => {
-                  void bridge()
-                    .clearApiKey()
-                    .then(async (s) => {
-                      setKeyStatus(s)
-                      setSettings(await bridge().getSettings())
-                    })
+                  void bridge().clearApiKey().then(setKeyStatus)
                   setTest(null)
                 }}
               >
@@ -670,6 +638,50 @@ export function App(): React.JSX.Element {
             )}
           </div>
         </Row>
+
+        {(keyStatus.list.length > 0 || keyStatus.legacy.present) && (
+          <div className="key-ring">
+            {keyStatus.list.map((entry) => {
+              const owner = catalog ? providerForBaseUrl(catalog, entry.baseUrl) : null
+              const inUse = normalizeUrl(entry.baseUrl) === normalizeUrl(settings.provider.baseUrl)
+              return (
+                <div key={entry.baseUrl} className="key-ring-item">
+                  <span className="dim">
+                    {owner?.name ?? entry.baseUrl} · {entry.masked}
+                    {inUse ? ' · in use' : ''}
+                  </span>
+                  <button
+                    className="btn quiet-btn"
+                    onClick={() => void bridge().removeKeyFor(entry.baseUrl).then(setKeyStatus)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )
+            })}
+            {keyStatus.legacy.present && (
+              <div className="key-ring-item">
+                <span className="dim">
+                  Unassigned ({keyStatus.legacy.masked ?? ''}), saved before keys tracked providers
+                </span>
+                {!keyStatus.active.present && (
+                  <button
+                    className="btn"
+                    onClick={() => void bridge().assignLegacyKey().then(setKeyStatus)}
+                  >
+                    Assign to {sttProvider?.name ?? 'current provider'}
+                  </button>
+                )}
+                <button
+                  className="btn quiet-btn"
+                  onClick={() => void bridge().removeLegacyKey().then(setKeyStatus)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <Row
           label="Diagnostics"
@@ -695,7 +707,7 @@ export function App(): React.JSX.Element {
             <button
               className="btn"
               onClick={() => void runTest()}
-              disabled={!keyStatus.present || testing}
+              disabled={!keyStatus.active.present || testing}
             >
               {testing ? 'Testing…' : 'Test connection'}
             </button>
@@ -747,15 +759,12 @@ export function App(): React.JSX.Element {
                   llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
                 } as Settings['provider']
               })
-              // Walk the user straight to the real key field whenever
-              // the saved key is not KNOWN to match the new provider
-              // (mismatched, or saved before provenance existed). The
-              // field lives on this same page, so no intermediate row
-              // and no button hop (LaBroi feedback 2026-09-15).
-              const savedFor = settings.provider.keySavedForBaseUrl
-              const knownMatch =
-                savedFor !== '' && normalizeUrl(savedFor) === normalizeUrl(preset.baseUrl)
-              if (keyStatus.present && !knownMatch) {
+              // Walk the user straight to the key field when the ring
+              // holds no key for the provider they just chose.
+              const hasKeyFor = keyStatus.list.some(
+                (entry) => normalizeUrl(entry.baseUrl) === normalizeUrl(preset.baseUrl)
+              )
+              if (!hasKeyFor) {
                 jumpTo('row-key', 'glow')
               }
             }}
@@ -1493,11 +1502,23 @@ function PolishRows(props: {
     prevPolishUrl.current = current
   }, [settings.polish.baseUrl])
 
+  const sharedWithSpeech =
+    settings.polish.baseUrl !== '' &&
+    settings.polish.baseUrl.replace(/\/$/, '') === settings.provider.baseUrl.replace(/\/$/, '')
+
   const save = async (): Promise<void> => {
     if (draft.trim().length === 0) return
-    props.onKeyStatus(await bridge().setPolishKey(draft.trim()))
-    setDraft('')
-    setTest(null)
+    const status = await bridge().setPolishKey(draft.trim())
+    props.onKeyStatus(status)
+    // Keep the typed key when the save could not land (no base URL
+    // yet): wiping it would silently discard what the user pasted.
+    // The base URL is the landing condition; a stale legacy key can
+    // make present read true without this save having gone anywhere
+    // (re-gate finding).
+    if (settings.polish.baseUrl !== '' && status.present) {
+      setDraft('')
+      setTest(null)
+    }
   }
   const run = async (): Promise<void> => {
     setTesting(true)
@@ -1577,12 +1598,22 @@ function PolishRows(props: {
               />
             )}
           </Row>
+          {sharedWithSpeech ? (
+            <Row
+              label="Cleanup key"
+              desc="Shares the speech connection's key: one provider, one key. Manage it in the setup panel above."
+            >
+              <span className="dim">shared</span>
+            </Row>
+          ) : (
           <Row
             label="Cleanup key"
             desc={
               props.keyStatus.present
                 ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
-                : 'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.'
+                : settings.polish.baseUrl === ''
+                  ? 'Pick a preset or base URL first; the key files under it.'
+                  : 'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.'
             }
           >
             <div className="inline">
@@ -1620,6 +1651,7 @@ function PolishRows(props: {
               )}
             </div>
           </Row>
+          )}
         </>
       )}
     </>
