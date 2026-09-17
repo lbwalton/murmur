@@ -9,6 +9,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [x] The undertone repo's 5 Dependabot alerts: patched by an agent 2026-09-07, awaiting GitHub's rescan to confirm they close.
 - [x] US-040 done 2026-09-08: history rewritten and rescanned clean, repo recreated fresh and flipped PUBLIC, v0.1.0 released. If any other machine has an old clone of murmur, re-clone it; the archive lives private at lbwalton/murmur-prerewrite-archive and can be deleted once you are comfortable.
 
+## Shipped
+
+- [x] v0.1.6 published 2026-09-17: the full test-cycle release (smart lists, provider catalog and key ring, paste-last chord, license switching, diagnostics, the self-healing mic, tray and paste fixes, what's new, Eze Media LLC attribution). Both platforms, notarized, auto-update live.
+
 ## Live verification queue
 
 - [x] US-046 what's new (built 2026-09-16, in the next installed build): the home tab should show a "what's new in 0.1.6" line with an amber dot; open it, read the release story, and the dot should stay gone across restarts. The full-loop check comes free with the next real update after v0.1.6.
