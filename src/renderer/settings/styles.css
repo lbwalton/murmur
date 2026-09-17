@@ -975,12 +975,23 @@ details[open] > .ladder-summary::after {
   color: var(--text-dim, inherit);
 }
 
-/* The key ring: every saved key as one quiet labeled line. */
+/* The key ring: keys for providers other than the active one, one
+   quiet labeled line each, nestled under the key field. The active
+   provider's key lives only in the field row above: one fact, one
+   home, one Remove. */
 .key-ring {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 0 14px;
+  gap: 8px;
+  margin-top: -4px;
+  padding: 0 0 16px;
+}
+
+.key-ring-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
 }
 
 .key-ring-item {
@@ -989,9 +1000,13 @@ details[open] > .ladder-summary::after {
   justify-content: space-between;
   gap: 12px;
   font-size: 12px;
+  min-height: 26px;
 }
 
+/* One control size across every line item; the field row above keeps
+   the full-size buttons because it is the acting surface. */
 .key-ring-item .btn {
   padding: 3px 10px;
   font-size: 11px;
+  flex-shrink: 0;
 }

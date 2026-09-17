@@ -344,6 +344,11 @@ export function App(): React.JSX.Element {
     if (prevBaseUrl.current !== null && current !== null && current !== prevBaseUrl.current) {
       setCustomPreset(false)
       setTest(null)
+      // The ring speaks per provider: a switch changes whose key the
+      // active slot describes, so stale status must never linger
+      // (live-found 2026-09-17: a Groq mask under a Mistral label with
+      // a green Mistral key saved chip).
+      void bridge().getApiKeyStatus().then(setKeyStatus)
     }
     prevBaseUrl.current = current
   }, [settings?.provider.baseUrl])
@@ -639,16 +644,20 @@ export function App(): React.JSX.Element {
           </div>
         </Row>
 
-        {(keyStatus.list.length > 0 || keyStatus.legacy.present) && (
+        {(() => {
+          const others = keyStatus.list.filter(
+            (entry) => normalizeUrl(entry.baseUrl) !== normalizeUrl(settings.provider.baseUrl)
+          )
+          if (others.length === 0 && !keyStatus.legacy.present) return null
+          return (
           <div className="key-ring">
-            {keyStatus.list.map((entry) => {
+            <p className="key-ring-label">other saved keys</p>
+            {others.map((entry) => {
               const owner = catalog ? providerForBaseUrl(catalog, entry.baseUrl) : null
-              const inUse = normalizeUrl(entry.baseUrl) === normalizeUrl(settings.provider.baseUrl)
               return (
                 <div key={entry.baseUrl} className="key-ring-item">
                   <span className="dim">
                     {owner?.name ?? entry.baseUrl} · {entry.masked}
-                    {inUse ? ' · in use' : ''}
                   </span>
                   <button
                     className="btn quiet-btn"
@@ -681,7 +690,8 @@ export function App(): React.JSX.Element {
               </div>
             )}
           </div>
-        )}
+          )
+        })()}
 
         <Row
           label="Diagnostics"
@@ -1498,7 +1508,10 @@ function PolishRows(props: {
   const prevPolishUrl = useRef<string | null>(null)
   useEffect(() => {
     const current = settings.polish.baseUrl
-    if (prevPolishUrl.current !== null && current !== prevPolishUrl.current) setTest(null)
+    if (prevPolishUrl.current !== null && current !== prevPolishUrl.current) {
+      setTest(null)
+      void bridge().getPolishKeyStatus().then(props.onKeyStatus)
+    }
     prevPolishUrl.current = current
   }, [settings.polish.baseUrl])
 
