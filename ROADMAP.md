@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (37/49 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (47/49 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -8,11 +8,13 @@
 - [x] **US-002** Roadmap generator
 - [x] **US-003** Icon and logo generation
 - [x] **US-004** Smoke harness
+- [x] **US-005** Tray shell, single instance, widget-first window
 - [x] **US-006** Settings store and encrypted key
 - [x] **US-007** Global hotkeys: hold and toggle
 - [x] **US-008** Recording pipeline with warm mic
 - [x] **US-009** Overlay: waveform pill and live timer
 - [x] **US-010** Transcription provider
+- [x] **US-011** Insertion at the cursor
 - [x] **US-012** Silence never inserts text
 - [x] **US-013** Format spec and shared test vectors
 - [x] **US-028** Provider and model controls
@@ -41,23 +43,21 @@
 - [x] **US-038** Brand gold: the icon's metal becomes the primary
 - [x] **US-039** Settings color previews and accent clarity
 - [x] **US-040** Repo public readiness
+- [x] **US-042** Pro conveniences: provider profiles and the founders promise
+- [x] **US-043** Smart lists: spoken structure becomes real structure, behind a toggle
+- [x] **US-044** Provider connections: mix engines, see real costs
+- [x] **US-045** Paste the last dictation with its own shortcut
+- [x] **US-046** What's new: a changelog users can actually find
+- [x] **US-047** Diagnostics the user can hand to support
+- [x] **US-048** A silent stream heals itself
+- [x] **US-049** Keys live with their providers
 
 ## Built, awaiting live verification
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
-- [ ] **US-011** Insertion at the cursor
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
-- [ ] **US-042** Pro conveniences: provider profiles and the founders promise
 
 ## To do
 
-- [ ] **US-005** Tray shell, single instance, widget-first window
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-043** Smart lists: spoken structure becomes real structure, behind a toggle
-- [ ] **US-044** Provider connections: mix engines, see real costs
-- [ ] **US-045** Paste the last dictation with its own shortcut
-- [ ] **US-046** What's new: a changelog users can actually find
-- [ ] **US-047** Diagnostics the user can hand to support
-- [ ] **US-048** A silent stream heals itself
-- [ ] **US-049** Keys live with their providers
