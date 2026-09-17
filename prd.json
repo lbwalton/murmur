@@ -722,6 +722,51 @@
       "passes": true,
       "needs_human": true,
       "notes": "Built 2026-09-16. KeyRing in src/main/settings/keyring.ts: one encrypted file per normalized base URL (sha-named under keys/), a plain index of base URLs only, reusing KeyStore per entry; six unit tests cover isolation across providers, trailing-slash normalization, list and clear, no plaintext on disk, and all three migration paths (full-prefix assignment, provenance fallback, unresolvable stays put; polish key follows the cleanup base URL). Settings wiring: apikey set, clear, and status speak for the ACTIVE provider and return the composite ring status (active, list, legacy); new removeFor, assignLegacy, and removeLegacy channels; polish key handlers ride the same ring keyed by the cleanup base URL with the un-migrated file as fallback; getApiKey resolves ring first then the legacy floater so dictation never breaks mid-migration; the secureKey smoke check became a two-provider ring round trip through the real cipher. UI: the setup field speaks only for the active provider, saved keys list as provider-labeled line items with per-key Remove, the unassigned legacy key offers Assign and Remove, the checklist chip names the active provider, and the preset-switch glow fires exactly when the ring lacks a key for the chosen provider. The keyMismatch, provenance, and mask-inference machinery all came OUT: the ring made them structural. Docs: providers guide leads with the no-re-entering answer. Diagnostics report lists saved-key base URLs (never material). Verified: typecheck clean, 325 unit tests, smoke green (one first-run hit of the documented oscillator flake on untouched audio code, then two clean sweeps). Live criterion in HANDOFF. Review gate found two blocking key-loss paths, both closed with server-side enforcement: assigning the legacy key refuses to overwrite a provider's existing key (and the UI hides Assign in that state), and clearing the cleanup key never deletes a ring key shared with speech (the cleanup surface shows one shared line instead of its own management when both connections point at one provider). Its should-fix also landed: a typed cleanup key survives a save attempted before any base URL exists, with the base URL as the landing condition so a stale legacy key cannot fake success (re-gate edge). Re-verified: typecheck clean, 325 tests, smoke green. Live pass 2026-09-17 (LaBroi's screenshot: a Groq mask under a Mistral label with a green Mistral key saved chip, duplicate key lines with mismatched Remove buttons, and a placeholder stuck on replace key): root cause was the renderer never refetching ring status on a provider switch, so every surface kept describing the previous provider's key. The base URL change effect now refreshes both the primary and cleanup key statuses. Design cleanup with the frontend-design pass: one fact one home, the active provider's key lives only in the field row, the list beneath carries ONLY other providers' keys under an other saved keys micro-label with uniform quiet controls, nestled spacing. Verified: typecheck clean, 325 tests, smoke green. LaBroi live-verified 2026-09-17 in the installed walkthrough build: the migrated Groq key listed itself, an OpenAI key joined it, both removable, and switching providers uses the right key each time with no re-entering. Story complete."
+    },
+    {
+      "id": "US-050",
+      "title": "Brain dump: speak a note instead of a paste",
+      "description": "Shaped with LaBroi 2026-09-17. A second global chord (captured in settings like the paste-last one) flips a dictation into note mode: same mic and pipeline, but the transcript appends verbatim, timestamped, to an inbox markdown file in the user's Obsidian vault (murmur/inbox/YYYY-MM-DD.md under a vault folder chosen once in settings via a folder picker; plain files, Obsidian need not be running). The overlay shows a distinct note state so the mode is never ambiguous. Iron law inherited from the formatter: the raw words land on disk before anything else happens; if the vault path is unreachable the note falls back to murmur's own data folder and the diagnostics log names it. No external accounts, no sync, no routing in this story.",
+      "acceptance": [
+        "A note chord captured in settings (same validation rules as the paste-last chord) records and appends the verbatim transcript with a timestamp to the day's inbox file in the configured vault folder",
+        "The overlay presents a visibly distinct note state during a note dictation",
+        "An unreachable vault path never loses a word: the note lands in the data folder fallback and the diagnostics log records the redirect (smoke-checked)",
+        "The vault folder setting has a picker, shows the active path, and an empty path keeps the feature dormant",
+        "Docs: a question-first page covering the chord, the vault layout, and the never-lost guarantee",
+        "Live: LaBroi brain-dumps mid-work and finds the verbatim note in his vault seconds later"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-051",
+      "title": "Brain dump sorting: thoughts file themselves",
+      "description": "Shaped with LaBroi 2026-09-17. After a dump lands verbatim (US-050), a structured LLM pass splits it into tasks, ideas, and notes without rewording: tasks append as checkbox lines to murmur/todo.md, ideas to murmur/ideas.md, the rest stays in the day's inbox note lightly formatted, and every filed item links back to its source dump. The sort runs on the notes connection: by default the cleanup connection, optionally its own base URL and model (LaBroi amendment, mirroring the cleanup slot; the key ring supplies the key by base URL). Validator philosophy from smart lists: output that drops or rewrites content is rejected and the dump stays whole in the inbox for retry, never half-filed; a fallback reason line lands in the log. Explicitly out: Notion, Apple Notes, MCP routing, conversational recall.",
+      "acceptance": [
+        "A dump sorts into checkbox tasks, ideas, and notes across the three vault files with source links, wording unchanged (validator unit tests cover accept and both reject directions)",
+        "A rejected or failed sort leaves the verbatim dump untouched in the inbox and logs a reason; nothing is ever half-filed",
+        "The notes connection defaults to the cleanup connection and accepts its own base URL and model, key served by the ring",
+        "Docs updated with the vault layout and the sorting guarantees",
+        "Live: LaBroi dumps a mixed ramble (todos plus ideas plus a stray thought) and finds each piece in the right file with its source link"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-052",
+      "title": "Note recall: optional desktop reminders",
+      "description": "Shaped with LaBroi 2026-09-17. Primary recall rides his existing 7am briefing and 6pm recap reading the vault files (a task outside this repo). This story adds the in-app option: murmur-native desktop notifications reading murmur/todo.md at configurable morning, midday, and evening times, built on the existing recap machinery, clicking through to the day's list. Off by default (LaBroi amendment: notifications must be optional); valuable for the Windows machine and for users without a briefing rig.",
+      "acceptance": [
+        "A notes reminders setting, off by default, with up to three configurable times",
+        "Each firing reads the vault todo file live and shows open-task count with a preview, clicking through to the list; an unreachable vault fires nothing and logs why",
+        "Docs updated",
+        "Live: LaBroi enables one reminder time on the PC and receives the readout"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
     }
   ]
 }

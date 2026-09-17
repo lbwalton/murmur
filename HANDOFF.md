@@ -41,6 +41,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Known follow-ups (not blocking)
 
+- [ ] Brain dump recall wiring (pairs with US-050/051 when they ship): add a section to the 7am briefing and 6pm recap scripts that reads murmur/todo.md and the day's murmur/inbox note from the vault: open tasks first, captured ideas after.
+
+
 - [ ] Synthetic smoke can flake on a real Mac (seen 2026-09-10 evening): the recording, recordingRecovery, recordingRevive, and dictationLoop checks all failed locally while pristine HEAD and CI stayed green. Cause is smoke-only: the muted oscillator feeding the hidden audio window stops being rendered by Chromium after ~2 quantums when the machine's audio state shifts (e.g. display asleep), so the watchdog reads it as a real stall. A live mic does not hit this (the input device clocks the graph). If it starts flaking in CI, make the synthetic source self-clocked instead of destination-pulled (e.g. drive the worklet without depending on ctx.destination consumption). Product capture code is unaffected.
 
 ## Standing needs
