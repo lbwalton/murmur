@@ -251,3 +251,13 @@ export function getSettings(): Settings {
 export function listSavedKeyBaseUrls(): string[] {
   return (ring?.list() ?? []).map((entry) => entry.baseUrl)
 }
+
+/** Whether the ring holds a key for a base URL (for profile apply). */
+export function ringHasKeyFor(baseUrl: string): boolean {
+  return ring?.status(baseUrl).present ?? false
+}
+
+/** File a key under a base URL (pre-ring profile blob migration). */
+export function ringSetKey(baseUrl: string, key: string): void {
+  if (baseUrl !== '') ring?.set(baseUrl, key)
+}

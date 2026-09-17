@@ -6,7 +6,7 @@ A one-time purchase that supports murmur's development. The free app is complete
 
 ## What does Pro include?
 
-- Provider profiles: save whole provider setups (endpoint, models, and the matching API key) under names and switch between them in one click.
+- Provider profiles: save whole provider setups (endpoint and models; the key ring supplies each provider's saved key automatically) under names and switch between them in one click.
 - Early access: new conveniences unlock for Pro first in official builds, then go free for everyone after a window. The source is public the entire time.
 - Priority support and, if you like, your name in SUPPORTERS.md.
 

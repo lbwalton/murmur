@@ -755,6 +755,9 @@ export function App(): React.JSX.Element {
             onChange={(e) => {
               if (e.target.value === 'custom') {
                 setCustomPreset(true)
+                // Custom means the fields below are yours: say so by
+                // walking the eye to the first one to edit.
+                jumpTo('row-base-url', 'glow')
                 return
               }
               const preset = catalog?.providers.find(
@@ -790,6 +793,9 @@ export function App(): React.JSX.Element {
 
         <Row
           label="Base URL"
+          anchor="row-base-url"
+          highlight={highlighted === 'row-base-url'}
+          highlightStyle="glow"
           desc="Any OpenAI-compatible endpoint. Groq by default; point it at OpenAI, a proxy, or a local server. Run Test connection after changing."
         >
           <TextSetting
@@ -1687,7 +1693,7 @@ function ProfilesRow(props: {
     return (
       <Row
         label="Profiles"
-        desc="murmur Pro: save this whole setup (endpoint, models, and key) under a name and switch providers in one click."
+        desc="murmur Pro: save this setup (endpoint and models) under a name and switch providers in one click; each provider's saved key comes along from the key ring."
       >
         {proConfig.buyUrl ? (
           <button className="btn quiet-btn" onClick={() => void bridge().openBuyPage()}>
@@ -1707,7 +1713,7 @@ function ProfilesRow(props: {
   return (
     <Row
       label="Profiles"
-      desc="Each profile carries its endpoint, models, and key. Applying one swaps the whole setup."
+      desc="Each profile carries its endpoint and models; applying one swaps the setup and the key ring supplies that provider's key."
     >
       <div className="inline profiles-stack">
         {profiles.length > 0 && (

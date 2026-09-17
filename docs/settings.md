@@ -142,4 +142,4 @@ By default one provider handles both transcription and the cleanup pass. Setting
 
 ## What are provider profiles?
 
-A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from the provider section. The key travels with each profile as an encrypted copy; plaintext never surfaces. The free single provider setup is unchanged, profiles are additive.
+A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from the provider section. Profiles carry the endpoint and models; keys stay in the per-provider key ring, so applying a profile automatically uses that provider's saved key. The free single provider setup is unchanged, profiles are additive.

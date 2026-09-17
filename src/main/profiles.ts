@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Provider profiles (murmur Pro): save the current provider setup
-// (endpoint, models, and the matching API key) under a name and switch
-// between setups in one click. Keys move as ENCRYPTED FILE COPIES of
-// the safeStorage blob: plaintext never surfaces here. The free single
+// (endpoint and models) under a name and switch between setups in one
+// click. Since the key ring (US-049) keys every credential by its base
+// URL, profiles no longer carry keys at all: applying one switches the
+// base URL and the ring supplies that provider's key automatically.
+// Pre-ring profiles that shipped with their own key-<id>.enc blob get
+// that key folded into the ring on first apply, decrypted only through
+// the same store mechanism every key read uses. The free single
 // provider setup is untouched; profiles are additive convenience.
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, rmSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
-import { getSettings, updateSettings } from './settings'
+import { app, ipcMain, safeStorage } from 'electron'
+import { getSettings, ringHasKeyFor, ringSetKey, updateSettings } from './settings'
+import { KeyStore } from './settings/keystore'
 import { readLicenseStatus } from './license'
 import { registerSmokeCheck } from './smoke'
 
@@ -21,10 +26,9 @@ export type ProfileResult =
 // smuggled into settings by other means cannot traverse directories.
 const PROFILE_ID = /^[0-9a-f]{8}$/
 
-function keyFile(profileId?: string): string {
-  const dir = app.getPath('userData')
-  if (profileId && !PROFILE_ID.test(profileId)) throw new Error('invalid profile id')
-  return profileId ? join(dir, `key-${profileId}.enc`) : join(dir, 'key.enc')
+function keyFile(profileId: string): string {
+  if (!PROFILE_ID.test(profileId)) throw new Error('invalid profile id')
+  return join(app.getPath('userData'), `key-${profileId}.enc`)
 }
 
 export function initProfiles(): void {
@@ -40,7 +44,8 @@ export function initProfiles(): void {
       sttModel: current.sttModel,
       llmModel: current.llmModel
     }
-    if (existsSync(keyFile())) copyFileSync(keyFile(), keyFile(id))
+    // No key snapshot: the ring already holds this base URL's key and
+    // will still hold it whenever this profile is applied.
     const settings = updateSettings({ provider: { profiles: [...current.profiles, profile] } })
     return { ok: true, settings }
   })
@@ -49,9 +54,28 @@ export function initProfiles(): void {
     if (!readLicenseStatus().pro) return { ok: false, reason: 'pro' }
     const profile = getSettings().provider.profiles.find((p) => p.id === id)
     if (!profile || !PROFILE_ID.test(profile.id)) return { ok: false, reason: 'not-found' }
-    // The key travels with the profile when it has one; otherwise the
-    // active key stays, since users often share one key across setups.
-    if (existsSync(keyFile(profile.id))) copyFileSync(keyFile(profile.id), keyFile())
+    // A pre-ring profile may still carry its own key blob: fold it
+    // into the ring once (never over a key already there), then the
+    // blob retires. The blob is deleted ONLY when the ring truly holds
+    // a key for this base URL afterward; a failed decrypt (locked
+    // keychain, restored profile) leaves it in place for the next
+    // apply, and a failed fold never blocks the settings switch.
+    if (existsSync(keyFile(profile.id))) {
+      try {
+        if (!ringHasKeyFor(profile.baseUrl)) {
+          const cipher = {
+            available: () => safeStorage.isEncryptionAvailable(),
+            encrypt: (plain: string) => safeStorage.encryptString(plain),
+            decrypt: (buf: Buffer) => safeStorage.decryptString(buf)
+          }
+          const legacyProfileKey = new KeyStore(app.getPath('userData'), cipher, `key-${profile.id}.enc`).get()
+          if (legacyProfileKey) ringSetKey(profile.baseUrl, legacyProfileKey)
+        }
+        if (ringHasKeyFor(profile.baseUrl)) rmSync(keyFile(profile.id), { force: true })
+      } catch (error) {
+        console.error('[murmur] profile key fold failed; blob kept for retry:', error)
+      }
+    }
     const settings = updateSettings({
       provider: { baseUrl: profile.baseUrl, sttModel: profile.sttModel, llmModel: profile.llmModel }
     })
