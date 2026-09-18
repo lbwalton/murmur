@@ -30,6 +30,9 @@ const recorder = new Recorder({
   watchTickMs: msParam('watchTickMs'),
   stallMs: msParam('stallMs'),
   armTimeoutMs: msParam('armTimeoutMs'),
+  silentMs: msParam('silentMs'),
+  minSignalChunks: msParam('minSignalChunks'),
+  maxSilentRearms: msParam('maxSilentRearms'),
   onLevel: (rms) => {
     pendingLevel = Math.max(pendingLevel, rms)
     const now = performance.now()
@@ -65,6 +68,10 @@ if (synthetic) {
     recorder.simulateOutage(failures)
     // Ack so the smoke check can prove the graph was actually broken
     // before it credits the recovery.
+    bridge.armed(false)
+  })
+  bridge.onSimulateSilence((count) => {
+    recorder.simulateSilence(count)
     bridge.armed(false)
   })
 }

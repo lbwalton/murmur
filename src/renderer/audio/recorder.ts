@@ -11,12 +11,23 @@
 // stack is still waking up. Re-arm keeps retrying until chunks flow;
 // a single failed attempt must never leave the mic dead for the session.
 //
+// Signal: chunks can flow and still be empty. A waking Mac or a
+// reconfigured managed device hands back a stream with nothing behind it
+// (a flat 0.0002, under any room's noise floor). A second watchdog holds
+// every fresh graph to one rule: carry sustained signal within a short
+// window or be rebuilt, budgeted per outage so a hardware-muted mic
+// cannot keep the app rebuilding. A graph that has proven itself is
+// trusted from then on: going quiet later is a pause or a noise gate
+// (those output digital zero between words), and a stream that truly
+// dies mid-session is the press-time heal's job (dictation.ts).
+//
 // A recording in progress survives graph death and rebuild: whatever was
 // captured before the graph died still delivers at stop. Recordings are
 // kept as rate-tagged segments so a rebuild onto a device with a
 // different sample rate resamples each stretch correctly.
+import { isDeadStream, peakLevel } from '../../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, downsample, encodeWavPcm16 } from '../../shared/wav'
-import { LIVENESS_DEFAULTS, livenessAction } from './liveness'
+import { LIVENESS_DEFAULTS, livenessAction, signalAction } from './liveness'
 
 export interface RecorderOptions {
   synthetic: boolean
@@ -25,6 +36,9 @@ export interface RecorderOptions {
   watchTickMs?: number
   stallMs?: number
   armTimeoutMs?: number
+  silentMs?: number
+  minSignalChunks?: number
+  maxSilentRearms?: number
   /** Called with the RMS level of each chunk while recording is active. */
   onLevel?: (rms: number) => void
 }
@@ -45,14 +59,26 @@ export class Recorder {
   private arming: Promise<void> | null = null
   private armingSince: number | null = null
   private lastChunkAt = Date.now()
+  // Signal watchdog state: when the current graph was installed, how
+  // many of its chunks carried signal (counted only until it proves
+  // itself), and the silent re-arms spent on the current outage.
+  private armedAt = 0
+  private signalChunks = 0
+  private silentRearms = 0
+  private readonly minSignalChunks: number
   // Bumped to invalidate an arm attempt: whatever a stale attempt
   // acquires after the bump gets released instead of installed.
   private generation = 0
   private watchdog: ReturnType<typeof setInterval> | null = null
   private outageLogged = false
+  private silenceLogged = false
+  private exhaustedLogged = false
   private failNextArms = 0
+  private silentNextArms = 0
 
-  constructor(private readonly opts: RecorderOptions) {}
+  constructor(private readonly opts: RecorderOptions) {
+    this.minSignalChunks = opts.minSignalChunks ?? LIVENESS_DEFAULTS.minSignalChunks
+  }
 
   /** (Re)acquire the source and start feeding the pre-roll buffer. */
   arm(): Promise<void> {
@@ -88,6 +114,26 @@ export class Recorder {
     void this.teardown()
   }
 
+  /**
+   * Smoke-only seam: make the next N graphs flow dead-flat (a constant
+   * 0.0002, the live incident's reading) the way a waking Mac or a
+   * reconfigured managed device hands back a stream with nothing behind
+   * it. Chunks keep arriving, so the chunk watchdog reads healthy; only
+   * the signal watchdog can recover. Any in-flight arm is orphaned so
+   * the seam cannot be swallowed by it. No-op outside synthetic mode.
+   */
+  simulateSilence(count: number): void {
+    if (!this.opts.synthetic) return
+    this.silentNextArms = Math.max(0, Math.floor(count))
+    this.silentRearms = 0
+    this.silenceLogged = false
+    this.exhaustedLogged = false
+    this.generation++
+    this.arming = null
+    this.armingSince = null
+    void this.arm().catch(() => undefined)
+  }
+
   private tick(): void {
     const action = livenessAction(
       { now: Date.now(), lastChunkAt: this.lastChunkAt, armingSince: this.armingSince },
@@ -98,6 +144,7 @@ export class Recorder {
     )
     if (action === 'healthy') {
       this.outageLogged = false
+      this.probeSignal()
       return
     }
     if (action === 'wait') return
@@ -115,6 +162,57 @@ export class Recorder {
       // One line per outage, not per retry: window-watch mirrors
       // renderer errors into the rotating log.
       console.error('[murmur] audio capture stalled; re-arming until the mic returns')
+    }
+    void this.arm().catch(() => undefined)
+  }
+
+  /**
+   * The second watchdog. Runs only while the chunk watchdog reads
+   * healthy, only for an installed graph (a failed arm leaves none, and
+   * that is the chunk watchdog's case), and only between recordings: a
+   * take in progress is never torn down underneath, a clean no-speech
+   * and the press-time heal beat a half-captured sentence inserted as
+   * if whole. A fresh graph that flows a whole window without proving
+   * itself is rebuilt, up to the budget; then the stream is left alone
+   * until signal arrives or main asks for a re-arm (resume, the
+   * press-time heal), which reopens it. One log line per outage, one
+   * more if the budget runs out.
+   */
+  private probeSignal(): void {
+    if (this.ctx === null || this.active) return
+    const action = signalAction(
+      {
+        lastChunkAt: this.lastChunkAt,
+        armedAt: this.armedAt,
+        signalChunks: this.signalChunks,
+        silentRearms: this.silentRearms
+      },
+      {
+        silentMs: this.opts.silentMs ?? LIVENESS_DEFAULTS.silentMs,
+        minSignalChunks: this.minSignalChunks,
+        maxSilentRearms: this.opts.maxSilentRearms ?? LIVENESS_DEFAULTS.maxSilentRearms
+      }
+    )
+    if (action === 'probing') return
+    if (action === 'live') {
+      this.silentRearms = 0
+      this.silenceLogged = false
+      this.exhaustedLogged = false
+      return
+    }
+    if (action === 'exhausted') {
+      if (!this.exhaustedLogged) {
+        this.exhaustedLogged = true
+        console.error(
+          `[murmur] audio capture stayed silent after ${this.silentRearms} re-arms; waiting for signal, a press, or a wake`
+        )
+      }
+      return
+    }
+    this.silentRearms++
+    if (!this.silenceLogged) {
+      this.silenceLogged = true
+      console.error('[murmur] audio capture is silent; re-arming until the stream carries sound')
     }
     void this.arm().catch(() => undefined)
   }
@@ -163,6 +261,15 @@ export class Recorder {
       let source: AudioNode
       if (stream) {
         source = audioCtx.createMediaStreamSource(stream)
+      } else if (this.silentNextArms > 0) {
+        // A stream with nothing behind it: chunks flow at the live
+        // incident's flat 0.0002, under the dead-stream floor. A started
+        // constant source is always actively processing, so the worklet
+        // keeps receiving (empty) input exactly as a real dead mic does.
+        this.silentNextArms--
+        const flat = new ConstantSourceNode(audioCtx, { offset: 0.0002 })
+        flat.start()
+        source = flat
       } else {
         const osc = new OscillatorNode(audioCtx, { frequency: 440 })
         osc.start()
@@ -201,12 +308,26 @@ export class Recorder {
     if (last && last.rate !== ctx.sampleRate) {
       this.active?.push({ rate: ctx.sampleRate, chunks: [] })
     }
-    // Fresh graphs get a full stall window to deliver their first chunk.
+    // Fresh graphs get a full stall window to deliver their first chunk
+    // and a full silent window to prove they carry signal. The proof
+    // starts from zero on every install on purpose: an install is grace,
+    // not signal, or a stream that comes back dead every time would
+    // reopen its own budget.
     this.lastChunkAt = Date.now()
+    this.armedAt = Date.now()
+    this.signalChunks = 0
   }
 
   private onChunk(chunk: Float32Array): void {
     this.lastChunkAt = Date.now()
+    // Signal means the stream is real. A quiet room's noise floor clears
+    // the dead-stream threshold by design (see speech-gate), so only a
+    // stream with nothing behind it fails to count up. The peak scan
+    // stops once the graph has proven itself: the steady state costs one
+    // comparison per chunk.
+    if (this.signalChunks < this.minSignalChunks && !isDeadStream(peakLevel(chunk))) {
+      this.signalChunks++
+    }
     if (this.active) {
       this.active[this.active.length - 1].chunks.push(chunk)
       if (this.opts.onLevel) {
@@ -269,6 +390,12 @@ export class Recorder {
   }
 
   async rearm(): Promise<boolean> {
+    // Main is asking (resume, the press-time heal, smoke): a new
+    // situation, so the silent-rearm budget reopens and a second round
+    // gets its own log lines (a heal that did not help is worth seeing).
+    this.silentRearms = 0
+    this.silenceLogged = false
+    this.exhaustedLogged = false
     await this.arm()
     return this.isArmed()
   }

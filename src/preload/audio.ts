@@ -22,6 +22,9 @@ const api = {
   onSimulateOutage: (cb: (failures: number) => void): void => {
     ipcRenderer.on('audio:simulate-outage', (_e, failures: number) => cb(Number(failures)))
   },
+  onSimulateSilence: (cb: (count: number) => void): void => {
+    ipcRenderer.on('audio:simulate-silence', (_e, count: number) => cb(Number(count)))
+  },
   ready: (): void => {
     ipcRenderer.send('audio:ready')
   },

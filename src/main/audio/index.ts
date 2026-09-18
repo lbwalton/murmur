@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, powerMonitor } from 'electron'
 import { watchWindow } from '../window-watch'
 import { IpcChannels } from '../../shared/ipc'
+import { isDeadStream } from '../../shared/speech-gate'
 import { parseWav } from '../../shared/wav'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
@@ -65,7 +66,8 @@ export function initAudio(): void {
 
   // Smoke tightens the liveness watchdog so outage recovery proves
   // itself inside the per-check timeout.
-  const smokeParams = 'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500'
+  const smokeParams =
+    'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500&silentMs=250&maxSilentRearms=4'
   const query = isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : undefined
   watchWindow(audioWindow, 'audio')
   const devServer = process.env.ELECTRON_RENDERER_URL
@@ -144,6 +146,58 @@ export function initAudio(): void {
     const wav = await stopRecording()
     if (!wav) {
       console.error('smoke recordingRecovery: stop returned null')
+      return false
+    }
+    const info = parseWav(wav)
+    return info.sampleCount > 1_000 && info.peak > 0.05
+  })
+
+  registerSmokeCheck('recordingSilentHeal', async () => {
+    // The 2026-09-17 wake end to end: the graph rebuilds and chunks
+    // flow, but the stream is dead-flat. The chunk watchdog reads this
+    // as healthy on purpose; the signal watchdog must notice and re-arm
+    // until the stream carries sound, with no press and no message from
+    // main after the seam. Three silent graphs against a budget of four.
+    await whenAudioReady()
+    const acked = new Promise<boolean>((resolve) => {
+      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+    })
+    aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 3)
+    if (!(await acked)) {
+      console.error('smoke recordingSilentHeal: silence was not acknowledged')
+      return false
+    }
+    // Proof of damage first: a recording through the silent graphs must
+    // show chunks arriving (the chunk watchdog's view) with nothing in
+    // them (the signal watchdog's). Without it the check could pass on
+    // a graph the seam never touched. The signal watchdog holds while a
+    // take is open, so this recording can never overlap a live graph
+    // however long it runs; 700ms simply leaves room for install latency
+    // and chunk lag above the 1000-sample floor.
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    const silent = await stopRecording()
+    if (!silent) {
+      console.error('smoke recordingSilentHeal: silent stop returned null')
+      return false
+    }
+    const damage = parseWav(silent)
+    if (damage.sampleCount < 1_000 || !isDeadStream(damage.peak)) {
+      console.error(
+        `smoke recordingSilentHeal: seam did not produce a dead-flat stream (samples=${damage.sampleCount} peak=${damage.peak})`
+      )
+      return false
+    }
+    // The rebuild chain starts only now (the watchdog held during the
+    // take): three silent windows plus their rebuilds land the live graph
+    // around 1.7s out and its pre-roll fills by ~2s. 2.5s keeps a 2x
+    // margin on a loaded machine inside the 10s check cap.
+    await new Promise((resolve) => setTimeout(resolve, 2_500))
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const wav = await stopRecording()
+    if (!wav) {
+      console.error('smoke recordingSilentHeal: stop returned null')
       return false
     }
     const info = parseWav(wav)
