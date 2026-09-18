@@ -23,6 +23,7 @@ The name is always lowercase: murmur.
 ## Documentation
 
 - [Settings, explained](docs/settings.md): every control and scenario
+- [Notes and brain dumps](docs/notes.md): speak a thought into your Obsidian vault or any folder, with your own file layout
 - [Connecting a provider](docs/providers.md): Groq (default), OpenAI, local servers, any OpenAI-compatible endpoint, and troubleshooting
 - [Coworker quickstart](docs/quickstart.md): install to first dictation in five minutes
 - [The journey](docs/journey.md): belts, achievements, and unlocks, BJJ style

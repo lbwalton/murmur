@@ -28,6 +28,7 @@
      deliberately below signal amber in brightness so the live needle
      still outshines the hardware (LaBroi direction, 2026-09-07). */
   --brand: #d9a441;
+  --brand-edge: rgba(217, 164, 65, 0.5);
 
   /* signals */
   --amber: #f0a44b;

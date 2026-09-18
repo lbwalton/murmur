@@ -1010,3 +1010,42 @@ details[open] > .ladder-summary::after {
   font-size: 11px;
   flex-shrink: 0;
 }
+
+/* Notes (US-050): the history mark, the layout disclosure, the entry
+   template field. Gold is a static highlight, never a live state. */
+.note-tag {
+  color: var(--brand);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.fold {
+  margin-top: 4px;
+}
+
+.fold-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 8px 0 4px;
+}
+
+.fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-summary::after {
+  content: '▸';
+  margin-left: 8px;
+  color: var(--text-dim);
+}
+
+details[open] > .fold-summary::after {
+  content: '▾';
+}
+
+textarea.entry-field {
+  min-height: 104px;
+  resize: vertical;
+  line-height: 1.45;
+}

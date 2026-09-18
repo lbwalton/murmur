@@ -39,7 +39,10 @@ export interface HotkeysStatus {
   hookStarted: boolean
   bindingValid: boolean
   pasteBindingValid: boolean
+  noteBindingValid: boolean
 }
+
+export type NotesStatus = import('../main/notes').NotesStatus
 
 const api = {
   appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
@@ -95,10 +98,13 @@ const api = {
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
   captureHotkey: (
-    target: 'dictation' | 'pasteLast' = 'dictation'
+    target: 'dictation' | 'pasteLast' | 'note' = 'dictation'
   ): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture', target)
   },
+  chooseNotesFolder: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:chooseFolder'),
+  getNotesStatus: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:status'),
+  openTodayNote: (): Promise<'file' | 'folder' | 'none'> => ipcRenderer.invoke('notes:openToday'),
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
   clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),

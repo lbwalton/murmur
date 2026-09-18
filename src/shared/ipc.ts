@@ -34,5 +34,8 @@ export const IpcChannels = {
   providerTest: 'provider:test',
   permsStatus: 'perms:status',
   permsOpen: 'perms:open',
-  hotkeysStatus: 'hotkeys:status'
+  hotkeysStatus: 'hotkeys:status',
+  notesChooseFolder: 'notes:chooseFolder',
+  notesStatus: 'notes:status',
+  notesOpenToday: 'notes:openToday'
 } as const

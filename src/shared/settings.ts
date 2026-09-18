@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings shape, defaults, and the pure merge logic. IO lives in
 // src/main/settings; keeping this file pure keeps it unit-testable.
+import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE } from './notes'
 
 export interface Settings {
   hotkey: {
@@ -71,6 +72,16 @@ export interface Settings {
   recap: {
     enabled: boolean
     time: string
+  }
+  /** Brain dump: a second chord dictates into a markdown file instead
+   *  of the cursor. The folder is any folder (an Obsidian vault is one);
+   *  empty keeps the whole feature dormant. Templates are relative to
+   *  the folder and rendered by shared/notes.ts. */
+  notes: {
+    binding: string
+    folder: string
+    pathTemplate: string
+    entryTemplate: string
   }
   autostart: boolean
   showDockIcon: boolean
@@ -147,6 +158,12 @@ export const DEFAULT_SETTINGS: Settings = {
   recap: {
     enabled: false,
     time: '17:30'
+  },
+  notes: {
+    binding: '',
+    folder: '',
+    pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
+    entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE
   },
   autostart: false,
   showDockIcon: false,

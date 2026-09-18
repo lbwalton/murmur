@@ -15,12 +15,27 @@ import {
 } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording } from './audio'
+import { NOTE_FOLDER_HINT } from '../shared/notes'
 import { insertText } from './insertion'
-import { getOverlayPhase, refreshOverlayConfig, setOverlayPhase } from './overlay'
+import { notesConfigured, saveNote } from './notes'
+import {
+  getOverlayPhase,
+  getOverlayState,
+  refreshOverlayConfig,
+  setOverlayPhase,
+  showOverlayHint
+} from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
 import { registerSmokeCheck } from './smoke'
 
+/** Where a session's words go: the cursor, or a notes file (US-050). */
+export type DictationKind = 'dictation' | 'note'
+
 let sessionStartedAt = 0
+// The chord that started the live session owns it: a hold on the other
+// chord during a take must not stop it (each chord runs its own trigger
+// machine, and both machines call in here).
+let sessionKind: DictationKind = 'dictation'
 
 // One content-free breadcrumb per dictation outcome. Never transcript
 // text, never key material; failures here never break a dictation.
@@ -33,19 +48,38 @@ async function logDictation(line: string): Promise<void> {
   }
 }
 
-export function dictationStart(): void {
+/** Start a session. Returns false when nothing began (another session
+ *  is live, or the note chord has no folder yet), so a toggle trigger
+ *  does not flip to active over a press that did nothing. */
+export function dictationStart(kind: DictationKind = 'dictation'): boolean {
   const phase = getOverlayPhase()
-  if (phase !== 'idle' && phase !== 'inserted' && phase !== 'error' && phase !== 'nospeech') {
-    return
+  if (
+    phase !== 'idle' &&
+    phase !== 'inserted' &&
+    phase !== 'error' &&
+    phase !== 'nospeech' &&
+    phase !== 'hint'
+  ) {
+    return false
   }
-  if (!setOverlayPhase('recording')) return
+  if (kind === 'note' && !notesConfigured()) {
+    // A chord that does nothing looks broken. Say what is missing.
+    showOverlayHint(NOTE_FOLDER_HINT, 'note')
+    playCue('nospeech')
+    void logDictation('note chord pressed with no notes folder set')
+    return false
+  }
+  if (!setOverlayPhase('recording', null, { mode: kind })) return false
+  sessionKind = kind
   sessionStartedAt = Date.now()
   startRecording()
-  playCue('start')
+  playCue(kind === 'note' ? 'noteStart' : 'start')
+  return true
 }
 
-export async function dictationStop(): Promise<void> {
+export async function dictationStop(kind: DictationKind = 'dictation'): Promise<void> {
   if (getOverlayPhase() !== 'recording') return
+  if (sessionKind !== kind) return
   setOverlayPhase('processing')
   playCue('stop')
   const wav = await stopRecording()
@@ -160,6 +194,11 @@ export async function dictationStop(): Promise<void> {
     finalText = cleanedText
   }
 
+  if (kind === 'note') {
+    await deliverNote(heardText, finalText, peak)
+    return
+  }
+
   try {
     const outcome = await insertText(finalText)
     if (outcome === 'error') {
@@ -184,6 +223,40 @@ export async function dictationStop(): Promise<void> {
     setOverlayPhase('error')
     playCue('error')
   }
+}
+
+/**
+ * A note's delivery: the file first (the notes folder, then murmur's
+ * own data folder), history second, the overlay last. History keeps
+ * the words even if both writes fail, so nothing is ever lost and the
+ * pill can say error honestly.
+ */
+async function deliverNote(heardText: string, finalText: string, peak: number): Promise<void> {
+  let saved: ReturnType<typeof saveNote> | null = null
+  try {
+    saved = saveNote(finalText)
+  } catch (error) {
+    console.error('[murmur] note save threw:', error)
+  }
+  const { recordSession } = await import('./history')
+  const event = recordSession({
+    startedAt: sessionStartedAt,
+    rawText: heardText,
+    finalText,
+    kind: 'note'
+  })
+  if (!saved?.ok) {
+    void logDictation(`note-failed words=${event?.words ?? 0} peak=${peak.toFixed(4)}`)
+    setOverlayPhase('error')
+    playCue('error')
+    return
+  }
+  void logDictation(
+    `delivered kind=note location=${saved.location} words=${event?.words ?? 0} peak=${peak.toFixed(4)}`
+  )
+  setOverlayPhase('inserted', event?.wpm ?? null)
+  playCue('noted')
+  refreshOverlayConfig()
 }
 
 export function dictationCancel(): void {
@@ -246,6 +319,58 @@ export function initDictation(): void {
       return delivered === 'Paste last smoke probe.' && events[events.length - 1]?.finalText === delivered
     } finally {
       await clipboard.writeText(clipboardBefore)
+    }
+  })
+
+  registerSmokeCheck('noteLoop', async () => {
+    // The note chord end to end on the synthetic pipeline: dormant
+    // first (no folder set means a hint, not a recording), then a full
+    // record, transcribe, format, and append into a smoke vault; the
+    // other chord's stop cannot end the take, history tags the session
+    // as a note, and the pill says noted.
+    const { getSettings, updateSettings } = await import('./settings')
+    const { existsSync, readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { app } = await import('electron')
+    const { dayKey } = await import('../shared/history')
+    const before = getSettings().notes
+    const vault = join(app.getPath('userData'), 'smoke-vault-loop')
+    try {
+      updateSettings({ notes: { folder: '' } })
+      const began = dictationStart('note')
+      const hinted = !began && getOverlayPhase() === 'hint' && getOverlayState().mode === 'note'
+      setOverlayPhase('idle')
+      updateSettings({
+        notes: { folder: vault, pathTemplate: 'inbox/{date}.md', entryTemplate: '- {time} {text}' }
+      })
+      dictationStart('note')
+      if (getOverlayPhase() !== 'recording' || getOverlayState().mode !== 'note') return false
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      await dictationStop('dictation')
+      const stillRecording = getOverlayPhase() === 'recording'
+      await dictationStop('note')
+      const expected = formatTranscript(
+        SMOKE_TRANSCRIPT,
+        getSettings().formatting,
+        formatSpec as unknown as FormatSpec
+      )
+      const file = join(vault, 'inbox', `${dayKey(Date.now())}.md`)
+      const content = existsSync(file) ? readFileSync(file, 'utf8') : ''
+      const { readHistory } = await import('./history')
+      const events = readHistory()
+      const last = events[events.length - 1]
+      return (
+        hinted &&
+        stillRecording &&
+        getOverlayPhase() === 'inserted' &&
+        getOverlayState().mode === 'note' &&
+        /^- \d\d:\d\d /.test(content) &&
+        content.endsWith(`${expected}\n`) &&
+        last?.kind === 'note' &&
+        last.finalText === expected
+      )
+    } finally {
+      updateSettings({ notes: before })
     }
   })
 

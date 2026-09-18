@@ -15,6 +15,8 @@ export function recordSession(input: {
   startedAt: number
   rawText: string
   finalText: string
+  /** 'note' when the words went to a notes file instead of the cursor. */
+  kind?: 'note'
 }): SessionEvent | null {
   if (!log) return null
   const now = Date.now()
@@ -27,7 +29,8 @@ export function recordSession(input: {
     words,
     wpm: wordsPerMinute(words, Math.max(1, now - input.startedAt)),
     day: dayKey(now),
-    hour: new Date(now).getHours()
+    hour: new Date(now).getHours(),
+    ...(input.kind ? { kind: input.kind } : {})
   }
   log.append(event)
   // Transcripts are sensitive: only the settings window (which renders

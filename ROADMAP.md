@@ -57,11 +57,11 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
+- [ ] **US-050** Brain dump: speak a note instead of a paste
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-050** Brain dump: speak a note instead of a paste
 - [ ] **US-051** Brain dump sorting: thoughts file themselves
 - [ ] **US-052** Note recall: optional desktop reminders
 - [ ] **US-053** A silent stream heals before the first press

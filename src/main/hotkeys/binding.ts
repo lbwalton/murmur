@@ -88,23 +88,35 @@ export function isSafeBinding(binding: ParsedBinding): boolean {
   return binding.keyName !== null && /^f([1-9]|1[0-9]|2[0-4])$/.test(binding.keyName)
 }
 
+/** Two bindings that would fire on the same event. */
+export function sameBinding(a: ParsedBinding, b: ParsedBinding): boolean {
+  return a.code === b.code && a.ctrl === b.ctrl && a.alt === b.alt && a.shift === b.shift && a.meta === b.meta
+}
+
 /**
- * Rules for the paste-last chord, which rides a hook that only listens
- * and can never swallow keys. It must carry a regular key (a
- * modifier-only tap fires by accident too easily), and its modifiers
- * must not contain a modifier-only dictation binding: holding the
- * chord would start a recording before the key lands.
+ * Rules for the secondary chords (paste-last, note), which ride a hook
+ * that only listens and can never swallow keys. A chord must carry a
+ * regular key (a modifier-only tap fires by accident too easily), its
+ * modifiers must not contain a modifier-only dictation binding (holding
+ * the chord would start a recording before the key lands), and it must
+ * not be the dictation binding or another chord outright.
  */
-export function pasteBindingRefusal(
-  pasteBinding: ParsedBinding,
-  dictationBinding: ParsedBinding | null
+export function chordRefusal(
+  chord: ParsedBinding,
+  dictationBinding: ParsedBinding | null,
+  taken: readonly ParsedBinding[] = []
 ): 'needs-key' | 'collides' | null {
-  if (pasteBinding.code === null) return 'needs-key'
-  if (dictationBinding && dictationBinding.code === null) {
-    const names = ['ctrl', 'alt', 'shift', 'meta'] as const
-    const contains = names.every((name) => !dictationBinding[name] || pasteBinding[name])
-    if (contains) return 'collides'
+  if (chord.code === null) return 'needs-key'
+  if (dictationBinding) {
+    if (dictationBinding.code === null) {
+      const names = ['ctrl', 'alt', 'shift', 'meta'] as const
+      const contains = names.every((name) => !dictationBinding[name] || chord[name])
+      if (contains) return 'collides'
+    } else if (sameBinding(chord, dictationBinding)) {
+      return 'collides'
+    }
   }
+  if (taken.some((other) => sameBinding(chord, other))) return 'collides'
   return null
 }
 

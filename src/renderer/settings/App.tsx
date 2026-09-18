@@ -19,6 +19,8 @@ import { HomeView } from './HomeView'
 import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
+import { NotesPanel } from './NotesPanel'
+import { Row, TextSetting } from './controls'
 
 declare global {
   interface Window {
@@ -34,46 +36,6 @@ interface SetupStep {
   ok: boolean
   /** Row anchor to scroll to and highlight when the step needs fixing. */
   anchor: string
-}
-
-/** Text field that commits on blur or Enter, with optional suggestions. */
-function TextSetting(props: {
-  value: string
-  placeholder?: string
-  listId?: string
-  options?: string[]
-  wide?: boolean
-  onCommit: (value: string) => void
-}): React.JSX.Element {
-  const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
-  const commit = (): void => {
-    const next = draft.trim()
-    if (next.length > 0 && next !== props.value) props.onCommit(next)
-    else setDraft(props.value)
-  }
-  return (
-    <>
-      <input
-        className={`field mono-field ${props.wide ? 'wide-field' : ''}`}
-        value={draft}
-        placeholder={props.placeholder}
-        list={props.listId}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-        }}
-      />
-      {props.listId && props.options && (
-        <datalist id={props.listId}>
-          {props.options.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      )}
-    </>
-  )
 }
 
 /**
@@ -190,30 +152,6 @@ function PairAdd(props: {
       <button className="btn" onClick={submit} disabled={!canSubmit}>
         Add
       </button>
-    </div>
-  )
-}
-
-function Row(props: {
-  label: string
-  desc?: string
-  anchor?: string
-  highlight?: boolean
-  /** flash is the red fix-this pulse; glow is the amber go-here-next
-   *  nudge. Guidance and alarm must not share a color. */
-  highlightStyle?: 'flash' | 'glow'
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <div
-      className={`row ${props.highlight ? (props.highlightStyle === 'glow' ? 'row-glow' : 'row-flash') : ''}`}
-      id={props.anchor}
-    >
-      <div className="row-text">
-        <div className="row-label">{props.label}</div>
-        {props.desc && <div className="row-desc">{props.desc}</div>}
-      </div>
-      <div className="row-control">{props.children}</div>
     </div>
   )
 }
@@ -938,7 +876,7 @@ export function App(): React.JSX.Element {
           desc={
             pasteCaptureNote ??
             (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
-              ? 'This chord is currently disarmed: it clashes with your dictation hotkey or no longer parses. Capture a new one.'
+              ? 'This chord is currently disarmed: it clashes with your dictation hotkey or the note chord, or no longer parses. Capture a new one.'
               : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one. Pick a combo your apps ignore; a modifier plus an F-key is safest.')
           }
         >
@@ -1104,6 +1042,8 @@ export function App(): React.JSX.Element {
           </button>
         </Row>
       </section>
+
+      <NotesPanel settings={settings} hotkeys={hotkeys} onUpdate={update} onRefresh={refresh} />
 
       <section className="panel">
         <p className="micro-label">dictionary</p>

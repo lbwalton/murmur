@@ -3,7 +3,10 @@
 // clock is injected, callbacks fire synchronously.
 
 export interface DictationCallbacks {
-  start: () => void
+  /** Begin a session. Returning false means nothing began (another
+   *  session owns the mic); a machine then stays inactive so its next
+   *  press is a fresh start, not a stop for a session it never had. */
+  start: () => boolean | void
   stop: () => void
 }
 
@@ -21,8 +24,8 @@ export class HoldMachine implements TriggerMachine {
 
   keyDown(): void {
     if (this.active) return // key repeat
+    if (this.cb.start() === false) return
     this.active = true
-    this.cb.start()
   }
 
   keyUp(): void {
@@ -51,9 +54,13 @@ export class ToggleMachine implements TriggerMachine {
     const t = this.now()
     if (t - this.lastToggleAt < this.debounceMs) return
     this.lastToggleAt = t
-    this.active = !this.active
-    if (this.active) this.cb.start()
-    else this.cb.stop()
+    if (this.active) {
+      this.active = false
+      this.cb.stop()
+      return
+    }
+    if (this.cb.start() === false) return
+    this.active = true
   }
 
   keyUp(): void {

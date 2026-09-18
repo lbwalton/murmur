@@ -17,7 +17,13 @@ declare global {
 const BAR_COUNT = 21
 
 export function App(): React.JSX.Element {
-  const [state, setState] = useState<OverlayState>({ phase: 'idle', startedAt: null, wpm: null })
+  const [state, setState] = useState<OverlayState>({
+    phase: 'idle',
+    startedAt: null,
+    wpm: null,
+    mode: 'dictation',
+    hint: null
+  })
   const [levels, setLevels] = useState<number[]>(() => new Array<number>(BAR_COUNT).fill(0))
   const [style, setStyle] = useState<string>('bars')
   const [accent, setAccent] = useState<string | null>(null)
@@ -46,6 +52,7 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     document.body.dataset.phase = state.phase
+    document.body.dataset.mode = state.mode
     if (state.phase !== 'recording' && state.phase !== 'processing') {
       setElapsed(0)
       return
@@ -62,7 +69,7 @@ export function App(): React.JSX.Element {
 
   const live = state.phase === 'recording'
   return (
-    <div className={`pill pill-${state.phase}`}>
+    <div className={`pill pill-${state.phase}${state.mode === 'note' ? ' pill-note' : ''}`}>
       <span className={`dot ${live ? 'dot-live' : ''}`} />
       <div
         className="wave"
@@ -85,13 +92,21 @@ export function App(): React.JSX.Element {
       </div>
       <span className="status-slot">
         {(state.phase === 'recording' || state.phase === 'processing') && (
-          <span className="timer" data-timer="">
-            {formatDuration(elapsed)}
-          </span>
+          <>
+            {state.mode === 'note' && <span className="mode-tag">note</span>}
+            <span className="timer" data-timer="">
+              {formatDuration(elapsed)}
+            </span>
+          </>
         )}
         {state.phase === 'inserted' && (
           <span className="ok" data-wpm="">
-            {state.wpm && state.wpm > 0 ? `${state.wpm} wpm` : 'inserted'}
+            {state.mode === 'note' ? 'noted' : state.wpm && state.wpm > 0 ? `${state.wpm} wpm` : 'inserted'}
+          </span>
+        )}
+        {state.phase === 'hint' && (
+          <span className="quiet" data-hint="">
+            {state.hint}
           </span>
         )}
         {state.phase === 'nospeech' && <span className="quiet">no speech</span>}

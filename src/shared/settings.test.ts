@@ -10,6 +10,18 @@ describe('mergeSettings', () => {
     expect(mergeSettings(DEFAULT_SETTINGS, [1, 2])).toEqual(DEFAULT_SETTINGS)
   })
 
+  it('ships note mode dormant with the default file layout', () => {
+    expect(DEFAULT_SETTINGS.notes).toEqual({
+      binding: '',
+      folder: '',
+      pathTemplate: 'murmur/inbox/{date}.md',
+      entryTemplate: '## {time}\n\n{text}\n\n'
+    })
+    const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
+    expect(merged.notes.folder).toBe('/tmp/vault')
+    expect(merged.notes.pathTemplate).toBe(DEFAULT_SETTINGS.notes.pathTemplate)
+  })
+
   it('fills missing keys from defaults and keeps stored values', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, { autostart: true })
     expect(merged.autostart).toBe(true)

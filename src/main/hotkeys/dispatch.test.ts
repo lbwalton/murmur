@@ -11,7 +11,7 @@ function recorder() {
   const events: string[] = []
   return {
     events,
-    cb: { start: () => events.push('start'), stop: () => events.push('stop') }
+    cb: { start: (): void => {   events.push('start') }, stop: (): void => {   events.push('stop') } }
   }
 }
 

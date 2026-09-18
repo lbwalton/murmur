@@ -146,3 +146,28 @@ body {
 .err {
   color: var(--red);
 }
+
+/* Note mode: the pill wears the brand gold at its edge and names the
+   mode in mono beside the timer; the live needle stays signal amber. */
+.pill-note {
+  border-color: var(--brand-edge);
+}
+
+.mode-tag {
+  color: var(--brand);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+/* A hint is a sentence from rest: no session, so no needle at all. The
+   wave gives its room to the words, which must fit the fixed pill. */
+.pill-hint .wave {
+  display: none;
+}
+
+.pill-hint .status-slot {
+  white-space: nowrap;
+  text-align: left;
+}

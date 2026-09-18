@@ -23,18 +23,39 @@ function trayIconPath(): string {
 export interface TrayHandlers {
   onOpen: () => void
   onQuit: () => void
+  /** Open today's notes inbox (US-050); the item shows only while a
+   *  notes folder is set. */
+  onOpenInbox?: () => void
+}
+
+let trayHandlers: TrayHandlers | null = null
+let inboxVisible = false
+
+function buildMenu(): Menu {
+  const handlers = trayHandlers
+  if (!handlers) return Menu.buildFromTemplate([])
+  return Menu.buildFromTemplate([
+    { label: 'Open murmur', click: handlers.onOpen },
+    ...(inboxVisible && handlers.onOpenInbox
+      ? [{ label: "Open today's inbox", click: handlers.onOpenInbox }]
+      : []),
+    { type: 'separator' as const },
+    { label: 'Quit murmur', click: handlers.onQuit }
+  ])
+}
+
+/** Show or hide the inbox item; rebuilds the menu only on a change. */
+export function setTrayInboxVisible(visible: boolean): void {
+  if (visible === inboxVisible) return
+  inboxVisible = visible
+  tray?.setContextMenu(buildMenu())
 }
 
 export function createTray(handlers: TrayHandlers): Tray {
+  trayHandlers = handlers
   tray = new Tray(nativeImage.createFromPath(trayIconPath()))
   tray.setToolTip('murmur')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open murmur', click: handlers.onOpen },
-      { type: 'separator' },
-      { label: 'Quit murmur', click: handlers.onQuit }
-    ])
-  )
+  tray.setContextMenu(buildMenu())
   // On Windows a left click opens the window; macOS convention keeps the
   // click on the menu, where Open murmur is the first item.
   tray.on('click', () => {
