@@ -19,6 +19,7 @@ describe('mergeSettings', () => {
       sort: false,
       tasksTemplate: 'murmur/todo.md',
       ideasTemplate: 'murmur/ideas.md',
+      filedHeadingTemplate: '## {date}',
       connection: { enabled: false, baseUrl: '', llmModel: '' }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })

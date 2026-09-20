@@ -2,10 +2,15 @@
 // Append-only file writes for the notes folder, shared by the inbox
 // writer and the sorter. A vault synced by iCloud, Dropbox, or Obsidian
 // Sync never sees a whole-file rewrite it could conflict on.
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readSync, statSync } from 'node:fs'
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { type NotePathResult, appendSeparator, resolveNotePath } from '../../shared/notes'
 import { writeAppLog } from '../window-watch'
+
+/** A file's text, or '' when it does not exist yet. */
+export function fileText(file: string): string {
+  return existsSync(file) ? readFileSync(file, 'utf8') : ''
+}
 
 /** The last byte of a file as text; null when missing, '' when empty. */
 export function fileTail(file: string): string | null {

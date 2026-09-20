@@ -5,6 +5,12 @@
 // other than a complete labeling, the whole sort is rejected and the
 // note simply stays in the inbox, where it already is.
 
+import { noteMoment, renderTemplate } from './notes'
+
+/** Filed lines sit under a heading so a long list stays navigable.
+ *  Empty turns headings off and the file is one flat list. */
+export const DEFAULT_FILED_HEADING_TEMPLATE = '## {date}'
+
 export type SortLabel = 'task' | 'idea' | 'note'
 export const SORT_LABELS: readonly SortLabel[] = ['task', 'idea', 'note']
 
@@ -139,6 +145,24 @@ export interface FiledLines {
   tasks: string[]
   ideas: string[]
   notes: string[]
+}
+
+/** The heading this filing sits under, or '' when headings are off. */
+export function renderFiledHeading(template: string, when: Date): string {
+  if (template.trim().length === 0) return ''
+  return renderTemplate(template, { ...noteMoment(when) }).trim()
+}
+
+/**
+ * What to write before the entries: the heading and a newline when the
+ * file does not already carry that exact line, nothing when it does.
+ * A day's dumps therefore gather under one heading, appended in order,
+ * and a file the user has reordered by hand is never rewritten.
+ */
+export function headingPrefix(heading: string, existing: string): string {
+  if (heading === '') return ''
+  const carried = existing.split('\n').some((line) => line.trim() === heading)
+  return carried ? '' : `${heading}\n`
 }
 
 /** Copy each sentence into its bucket, in spoken order, untouched. */

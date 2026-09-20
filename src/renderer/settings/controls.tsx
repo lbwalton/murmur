@@ -10,13 +10,18 @@ export function TextSetting(props: {
   listId?: string
   options?: string[]
   wide?: boolean
+  /** Empty is a real value for this setting (a heading template that
+   *  turns headings off), so an emptied field commits instead of
+   *  snapping back. */
+  allowEmpty?: boolean
   onCommit: (value: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
   useEffect(() => setDraft(props.value), [props.value])
   const commit = (): void => {
     const next = draft.trim()
-    if (next.length > 0 && next !== props.value) props.onCommit(next)
+    const usable = props.allowEmpty || next.length > 0
+    if (usable && next !== props.value) props.onCommit(next)
     else setDraft(props.value)
   }
   return (

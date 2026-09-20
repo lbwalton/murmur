@@ -79,6 +79,20 @@ Yes, when you turn it on. Under Settings, notes, set Sort into tasks and ideas t
 - `murmur/todo.md` gets each task as a checkbox line: `- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))`
 - `murmur/ideas.md` gets each idea as a dash line: `- The wizard could ask for the vault on first run. ([10:32](inbox/2026-09-20.md))`
 
+Both files group by day, so a long list stays navigable instead of running together:
+
+```
+## 2026-09-20
+- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))
+- [ ] Email Bob the deck. ([10:32](inbox/2026-09-20.md))
+- [ ] Book the flight. ([14:05](inbox/2026-09-20.md))
+
+## 2026-09-21
+- [ ] Renew the domain. ([09:12](inbox/2026-09-21.md))
+```
+
+Every dump that day joins the heading already there, and the heading is written once per file per day. Group under, in File layout, sets it: the default is `## {date}`, the time tokens work in it, and clearing the field turns headings off for one flat list.
+
 The link in each line points back to the inbox note it came from, relative to the file, so it works in Obsidian and in any markdown reader. The inbox entry itself is never changed: it is your log, exactly as you said it, and todo.md is your working list. A task therefore appears in both places, on purpose. Both file paths can be changed under File layout, under the same rules as the inbox path, and Reset to default restores them.
 
 Sorting is off by default. With it off, murmur writes the inbox and nothing else.

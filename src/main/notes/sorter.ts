@@ -19,9 +19,12 @@ import {
 } from '../../shared/notes'
 import type { Settings } from '../../shared/settings'
 import {
+  DEFAULT_FILED_HEADING_TEMPLATE,
   SORT_SYSTEM_PROMPT,
+  headingPrefix,
   numberedList,
   planFiling,
+  renderFiledHeading,
   splitSentences,
   validateSort
 } from '../../shared/sorter'
@@ -30,7 +33,7 @@ import type { PolishConfig } from '../formatter/llm'
 import { getApiKeyFor, getSettings, ringClearKey, ringSetKey, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
-import { errorCode, fileTail, resolveTemplateOrDefault } from './files'
+import { errorCode, fileTail, fileText, resolveTemplateOrDefault } from './files'
 
 export interface SortInput {
   /** The note as written to the inbox. Held in memory for Sort again,
@@ -109,16 +112,22 @@ type ModelReply = { ok: true; content: string } | { ok: false; reason: string }
  *  here, with nothing on disk changed. After both opens the only
  *  failure left is a disk filling mid-write, which is reported with
  *  what actually landed. */
-function openTargets(files: string[]): { fds: number[]; tails: Array<string | null> } {
+function openTargets(files: string[]): {
+  fds: number[]
+  tails: Array<string | null>
+  texts: string[]
+} {
   const fds: number[] = []
   const tails: Array<string | null> = []
+  const texts: string[] = []
   try {
     for (const file of files) {
       mkdirSync(dirname(file), { recursive: true })
       tails.push(fileTail(file))
+      texts.push(fileText(file))
       fds.push(openSync(file, 'a'))
     }
-    return { fds, tails }
+    return { fds, tails, texts }
   } catch (error) {
     for (const fd of fds) closeSync(fd)
     throw error
@@ -242,9 +251,17 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     return record('failed', NONE, `write ${errorCode(error)}`)
   }
   const landed = { tasks: 0, ideas: 0, notes: counts.notes }
+  const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when)
   try {
     writes.forEach((write, i) => {
-      writeSync(targets.fds[i], `${appendSeparator(targets.tails[i])}${write.lines.join('\n')}\n`)
+      const existing = targets.texts[i]
+      const prefix = headingPrefix(heading, existing)
+      // A blank line sets a new heading apart from what came before it.
+      const gap = prefix !== '' && existing.trim().length > 0 ? '\n' : ''
+      writeSync(
+        targets.fds[i],
+        `${appendSeparator(targets.tails[i])}${gap}${prefix}${write.lines.join('\n')}\n`
+      )
       landed[write.kind] = write.lines.length
     })
   } catch (error) {
@@ -280,7 +297,8 @@ export function initSorter(): void {
     pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
     entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
     tasksTemplate: DEFAULT_TASKS_TEMPLATE,
-    ideasTemplate: DEFAULT_IDEAS_TEMPLATE
+    ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+    filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE
   }
 
   registerSmokeCheck('noteSort', async () => {
@@ -321,8 +339,8 @@ export function initSorter(): void {
         filed.ideas === 1 &&
         filed.notes === 1 &&
         todoText ===
-          '- [ ] Call the dentist. ([10:32](inbox/2026-09-18.md))\n- [ ] Email Bob. ([10:32](inbox/2026-09-18.md))\n' &&
-        ideasText === '- Maybe the wizard asks for the vault. ([10:32](inbox/2026-09-18.md))\n' &&
+          '## 2026-09-18\n- [ ] Call the dentist. ([10:32](inbox/2026-09-18.md))\n- [ ] Email Bob. ([10:32](inbox/2026-09-18.md))\n' &&
+        ideasText === '## 2026-09-18\n- Maybe the wizard asks for the vault. ([10:32](inbox/2026-09-18.md))\n' &&
         read(inbox) === inboxBefore
 
       // The filed input is remembered: Sort again offers nothing for it.
@@ -354,6 +372,16 @@ export function initSorter(): void {
       ])
       const joined = first === second && first.outcome === 'rejected'
       const untouched = read(todo) === todoText && read(ideas) === ideasText
+
+      // A second dump the same day joins the heading already there.
+      const later: SortInput = { ...input, text: 'Book the flight.' }
+      const again = await sortNote(later, { fetchImpl: mockReply('{"1":"task"}'), connection: cfg })
+      const grouped = read(todo)
+      const headings = grouped.split('\n').filter((l) => l.trim() === '## 2026-09-18').length
+      const groupedOk =
+        again.outcome === 'filed' &&
+        headings === 1 &&
+        grouped === `${todoText}- [ ] Book the flight. ([10:32](inbox/2026-09-18.md))\n`
       const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
       const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
       return (
@@ -364,14 +392,15 @@ export function initSorter(): void {
         halfBlocked.tasks === 0 &&
         (halfBlocked.reason ?? '').startsWith('write ') &&
         joined &&
+        groupedOk &&
         chatter.outcome === 'rejected' &&
         chatter.reason === 'missing sentences' &&
         failed.outcome === 'failed' &&
         failed.reason === 'http 500' &&
         untouched &&
         // The status surface always shows the newest outcome, which is
-        // the joined pair above, not the http failure before it.
-        getLastSort() === first &&
+        // the same-day filing above, not the failures before it.
+        getLastSort() === again &&
         log.includes('[sort] filed tasks=2 ideas=1 notes=1 model=smoke-sorter') &&
         log.includes('[sort] rejected reason=missing sentences model=smoke-sorter') &&
         log.includes('[sort] failed reason=http 500 model=smoke-sorter') &&

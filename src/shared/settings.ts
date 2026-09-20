@@ -7,6 +7,7 @@ import {
   DEFAULT_NOTE_PATH_TEMPLATE,
   DEFAULT_TASKS_TEMPLATE
 } from './notes'
+import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 
 export interface Settings {
   hotkey: {
@@ -93,6 +94,9 @@ export interface Settings {
     sort: boolean
     tasksTemplate: string
     ideasTemplate: string
+    /** Heading a day's filed lines gather under in the tasks and ideas
+     *  files. Empty writes one flat list. */
+    filedHeadingTemplate: string
     /** The sort connection, shaped like the cleanup slot: enabled false
      *  means same as cleanup; a complete separate slot runs on its own. */
     connection: {
@@ -185,6 +189,7 @@ export const DEFAULT_SETTINGS: Settings = {
     sort: false,
     tasksTemplate: DEFAULT_TASKS_TEMPLATE,
     ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+    filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
     connection: {
       enabled: false,
       baseUrl: '',

@@ -14,6 +14,7 @@ import {
   type NotePathProblem,
   resolveNotePath
 } from '../../shared/notes'
+import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
 import { Row, TextSetting } from './controls'
@@ -180,6 +181,7 @@ export function NotesPanel(props: {
   }
 
   const preview = resolveNotePath(pathDraft, new Date())
+  const headingPreview = renderFiledHeading(notes.filedHeadingTemplate, new Date())
   const tasksPreview = resolveNotePath(notes.tasksTemplate, new Date())
   const ideasPreview = resolveNotePath(notes.ideasTemplate, new Date())
   const filePreview = (p: typeof preview, what: string): string => {
@@ -196,7 +198,8 @@ export function NotesPanel(props: {
     notes.pathTemplate !== DEFAULT_NOTE_PATH_TEMPLATE ||
     notes.entryTemplate !== DEFAULT_NOTE_ENTRY_TEMPLATE ||
     notes.tasksTemplate !== DEFAULT_TASKS_TEMPLATE ||
-    notes.ideasTemplate !== DEFAULT_IDEAS_TEMPLATE
+    notes.ideasTemplate !== DEFAULT_IDEAS_TEMPLATE ||
+    notes.filedHeadingTemplate !== DEFAULT_FILED_HEADING_TEMPLATE
   const disarmed = notes.binding !== '' && props.hotkeys !== null && !props.hotkeys.noteBindingValid
   const folderMissing = status !== null && status.configured && !status.folderExists
   const lastSave = status?.lastSave ?? null
@@ -397,6 +400,22 @@ export function NotesPanel(props: {
                 onCommit={(value) => void update({ ideasTemplate: value })}
               />
             </Row>
+            <Row
+              label="Group under"
+              desc={
+                headingPreview === ''
+                  ? 'No heading: filed lines make one flat list. Type a heading to group them again.'
+                  : `A day's tasks and ideas gather under this heading, written once per file per day. Today: ${headingPreview}`
+              }
+            >
+              <TextSetting
+                value={notes.filedHeadingTemplate}
+                wide
+                allowEmpty
+                placeholder="no heading"
+                onCommit={(value) => void update({ filedHeadingTemplate: value })}
+              />
+            </Row>
           </>
         )}
 
@@ -423,7 +442,8 @@ export function NotesPanel(props: {
                   pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
                   entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
                   tasksTemplate: DEFAULT_TASKS_TEMPLATE,
-                  ideasTemplate: DEFAULT_IDEAS_TEMPLATE
+                  ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+                  filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE
                 })
               }
             >

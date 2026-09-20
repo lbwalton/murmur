@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_FILED_HEADING_TEMPLATE,
+  headingPrefix,
   ideaLine,
   numberedList,
+  renderFiledHeading,
   planFiling,
   relativeLink,
   splitSentences,
@@ -122,6 +125,30 @@ describe('filed lines', () => {
     expect(taskLine('- [ ] buy eggs', '10:32', 'i.md')).toBe('- [ ] buy eggs ([10:32](i.md))')
     expect(taskLine('- buy eggs', '10:32', 'i.md')).toBe('- [ ] buy eggs ([10:32](i.md))')
     expect(ideaLine('2. a thought', '10:32', 'i.md')).toBe('- a thought ([10:32](i.md))')
+  })
+})
+
+describe('filed headings', () => {
+  const when = new Date(2026, 8, 20, 10, 32)
+
+  it('renders the day heading and honors an empty template as off', () => {
+    expect(renderFiledHeading(DEFAULT_FILED_HEADING_TEMPLATE, when)).toBe('## 2026-09-20')
+    expect(renderFiledHeading('### {date} {time}', when)).toBe('### 2026-09-20 10:32')
+    expect(renderFiledHeading('', when)).toBe('')
+    expect(renderFiledHeading('   ', when)).toBe('')
+  })
+
+  it('writes a heading once per file, whatever else the file holds', () => {
+    expect(headingPrefix('## 2026-09-20', '')).toBe('## 2026-09-20\n')
+    expect(headingPrefix('## 2026-09-20', '## 2026-09-19\n- [ ] older\n')).toBe('## 2026-09-20\n')
+    expect(headingPrefix('## 2026-09-20', '## 2026-09-20\n- [ ] earlier today\n')).toBe('')
+    // A heading the user moved to the top still counts as carried.
+    expect(headingPrefix('## 2026-09-20', '# My tasks\n\n## 2026-09-20\n\n## 2026-09-19\n')).toBe('')
+    expect(headingPrefix('', 'anything')).toBe('')
+  })
+
+  it('does not mistake a longer line for the heading', () => {
+    expect(headingPrefix('## 2026-09-20', '## 2026-09-20 standup\n')).toBe('## 2026-09-20\n')
   })
 })
 
