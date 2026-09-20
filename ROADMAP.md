@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (48/53 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (48/54 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -65,3 +65,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [ ] **US-052** Note recall: optional desktop reminders
 - [ ] **US-053** A silent stream heals before the first press
+- [ ] **US-054** Speak an edit: transform the text you have selected

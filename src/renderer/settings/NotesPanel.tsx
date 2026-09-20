@@ -187,7 +187,9 @@ export function NotesPanel(props: {
     if (preview.ok && p.relative === preview.relative) {
       return `Where ${what} are copied. This is the inbox file itself, so filed lines will follow each note in it: ${p.relative}`
     }
-    return `Where ${what} are copied. Today: ${p.relative}`
+    return `Where ${what} are copied, relative to your notes folder. Give it a folder of its own (${
+      what === 'tasks' ? 'murmur/tasks/{date}.md' : 'murmur/ideas/{date}.md'
+    }) and murmur creates it. Today: ${p.relative}`
   }
   const entryLosesText = !notes.entryTemplate.includes('{text}')
   const customized =
@@ -359,8 +361,9 @@ export function NotesPanel(props: {
         </summary>
 
         <Row
-          label="File path"
-          desc={`Relative to your notes folder. Tokens: {date} {time} {datetime} {year} {month} {day}. ${
+          label="Inbox file"
+          anchor="row-inbox-file"
+          desc={`Where notes land, relative to your notes folder. Tokens: {date} {time} {datetime} {year} {month} {day}, and any folders in the path are created for you. ${
             preview.ok
               ? `Today: ${preview.relative}`
               : `Falls back to the default because ${PROBLEM_TEXT[preview.reason]}.`
@@ -375,20 +378,6 @@ export function NotesPanel(props: {
             onKeyDown={(e) => {
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             }}
-          />
-        </Row>
-
-        <Row
-          label="Entry"
-          desc={
-            entryLosesText
-              ? 'This template has no {text}, so it would drop your words. murmur writes the default entry instead until {text} is back.'
-              : 'How each note is written into the file. {text} is what you said; the time tokens work here too. End with a blank line to space entries apart, or a single line break to keep them tight.'
-          }
-        >
-          <EntryTemplateField
-            value={notes.entryTemplate}
-            onCommit={(value) => void update({ entryTemplate: value })}
           />
         </Row>
 
@@ -410,6 +399,20 @@ export function NotesPanel(props: {
             </Row>
           </>
         )}
+
+        <Row
+          label="Entry"
+          desc={
+            entryLosesText
+              ? 'This template has no {text}, so it would drop your words. murmur writes the default entry instead until {text} is back.'
+              : 'How each note is written into the file. {text} is what you said; the time tokens work here too. End with a blank line to space entries apart, or a single line break to keep them tight.'
+          }
+        >
+          <EntryTemplateField
+            value={notes.entryTemplate}
+            onCommit={(value) => void update({ entryTemplate: value })}
+          />
+        </Row>
 
         {customized && (
           <Row label="Defaults" desc="Back to the murmur inbox layout: a time heading per note, todo.md and ideas.md beside it.">
