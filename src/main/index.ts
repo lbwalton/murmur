@@ -434,8 +434,8 @@ app.whenReady().then(async () => {
     await settingsLoaded.catch(() => undefined)
     await new Promise((resolve) => setTimeout(resolve, 900))
     // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
-    // row to the top, and unfolds any disclosure in its panel, so every
-    // panel can be shot, not just the home tab.
+    // row to the top, and unfolds any disclosure in its panel, so any
+    // row can be shot, not just the home tab.
     const anchor = process.env.MURMUR_SETTINGS_ANCHOR
     if (anchor) {
       await settingsWindow.webContents.executeJavaScript(
@@ -451,7 +451,7 @@ app.whenReady().then(async () => {
           const row = document.getElementById(${JSON.stringify(anchor)})
           const panel = row ? row.closest('.panel') : null
           for (const d of panel ? panel.querySelectorAll('details') : []) d.setAttribute('open', '')
-          if (panel) panel.scrollIntoView({ block: 'start' })
+          if (row) row.scrollIntoView({ block: 'start' })
           return true
         })()`
       )

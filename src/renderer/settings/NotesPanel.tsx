@@ -4,15 +4,19 @@
 // live preview. Template math is the shared pure module, so what the
 // preview says is exactly what the writer does.
 import { useCallback, useEffect, useState } from 'react'
-import type { HotkeysStatus, NotesStatus, SettingsApi } from '../../preload/settings'
+import type { HotkeysStatus, KeyStatus, NotesStatus, SettingsApi } from '../../preload/settings'
+import type { ProviderCatalog } from '../../shared/catalog'
 import {
+  DEFAULT_IDEAS_TEMPLATE,
   DEFAULT_NOTE_ENTRY_TEMPLATE,
   DEFAULT_NOTE_PATH_TEMPLATE,
+  DEFAULT_TASKS_TEMPLATE,
   type NotePathProblem,
   resolveNotePath
 } from '../../shared/notes'
 import type { Settings } from '../../shared/settings'
-import { Row } from './controls'
+import { ConnectionRows } from './ConnectionRows'
+import { Row, TextSetting } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -27,6 +31,25 @@ const PROBLEM_TEXT: Record<NotePathProblem, string> = {
 
 function timeOf(at: number): string {
   return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+/** One phrase for the sort outcome on the Last note line. */
+function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
+  if (report.outcome === 'filed') {
+    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}`
+  }
+  if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed`
+  if (report.outcome === 'failed') {
+    const landed = report.tasks + report.ideas
+    return landed > 0
+      ? `sort failed (${report.reason ?? 'unknown'}) after ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')} landed; check the files`
+      : `sort failed (${report.reason ?? 'unknown'}), nothing filed`
+  }
+  return `sort skipped (${report.reason ?? 'unknown'})`
 }
 
 /** Multi-line template field that commits on blur; an emptied field
@@ -55,12 +78,15 @@ function EntryTemplateField(props: {
 
 export function NotesPanel(props: {
   settings: Settings
+  catalog: ProviderCatalog | null
   hotkeys: HotkeysStatus | null
   onUpdate: (partial: Partial<Settings>) => Promise<void>
   onRefresh: () => Promise<unknown>
 }): React.JSX.Element {
   const notes = props.settings.notes
   const [status, setStatus] = useState<NotesStatus | null>(null)
+  const [sortKeyStatus, setSortKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
+  const [sorting, setSorting] = useState(false)
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [folderDraft, setFolderDraft] = useState(notes.folder)
@@ -71,6 +97,9 @@ export function NotesPanel(props: {
 
   useEffect(() => setFolderDraft(notes.folder), [notes.folder])
   useEffect(() => setPathDraft(notes.pathTemplate), [notes.pathTemplate])
+  useEffect(() => {
+    void bridge().getKeyStatusFor(notes.connection.baseUrl).then(setSortKeyStatus)
+  }, [notes.connection.baseUrl])
 
   const loadStatus = useCallback((): Promise<void> => {
     return bridge()
@@ -140,11 +169,32 @@ export function NotesPanel(props: {
     else setPathDraft(notes.pathTemplate)
   }
 
+  const sortAgain = async (): Promise<void> => {
+    if (sorting) return
+    setSorting(true)
+    try {
+      setStatus(await bridge().sortLastNote())
+    } finally {
+      setSorting(false)
+    }
+  }
+
   const preview = resolveNotePath(pathDraft, new Date())
+  const tasksPreview = resolveNotePath(notes.tasksTemplate, new Date())
+  const ideasPreview = resolveNotePath(notes.ideasTemplate, new Date())
+  const filePreview = (p: typeof preview, what: string): string => {
+    if (!p.ok) return `Falls back to the default because ${PROBLEM_TEXT[p.reason]}.`
+    if (preview.ok && p.relative === preview.relative) {
+      return `Where ${what} are copied. This is the inbox file itself, so filed lines will follow each note in it: ${p.relative}`
+    }
+    return `Where ${what} are copied. Today: ${p.relative}`
+  }
   const entryLosesText = !notes.entryTemplate.includes('{text}')
   const customized =
     notes.pathTemplate !== DEFAULT_NOTE_PATH_TEMPLATE ||
-    notes.entryTemplate !== DEFAULT_NOTE_ENTRY_TEMPLATE
+    notes.entryTemplate !== DEFAULT_NOTE_ENTRY_TEMPLATE ||
+    notes.tasksTemplate !== DEFAULT_TASKS_TEMPLATE ||
+    notes.ideasTemplate !== DEFAULT_IDEAS_TEMPLATE
   const disarmed = notes.binding !== '' && props.hotkeys !== null && !props.hotkeys.noteBindingValid
   const folderMissing = status !== null && status.configured && !status.folderExists
   const lastSave = status?.lastSave ?? null
@@ -225,7 +275,9 @@ export function NotesPanel(props: {
                   lastSave.location === 'folder'
                     ? 'saved to your notes folder'
                     : "saved to murmur's data folder because the notes folder was unreachable"
-                }: ${lastSave.relative}`
+                }: ${lastSave.relative}${
+                  notes.sort && status?.lastSort ? `. Then ${sortSummary(status.lastSort)}.` : ''
+                }`
               : 'No note since launch. Hold the chord and speak.'
           }
         >
@@ -239,11 +291,66 @@ export function NotesPanel(props: {
                     : 'nothing to open yet'}
               </span>
             )}
+            {notes.sort && status?.canSortAgain && (
+              <button className="btn quiet-btn" onClick={() => void sortAgain()} disabled={sorting}>
+                {sorting ? 'Sorting…' : 'Sort again'}
+              </button>
+            )}
             <button className="btn quiet-btn" onClick={() => void openToday()}>
               Open today&apos;s inbox
             </button>
           </div>
         </Row>
+      )}
+
+      <Row
+        label="Sort into tasks and ideas"
+        anchor="row-notes-sort"
+        desc="After a note lands, a model labels each sentence a task, an idea, or a note, and murmur copies tasks to todo.md and ideas to ideas.md with links back. Nothing is reworded and the inbox stays as you said it. Off writes the inbox only, for people who feed raw notes to their own tools."
+      >
+        <select
+          className="field"
+          value={notes.sort ? 'on' : 'off'}
+          onChange={(e) => void update({ sort: e.target.value === 'on' })}
+        >
+          <option value="off">Off</option>
+          <option value="on">On</option>
+        </select>
+      </Row>
+
+      {notes.sort && (
+        <ConnectionRows
+          value={notes.connection}
+          catalog={props.catalog}
+          keyStatus={sortKeyStatus}
+          onKeyStatus={setSortKeyStatus}
+          onChange={(connection) => update({ connection })}
+          labels={{
+            connection: 'Sort connection',
+            connectionDesc:
+              'Same runs the sort on your cleanup connection, which is your speech provider unless you set cleanup apart. Separate lets sorting run elsewhere with its own key.',
+            sameOption: 'Same as cleanup',
+            provider: 'Sort provider',
+            baseUrl: 'Sort base URL',
+            model: 'Sort model id',
+            key: 'Sort key',
+            keyDesc:
+              'This connection has its own key, stored encrypted like the others. Until one is saved, sorting keeps riding your cleanup connection.',
+            sharedDesc:
+              'Shares a key with your speech or cleanup connection: one provider, one key. Manage it in the setup panel.'
+          }}
+          sharedWith={[
+            props.settings.provider.baseUrl,
+            props.settings.polish.enabled ? props.settings.polish.baseUrl : ''
+          ]}
+          anchor="row-sort-connection"
+          api={{
+            setKey: (key) => bridge().setKeyFor(notes.connection.baseUrl, key),
+            clearKey: () => bridge().clearKeyFor(notes.connection.baseUrl),
+            status: () => bridge().getKeyStatusFor(notes.connection.baseUrl),
+            test: () => bridge().testConnectionFor(notes.connection.baseUrl)
+          }}
+        />
       )}
 
       <details className="fold">
@@ -285,14 +392,35 @@ export function NotesPanel(props: {
           />
         </Row>
 
+        {notes.sort && (
+          <>
+            <Row label="Tasks file" desc={filePreview(tasksPreview, 'tasks')}>
+              <TextSetting
+                value={notes.tasksTemplate}
+                wide
+                onCommit={(value) => void update({ tasksTemplate: value })}
+              />
+            </Row>
+            <Row label="Ideas file" desc={filePreview(ideasPreview, 'ideas')}>
+              <TextSetting
+                value={notes.ideasTemplate}
+                wide
+                onCommit={(value) => void update({ ideasTemplate: value })}
+              />
+            </Row>
+          </>
+        )}
+
         {customized && (
-          <Row label="Defaults" desc="Back to the murmur inbox layout with a time heading per note.">
+          <Row label="Defaults" desc="Back to the murmur inbox layout: a time heading per note, todo.md and ideas.md beside it.">
             <button
               className="btn quiet-btn"
               onClick={() =>
                 void update({
                   pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
-                  entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE
+                  entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
+                  tasksTemplate: DEFAULT_TASKS_TEMPLATE,
+                  ideasTemplate: DEFAULT_IDEAS_TEMPLATE
                 })
               }
             >

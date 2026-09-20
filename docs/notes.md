@@ -72,6 +72,35 @@ Two ways: the tray menu has Open today's inbox whenever a notes folder is set, a
 
 Yes. A note is a dictation: it appears on the home tab with a small "note" mark, its words count toward your daily and lifetime totals, your belts, and your recap, and the paste-last chord will paste it if it was your most recent dictation.
 
-## Where is the sorting, the to-do list, the reminders?
+## Can murmur sort my notes into tasks and ideas?
 
-Coming as their own stories. This page covers capture: your words, verbatim after cleanup, in a file you own. The next step files a dump into tasks, ideas, and notes without rewording it, and after that come optional reminders. See the roadmap for status.
+Yes, when you turn it on. Under Settings, notes, set Sort into tasks and ideas to On. From then on, after a note lands in the inbox and the pill has said noted, murmur runs a background pass that labels each sentence of the note as a task, an idea, or a note, and copies the tasks and ideas into two more files in your notes folder:
+
+- `murmur/todo.md` gets each task as a checkbox line: `- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))`
+- `murmur/ideas.md` gets each idea as a dash line: `- The wizard could ask for the vault on first run. ([10:32](inbox/2026-09-20.md))`
+
+The link in each line points back to the inbox note it came from, relative to the file, so it works in Obsidian and in any markdown reader. The inbox entry itself is never changed: it is your log, exactly as you said it, and todo.md is your working list. A task therefore appears in both places, on purpose. Both file paths can be changed under File layout, under the same rules as the inbox path, and Reset to default restores them.
+
+Sorting is off by default. With it off, murmur writes the inbox and nothing else.
+
+## How does sorting work without rewording anything?
+
+The model never writes a word of your note. murmur splits the note into numbered sentences (a dictated list stays one line per item) and sends the numbered list. The model replies with a small JSON object that assigns each number one label: task, idea, or note. murmur then copies the original sentences, untouched, into the right files. Rewording is impossible by construction. The trade-off is granularity: "call the dentist and email Bob" stays one task line because you said it as one sentence.
+
+The reply is checked strictly before anything is written: every sentence must be labeled exactly once, only those three labels count, and anything else (chatter around the JSON with numbers missing, an invented sentence number, a label that is not one of the three, a reply that is not JSON at all) rejects the whole sort. Sorting works best at Full formatting, where sentences arrive punctuated; at Off, an unpunctuated ramble is one long sentence and gets one label.
+
+## What happens when a sort is rejected or fails?
+
+Nothing is written until the whole labeling has passed, and both files are opened for writing before either receives a line, so a rejected labeling, a model that could not be reached, or a file that cannot be opened all leave todo.md and ideas.md exactly as they were. Your note is still in the inbox, where it already was. The one failure that can land after that point is a disk filling mid-write; then the Last note line says exactly which lines landed so you can check the files. The diagnostics log records every outcome with its reason and the model that answered (`[sort] rejected reason=missing sentences`, `[sort] failed reason=timeout`, `[sort] filed tasks=2 ideas=1 notes=1`), and the Last note line in settings shows the same. Sort again re-runs the sort on your newest note after a rejection or a failure, which is the retry: nothing retries on its own, one sort runs at a time, and a note whose lines already landed is never filed twice.
+
+## Which model does the sorting, and can I change it?
+
+By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Choose Separate provider under Sort connection to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
+
+## I keep raw notes for my own tools. Can I turn sorting off?
+
+Yes, and it starts off. With Sort into tasks and ideas off, murmur writes each note to the inbox and touches nothing else, so your own agents and scripts can read the raw notes and do whatever you like with them. Turn sorting on when you want the to-do list and the ideas file to happen inside murmur.
+
+## Where are the reminders?
+
+Coming as their own story: optional desktop reminders that read your todo file at times you choose. See the roadmap for status.

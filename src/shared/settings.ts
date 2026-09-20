@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings shape, defaults, and the pure merge logic. IO lives in
 // src/main/settings; keeping this file pure keeps it unit-testable.
-import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE } from './notes'
+import {
+  DEFAULT_IDEAS_TEMPLATE,
+  DEFAULT_NOTE_ENTRY_TEMPLATE,
+  DEFAULT_NOTE_PATH_TEMPLATE,
+  DEFAULT_TASKS_TEMPLATE
+} from './notes'
 
 export interface Settings {
   hotkey: {
@@ -82,6 +87,19 @@ export interface Settings {
     folder: string
     pathTemplate: string
     entryTemplate: string
+    /** Sorting (US-051): after a note lands, a model labels each
+     *  sentence task, idea, or note and murmur copies tasks and ideas
+     *  to their files with links back. Off writes the inbox only. */
+    sort: boolean
+    tasksTemplate: string
+    ideasTemplate: string
+    /** The sort connection, shaped like the cleanup slot: enabled false
+     *  means same as cleanup; a complete separate slot runs on its own. */
+    connection: {
+      enabled: boolean
+      baseUrl: string
+      llmModel: string
+    }
   }
   autostart: boolean
   showDockIcon: boolean
@@ -163,7 +181,15 @@ export const DEFAULT_SETTINGS: Settings = {
     binding: '',
     folder: '',
     pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
-    entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE
+    entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
+    sort: false,
+    tasksTemplate: DEFAULT_TASKS_TEMPLATE,
+    ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+    connection: {
+      enabled: false,
+      baseUrl: '',
+      llmModel: ''
+    }
   },
   autostart: false,
   showDockIcon: false,

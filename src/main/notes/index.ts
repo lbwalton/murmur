@@ -6,30 +6,16 @@
 // else happens, and when the folder cannot be reached they land in
 // murmur's own data folder with a log line naming the redirect.
 // Nothing here ever logs the text itself.
-import {
-  appendFileSync,
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  readSync,
-  statSync,
-  writeFileSync
-} from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { type BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { IpcChannels } from '../../shared/ipc'
-import {
-  DEFAULT_NOTE_ENTRY_TEMPLATE,
-  DEFAULT_NOTE_PATH_TEMPLATE,
-  appendSeparator,
-  renderNoteEntry,
-  resolveNotePath
-} from '../../shared/notes'
+import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, renderNoteEntry } from '../../shared/notes'
 import { getSettings, updateSettings } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
+import { appendEntry, errorCode, resolveTemplateOrDefault } from './files'
+import { type SortReport, canSortAgain, getLastSort, initSorter, sortLastNote } from './sorter'
 
 export type NoteLocation = 'folder' | 'fallback'
 
@@ -40,6 +26,10 @@ export interface NoteSaveResult {
   relative: string
   /** Absolute path of the file written (or attempted). */
   file: string
+  /** The base folder it landed in (the notes folder or the data
+   *  folder); the sorter files beside it. */
+  base: string
+  when: Date
 }
 
 export interface NotesStatus {
@@ -48,6 +38,9 @@ export interface NotesStatus {
   folderExists: boolean
   fallbackDir: string
   lastSave: { at: number; location: NoteLocation; relative: string } | null
+  /** The newest sort's outcome (US-051), or null before any sort. */
+  lastSort: SortReport | null
+  canSortAgain: boolean
 }
 
 let lastSave: NotesStatus['lastSave'] = null
@@ -61,44 +54,10 @@ function fallbackDir(): string {
   return join(app.getPath('userData'), 'notes')
 }
 
-function errorCode(error: unknown): string {
-  const code = (error as { code?: unknown } | null)?.code
-  if (typeof code === 'string') return code
-  return error instanceof Error ? error.name : 'unknown'
-}
-
-/** Today's file, relative to the folder. A template that fails to
- *  resolve falls back to the default layout with a log line, so a
- *  typo in settings can never cost a note. */
+/** Today's inbox file, relative to the folder; a broken template
+ *  falls back to the default layout with a log line. */
 function resolveTarget(when: Date): { relative: string; segments: string[] } {
-  const attempt = resolveNotePath(getSettings().notes.pathTemplate, when)
-  if (attempt.ok) return attempt
-  writeAppLog(`[notes] path template failed reason=${attempt.reason}; using the default layout`)
-  const fallback = resolveNotePath(DEFAULT_NOTE_PATH_TEMPLATE, when)
-  if (!fallback.ok) throw new Error('default note path template failed to resolve')
-  return fallback
-}
-
-/** The last byte of a file as text; null when missing, '' when empty. */
-function fileTail(file: string): string | null {
-  if (!existsSync(file)) return null
-  const size = statSync(file).size
-  if (size === 0) return ''
-  const fd = openSync(file, 'r')
-  try {
-    const buf = Buffer.alloc(1)
-    readSync(fd, buf, 0, 1, size - 1)
-    return buf.toString('utf8')
-  } finally {
-    closeSync(fd)
-  }
-}
-
-/** Append-only, so a vault synced by iCloud, Dropbox, or Obsidian Sync
- *  never sees a whole-file rewrite it could conflict on. */
-function appendEntry(file: string, entry: string): void {
-  mkdirSync(dirname(file), { recursive: true })
-  appendFileSync(file, `${appendSeparator(fileTail(file))}${entry}`, 'utf8')
+  return resolveTemplateOrDefault(getSettings().notes.pathTemplate, DEFAULT_NOTE_PATH_TEMPLATE, when, 'path')
 }
 
 /**
@@ -128,7 +87,7 @@ export function saveNote(text: string, when: Date = new Date()): NoteSaveResult 
       appendEntry(file, entry)
       lastSave = { at: Date.now(), location: 'folder', relative: target.relative }
       writeAppLog(`[notes] saved location=folder file=${target.relative} bytes=${bytes}`)
-      return { ok: true, location: 'folder', relative: target.relative, file }
+      return { ok: true, location: 'folder', relative: target.relative, file, base: folder, when }
     } catch (error) {
       writeAppLog(
         `[notes] notes folder unreachable reason=${errorCode(error)}; redirecting to the data folder`
@@ -142,10 +101,10 @@ export function saveNote(text: string, when: Date = new Date()): NoteSaveResult 
     appendEntry(file, entry)
     lastSave = { at: Date.now(), location: 'fallback', relative: target.relative }
     writeAppLog(`[notes] saved location=fallback file=${target.relative} bytes=${bytes}`)
-    return { ok: true, location: 'fallback', relative: target.relative, file }
+    return { ok: true, location: 'fallback', relative: target.relative, file, base: fallbackDir(), when }
   } catch (error) {
     writeAppLog(`[notes] fallback write failed reason=${errorCode(error)}`)
-    return { ok: false, location: 'fallback', relative: target.relative, file }
+    return { ok: false, location: 'fallback', relative: target.relative, file, base: fallbackDir(), when }
   }
 }
 
@@ -157,7 +116,15 @@ export function getNotesStatus(): NotesStatus {
   } catch {
     folderExists = false
   }
-  return { configured: folder !== '', folder, folderExists, fallbackDir: fallbackDir(), lastSave }
+  return {
+    configured: folder !== '',
+    folder,
+    folderExists,
+    fallbackDir: fallbackDir(),
+    lastSave,
+    lastSort: getLastSort(),
+    canSortAgain: canSortAgain()
+  }
 }
 
 /** Open today's inbox in the OS default app for the file type: the
@@ -198,6 +165,11 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   })
   ipcMain.handle(IpcChannels.notesStatus, () => getNotesStatus())
   ipcMain.handle(IpcChannels.notesOpenToday, () => openTodayNote())
+  ipcMain.handle(IpcChannels.notesSortLast, async () => {
+    await sortLastNote()
+    return getNotesStatus()
+  })
+  initSorter()
 
   const probeMoment = new Date(2026, 8, 18, 10, 32)
   const defaults = { pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE, entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE }
@@ -248,6 +220,7 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
       return (
         first.ok &&
         first.location === 'folder' &&
+        first.base === vault &&
         second.ok &&
         third.ok &&
         third.location === 'folder' &&

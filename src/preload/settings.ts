@@ -89,6 +89,15 @@ const api = {
   saveDiagnostics: (): Promise<boolean> => ipcRenderer.invoke('diag:save'),
   openLogFolder: (): Promise<void> => ipcRenderer.invoke('diag:openLogs'),
   testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
+  setKeyFor: (baseUrl: string, key: string): Promise<KeyStatus> => {
+    return ipcRenderer.invoke('apikey:setFor', baseUrl, key)
+  },
+  getKeyStatusFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:statusFor', baseUrl),
+  clearKeyFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clearFor', baseUrl),
+  testConnectionFor: (baseUrl: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testFor', baseUrl)
+  },
+  sortLastNote: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:sortLast'),
   getCatalog: (): Promise<import('../shared/catalog').ProviderCatalog> => {
     return ipcRenderer.invoke('catalog:get')
   },

@@ -58,10 +58,10 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
+- [ ] **US-051** Brain dump sorting: thoughts file themselves
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-051** Brain dump sorting: thoughts file themselves
 - [ ] **US-052** Note recall: optional desktop reminders
 - [ ] **US-053** A silent stream heals before the first press

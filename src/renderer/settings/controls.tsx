@@ -66,3 +66,60 @@ export function Row(props: {
     </div>
   )
 }
+
+export function ModelPicker(props: {
+  value: string
+  options: string[]
+  placeholder?: string
+  onCommit: (value: string) => void
+}): React.JSX.Element {
+  // A real select instead of a datalist: datalists filter suggestions
+  // by the text already in the field, so a filled field hides every
+  // other model (live-found 2026-09-14). The last entry opens a free
+  // text field for any id the provider serves. pending mirrors a
+  // commit until the settings round trip lands, so the control never
+  // flashes the old value for a render (same class of problem
+  // TextSetting's draft state solves).
+  const [typing, setTyping] = useState(false)
+  const [pending, setPending] = useState<string | null>(null)
+  useEffect(() => {
+    if (pending !== null && props.value === pending) setPending(null)
+  }, [props.value, pending])
+  const effective = pending ?? props.value
+  const known = props.options.includes(effective)
+  return (
+    <div className="inline">
+      <select
+        className="field"
+        value={!typing && known ? effective : 'custom'}
+        onChange={(e) => {
+          if (e.target.value === 'custom') {
+            setTyping(true)
+            return
+          }
+          setTyping(false)
+          setPending(e.target.value)
+          props.onCommit(e.target.value)
+        }}
+      >
+        {props.options.map((id) => (
+          <option key={id} value={id}>
+            {id}
+          </option>
+        ))}
+        <option value="custom">type a model id…</option>
+      </select>
+      {(typing || !known) && (
+        <TextSetting
+          value={effective}
+          placeholder={props.placeholder}
+          onCommit={(v) => {
+            setPending(v)
+            if (props.options.includes(v)) setTyping(false)
+            props.onCommit(v)
+          }}
+        />
+      )}
+    </div>
+  )
+}

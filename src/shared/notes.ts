@@ -6,6 +6,10 @@
 
 export const DEFAULT_NOTE_PATH_TEMPLATE = 'murmur/inbox/{date}.md'
 export const DEFAULT_NOTE_ENTRY_TEMPLATE = '## {time}\n\n{text}\n\n'
+/** Where the sorter copies tasks and ideas (US-051), relative to the
+ *  notes folder and under the same guard as the inbox path. */
+export const DEFAULT_TASKS_TEMPLATE = 'murmur/todo.md'
+export const DEFAULT_IDEAS_TEMPLATE = 'murmur/ideas.md'
 
 /** What the pill says when the note chord fires with no folder set.
  *  One constant, so the overlay smoke check measures the real text. */

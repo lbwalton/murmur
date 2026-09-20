@@ -15,7 +15,11 @@ describe('mergeSettings', () => {
       binding: '',
       folder: '',
       pathTemplate: 'murmur/inbox/{date}.md',
-      entryTemplate: '## {time}\n\n{text}\n\n'
+      entryTemplate: '## {time}\n\n{text}\n\n',
+      sort: false,
+      tasksTemplate: 'murmur/todo.md',
+      ideasTemplate: 'murmur/ideas.md',
+      connection: { enabled: false, baseUrl: '', llmModel: '' }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
     expect(merged.notes.folder).toBe('/tmp/vault')

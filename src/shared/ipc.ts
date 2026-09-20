@@ -37,5 +37,10 @@ export const IpcChannels = {
   hotkeysStatus: 'hotkeys:status',
   notesChooseFolder: 'notes:chooseFolder',
   notesStatus: 'notes:status',
-  notesOpenToday: 'notes:openToday'
+  notesOpenToday: 'notes:openToday',
+  notesSortLast: 'notes:sortLast',
+  apiKeySetFor: 'apikey:setFor',
+  apiKeyStatusFor: 'apikey:statusFor',
+  apiKeyClearFor: 'apikey:clearFor',
+  providerTestFor: 'provider:testFor'
 } as const

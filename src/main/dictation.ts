@@ -18,6 +18,7 @@ import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording }
 import { NOTE_FOLDER_HINT } from '../shared/notes'
 import { insertText } from './insertion'
 import { notesConfigured, saveNote } from './notes'
+import { rememberForSort, sortNote } from './notes/sorter'
 import {
   getOverlayPhase,
   getOverlayState,
@@ -257,6 +258,11 @@ async function deliverNote(heardText: string, finalText: string, peak: number): 
   setOverlayPhase('inserted', event?.wpm ?? null)
   playCue('noted')
   refreshOverlayConfig()
+  // The sorter runs after the words are safe and the pill has spoken;
+  // it decides for itself whether sorting is on. Nothing here waits.
+  const forSort = { text: finalText, base: saved.base, inboxRelative: saved.relative, when: saved.when }
+  rememberForSort(forSort)
+  void sortNote(forSort).catch((error) => console.error('[murmur] sort threw:', error))
 }
 
 export function dictationCancel(): void {

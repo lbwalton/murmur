@@ -19,8 +19,9 @@ import { HomeView } from './HomeView'
 import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
+import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
-import { Row, TextSetting } from './controls'
+import { ModelPicker, Row, TextSetting } from './controls'
 
 declare global {
   interface Window {
@@ -784,12 +785,33 @@ export function App(): React.JSX.Element {
           )}
         </Row>
 
-        <PolishRows
-          settings={settings}
+        <ConnectionRows
+          value={settings.polish}
           catalog={catalog}
           keyStatus={polishKeyStatus}
           onKeyStatus={setPolishKeyStatus}
-          onUpdate={update}
+          onChange={(polish) => update({ polish })}
+          labels={{
+            connection: 'Cleanup connection',
+            connectionDesc:
+              'Same runs cleanup on your speech provider. Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example.',
+            sameOption: 'Same as speech',
+            provider: 'Cleanup provider',
+            baseUrl: 'Cleanup base URL',
+            model: 'Cleanup model id',
+            key: 'Cleanup key',
+            keyDesc:
+              'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.',
+            sharedDesc: "Shares the speech connection's key: one provider, one key. Manage it in the setup panel above."
+          }}
+          sharedWith={[settings.provider.baseUrl]}
+          anchor="row-cleanup-connection"
+          api={{
+            setKey: (key) => bridge().setPolishKey(key),
+            clearKey: () => bridge().clearPolishKey(),
+            status: () => bridge().getPolishKeyStatus(),
+            test: () => bridge().testPolishProvider()
+          }}
         />
 
         {catalog && (
@@ -1043,7 +1065,13 @@ export function App(): React.JSX.Element {
         </Row>
       </section>
 
-      <NotesPanel settings={settings} hotkeys={hotkeys} onUpdate={update} onRefresh={refresh} />
+      <NotesPanel
+        settings={settings}
+        catalog={catalog}
+        hotkeys={hotkeys}
+        onUpdate={update}
+        onRefresh={refresh}
+      />
 
       <section className="panel">
         <p className="micro-label">dictionary</p>
@@ -1366,63 +1394,6 @@ function ProSection(props: {
   )
 }
 
-function ModelPicker(props: {
-  value: string
-  options: string[]
-  placeholder?: string
-  onCommit: (value: string) => void
-}): React.JSX.Element {
-  // A real select instead of a datalist: datalists filter suggestions
-  // by the text already in the field, so a filled field hides every
-  // other model (live-found 2026-09-14). The last entry opens a free
-  // text field for any id the provider serves. pending mirrors a
-  // commit until the settings round trip lands, so the control never
-  // flashes the old value for a render (same class of problem
-  // TextSetting's draft state solves).
-  const [typing, setTyping] = useState(false)
-  const [pending, setPending] = useState<string | null>(null)
-  useEffect(() => {
-    if (pending !== null && props.value === pending) setPending(null)
-  }, [props.value, pending])
-  const effective = pending ?? props.value
-  const known = props.options.includes(effective)
-  return (
-    <div className="inline">
-      <select
-        className="field"
-        value={!typing && known ? effective : 'custom'}
-        onChange={(e) => {
-          if (e.target.value === 'custom') {
-            setTyping(true)
-            return
-          }
-          setTyping(false)
-          setPending(e.target.value)
-          props.onCommit(e.target.value)
-        }}
-      >
-        {props.options.map((id) => (
-          <option key={id} value={id}>
-            {id}
-          </option>
-        ))}
-        <option value="custom">type a model id…</option>
-      </select>
-      {(typing || !known) && (
-        <TextSetting
-          value={effective}
-          placeholder={props.placeholder}
-          onCommit={(v) => {
-            setPending(v)
-            if (props.options.includes(v)) setTyping(false)
-            props.onCommit(v)
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
 function currencySymbol(code: string): string {
   if (code === 'USD') return '$'
   if (code === 'EUR') return '€'
@@ -1433,188 +1404,6 @@ function formatCostParts(parts: Array<{ amount: number; currency: string }>): st
   return parts
     .map((p) => `${currencySymbol(p.currency)}${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(2)}`)
     .join(' + ')
-}
-
-function PolishRows(props: {
-  settings: Settings
-  catalog: ProviderCatalog | null
-  keyStatus: KeyStatus
-  onKeyStatus: (status: KeyStatus) => void
-  onUpdate: (partial: Partial<Settings>) => Promise<void>
-}): React.JSX.Element {
-  const { settings, catalog } = props
-  const [draft, setDraft] = useState('')
-  const [test, setTest] = useState<ProviderTestResult | null>(null)
-  const [testing, setTesting] = useState(false)
-  const llmProviders = catalog?.providers.filter((p) => p.kinds.includes('llm')) ?? []
-  const matched = catalog ? providerForBaseUrl(catalog, settings.polish.baseUrl) : null
-
-  // Same rule as the primary connection: a verdict earned against one
-  // base URL never vouches for another.
-  const prevPolishUrl = useRef<string | null>(null)
-  useEffect(() => {
-    const current = settings.polish.baseUrl
-    if (prevPolishUrl.current !== null && current !== prevPolishUrl.current) {
-      setTest(null)
-      void bridge().getPolishKeyStatus().then(props.onKeyStatus)
-    }
-    prevPolishUrl.current = current
-  }, [settings.polish.baseUrl])
-
-  const sharedWithSpeech =
-    settings.polish.baseUrl !== '' &&
-    settings.polish.baseUrl.replace(/\/$/, '') === settings.provider.baseUrl.replace(/\/$/, '')
-
-  const save = async (): Promise<void> => {
-    if (draft.trim().length === 0) return
-    const status = await bridge().setPolishKey(draft.trim())
-    props.onKeyStatus(status)
-    // Keep the typed key when the save could not land (no base URL
-    // yet): wiping it would silently discard what the user pasted.
-    // The base URL is the landing condition; a stale legacy key can
-    // make present read true without this save having gone anywhere
-    // (re-gate finding).
-    if (settings.polish.baseUrl !== '' && status.present) {
-      setDraft('')
-      setTest(null)
-    }
-  }
-  const run = async (): Promise<void> => {
-    setTesting(true)
-    try {
-      setTest(await bridge().testPolishProvider())
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  return (
-    <>
-      <Row
-        label="Cleanup connection"
-        desc="Same runs cleanup on your speech provider. Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example."
-      >
-        <select
-          className="field"
-          value={settings.polish.enabled ? 'separate' : 'same'}
-          onChange={(e) =>
-            void props.onUpdate({
-              polish: { ...settings.polish, enabled: e.target.value === 'separate' }
-            })
-          }
-        >
-          <option value="same">Same as speech</option>
-          <option value="separate">Separate provider</option>
-        </select>
-      </Row>
-      {settings.polish.enabled && (
-        <>
-          <Row label="Cleanup provider" desc="A preset fills the base URL and a recommended model.">
-            <select
-              className="field"
-              value={matched?.id ?? 'custom'}
-              onChange={(e) => {
-                const preset = llmProviders.find((p) => p.id === e.target.value)
-                if (!preset) return
-                void props.onUpdate({
-                  polish: {
-                    ...settings.polish,
-                    baseUrl: preset.llmBaseUrl ?? preset.baseUrl,
-                    llmModel: preset.llmModels[0]?.id ?? settings.polish.llmModel
-                  }
-                })
-              }}
-            >
-              <option value="custom">Custom</option>
-              {llmProviders.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row label="Cleanup base URL" desc="Any OpenAI-compatible chat endpoint.">
-            <TextSetting
-              wide
-              value={settings.polish.baseUrl}
-              placeholder="https://api.deepseek.com"
-              onCommit={(baseUrl) => void props.onUpdate({ polish: { ...settings.polish, baseUrl } })}
-            />
-          </Row>
-          <Row label="Cleanup model id" desc="Pick a suggestion or type any model id this provider offers.">
-            {matched && matched.llmModels.length > 0 ? (
-              <ModelPicker
-                value={settings.polish.llmModel}
-                options={matched.llmModels.map((m) => m.id)}
-                placeholder="deepseek-flash"
-                onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
-              />
-            ) : (
-              <TextSetting
-                value={settings.polish.llmModel}
-                placeholder="deepseek-flash"
-                onCommit={(llmModel) => void props.onUpdate({ polish: { ...settings.polish, llmModel } })}
-              />
-            )}
-          </Row>
-          {sharedWithSpeech ? (
-            <Row
-              label="Cleanup key"
-              desc="Shares the speech connection's key: one provider, one key. Manage it in the setup panel above."
-            >
-              <span className="dim">shared</span>
-            </Row>
-          ) : (
-          <Row
-            label="Cleanup key"
-            desc={
-              props.keyStatus.present
-                ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
-                : settings.polish.baseUrl === ''
-                  ? 'Pick a preset or base URL first; the key files under it.'
-                  : 'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.'
-            }
-          >
-            <div className="inline">
-              <input
-                type="password"
-                className="field"
-                placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void save()
-                }}
-              />
-              <button className="btn" onClick={() => void save()} disabled={draft.trim() === ''}>
-                Save
-              </button>
-              {props.keyStatus.present && (
-                <button
-                  className="btn quiet-btn"
-                  onClick={() => {
-                    void bridge().clearPolishKey().then(props.onKeyStatus)
-                    setTest(null)
-                  }}
-                >
-                  Remove
-                </button>
-              )}
-              <button className="btn" onClick={() => void run()} disabled={!props.keyStatus.present || testing}>
-                {testing ? 'Testing…' : 'Test'}
-              </button>
-              {test && (
-                <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                  {test.ok ? 'connected' : test.detail}
-                </span>
-              )}
-            </div>
-          </Row>
-          )}
-        </>
-      )}
-    </>
-  )
 }
 
 function ProfilesRow(props: {
