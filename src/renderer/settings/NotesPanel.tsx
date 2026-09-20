@@ -181,7 +181,14 @@ export function NotesPanel(props: {
   }
 
   const preview = resolveNotePath(pathDraft, new Date())
-  const headingPreview = renderFiledHeading(notes.filedHeadingTemplate, new Date())
+  // The preview shows the real shape, with a stand-in where the model's
+  // name for a note would go.
+  const headingPreview = renderFiledHeading(
+    notes.filedHeadingTemplate,
+    new Date(),
+    notes.topicHeadings ? 'travel plans' : ''
+  )
+  const headingCarriesTopic = notes.filedHeadingTemplate.includes('{topic}')
   const tasksPreview = resolveNotePath(notes.tasksTemplate, new Date())
   const ideasPreview = resolveNotePath(notes.ideasTemplate, new Date())
   const filePreview = (p: typeof preview, what: string): string => {
@@ -405,7 +412,7 @@ export function NotesPanel(props: {
               desc={
                 headingPreview === ''
                   ? 'No heading: filed lines make one flat list. Type a heading to group them again.'
-                  : `A day's tasks and ideas gather under this heading, written once per file per day. Today: ${headingPreview}`
+                  : `Tasks and ideas from a note gather under this heading, written once per file. Tokens: {date} {time} {topic}. Today: ${headingPreview}`
               }
             >
               <TextSetting
@@ -415,6 +422,26 @@ export function NotesPanel(props: {
                 placeholder="no heading"
                 onCommit={(value) => void update({ filedHeadingTemplate: value })}
               />
+            </Row>
+            <Row
+              label="Name each note"
+              desc={
+                !headingCarriesTopic
+                  ? 'Put {topic} in the heading above to use this, and the sort model will name each note there.'
+                  : notes.topicHeadings
+                    ? "The sort model names what each note is about in at most five words, so a heading says travel plans rather than a date alone. The name goes in the heading only; your words are never changed. A name it cannot give safely leaves the rest of the heading standing."
+                    : 'Off means headings carry the date alone. On asks the sort model for a short name for each note, so you can see what a group is about at a glance.'
+              }
+            >
+              <select
+                className="field"
+                value={notes.topicHeadings ? 'on' : 'off'}
+                disabled={!headingCarriesTopic}
+                onChange={(e) => void update({ topicHeadings: e.target.value === 'on' })}
+              >
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </select>
             </Row>
           </>
         )}

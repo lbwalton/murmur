@@ -21,6 +21,7 @@ import type { Settings } from '../../shared/settings'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
   SORT_SYSTEM_PROMPT,
+  SORT_TOPIC_PROMPT,
   headingPrefix,
   numberedList,
   planFiling,
@@ -138,7 +139,8 @@ async function askModel(
   prompt: string,
   cfg: PolishConfig,
   fetchImpl: typeof fetch,
-  timeoutMs: number
+  timeoutMs: number,
+  wantsTopic: boolean
 ): Promise<ModelReply> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -150,7 +152,10 @@ async function askModel(
         model: cfg.model,
         temperature: 0,
         messages: [
-          { role: 'system', content: SORT_SYSTEM_PROMPT },
+          {
+            role: 'system',
+            content: wantsTopic ? `${SORT_SYSTEM_PROMPT} ${SORT_TOPIC_PROMPT}` : SORT_SYSTEM_PROMPT
+          },
           { role: 'user', content: prompt }
         ]
       }),
@@ -213,12 +218,21 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     return record('failed', NONE, 'no connection')
   }
   const { config, slot } = resolved
-  const reply = await askModel(numberedList(sentences), config, options.fetchImpl ?? fetch, options.timeoutMs ?? 12_000)
+  // Topics only mean something when a heading can carry them.
+  const wantsTopic =
+    settings.notes.topicHeadings && settings.notes.filedHeadingTemplate.includes('{topic}')
+  const reply = await askModel(
+    numberedList(sentences),
+    config,
+    options.fetchImpl ?? fetch,
+    options.timeoutMs ?? 12_000,
+    wantsTopic
+  )
   if (!reply.ok) {
     writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
     return record('failed', NONE, reply.reason)
   }
-  const verdict = validateSort(sentences.length, reply.content)
+  const verdict = validateSort(sentences.length, reply.content, { topic: wantsTopic })
   if (!verdict.ok) {
     writeAppLog(`[sort] rejected reason=${verdict.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
     return record('rejected', NONE, verdict.reason)
@@ -251,7 +265,7 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     return record('failed', NONE, `write ${errorCode(error)}`)
   }
   const landed = { tasks: 0, ideas: 0, notes: counts.notes }
-  const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when)
+  const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when, verdict.topic)
   try {
     writes.forEach((write, i) => {
       const existing = targets.texts[i]
@@ -298,7 +312,8 @@ export function initSorter(): void {
     entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
     tasksTemplate: DEFAULT_TASKS_TEMPLATE,
     ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
-    filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE
+    filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
+    topicHeadings: false
   }
 
   registerSmokeCheck('noteSort', async () => {
@@ -382,6 +397,34 @@ export function initSorter(): void {
         again.outcome === 'filed' &&
         headings === 1 &&
         grouped === `${todoText}- [ ] Book the flight. ([10:32](inbox/2026-09-18.md))\n`
+
+      // Topics on: the model's name joins the heading in BOTH files,
+      // and a name too long to trust falls back to the date alone
+      // while the words still file.
+      updateSettings({ notes: { topicHeadings: true } })
+      const named: SortInput = { ...input, text: 'Renew the domain. Maybe move the blog.' }
+      const withTopic = await sortNote(named, {
+        fetchImpl: mockReply('{"1":"task","2":"idea","topic":"Domain and blog"}'),
+        connection: cfg
+      })
+      const unnamed: SortInput = { ...input, text: 'Pay the invoice.' }
+      const badTopic = await sortNote(unnamed, {
+        fetchImpl: mockReply('{"1":"task","topic":"a topic far too long to ever belong in a heading line"}'),
+        connection: cfg
+      })
+      updateSettings({ notes: { topicHeadings: false } })
+      const namedTodo = read(todo)
+      const namedIdeas = read(ideas)
+      const topicOk =
+        withTopic.outcome === 'filed' &&
+        badTopic.outcome === 'filed' &&
+        namedTodo.includes('## 2026-09-18 Domain and blog\n- [ ] Renew the domain.') &&
+        namedIdeas.includes('## 2026-09-18 Domain and blog\n- Maybe move the blog.') &&
+        // The rejected name never reaches a file, and its task joins
+        // the plain day heading that is already there.
+        !namedTodo.includes('far too long') &&
+        namedTodo.includes('- [ ] Pay the invoice.') &&
+        namedTodo.split('\n').filter((l) => l.trim() === '## 2026-09-18').length === 1
       const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
       const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
       return (
@@ -393,14 +436,15 @@ export function initSorter(): void {
         (halfBlocked.reason ?? '').startsWith('write ') &&
         joined &&
         groupedOk &&
+        topicOk &&
         chatter.outcome === 'rejected' &&
         chatter.reason === 'missing sentences' &&
         failed.outcome === 'failed' &&
         failed.reason === 'http 500' &&
         untouched &&
         // The status surface always shows the newest outcome, which is
-        // the same-day filing above, not the failures before it.
-        getLastSort() === again &&
+        // the last filing above, not the failures before it.
+        getLastSort() === badTopic &&
         log.includes('[sort] filed tasks=2 ideas=1 notes=1 model=smoke-sorter') &&
         log.includes('[sort] rejected reason=missing sentences model=smoke-sorter') &&
         log.includes('[sort] failed reason=http 500 model=smoke-sorter') &&

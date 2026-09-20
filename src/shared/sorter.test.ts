@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
   headingPrefix,
+  sanitizeTopic,
   ideaLine,
   numberedList,
   renderFiledHeading,
@@ -63,7 +64,34 @@ describe('numberedList', () => {
 describe('validateSort', () => {
   it('accepts a complete labeling in any key order and casing', () => {
     const v = validateSort(3, '{"2": "Idea", "1": "task", "3": " note "}')
-    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'] })
+    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'], topic: '' })
+  })
+
+  it('takes a topic only when one was asked for, and never lets a bad one fail the sort', () => {
+    const reply = '{"1":"task","topic":"Dentist and travel"}'
+    expect(validateSort(1, reply, { topic: true })).toEqual({
+      ok: true,
+      labels: ['task'],
+      topic: 'Dentist and travel'
+    })
+    // Not asked for: the reserved key is an unexpected sentence number.
+    expect(validateSort(1, reply)).toEqual({ ok: false, reason: 'extra sentences' })
+    // Asked for and unusable: the words still file, the heading drops it.
+    expect(validateSort(1, '{"1":"task","topic":""}', { topic: true })).toEqual({
+      ok: true,
+      labels: ['task'],
+      topic: ''
+    })
+    expect(validateSort(1, '{"1":"task"}', { topic: true })).toEqual({
+      ok: true,
+      labels: ['task'],
+      topic: ''
+    })
+    // A stray key is still a rejection, topics or not.
+    expect(validateSort(1, '{"1":"task","mood":"good"}', { topic: true })).toEqual({
+      ok: false,
+      reason: 'extra sentences'
+    })
   })
 
   it('accepts JSON wrapped in a code fence or prose, taking the object', () => {
@@ -128,6 +156,32 @@ describe('filed lines', () => {
   })
 })
 
+describe('sanitizeTopic', () => {
+  it('keeps a short plain name', () => {
+    expect(sanitizeTopic('Dentist and travel')).toBe('Dentist and travel')
+    expect(sanitizeTopic('  podcast   setup  ')).toBe('podcast setup')
+    expect(sanitizeTopic('Invoices.')).toBe('Invoices')
+  })
+
+  it('strips anything that would break a heading or a link', () => {
+    // The markup goes and the bare words stay; leftover words are
+    // harmless in a heading, unmatched brackets are not.
+    expect(sanitizeTopic('## Travel [plans](x)')).toBe('Travel plans x')
+    expect(sanitizeTopic('Travel plans')).toBe('Travel plans')
+    expect(sanitizeTopic('budget\nnotes')).toBe('budget notes')
+    expect(sanitizeTopic('**bold** talk')).toBe('bold talk')
+  })
+
+  it('refuses anything that is not a short plain name', () => {
+    expect(sanitizeTopic('')).toBe('')
+    expect(sanitizeTopic('   ')).toBe('')
+    expect(sanitizeTopic(null)).toBe('')
+    expect(sanitizeTopic(42)).toBe('')
+    expect(sanitizeTopic('one two three four five six seven')).toBe('')
+    expect(sanitizeTopic('x'.repeat(61))).toBe('')
+  })
+})
+
 describe('filed headings', () => {
   const when = new Date(2026, 8, 20, 10, 32)
 
@@ -136,6 +190,16 @@ describe('filed headings', () => {
     expect(renderFiledHeading('### {date} {time}', when)).toBe('### 2026-09-20 10:32')
     expect(renderFiledHeading('', when)).toBe('')
     expect(renderFiledHeading('   ', when)).toBe('')
+  })
+
+  it('puts a topic in the heading and collapses the gap when there is none', () => {
+    expect(renderFiledHeading(DEFAULT_FILED_HEADING_TEMPLATE, when, 'Dentist and travel')).toBe(
+      '## 2026-09-20 Dentist and travel'
+    )
+    expect(renderFiledHeading('## {topic}', when, 'Dentist and travel')).toBe('## Dentist and travel')
+    // A template that is only a topic, with no topic to put in it, is
+    // no heading at all rather than a bare marker.
+    expect(renderFiledHeading('## {topic}', when)).toBe('##')
   })
 
   it('writes a heading once per file, whatever else the file holds', () => {

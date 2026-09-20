@@ -91,7 +91,28 @@ Both files group by day, so a long list stays navigable instead of running toget
 - [ ] Renew the domain. ([09:12](inbox/2026-09-21.md))
 ```
 
-Every dump that day joins the heading already there, and the heading is written once per file per day. Group under, in File layout, sets it: the default is `## {date}`, the time tokens work in it, and clearing the field turns headings off for one flat list.
+Every dump that day joins the heading already there, and the heading is written once per file. Group under, in File layout, sets it: the default is `## {date} {topic}`, the time tokens work in it, and clearing the field turns headings off for one flat list.
+
+## Can the headings say what a note was about?
+
+Yes, with Name each note set to On. The sort model then names each note in at most five words and that name lands in the `{topic}` part of the heading, in both files:
+
+```
+## 2026-09-20 domain and blog
+- [ ] Renew the domain before the 30th. ([09:12](inbox/2026-09-20.md))
+
+## 2026-09-20 dentist and travel
+- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))
+- [ ] Book the flight. ([10:32](inbox/2026-09-20.md))
+```
+
+Each note gets its own named group, and tasks and ideas from the same note sit under the same name in their own files, so a glance at either list tells you what a block is about.
+
+This is the one place a model's own words reach a file, so it is fenced in. The name goes in the heading and nowhere else, your sentences are still copied exactly as you said them, and a name that is too long, carries markdown, or comes back empty is dropped rather than used, leaving the date standing alone. The note still files either way.
+
+It is off by default, because it sends nothing you did not already send and costs nothing extra, but it does let the model write. Turn it on when the date alone stops being enough to find things.
+
+The inbox note keeps a time heading rather than a topic. Your words are written to disk before any model runs, which is what makes them impossible to lose, and the topic does not exist yet at that moment.
 
 The link in each line points back to the inbox note it came from, relative to the file, so it works in Obsidian and in any markdown reader. The inbox entry itself is never changed: it is your log, exactly as you said it, and todo.md is your working list. A task therefore appears in both places, on purpose. Both file paths can be changed under File layout, under the same rules as the inbox path, and Reset to default restores them.
 

@@ -97,6 +97,9 @@ export interface Settings {
     /** Heading a day's filed lines gather under in the tasks and ideas
      *  files. Empty writes one flat list. */
     filedHeadingTemplate: string
+    /** Ask the sort model to name each note, so {topic} in the heading
+     *  says what a group is about at a glance. */
+    topicHeadings: boolean
     /** The sort connection, shaped like the cleanup slot: enabled false
      *  means same as cleanup; a complete separate slot runs on its own. */
     connection: {
@@ -190,6 +193,7 @@ export const DEFAULT_SETTINGS: Settings = {
     tasksTemplate: DEFAULT_TASKS_TEMPLATE,
     ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
     filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
+    topicHeadings: false,
     connection: {
       enabled: false,
       baseUrl: '',
