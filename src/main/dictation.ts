@@ -329,13 +329,14 @@ export function initDictation(): void {
     // other chord's stop cannot end the take, history tags the session
     // as a note, and the pill says noted.
     const { getSettings, updateSettings } = await import('./settings')
-    const { existsSync, readFileSync } = await import('node:fs')
+    const { existsSync, mkdirSync, readFileSync } = await import('node:fs')
     const { join } = await import('node:path')
     const { app } = await import('electron')
     const { dayKey } = await import('../shared/history')
     const before = getSettings().notes
     const vault = join(app.getPath('userData'), 'smoke-vault-loop')
     try {
+      mkdirSync(vault, { recursive: true })
       updateSettings({ notes: { folder: '' } })
       const began = dictationStart('note')
       const hinted = !began && getOverlayPhase() === 'hint' && getOverlayState().mode === 'note'

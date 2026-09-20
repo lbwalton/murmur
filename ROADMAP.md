@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (47/53 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (48/53 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -51,13 +51,13 @@
 - [x] **US-047** Diagnostics the user can hand to support
 - [x] **US-048** A silent stream heals itself
 - [x] **US-049** Keys live with their providers
+- [x] **US-050** Brain dump: speak a note instead of a paste
 
 ## Built, awaiting live verification
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
-- [ ] **US-050** Brain dump: speak a note instead of a paste
 
 ## To do
 

@@ -60,7 +60,7 @@ Yes. A note runs through the exact pipeline a dictation does: your custom dictio
 
 ## What if my notes folder is unreachable?
 
-You never lose a word. If the folder cannot be written (an unmounted drive, a renamed vault, a permissions change), the note is appended to `notes/` inside murmur's own data folder, in the same layout, and the diagnostics log records the redirect: `notes folder unreachable reason=...; redirecting to the data folder`. The Last note line under the notes folder setting says "saved to murmur's data folder" so you notice, and Open today's inbox opens the copy in your notes folder when it exists and the data folder copy otherwise. Every note is also kept in your history on the home tab, so even the copy on disk is not the only one.
+You never lose a word. If the folder cannot be written (an unmounted drive, a renamed vault, a permissions change), the note is appended to `notes/` inside murmur's own data folder, in the same layout, and the diagnostics log records the redirect: `notes folder unreachable reason=...; redirecting to the data folder`. murmur creates subfolders inside your notes folder but never the folder itself, so a renamed vault or an unplugged drive is treated as unreachable instead of being quietly recreated as an empty folder. The Last note line under the notes folder setting says "saved to murmur's data folder" so you notice, and Open today's inbox opens the copy in your notes folder when it exists and the data folder copy otherwise. Every note is also kept in your history on the home tab, so even the copy on disk is not the only one.
 
 If you press the note chord before choosing a folder, the pill says "set a notes folder in settings" and plays the soft no-speech cue. Nothing records until a folder is set.
 

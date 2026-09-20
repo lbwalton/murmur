@@ -97,6 +97,25 @@ describe('a refused start (review gate 2026-09-18, two chords sharing one mic)',
     expect(calls).toEqual(['start'])
   })
 
+  it('tries a refused start once per physical press, not once per key repeat', () => {
+    const calls: string[] = []
+    const m = new HoldMachine({
+      start: () => {
+        calls.push('start')
+        return false
+      },
+      stop: () => calls.push('stop')
+    })
+    m.keyDown()
+    m.keyDown() // OS key repeat while held
+    m.keyDown()
+    expect(calls).toEqual(['start'])
+    m.keyUp()
+    m.keyDown() // a new physical press tries again
+    expect(calls).toEqual(['start', 'start'])
+    expect(m.isActive()).toBe(false)
+  })
+
   it('leaves a toggle machine inactive so the next tap is a fresh start, not a stop', () => {
     const calls: string[] = []
     let allow = false

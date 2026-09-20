@@ -118,6 +118,13 @@ export function saveNote(text: string, when: Date = new Date()): NoteSaveResult 
   if (folder !== '') {
     const file = join(folder, ...target.segments)
     try {
+      // The notes folder itself must already exist; only subfolders
+      // inside it are created. A renamed vault or an unplugged drive
+      // must redirect, never be recreated as a ghost folder (an empty
+      // directory left at a mount point also blocks the real drive).
+      if (!statSync(folder).isDirectory()) {
+        throw Object.assign(new Error('notes folder is not a directory'), { code: 'ENOTDIR' })
+      }
       appendEntry(file, entry)
       lastSave = { at: Date.now(), location: 'folder', relative: target.relative }
       writeAppLog(`[notes] saved location=folder file=${target.relative} bytes=${bytes}`)
@@ -222,6 +229,9 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
     const before = getSettings().notes
     const vault = join(app.getPath('userData'), 'smoke-vault')
     try {
+      // A real vault exists before anyone points murmur at it; only
+      // the subfolders inside it are murmur's to create.
+      mkdirSync(vault, { recursive: true })
       updateSettings({ notes: { folder: vault, ...defaults } })
       const first = saveNote('Notes smoke probe one.', probeMoment)
       const second = saveNote('Notes smoke probe two.', probeMoment)
@@ -251,23 +261,34 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   })
 
   registerSmokeCheck('notesFallback', () => {
-    // A folder that cannot exist (its parent is a regular file) loses
-    // nothing: the note lands in the data folder and the log names it.
+    // Two unreachable folders lose nothing: one that cannot exist (its
+    // parent is a regular file) and one that simply is not there (a
+    // renamed vault, an unplugged drive). Both notes land in the data
+    // folder, the log names each redirect, and the missing folder is
+    // never recreated as a ghost (live-found 2026-09-20).
     const before = getSettings().notes
     const blocker = join(app.getPath('userData'), 'smoke-blocker')
+    const missing = join(app.getPath('userData'), 'smoke-missing-vault')
     try {
       writeFileSync(blocker, 'a regular file where a folder is expected\n')
       updateSettings({ notes: { folder: join(blocker, 'vault'), ...defaults } })
-      const result = saveNote('Notes fallback probe.', probeMoment)
+      const blocked = saveNote('Notes fallback probe.', probeMoment)
+      updateSettings({ notes: { folder: missing } })
+      const gone = saveNote('Notes missing probe.', probeMoment)
       const file = join(fallbackDir(), 'murmur', 'inbox', '2026-09-18.md')
-      const landed = existsSync(file) && readFileSync(file, 'utf8').includes('## 10:32\n\nNotes fallback probe.\n')
+      const content = existsSync(file) ? readFileSync(file, 'utf8') : ''
       const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
       const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
       return (
-        result.ok &&
-        result.location === 'fallback' &&
-        landed &&
-        log.includes('[notes] notes folder unreachable reason=') &&
+        blocked.ok &&
+        blocked.location === 'fallback' &&
+        gone.ok &&
+        gone.location === 'fallback' &&
+        content.includes('## 10:32\n\nNotes fallback probe.\n') &&
+        content.includes('## 10:32\n\nNotes missing probe.\n') &&
+        !existsSync(missing) &&
+        log.includes('[notes] notes folder unreachable reason=ENOTDIR') &&
+        log.includes('[notes] notes folder unreachable reason=ENOENT') &&
         log.includes('[notes] saved location=fallback file=murmur/inbox/2026-09-18.md') &&
         getNotesStatus().lastSave?.location === 'fallback'
       )

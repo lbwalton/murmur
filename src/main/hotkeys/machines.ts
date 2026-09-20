@@ -19,16 +19,23 @@ export interface TriggerMachine {
 /** Hold-to-talk: down starts, up stops. OS key repeat never double-fires. */
 export class HoldMachine implements TriggerMachine {
   private active = false
+  // Latched from the first key down to the key up whatever start said,
+  // so OS key repeat (a down every 85ms while held) never retries a
+  // refused start (live-found 2026-09-20: seventeen hints and cues in
+  // two seconds from one held note chord with no folder set).
+  private held = false
 
   constructor(private readonly cb: DictationCallbacks) {}
 
   keyDown(): void {
-    if (this.active) return // key repeat
+    if (this.held) return // key repeat
+    this.held = true
     if (this.cb.start() === false) return
     this.active = true
   }
 
   keyUp(): void {
+    this.held = false
     if (!this.active) return
     this.active = false
     this.cb.stop()
