@@ -3,9 +3,28 @@
 // writer and the sorter. A vault synced by iCloud, Dropbox, or Obsidian
 // Sync never sees a whole-file rewrite it could conflict on.
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { app } from 'electron'
 import { type NotePathResult, appendSeparator, resolveNotePath } from '../../shared/notes'
+import { getSettings } from '../settings'
 import { writeAppLog } from '../window-watch'
+
+/** Where a note lands when the notes folder cannot be written. */
+export function fallbackDir(): string {
+  return join(app.getPath('userData'), 'notes')
+}
+
+/** The configured notes folder, trimmed; '' when note mode is off. */
+export function notesFolder(): string {
+  return getSettings().notes.folder.trim()
+}
+
+/** Where notes live, in the order anything reading them should look:
+ *  the configured folder first, then the data folder a redirect uses. */
+export function notesBases(): string[] {
+  const folder = notesFolder()
+  return folder !== '' ? [folder, fallbackDir()] : [fallbackDir()]
+}
 
 /** A file's text, or '' when it does not exist yet. */
 export function fileText(file: string): string {

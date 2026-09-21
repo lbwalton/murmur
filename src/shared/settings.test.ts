@@ -21,6 +21,7 @@ describe('mergeSettings', () => {
       ideasTemplate: 'murmur/ideas.md',
       filedHeadingTemplate: '## {date} {topic}',
       topicHeadings: false,
+      reminders: { enabled: false, times: ['08:30', '13:00', '17:30'] },
       connection: { enabled: false, baseUrl: '', llmModel: '' }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
@@ -38,6 +39,13 @@ describe('mergeSettings', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, { provider: { sttModel: 'custom-model' } })
     expect(merged.provider.sttModel).toBe('custom-model')
     expect(merged.provider.baseUrl).toBe(DEFAULT_SETTINGS.provider.baseUrl)
+  })
+
+  it('drops a reminder time that is not a string', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      notes: { reminders: { enabled: true, times: ['08:30', 123, null, '17:30'] } }
+    })
+    expect(merged.notes.reminders.times).toEqual(['08:30', '17:30'])
   })
 
   it('preserves unknown keys from newer builds', () => {

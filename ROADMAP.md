@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (48/54 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (49/55 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -52,17 +52,18 @@
 - [x] **US-048** A silent stream heals itself
 - [x] **US-049** Keys live with their providers
 - [x] **US-050** Brain dump: speak a note instead of a paste
+- [x] **US-051** Brain dump sorting: thoughts file themselves
 
 ## Built, awaiting live verification
 
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
-- [ ] **US-051** Brain dump sorting: thoughts file themselves
+- [ ] **US-052** Note recall: optional desktop reminders
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-052** Note recall: optional desktop reminders
 - [ ] **US-053** A silent stream heals before the first press
 - [ ] **US-054** Speak an edit: transform the text you have selected
+- [ ] **US-056** One sentence, several tasks: splitting that cannot reword

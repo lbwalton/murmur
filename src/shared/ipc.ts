@@ -39,6 +39,7 @@ export const IpcChannels = {
   notesStatus: 'notes:status',
   notesOpenToday: 'notes:openToday',
   notesSortLast: 'notes:sortLast',
+  notesTestReminder: 'notes:testReminder',
   apiKeySetFor: 'apikey:setFor',
   apiKeyStatusFor: 'apikey:statusFor',
   apiKeyClearFor: 'apikey:clearFor',

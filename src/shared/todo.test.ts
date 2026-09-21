@@ -1,0 +1,130 @@
+// SPDX-License-Identifier: GPL-3.0-only
+import { describe, expect, it } from 'vitest'
+import { alreadyPast, dueReminders, markFired, openItems, parseTodo, reminderBody } from './todo'
+
+const FILE = `# My tasks
+
+## 2026-09-20 dentist and travel
+- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))
+- [x] Book the flight. ([10:32](inbox/2026-09-20.md))
+
+## 2026-09-19
+* [ ] Renew the domain.
++ [ ] Water the plants.
+- [X] Pay the invoice.
+just a line
+- not a checkbox
+`
+
+describe('parseTodo', () => {
+  it('reads every bullet style with its state and heading, link stripped', () => {
+    expect(parseTodo(FILE)).toEqual([
+      { text: 'Call the dentist about Thursday.', done: false, group: '2026-09-20 dentist and travel' },
+      { text: 'Book the flight.', done: true, group: '2026-09-20 dentist and travel' },
+      { text: 'Renew the domain.', done: false, group: '2026-09-19' },
+      { text: 'Water the plants.', done: false, group: '2026-09-19' },
+      { text: 'Pay the invoice.', done: true, group: '2026-09-19' }
+    ])
+  })
+
+  it('reads a file written on Windows', () => {
+    const crlf = '## 2026-09-20\r\n- [ ] Call Bob.\r\n- [x] Done thing.\r\n'
+    expect(parseTodo(crlf)).toEqual([
+      { text: 'Call Bob.', done: false, group: '2026-09-20' },
+      { text: 'Done thing.', done: true, group: '2026-09-20' }
+    ])
+  })
+
+  it('counts a tick in either case as done, and nothing else as a task', () => {
+    expect(openItems(parseTodo(FILE)).map((i) => i.text)).toEqual([
+      'Call the dentist about Thursday.',
+      'Renew the domain.',
+      'Water the plants.'
+    ])
+    expect(parseTodo('')).toEqual([])
+    expect(parseTodo('- [ ]no space after the box')).toEqual([])
+  })
+
+  it('ignores a checkbox inside a code fence and an empty box', () => {
+    const fenced = '- [ ] real task\n```\n- [ ] sample in a code block\n```\n- [ ]   \n~~~\n- [ ] another sample\n~~~\n'
+    expect(parseTodo(fenced).map((i) => i.text)).toEqual(['real task'])
+  })
+
+  it('keeps an item that carries no link', () => {
+    expect(parseTodo('- [ ] plain item')).toEqual([{ text: 'plain item', done: false, group: '' }])
+  })
+})
+
+describe('reminderBody', () => {
+  it('leads with the count and fits what it can', () => {
+    expect(reminderBody(parseTodo(FILE))).toBe(
+      '3 open tasks: Call the dentist about Thursday.; Renew the domain.; Water the plants.'
+    )
+  })
+
+  it('says nothing when nothing is open, so nothing fires', () => {
+    expect(reminderBody(parseTodo('- [x] done\n'))).toBe('')
+    expect(reminderBody([])).toBe('')
+  })
+
+  it('uses the singular for one task', () => {
+    expect(reminderBody(parseTodo('- [ ] one thing\n'))).toBe('1 open task: one thing')
+  })
+
+  it('previews as much of a long task as fits instead of dropping it', () => {
+    const body = reminderBody(parseTodo(`- [ ] ${'x'.repeat(300)}\n`))
+    expect(body.startsWith('1 open task: xxx')).toBe(true)
+    expect(body.endsWith('…')).toBe(true)
+    expect(body.length).toBeLessThanOrEqual(180)
+  })
+
+  it('never exceeds the budget with many items', () => {
+    const many = Array.from({ length: 20 }, (_, i) => `- [ ] task number ${i}`).join('\n')
+    expect(reminderBody(parseTodo(many)).length).toBeLessThanOrEqual(180)
+  })
+})
+
+describe('dueReminders', () => {
+  const at = (h: number, m: number): number => new Date(2026, 8, 20, h, m).getTime()
+  const today = '2026-09-20'
+  const times = ['08:30', '13:00', '17:30']
+
+  it('reports each time once a day, keyed by its slot', () => {
+    expect(dueReminders(at(8, 0), times, {})).toEqual([])
+    expect(dueReminders(at(8, 30), times, {})).toEqual([{ index: 0, time: '08:30' }])
+    expect(dueReminders(at(13, 1), times, { '0': today })).toEqual([{ index: 1, time: '13:00' }])
+    expect(dueReminders(at(13, 1), times, { '0': today, '1': today })).toEqual([])
+  })
+
+  it('hands back everything missed at once so the caller can settle them together', () => {
+    expect(dueReminders(at(19, 0), times, {}).map((d) => d.time)).toEqual(['08:30', '13:00', '17:30'])
+  })
+
+  it('does not re-fire a slot whose time the user edited today', () => {
+    // Slot 0 already fired as 08:30; renaming it to 09:00 must stay quiet.
+    expect(dueReminders(at(15, 0), ['09:00', '13:00'], { '0': today, '1': today })).toEqual([])
+  })
+
+  it('ignores empty and malformed times', () => {
+    expect(dueReminders(at(23, 0), ['', '  ', 'nope', '25:00'], {})).toEqual([])
+    expect(dueReminders(at(23, 0), ['', '09:00'], {})).toEqual([{ index: 1, time: '09:00' }])
+  })
+
+  it('starts a new day fresh', () => {
+    expect(dueReminders(at(8, 45), ['08:30'], { '0': '2026-09-19' })).toEqual([{ index: 0, time: '08:30' }])
+  })
+})
+
+describe('markFired and alreadyPast', () => {
+  const now = new Date(2026, 8, 20, 13, 5).getTime()
+
+  it('records the slots given and forgets days that have passed', () => {
+    expect(markFired(now, [0], { '1': '2026-09-19' })).toEqual({ '0': '2026-09-20' })
+    expect(markFired(now, [0, 1], {})).toEqual({ '0': '2026-09-20', '1': '2026-09-20' })
+  })
+
+  it('names the times already past, so switching on mid-day stays quiet', () => {
+    expect(alreadyPast(now, ['08:30', '13:00', '17:30'])).toEqual([0, 1])
+    expect(alreadyPast(new Date(2026, 8, 20, 7, 0).getTime(), ['08:30', '13:00'])).toEqual([])
+  })
+})

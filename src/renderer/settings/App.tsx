@@ -10,7 +10,6 @@ import type {
   ProviderTestResult,
   SettingsApi
 } from '../../preload/settings'
-import { parseRecapTime } from '../../shared/recap'
 import proConfig from '../../../shared/pro.json'
 import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
@@ -21,7 +20,7 @@ import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
-import { ModelPicker, Row, TextSetting } from './controls'
+import { ModelPicker, Row, TextSetting, TimeInput } from './controls'
 
 declare global {
   interface Window {
@@ -74,29 +73,6 @@ function VolumeSlider(props: {
  * schedule forever. Only valid times ever reach the store, and blurring
  * an incomplete edit snaps back to the saved value.
  */
-function RecapTimeInput(props: {
-  value: string
-  disabled: boolean
-  onCommit: (time: string) => void
-}): React.JSX.Element {
-  const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
-  return (
-    <input
-      type="time"
-      className="field"
-      value={draft}
-      disabled={props.disabled}
-      onChange={(e) => {
-        setDraft(e.target.value)
-        if (parseRecapTime(e.target.value)) props.onCommit(e.target.value)
-      }}
-      onBlur={() => {
-        if (!parseRecapTime(draft)) setDraft(props.value)
-      }}
-    />
-  )
-}
 
 /**
  * Inline add form for a pair of values. multilineRight turns the second
@@ -1194,7 +1170,7 @@ export function App(): React.JSX.Element {
               <option value="off">Off</option>
               <option value="on">On</option>
             </select>
-            <RecapTimeInput
+            <TimeInput
               value={settings.recap.time}
               disabled={!settings.recap.enabled}
               onCommit={(time) => void update({ recap: { ...settings.recap, time } })}

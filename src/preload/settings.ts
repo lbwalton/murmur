@@ -98,6 +98,11 @@ const api = {
     return ipcRenderer.invoke('provider:testFor', baseUrl)
   },
   sortLastNote: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:sortLast'),
+  testNotesReminder: (): Promise<{
+    outcome: 'shown' | 'empty' | 'missing' | 'suppressed'
+    body: string
+    open: number
+  }> => ipcRenderer.invoke('notes:testReminder'),
   getCatalog: (): Promise<import('../shared/catalog').ProviderCatalog> => {
     return ipcRenderer.invoke('catalog:get')
   },

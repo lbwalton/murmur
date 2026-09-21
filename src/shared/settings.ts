@@ -100,6 +100,12 @@ export interface Settings {
     /** Ask the sort model to name each note, so {topic} in the heading
      *  says what a group is about at a glance. */
     topicHeadings: boolean
+    /** Desktop reminders that read the tasks file and say what is
+     *  still open. Off by default: notifications are opt in. */
+    reminders: {
+      enabled: boolean
+      times: string[]
+    }
     /** The sort connection, shaped like the cleanup slot: enabled false
      *  means same as cleanup; a complete separate slot runs on its own. */
     connection: {
@@ -194,6 +200,10 @@ export const DEFAULT_SETTINGS: Settings = {
     ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
     filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
     topicHeadings: false,
+    reminders: {
+      enabled: false,
+      times: ['08:30', '13:00', '17:30']
+    },
     connection: {
       enabled: false,
       baseUrl: '',
@@ -255,6 +265,14 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   }
   if (Array.isArray(out.expansions)) {
     out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
+  }
+  // Reminder times feed a scheduler that runs every minute, so a
+  // non-string here would throw on a timer forever (review gate
+  // 2026-09-21), the same class of failure the entry lists guard.
+  const notes = out.notes as Record<string, unknown> | undefined
+  const reminders = notes?.reminders as Record<string, unknown> | undefined
+  if (reminders && Array.isArray(reminders.times)) {
+    reminders.times = reminders.times.filter((t) => typeof t === 'string')
   }
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {

@@ -14,7 +14,8 @@ import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, renderNoteEntr
 import { getSettings, updateSettings } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
-import { appendEntry, errorCode, resolveTemplateOrDefault } from './files'
+import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
+import { initReminders } from './reminders'
 import { type SortReport, canSortAgain, getLastSort, initSorter, sortLastNote } from './sorter'
 
 export type NoteLocation = 'folder' | 'fallback'
@@ -48,10 +49,6 @@ let lastSave: NotesStatus['lastSave'] = null
 /** A notes folder is set: the note chord may record. */
 export function notesConfigured(): boolean {
   return getSettings().notes.folder.trim() !== ''
-}
-
-function fallbackDir(): string {
-  return join(app.getPath('userData'), 'notes')
 }
 
 /** Today's inbox file, relative to the folder; a broken template
@@ -133,11 +130,8 @@ export function getNotesStatus(): NotesStatus {
 export async function openTodayNote(): Promise<'file' | 'folder' | 'none'> {
   const folder = getSettings().notes.folder.trim()
   const target = resolveTarget(new Date())
-  const candidates = [
-    ...(folder !== '' ? [join(folder, ...target.segments)] : []),
-    join(fallbackDir(), ...target.segments)
-  ]
-  for (const file of candidates) {
+  for (const base of notesBases()) {
+    const file = join(base, ...target.segments)
     if (existsSync(file) && (await shell.openPath(file)) === '') return 'file'
   }
   const base = folder !== '' ? folder : fallbackDir()
@@ -170,6 +164,7 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
     return getNotesStatus()
   })
   initSorter()
+  initReminders()
 
   const probeMoment = new Date(2026, 8, 18, 10, 32)
   const defaults = { pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE, entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE }

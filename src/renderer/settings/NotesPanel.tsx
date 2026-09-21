@@ -3,7 +3,7 @@
 // where the last note landed, and the file layout templates with a
 // live preview. Template math is the shared pure module, so what the
 // preview says is exactly what the writer does.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HotkeysStatus, KeyStatus, NotesStatus, SettingsApi } from '../../preload/settings'
 import type { ProviderCatalog } from '../../shared/catalog'
 import {
@@ -17,7 +17,7 @@ import {
 import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Row, TextSetting } from './controls'
+import { Row, TextSetting, TimeInput } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -95,6 +95,11 @@ export function NotesPanel(props: {
   // it commits on blur or Enter like every other text setting.
   const [pathDraft, setPathDraft] = useState(notes.pathTemplate)
   const [opened, setOpened] = useState<'file' | 'folder' | 'none' | null>(null)
+  const [reminderTest, setReminderTest] = useState<string | null>(null)
+  const reminderTestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (reminderTestTimer.current) clearTimeout(reminderTestTimer.current)
+  }, [])
 
   useEffect(() => setFolderDraft(notes.folder), [notes.folder])
   useEffect(() => setPathDraft(notes.pathTemplate), [notes.pathTemplate])
@@ -178,6 +183,27 @@ export function NotesPanel(props: {
     } finally {
       setSorting(false)
     }
+  }
+
+  const reminders = notes.reminders
+  const setReminderTime = (index: number, time: string): void => {
+    const times = [...reminders.times]
+    times[index] = time
+    void update({ reminders: { ...reminders, times } })
+  }
+  const testReminder = async (): Promise<void> => {
+    const result = await bridge().testNotesReminder()
+    setReminderTest(
+      result.outcome === 'shown'
+        ? result.body
+        : result.outcome === 'empty'
+          ? 'nothing open right now, so a reminder would stay quiet'
+          : result.outcome === 'suppressed'
+            ? 'this system is not showing notifications; check its notification settings for murmur'
+            : 'no tasks file yet, so there is nothing to read'
+    )
+    if (reminderTestTimer.current) clearTimeout(reminderTestTimer.current)
+    reminderTestTimer.current = setTimeout(() => setReminderTest(null), 6000)
   }
 
   const preview = resolveNotePath(pathDraft, new Date())
@@ -363,6 +389,42 @@ export function NotesPanel(props: {
             test: () => bridge().testConnectionFor(notes.connection.baseUrl)
           }}
         />
+      )}
+
+      {(notes.folder !== '' || reminders.enabled) && (
+        <Row
+          label="Task reminders"
+          anchor="row-notes-reminders"
+          desc={
+            reminderTest ??
+            'Desktop notifications that read your tasks file as it stands and say what is still open. Clicking one opens the list. Off by default, a file with nothing open stays quiet, and clearing a time switches that one off.'
+          }
+        >
+          <div className="inline">
+            <select
+              className="field"
+              value={reminders.enabled ? 'on' : 'off'}
+              onChange={(e) =>
+                void update({ reminders: { ...reminders, enabled: e.target.value === 'on' } })
+              }
+            >
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+            {reminders.times.map((time, index) => (
+              <TimeInput
+                key={index}
+                value={time}
+                disabled={!reminders.enabled}
+                allowEmpty
+                onCommit={(next) => setReminderTime(index, next)}
+              />
+            ))}
+            <button className="btn" onClick={() => void testReminder()}>
+              Test
+            </button>
+          </div>
+        </Row>
       )}
 
       <details className="fold">

@@ -2,6 +2,7 @@
 // Settings building blocks shared by the page and its panels: the
 // label-plus-control row and the commit-on-blur text field.
 import { useEffect, useState } from 'react'
+import { parseRecapTime } from '../../shared/recap'
 
 /** Text field that commits on blur or Enter, with optional suggestions. */
 export function TextSetting(props: {
@@ -126,5 +127,38 @@ export function ModelPicker(props: {
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Time field. Only a valid time commits, so a half-typed hour never
+ * reaches settings, and an invalid draft reverts on blur. allowEmpty
+ * makes clearing the field a real value (a reminder slot switched
+ * off); without it an emptied field snaps back.
+ */
+export function TimeInput(props: {
+  value: string
+  disabled: boolean
+  allowEmpty?: boolean
+  onCommit: (time: string) => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(props.value)
+  useEffect(() => setDraft(props.value), [props.value])
+  return (
+    <input
+      type="time"
+      className="field"
+      value={draft}
+      disabled={props.disabled}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        if (parseRecapTime(e.target.value)) props.onCommit(e.target.value)
+        else if (props.allowEmpty && e.target.value === '') props.onCommit('')
+      }}
+      onBlur={() => {
+        if (props.allowEmpty && draft === '') return
+        if (!parseRecapTime(draft)) setDraft(props.value)
+      }}
+    />
   )
 }
