@@ -118,9 +118,21 @@ export function markFired(
   return next
 }
 
-/** Every time already past today, for the moment reminders are switched
- *  on: they are recorded as fired so turning the feature on at three in
- *  the afternoon does not deliver the morning and midday reminders. */
+/** Every time already past today, ignoring what has fired. */
 export function alreadyPast(nowMs: number, times: readonly string[]): number[] {
   return dueReminders(nowMs, times, {}).map((due) => due.index)
+}
+
+/**
+ * Fired state after the times change or reminders are switched on: a
+ * slot whose time has already passed today counts as fired, so neither
+ * edit ever back-fires, and a slot whose time is still ahead is free to
+ * fire at it. Setting a reminder for ten minutes from now therefore
+ * arrives in ten minutes, even in a slot that already ran this morning.
+ */
+export function resettleFired(nowMs: number, times: readonly string[]): Record<string, string> {
+  const today = dayKey(nowMs)
+  const settled: Record<string, string> = {}
+  for (const index of alreadyPast(nowMs, times)) settled[String(index)] = today
+  return settled
 }

@@ -140,7 +140,7 @@ Yes, and it starts off. With Sort into tasks and ideas off, murmur writes each n
 
 Yes, with Task reminders. The row appears once a notes folder is set. Set it to On and pick up to three times of day; clearing a time switches that one off, so one reminder a day is as valid as three. At each time murmur reads your tasks file as it stands at that moment and shows a notification with the open count and as many of the items as fit: "2 open tasks: Call the dentist about Thursday.; Renew the domain." Clicking it opens the list.
 
-It is off by default and it stays quiet rather than nagging. A file where everything is ticked fires nothing. A tasks file that does not exist yet fires nothing and says why. Turning reminders on part way through a day does not deliver that morning's reminder retroactively, and a machine that was off all day comes back to one readout rather than three notifications a minute apart.
+It is off by default and it stays quiet rather than nagging. A file where everything is ticked fires nothing. A tasks file that does not exist yet fires nothing and says why. Turning reminders on part way through a day does not deliver that morning's reminder retroactively, and neither does editing a time to one that has already passed. A time you set for later today does arrive, even in a slot that already ran this morning. A machine that was off all day comes back to one readout rather than three notifications a minute apart.
 
 Test fires one immediately from the real file without using up a scheduled one, which is the quickest way to confirm notifications are allowed to reach you. If your system is blocking them, Test says so instead of appearing to work.
 

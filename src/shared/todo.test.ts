@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { alreadyPast, dueReminders, markFired, openItems, parseTodo, reminderBody } from './todo'
+import {
+  alreadyPast,
+  dueReminders,
+  markFired,
+  openItems,
+  parseTodo,
+  reminderBody,
+  resettleFired
+} from './todo'
 
 const FILE = `# My tasks
 
@@ -126,5 +134,30 @@ describe('markFired and alreadyPast', () => {
   it('names the times already past, so switching on mid-day stays quiet', () => {
     expect(alreadyPast(now, ['08:30', '13:00', '17:30'])).toEqual([0, 1])
     expect(alreadyPast(new Date(2026, 8, 20, 7, 0).getTime(), ['08:30', '13:00'])).toEqual([])
+  })
+})
+
+describe('resettleFired', () => {
+  const at = (h: number, m: number): number => new Date(2026, 8, 20, h, m).getTime()
+  const today = '2026-09-20'
+
+  it('suppresses times already past and frees times still ahead', () => {
+    expect(resettleFired(at(13, 5), ['08:30', '13:00', '17:30'])).toEqual({ '0': today, '1': today })
+  })
+
+  it('lets a slot that already ran today fire again at a time set ahead', () => {
+    // 23:16, slot 0 ran this morning, now edited to 23:20.
+    const settled = resettleFired(at(23, 16), ['23:20', '13:00'])
+    expect(settled).toEqual({ '1': today })
+    expect(dueReminders(at(23, 20), ['23:20', '13:00'], settled)).toEqual([{ index: 0, time: '23:20' }])
+  })
+
+  it('keeps an edit to a time already past from firing on the spot', () => {
+    const settled = resettleFired(at(15, 0), ['09:00'])
+    expect(dueReminders(at(15, 1), ['09:00'], settled)).toEqual([])
+  })
+
+  it('ignores cleared and malformed slots', () => {
+    expect(resettleFired(at(23, 0), ['', 'nope', '08:00'])).toEqual({ '2': today })
   })
 })

@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { Notification, app, ipcMain, shell } from 'electron'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_TASKS_TEMPLATE } from '../../shared/notes'
-import { alreadyPast, dueReminders, markFired, openItems, parseTodo, reminderBody } from '../../shared/todo'
+import { dueReminders, markFired, openItems, parseTodo, reminderBody, resettleFired } from '../../shared/todo'
 import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
@@ -155,17 +155,20 @@ function tick(): void {
 export function initReminders(): void {
   stateFile = join(app.getPath('userData'), 'notes-reminders.json')
 
-  // Switching reminders on records every time already past today, so
-  // turning the feature on after lunch does not deliver the morning
-  // and midday reminders on the spot (review gate 2026-09-21).
-  let wasEnabled = getSettings().notes.reminders.enabled
+  // Switching reminders on, or editing a time, settles the day: times
+  // already past count as fired so neither edit back-fires, and a time
+  // set for later today is free to arrive (review gate 2026-09-21, then
+  // live 2026-09-20 when a slot edited to a few minutes ahead stayed
+  // silent because that slot had already run in the morning).
+  let previous = getSettings().notes.reminders
   onSettingsChanged((settings) => {
-    const enabled = settings.notes.reminders.enabled
-    if (enabled && !wasEnabled) {
-      const now = Date.now()
-      writeFired(markFired(now, alreadyPast(now, settings.notes.reminders.times), readFired()))
+    const current = settings.notes.reminders
+    const switchedOn = current.enabled && !previous.enabled
+    const timesChanged = current.times.join('|') !== previous.times.join('|')
+    if (current.enabled && (switchedOn || timesChanged)) {
+      writeFired(resettleFired(Date.now(), current.times))
     }
-    wasEnabled = enabled
+    previous = current
   })
 
   const timer = setInterval(tick, 60_000)
