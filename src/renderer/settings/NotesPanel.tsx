@@ -40,6 +40,12 @@ function plural(n: number, one: string, many: string): string {
 
 /** Why a line was held, in the panel's own words, with the item it was
  *  tied to quoted from the file. */
+/** A phrase as a sentence: a full stop unless it already ends with
+ *  one, a closing quote or bracket allowed after it. */
+function withStop(phrase: string): string {
+  return /[.!?]["\u201d')\]]?$/.test(phrase) ? phrase : `${phrase}.`
+}
+
 function heldPhrase(line: NotesStatus['heldLines'][number]): string {
   const item = line.match?.text ?? ''
   if (line.reason === 'same') return `looks like a duplicate of: ${item}`
@@ -384,7 +390,7 @@ export function NotesPanel(props: {
             <Row
               key={line.id}
               label={`Held: ${line.text}`}
-              desc={`${heldPhrase(line)}. It stays in the inbox as you said it.${
+              desc={`${withStop(heldPhrase(line))} It stays in the inbox as you said it.${
                 line.label === 'note'
                   ? ''
                   : ` File it anyway lands it as ${
