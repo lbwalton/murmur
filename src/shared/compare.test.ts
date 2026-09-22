@@ -69,14 +69,21 @@ describe('readRelationVotes', () => {
 describe('pickRelated', () => {
   const items = buildCompareContext(TASKS, IDEAS)
 
-  it('holds a task or idea the vote tied to an item, and never a note', () => {
-    const labels = ['task', 'note', 'idea', 'task']
-    const relations = { 1: { relation: 'same' as const, item: 1 }, 2: { relation: 'same' as const, item: 1 }, 3: { relation: 'completes' as const, item: 4 } }
-    const { related, kept } = pickRelated([0, 1, 2, 3], labels, relations, items)
+  it('holds a task or idea the vote tied to an item, and a note only as a completion', () => {
+    const labels = ['task', 'note', 'idea', 'task', 'note']
+    const relations = {
+      1: { relation: 'same' as const, item: 1 },
+      2: { relation: 'same' as const, item: 1 },
+      3: { relation: 'completes' as const, item: 4 },
+      5: { relation: 'completes' as const, item: 3 }
+    }
+    const { related, kept } = pickRelated([0, 1, 2, 3, 4], labels, relations, items)
     expect(related.map((r) => [r.local, r.vote.relation, r.item.number])).toEqual([
       [0, 'same', 1],
-      [2, 'completes', 4]
+      [2, 'completes', 4],
+      [4, 'completes', 3]
     ])
+    // The note voted a duplicate is kept: a note files nowhere.
     expect(kept).toEqual([1, 3])
   })
 

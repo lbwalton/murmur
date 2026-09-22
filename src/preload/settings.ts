@@ -101,9 +101,9 @@ const api = {
     return ipcRenderer.invoke('provider:testDecideFor', baseUrl)
   },
   sortLastNote: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:sortLast'),
-  fileHeldLine: (position: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:fileHeld', position),
-  skipHeldLine: (position: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:skipHeld', position),
-  tickHeldMatch: (position: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:tickHeld', position),
+  fileHeldLine: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:fileHeld', id),
+  skipHeldLine: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:skipHeld', id),
+  tickHeldMatch: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:tickHeld', id),
   testNotesReminder: (): Promise<{
     outcome: 'shown' | 'empty' | 'missing' | 'suppressed'
     body: string

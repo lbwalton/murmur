@@ -191,18 +191,18 @@ export function NotesPanel(props: {
   }
 
   const heldAction = async (
-    position: number,
+    id: number,
     action: 'file' | 'skip' | 'tick'
   ): Promise<void> => {
     if (acting !== null) return
-    setActing(position)
+    setActing(id)
     try {
       const next =
         action === 'file'
-          ? await bridge().fileHeldLine(position)
+          ? await bridge().fileHeldLine(id)
           : action === 'skip'
-            ? await bridge().skipHeldLine(position)
-            : await bridge().tickHeldMatch(position)
+            ? await bridge().skipHeldLine(id)
+            : await bridge().tickHeldMatch(id)
       setStatus(next)
     } finally {
       setActing(null)
@@ -382,9 +382,15 @@ export function NotesPanel(props: {
           )}
           {status.heldLines.map((line) => (
             <Row
-              key={line.position}
+              key={line.id}
               label={`Held: ${line.text}`}
-              desc={`${heldPhrase(line)}. It stays in the inbox as you said it. File it anyway lands it as a ${line.label}; Skip leaves it there.${
+              desc={`${heldPhrase(line)}. It stays in the inbox as you said it.${
+                line.label === 'note'
+                  ? ''
+                  : ` File it anyway lands it as ${
+                      line.pieces && line.pieces.length > 1 ? `${line.pieces.length} ${line.label}s, one per item` : `a ${line.label}`
+                    };`
+              } Skip leaves it there.${
                 line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done
                   ? ' Tick it marks that item done in your tasks file, one box and nothing else.'
                   : ''
@@ -394,22 +400,24 @@ export function NotesPanel(props: {
                 {line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done && (
                   <button
                     className="btn"
-                    onClick={() => void heldAction(line.position, 'tick')}
+                    onClick={() => void heldAction(line.id, 'tick')}
                     disabled={acting !== null}
                   >
                     Tick it
                   </button>
                 )}
+                {line.label !== 'note' && (
+                  <button
+                    className="btn quiet-btn"
+                    onClick={() => void heldAction(line.id, 'file')}
+                    disabled={acting !== null}
+                  >
+                    File it anyway
+                  </button>
+                )}
                 <button
                   className="btn quiet-btn"
-                  onClick={() => void heldAction(line.position, 'file')}
-                  disabled={acting !== null}
-                >
-                  File it anyway
-                </button>
-                <button
-                  className="btn quiet-btn"
-                  onClick={() => void heldAction(line.position, 'skip')}
+                  onClick={() => void heldAction(line.id, 'skip')}
                   disabled={acting !== null}
                 >
                   Skip

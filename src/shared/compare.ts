@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Comparing a new dump against what is already filed (US-055), pure
 // half. The items already in the tasks and ideas files ride the same
-// request as the labels, numbered, and for each new task or idea the
-// model votes one relation against that list: new, the same as item N,
-// or a report that item N is finished. The model chooses from numbers
+// request as the labels, numbered, and for each new sentence the model
+// votes one relation against that list: new, the same as item N, or a
+// report that item N is finished (a note can only be the last). The model chooses from numbers
 // only. A line the vote ties to an item is held in the verbatim inbox
 // with the item quoted, and nothing is ever merged or edited without a
 // click. A malformed vote means new, so a bad reply can never hide a
@@ -66,7 +66,7 @@ export function contextPrompt(items: readonly ContextItem[], cap = COMPARE_CAP):
 export const SORT_RELATIONS_PROMPT = [
   'Below the sentences is a numbered list of items already in the user\'s files, each marked [ ] open or [x] done.',
   'Also include the key "relations": an object mapping a sentence number to a pair [code, item], where code 1 means the sentence says the same thing as that item, and code 2 means the sentence reports that item as finished.',
-  'Leave out every sentence that is new. Relate a sentence to an item only when it clearly refers to the same thing. Numbers only, never text.'
+  'Leave out every sentence that is new. Relate a sentence to an item only when it clearly refers to the same thing; a sentence that reports something done is code 2 whatever label it carries. Numbers only, never text.'
 ].join(' ')
 
 export type Relation = 'same' | 'completes'
@@ -117,8 +117,11 @@ export interface RelatedLine {
 
 /**
  * Split the sure lines into the ones a vote tied to a filed item and
- * the ones that file. Only a task or an idea is ever compared: a note
- * stays in the inbox whatever a vote said, and a vote naming an item
+ * the ones that file. A task or an idea is compared both ways. A note
+ * is compared for completion only: a report that something is done is
+ * naturally a past-tense statement, which the model labels a note, so
+ * it can complete an item; but a note files nowhere, so it is never a
+ * duplicate of one (live finding 2026-09-22). A vote naming an item
  * outside the context counts for nothing.
  */
 export function pickRelated(
@@ -133,7 +136,8 @@ export function pickRelated(
     const label = labels[i]
     const vote = relations[i + 1]
     const item = vote ? items[vote.item - 1] : undefined
-    if ((label === 'task' || label === 'idea') && vote && item) related.push({ local: i, vote, item })
+    const compared = label === 'task' || label === 'idea' || vote?.relation === 'completes'
+    if (compared && vote && item) related.push({ local: i, vote, item })
     else kept.push(i)
   }
   return { related, kept }

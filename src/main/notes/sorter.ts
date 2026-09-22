@@ -24,13 +24,16 @@ import { basename, dirname, join } from 'node:path'
 import { app } from 'electron'
 import {
   type ContextFile,
+  type ContextItem,
   type HeldReason,
+  type RelationVotes,
   SORT_RELATIONS_PROMPT,
   buildCompareContext,
   contextPrompt,
   heldReasonFor,
   pickRelated
 } from '../../shared/compare'
+import { type FiledPiece, type HeldPiece, assignPieceVotes, flattenPieces, piecesToCompare } from '../../shared/pieces'
 import { parseTodo, tickLine } from '../../shared/todo'
 import {
   DEFAULT_IDEAS_TEMPLATE,
@@ -52,7 +55,6 @@ import {
   holdBelow,
   numberedList,
   planFiling,
-  rekeyVotes,
   remainingSentences,
   renderFiledHeading,
   seamPrompt,
@@ -88,10 +90,18 @@ export type SortOutcome = 'filed' | 'rejected' | 'failed' | 'skipped'
  *  US-055 related), with what it was tied to, for the panel's actions.
  *  The text travels to the settings window only, like history does. */
 export interface HeldLine {
+  /** The key the panel's buttons use: unique per held line, since two
+   *  pieces of one sentence can be held side by side. */
+  id: number
+  /** The sentence's position in the note, for the per-line settle. */
   position: number
   text: string
   label: SortLabel
   reason: HeldReason
+  /** Set only when a cut sentence had to be held whole because the
+   *  piece-by-piece look could not be answered: File it anyway then
+   *  lands one line per piece. */
+  pieces?: string[]
   match?: {
     number: number
     file: ContextFile
@@ -157,8 +167,9 @@ function settleFor(input: SortInput, positions: readonly number[], keptLocal: re
 // Held lines belong to the note they came from, like the settled set.
 let heldFor: SortInput | null = null
 let heldLines: HeldLine[] = []
+let nextHeldId = 1
 // The tasks file exactly as it was when a held line's match was read,
-// keyed by the held position. The one in-place edit accepts the file
+// keyed by the held line's id. The one in-place edit accepts the file
 // only when it still starts with that text: murmur's own appends pass,
 // any edit in place refuses (review gate 2026-09-22: a hash refreshed
 // by a later append could launder a hand edit between two clicks).
@@ -430,8 +441,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     heldLines = []
     heldSnapshots.clear()
   } else {
+    const dropped = heldLines.filter((h) => positions.includes(h.position))
     heldLines = heldLines.filter((h) => !positions.includes(h.position))
-    for (const position of positions) heldSnapshots.delete(position)
+    for (const h of dropped) heldSnapshots.delete(h.id)
   }
 
   const resolved: ResolvedSortConnection | null = options.connection
@@ -534,42 +546,114 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     threshold
   )
   for (const i of unsure) {
-    heldLines.push({ position: positions[i], text: sentences[i], label: verdict.labels[i], reason: 'unsure' })
+    heldLines.push({ id: nextHeldId++, position: positions[i], text: sentences[i], label: verdict.labels[i], reason: 'unsure' })
   }
   if (sure.length === 0) {
     writeAppLog(`[sort] held every line reason=low confidence held=${unsure.length} threshold=${threshold} model=${answeredBy}`)
     return record('rejected', { ...NONE, held: unsure.length }, 'low confidence')
   }
 
-  // Related lines (US-055): a task or idea the vote tied to a filed
-  // item is held with that item quoted, and settled, since the vote
-  // resolved it; File it anyway is the way to land it regardless.
+  // Related lines (US-055): a line the vote tied to a filed item (a
+  // task or idea either way, a note as a completion only) is held with
+  // that item quoted, and settled, since the vote resolved it; the
+  // buttons under Last note are the way to land or drop it.
   const { related, kept } = pickRelated(sure, verdict.labels, verdict.relations, items)
-  for (const { local, vote, item } of related) {
+  // A related sentence the same reply also cut (US-056) is several
+  // items, and the vote can only truly belong to one of them: cut it
+  // first and ask about the pieces alone, so only the matching piece
+  // is held and the rest file. If that second look cannot be answered
+  // the whole line is held as before, carrying its pieces.
+  const { cut, whole } = piecesToCompare(related, sentences, verdict.labels, seamsBySentence, verdict.seams)
+  let heldPieces: HeldPiece[] = []
+  let filedPieces: FiledPiece[] = []
+  // Sentences that were really cut and compared; on a failed second
+  // look nothing is cut, so the log's split count leaves them out.
+  let cutFiled = 0
+  if (cut.length > 0) {
+    const flat = flattenPieces(cut)
+    const second = await askRelations(flat.sentences, items, { config, protocol, fetchImpl, timeoutMs })
+    if (second.ok) {
+      ;({ held: heldPieces, filed: filedPieces } = assignPieceVotes(cut, second.relations, items))
+      cutFiled = cut.length
+      writeAppLog(
+        `[sort] compared pieces=${flat.sentences.length} of=${cut.length} held=${heldPieces.length} protocol=${protocol} model=${answeredBy}`
+      )
+    } else {
+      writeAppLog(`[sort] piece compare failed reason=${second.reason} model=${answeredBy}; holding the whole line`)
+      for (const set of cut) {
+        const line = related.find((r) => r.local === set.local)
+        if (line) whole.push(line)
+      }
+    }
+  }
+  const wholePieces = new Map(cut.map((set) => [set.local, set.pieces]))
+  const snapshot = { file: tasksFile, text: tasksText }
+  const matchOf = (item: ContextItem): NonNullable<HeldLine['match']> => ({
+    number: item.number,
+    file: item.file,
+    nth: item.nth,
+    text: item.text,
+    done: item.done,
+    checkbox: item.checkbox
+  })
+  for (const { local, vote, item } of whole) {
+    const id = nextHeldId++
     heldLines.push({
+      id,
       position: positions[local],
       text: sentences[local],
       label: verdict.labels[local],
       reason: heldReasonFor(vote, item),
-      match: { number: item.number, file: item.file, nth: item.nth, text: item.text, done: item.done, checkbox: item.checkbox }
+      pieces: wholePieces.get(local),
+      match: matchOf(item)
     })
-    heldSnapshots.set(positions[local], { file: tasksFile, text: tasksText })
+    heldSnapshots.set(id, snapshot)
   }
+  for (const piece of heldPieces) {
+    const id = nextHeldId++
+    heldLines.push({
+      id,
+      position: positions[piece.local],
+      text: piece.text,
+      label: piece.label,
+      reason: heldReasonFor(piece.vote, piece.item),
+      match: matchOf(piece.item)
+    })
+    heldSnapshots.set(id, snapshot)
+  }
+  heldLines.sort((a, b) => a.position - b.position || a.id - b.id)
   settleFor(input, positions, related.map((r) => r.local))
-  const heldCount = unsure.length + related.length
+  const relatedHeld = whole.length + heldPieces.length
+  const heldCount = unsure.length + relatedHeld
 
-  const keptSentences = kept.map((i) => sentences[i])
   const keptLabels = kept.map((i) => verdict.labels[i])
-  const keptSeams = kept.map((i) => seamsBySentence[i])
-  const keptVotes = rekeyVotes(verdict.seams, kept)
 
-  // Cut at the confirmed seams before filing; only task and idea lines
-  // split, and a sentence with no vote stays whole.
-  const expanded = applySplits(keptSentences, keptLabels, keptSeams, keptVotes)
-  const splitCount = Object.keys(keptVotes).filter((k) => {
-    const label = keptLabels[Number(k) - 1]
-    return label === 'task' || label === 'idea'
-  }).length
+  // Filed in spoken order: a kept sentence lands whole or cut at its
+  // confirmed seams (only task and idea lines split, and a sentence
+  // with no vote stays whole), and a compared sentence lands the
+  // pieces no vote tied to an item (review gate 2026-09-22).
+  const expanded: { sentences: string[]; labels: SortLabel[] } = { sentences: [], labels: [] }
+  let splitCount = cutFiled
+  for (const i of sure) {
+    if (kept.includes(i)) {
+      const seamVote = verdict.seams[i + 1]
+      const one = applySplits(
+        [sentences[i]],
+        [verdict.labels[i]],
+        [seamsBySentence[i] ?? []],
+        seamVote ? { 1: seamVote } : {}
+      )
+      if (one.sentences.length > 1) splitCount += 1
+      expanded.sentences.push(...one.sentences)
+      expanded.labels.push(...one.labels)
+      continue
+    }
+    for (const piece of filedPieces) {
+      if (piece.local !== i) continue
+      expanded.sentences.push(piece.text)
+      expanded.labels.push(piece.label)
+    }
+  }
   lastTopic = verdict.topic
   const written = writeEntries(input, expanded.sentences, expanded.labels, verdict.topic, { tasksPath, ideasPath })
   if (!written.ok) {
@@ -593,11 +677,46 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const counts = { ...written.counts, held: heldCount }
   const topicNote = wantsTopic && protocol === 'decide' ? ' topic=unavailable' : ''
   const heldNote =
-    heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${related.length} threshold=${threshold}` : ''
+    heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${relatedHeld} threshold=${threshold}` : ''
   writeAppLog(
     `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}`
   )
   return record('filed', counts)
+}
+
+/**
+ * The second, smaller request of a piece-by-piece comparison: the
+ * pieces as numbered sentences against the same items, on the same
+ * connection the sort used. No seams are offered and no topic asked;
+ * the labels come back but the sentence's own label is kept. Any
+ * failure is reported, never thrown; the caller holds the whole line.
+ */
+async function askRelations(
+  pieces: readonly string[],
+  items: readonly ContextItem[],
+  via: { config: PolishConfig; protocol: SortProtocol; fetchImpl: typeof fetch; timeoutMs: number }
+): Promise<{ ok: true; relations: RelationVotes } | { ok: false; reason: string }> {
+  const { config, protocol, fetchImpl, timeoutMs } = via
+  const noSeams = pieces.map(() => 0)
+  if (protocol === 'decide') {
+    const reply = await askDecision(
+      buildDecisionRequest(config.model, pieces, pieces.map(() => []), items),
+      config,
+      fetchImpl,
+      timeoutMs
+    )
+    if (!reply.ok) return { ok: false, reason: reply.reason }
+    const read = readDecisionAnswers(reply.answers, pieces.length, noSeams, items.length)
+    if (!read.ok) return { ok: false, reason: `validate: ${read.reason}` }
+    return { ok: true, relations: read.relations }
+  }
+  const systemPrompt = [SORT_SYSTEM_PROMPT, SORT_RELATIONS_PROMPT].join(' ')
+  const userPrompt = [numberedList([...pieces]), contextPrompt(items)].join('\n\n')
+  const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
+  if (!reply.ok) return { ok: false, reason: reply.reason }
+  const chat = validateSort(pieces.length, reply.content, { seamCounts: noSeams, items: items.length })
+  if (!chat.ok) return { ok: false, reason: chat.reason }
+  return { ok: true, relations: chat.relations }
 }
 
 // ------------------------------------------------- held line actions ---
@@ -605,40 +724,47 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
 // held line through the same writer, Skip drops it, and Tick it is the
 // one in-place edit murmur makes to a vault file.
 
-function takeHeld(position: number): HeldLine | null {
-  const entry = heldLines.find((h) => h.position === position) ?? null
-  return entry
+function takeHeld(id: number): HeldLine | null {
+  return heldLines.find((h) => h.id === id) ?? null
 }
 
 function dropHeld(entry: HeldLine): void {
   heldLines = heldLines.filter((h) => h !== entry)
 }
 
-/** Land one held line, with its link, under the newest sort's heading. */
-export function fileHeldLine(position: number): { ok: boolean; reason?: string } {
+/** Land one held line, with its link, under the newest sort's heading.
+ *  A cut sentence held whole lands one line per piece. */
+export function fileHeldLine(id: number): { ok: boolean; reason?: string } {
   if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
-  const entry = takeHeld(position)
+  const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
-  const written = writeEntries(input, [entry.text], [entry.label], lastTopic)
+  if (entry.label === 'note') return setAction({ ok: false, reason: 'a note stays in the inbox; tick its match, or skip it' })
+  const lines = entry.pieces && entry.pieces.length > 1 ? entry.pieces : [entry.text]
+  const written = writeEntries(
+    input,
+    lines,
+    lines.map(() => entry.label),
+    lastTopic
+  )
   if (!written.ok) return setAction({ ok: false, reason: written.reason })
-  settleFor(input, [position], [0])
+  settleFor(input, [entry.position], [0])
   dropHeld(entry)
-  heldSnapshots.delete(position)
-  writeAppLog(`[sort] filed held line position=${position} reason=${entry.reason}`)
+  heldSnapshots.delete(id)
+  writeAppLog(`[sort] filed held line position=${entry.position} reason=${entry.reason} lines=${lines.length}`)
   return setAction({ ok: true })
 }
 
 /** Drop a held line: it stays in the inbox and is not sent again. */
-export function skipHeldLine(position: number): { ok: boolean; reason?: string } {
+export function skipHeldLine(id: number): { ok: boolean; reason?: string } {
   if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
-  const entry = takeHeld(position)
+  const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
-  settleFor(input, [position], [0])
+  settleFor(input, [entry.position], [0])
   dropHeld(entry)
-  heldSnapshots.delete(position)
-  writeAppLog(`[sort] skipped held line position=${position} reason=${entry.reason}`)
+  heldSnapshots.delete(id)
+  writeAppLog(`[sort] skipped held line position=${entry.position} reason=${entry.reason}`)
   return setAction({ ok: true })
 }
 
@@ -676,17 +802,17 @@ function backup(file: string): void {
  * day, and a file that changed in place since murmur read the match is
  * refused. Only a checkbox in the tasks file can be ticked.
  */
-export function tickHeldMatch(position: number): { ok: boolean; reason?: string } {
+export function tickHeldMatch(id: number): { ok: boolean; reason?: string } {
   if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
-  const entry = takeHeld(position)
+  const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
   const match = entry.match
   if (!match || match.file !== 'tasks' || !match.checkbox) {
     return setAction({ ok: false, reason: 'that line has no box in the tasks file to tick' })
   }
   if (match.done) return setAction({ ok: false, reason: 'that item is already ticked' })
-  const snapshot = heldSnapshots.get(position)
+  const snapshot = heldSnapshots.get(id)
   if (!snapshot) return setAction({ ok: false, reason: 'the tasks file has not been read for that line' })
   let raw: Buffer
   try {
@@ -729,9 +855,9 @@ export function tickHeldMatch(position: number): { ok: boolean; reason?: string 
     writeAppLog(`[sort] tick failed reason=${errorCode(error)}`)
     return setAction({ ok: false, reason: `could not write the file (${errorCode(error)})` })
   }
-  settleFor(input, [position], [0])
+  settleFor(input, [entry.position], [0])
   dropHeld(entry)
-  heldSnapshots.delete(position)
+  heldSnapshots.delete(id)
   writeAppLog(`[sort] ticked file=tasks nth=${match.nth}`)
   return setAction({ ok: true })
 }
@@ -1092,13 +1218,13 @@ export function initSorter(): void {
         heldDup[0].match?.text === 'Call the vet.' &&
         !canSortAgain() &&
         read(inbox) === inboxBefore
-      const anyway = fileHeldLine(heldDup[0]?.position ?? -1)
+      const anyway = fileHeldLine(heldDup[0]?.id ?? -1)
       const anywayOk =
         anyway.ok &&
         read(todo) ===
           `${todoBeforeDup}- [ ] Renew the passport. ([10:32](inbox/2026-09-18.md))\n- [ ] Call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
         getHeldLines().length === 0 &&
-        !fileHeldLine(heldDup[0]?.position ?? -1).ok
+        !fileHeldLine(heldDup[0]?.id ?? -1).ok
 
       const passportNumber = numberOf('Renew the passport.')
       const doneInput: SortInput = { ...input, text: 'I renewed the passport.' }
@@ -1116,7 +1242,7 @@ export function initSorter(): void {
         heldDone[0]?.reason === 'completes' &&
         heldDone[0]?.match?.text === 'Renew the passport.' &&
         read(todo) === beforeTick
-      const ticked = tickHeldMatch(heldDone[0]?.position ?? -1)
+      const ticked = tickHeldMatch(heldDone[0]?.id ?? -1)
       const afterTick = read(todo)
       const backups = existsSync(backupDir()) ? readdirSync(backupDir()) : []
       const tickOk =
@@ -1140,9 +1266,9 @@ export function initSorter(): void {
       const beforeEdit = read(todo)
       const edited = beforeEdit.replace('- [x] Renew the passport. ([10:32](inbox/2026-09-18.md))\n', '')
       writeFileSync(todo, edited)
-      const refused = tickHeldMatch(getHeldLines()[0]?.position ?? -1)
+      const refused = tickHeldMatch(getHeldLines()[0]?.id ?? -1)
       appendFileSync(todo, '- [ ] edited by hand\n')
-      const refusedAgain = tickHeldMatch(getHeldLines()[0]?.position ?? -1)
+      const refusedAgain = tickHeldMatch(getHeldLines()[0]?.id ?? -1)
       const refusedOk =
         edited !== beforeEdit &&
         !refused.ok &&
@@ -1150,7 +1276,7 @@ export function initSorter(): void {
         !refusedAgain.ok &&
         read(todo).endsWith('- [ ] edited by hand\n') &&
         getLastAction()?.ok === false
-      const skipped = skipHeldLine(getHeldLines()[0]?.position ?? -1)
+      const skipped = skipHeldLine(getHeldLines()[0]?.id ?? -1)
       const skipOk = skipped.ok && getHeldLines().length === 0 && !canSortAgain()
       // Put the removed line back so the next case finds the ticked passport.
       writeFileSync(todo, `${beforeEdit}- [ ] edited by hand\n`)
@@ -1182,7 +1308,223 @@ export function initSorter(): void {
         getLastAction() === null &&
         read(todo) === beforeDecideDup &&
         getHeldLines()[0]?.reason === 'done-before' &&
-        skipHeldLine(getHeldLines()[0]?.position ?? -1).ok
+        skipHeldLine(getHeldLines()[0]?.id ?? -1).ok
+      // A duplicate inside a comma run (US-055 meets US-056): the run
+      // is cut first and the pieces are compared alone in a second
+      // request, so only the matching piece is held and the rest file.
+      const vetOpen = numberOf('Call the vet.', true)
+      let bodies: string[] = []
+      const sequence = (replies: Array<string | number>): typeof fetch => {
+        let n = 0
+        bodies = []
+        return (async (_url: unknown, init?: RequestInit) => {
+          bodies.push(String(init?.body ?? ''))
+          const reply = replies[Math.min(n++, replies.length - 1)]
+          if (typeof reply === 'number') return new Response('{}', { status: reply })
+          return new Response(JSON.stringify({ choices: [{ message: { content: reply } }] }), { status: 200 })
+        }) as typeof fetch
+      }
+      const runInput: SortInput = { ...input, text: 'Pay the gas bill, and call the vet. Email Bob.' }
+      rememberForSort(runInput)
+      const beforeRun = read(todo)
+      const logPath = join(app.getPath('userData'), 'logs', 'murmur.log')
+      const logBeforeRun = read(logPath).length
+      const comma = await sortNote(runInput, {
+        fetchImpl: sequence([
+          `{"1":"task","2":"task","seams":{"1":[1]},"relations":{"1":[1,${vetOpen}]}}`,
+          `{"1":"task","2":"task","relations":{"2":[1,${vetOpen}]}}`
+        ]),
+        connection: cfg
+      })
+      const runTodo = read(todo)
+      const heldRun = getHeldLines()
+      const secondBody = bodies[1] ?? ''
+      const pieceOk =
+        comma.outcome === 'filed' &&
+        comma.tasks === 2 &&
+        comma.held === 1 &&
+        bodies.length === 2 &&
+        secondBody.includes('1. Pay the gas bill') &&
+        secondBody.includes('2. call the vet.') &&
+        // The later sentence is not among the numbered pieces (it may
+        // well sit in the items list, which is the point of the list).
+        !/\d+\. Email Bob/.test(secondBody) &&
+        secondBody.includes('Items already filed') &&
+        !secondBody.includes('Seams:') &&
+        // Spoken order: the gas bill before the later sentence.
+        runTodo ===
+          `${beforeRun}- [ ] Pay the gas bill ([10:32](inbox/2026-09-18.md))\n- [ ] Email Bob. ([10:32](inbox/2026-09-18.md))\n` &&
+        read(logPath).slice(logBeforeRun).includes('split=1 ') &&
+        heldRun.length === 1 &&
+        heldRun[0]?.text === 'call the vet.' &&
+        heldRun[0]?.reason === 'same' &&
+        heldRun[0]?.match?.text === 'Call the vet.' &&
+        heldRun[0]?.pieces === undefined &&
+        !canSortAgain()
+      // File it anyway on the held piece lands that piece alone, once.
+      const pieceFiled = fileHeldLine(heldRun[0]?.id ?? -1)
+      const pieceFiledOk =
+        pieceFiled.ok &&
+        read(todo) === `${runTodo}- [ ] call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
+        getHeldLines().length === 0 &&
+        !fileHeldLine(heldRun[0]?.id ?? -1).ok
+
+      // When the second look cannot be answered, the whole line is held
+      // as before, carrying its pieces, and File it anyway lands one
+      // line per piece.
+      const failInput: SortInput = { ...input, text: 'Buy stamps, and call the vet.' }
+      rememberForSort(failInput)
+      const beforeFail = read(todo)
+      const logBeforeFail = read(logPath).length
+      const fail = await sortNote(failInput, {
+        fetchImpl: sequence([`{"1":"task","seams":{"1":[1]},"relations":{"1":[1,${vetOpen}]}}`, 500]),
+        connection: cfg
+      })
+      const heldFail = getHeldLines()
+      const wholeHeldOk =
+        fail.outcome === 'filed' &&
+        fail.tasks === 0 &&
+        fail.held === 1 &&
+        read(todo) === beforeFail &&
+        heldFail.length === 1 &&
+        heldFail[0]?.text === 'Buy stamps, and call the vet.' &&
+        heldFail[0]?.pieces?.length === 2 &&
+        // Nothing was cut, so the log says so.
+        read(logPath).slice(logBeforeFail).includes('split=0 ') &&
+        fileHeldLine(heldFail[0]?.id ?? -1).ok &&
+        read(todo) ===
+          `${beforeFail}- [ ] Buy stamps ([10:32](inbox/2026-09-18.md))\n- [ ] call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
+        getHeldLines().length === 0
+
+      // Two pieces of one sentence held side by side, each with its own
+      // id and buttons: the vet is open, the passport was ticked above.
+      const passportDone = numberOf('Renew the passport.')
+      const twoInput: SortInput = { ...input, text: 'Call the vet, and renew the passport.' }
+      rememberForSort(twoInput)
+      const beforeTwo = read(todo)
+      const two = await sortNote(twoInput, {
+        fetchImpl: sequence([
+          `{"1":"task","seams":{"1":[1]},"relations":{"1":[1,${vetOpen}]}}`,
+          `{"1":"task","2":"task","relations":{"1":[1,${vetOpen}],"2":[1,${passportDone}]}}`
+        ]),
+        connection: cfg
+      })
+      const heldTwo = getHeldLines()
+      const twoOk =
+        two.outcome === 'filed' &&
+        two.tasks === 0 &&
+        two.held === 2 &&
+        read(todo) === beforeTwo &&
+        heldTwo.length === 2 &&
+        heldTwo[0]?.position === heldTwo[1]?.position &&
+        heldTwo[0]?.id !== heldTwo[1]?.id &&
+        heldTwo[0]?.text === 'Call the vet' &&
+        heldTwo[0]?.reason === 'same' &&
+        heldTwo[1]?.text === 'renew the passport.' &&
+        heldTwo[1]?.reason === 'done-before' &&
+        fileHeldLine(heldTwo[0]?.id ?? -1).ok &&
+        read(todo) === `${beforeTwo}- [ ] Call the vet ([10:32](inbox/2026-09-18.md))\n` &&
+        getHeldLines().length === 1 &&
+        getHeldLines()[0]?.id === heldTwo[1]?.id &&
+        skipHeldLine(heldTwo[1]?.id ?? -1).ok &&
+        getHeldLines().length === 0
+
+      // A completion is a past-tense statement the model labels a note:
+      // it is held all the same and Tick it works; a note voted a
+      // duplicate is not held, since a note files nowhere.
+      const vetStillOpen = numberOf('Call the vet.', true)
+      const noteDone: SortInput = { ...input, text: 'I called the vet this morning.' }
+      rememberForSort(noteDone)
+      const beforeNoteDone = read(todo)
+      const nd = await sortNote(noteDone, {
+        fetchImpl: mockReply(`{"1":"note","relations":{"1":[2,${vetStillOpen}]}}`),
+        connection: cfg
+      })
+      const heldNote = getHeldLines()
+      const noteHeldOk =
+        nd.outcome === 'filed' &&
+        nd.notes === 0 &&
+        nd.held === 1 &&
+        heldNote[0]?.label === 'note' &&
+        heldNote[0]?.reason === 'completes' &&
+        heldNote[0]?.match?.text === 'Call the vet.' &&
+        !fileHeldLine(heldNote[0]?.id ?? -1).ok &&
+        read(todo) === beforeNoteDone &&
+        tickHeldMatch(heldNote[0]?.id ?? -1).ok &&
+        read(todo) === beforeNoteDone.replace('- [ ] Call the vet.', '- [x] Call the vet.') &&
+        getHeldLines().length === 0
+      const noteSame: SortInput = { ...input, text: 'Nice chat about the vet.' }
+      rememberForSort(noteSame)
+      const beforeNoteSame = read(todo)
+      const ns = await sortNote(noteSame, {
+        fetchImpl: mockReply(`{"1":"note","relations":{"1":[1,${vetStillOpen}]}}`),
+        connection: cfg
+      })
+      const noteSameOk = ns.outcome === 'filed' && ns.notes === 1 && ns.held === 0 && read(todo) === beforeNoteSame
+
+      // The same second look on a decision connection: the piece request
+      // carries the items in its state, a relation and an item question
+      // per piece, and no seam question.
+      const decisionBodies: string[] = []
+      const routedSeq = (decisions: string[]): typeof fetch => {
+        let n = 0
+        return (async (url: unknown, init?: RequestInit) => {
+          if (String(url).endsWith('/systemone')) {
+            decisionBodies.push(String(init?.body ?? ''))
+            return new Response(decisions[Math.min(n++, decisions.length - 1)], { status: 200 })
+          }
+          return new Response(JSON.stringify({ choices: [{ message: { content: '{"1":"task"}' } }] }), { status: 200 })
+        }) as typeof fetch
+      }
+      const vetAgain = numberOf('Call the vet.', true)
+      const dpInput: SortInput = { ...input, text: 'Order toner, and call the vet.' }
+      rememberForSort(dpInput)
+      const beforeDp = read(todo)
+      const dp = await sortNote(dpInput, {
+        fetchImpl: routedSeq([
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.9 },
+              relation_1: { type: 'choice', choice: 'same' },
+              match_1: { type: 'choice', choice: String(vetAgain) },
+              seam_1_1: { type: 'noul', noul: 0.9 }
+            }
+          }),
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.9 },
+              label_2: { type: 'choice', choice: 'task', confidence: 0.9 },
+              relation_1: { type: 'choice', choice: 'new' },
+              match_1: { type: 'choice', choice: '1' },
+              relation_2: { type: 'choice', choice: 'same' },
+              match_2: { type: 'choice', choice: String(vetAgain) }
+            }
+          })
+        ]),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const secondDecision = JSON.parse(decisionBodies[1] ?? '{}') as {
+        state?: { sentences?: string[]; items?: string[] }
+        questions?: Record<string, unknown>
+      }
+      const secondQuestions = Object.keys(secondDecision.questions ?? {})
+      const dpOk =
+        dp.outcome === 'filed' &&
+        dp.tasks === 1 &&
+        dp.held === 1 &&
+        decisionBodies.length === 2 &&
+        secondDecision.state?.sentences?.[0] === '1. Order toner' &&
+        Array.isArray(secondDecision.state?.items) &&
+        secondQuestions.includes('relation_2') &&
+        secondQuestions.includes('match_2') &&
+        secondQuestions.every((k) => !k.startsWith('seam_')) &&
+        read(todo) === `${beforeDp}- [ ] Order toner ([10:32](inbox/2026-09-18.md))\n` &&
+        getHeldLines()[0]?.text === 'call the vet.' &&
+        skipHeldLine(getHeldLines()[0]?.id ?? -1).ok
+
       const topicOk =
         withTopic.outcome === 'filed' &&
         badTopic.outcome === 'filed' &&
@@ -1229,7 +1571,17 @@ export function initSorter(): void {
         refusedOk &&
         skipOk &&
         decideDupOk &&
-        getLastSort() === dd &&
+        pieceOk &&
+        pieceFiledOk &&
+        wholeHeldOk &&
+        twoOk &&
+        noteHeldOk &&
+        noteSameOk &&
+        dpOk &&
+        getLastSort() === dp &&
+        log.includes('[sort] compared pieces=2 of=1 held=1 protocol=chat') &&
+        log.includes('[sort] compared pieces=2 of=1 held=1 protocol=decide') &&
+        log.includes('[sort] piece compare failed reason=http 500') &&
         log.includes('related=1') &&
         log.includes('[sort] ticked file=tasks nth=') &&
         log.includes('[sort] filed held line position=') &&

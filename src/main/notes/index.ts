@@ -185,17 +185,17 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   })
   // The three held-line actions: every one is a click, and every one
   // reports what it did so the panel never has to guess.
-  const position = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) ? v : -1)
+  const heldId = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) ? v : -1)
   ipcMain.handle(IpcChannels.notesFileHeld, (_event, at: unknown) => {
-    fileHeldLine(position(at))
+    fileHeldLine(heldId(at))
     return getNotesStatus()
   })
   ipcMain.handle(IpcChannels.notesSkipHeld, (_event, at: unknown) => {
-    skipHeldLine(position(at))
+    skipHeldLine(heldId(at))
     return getNotesStatus()
   })
   ipcMain.handle(IpcChannels.notesTickHeld, (_event, at: unknown) => {
-    tickHeldMatch(position(at))
+    tickHeldMatch(heldId(at))
     return getNotesStatus()
   })
   // The connection test for a decision connection is shaped like the
