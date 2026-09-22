@@ -5,6 +5,7 @@
 // other than a complete labeling, the whole sort is rejected and the
 // note simply stays in the inbox, where it already is.
 
+import { type RelationVotes, readRelationVotes } from './compare'
 import { noteMoment, renderTemplate } from './notes'
 
 /** Filed lines sit under a heading so a long list stays navigable.
@@ -79,6 +80,9 @@ export type SortVerdict =
       /** Per-sentence certainty behind each label, present only from a
        *  backend that reports one (US-057); the chat path has none. */
       confidence?: number[]
+      /** Relation votes against the items already filed (US-055);
+       *  empty when there was nothing to compare against. */
+      relations: RelationVotes
     }
   | { ok: false; reason: string }
 
@@ -130,7 +134,7 @@ function extractObject(candidate: string): string | null {
 export function validateSort(
   count: number,
   candidate: string,
-  opts: { topic?: boolean; seamCounts?: readonly number[] } = {}
+  opts: { topic?: boolean; seamCounts?: readonly number[]; items?: number } = {}
 ): SortVerdict {
   const text = candidate.trim()
   if (text.length === 0) return { ok: false, reason: 'empty' }
@@ -149,7 +153,12 @@ export function validateSort(
   // The topic and the seam votes ride the same object under reserved
   // keys; every other key still has to be a sentence number.
   const offeredSeams = (opts.seamCounts ?? []).some((n) => n > 0)
-  const reserved = new Set<string>([...(opts.topic ? ['topic'] : []), ...(offeredSeams ? ['seams'] : [])])
+  const offeredItems = (opts.items ?? 0) > 0
+  const reserved = new Set<string>([
+    ...(opts.topic ? ['topic'] : []),
+    ...(offeredSeams ? ['seams'] : []),
+    ...(offeredItems ? ['relations'] : [])
+  ])
   const numbered = entries.filter(([key]) => !reserved.has(key))
   for (const [key] of numbered) {
     if (!expected.has(key)) return { ok: false, reason: 'extra sentences' }
@@ -166,7 +175,10 @@ export function validateSort(
   const seams = offeredSeams
     ? readSeamVotes((parsed as Record<string, unknown>).seams, opts.seamCounts ?? [])
     : {}
-  return { ok: true, labels, topic, seams }
+  const relations = offeredItems
+    ? readRelationVotes((parsed as Record<string, unknown>).relations, count, opts.items ?? 0)
+    : {}
+  return { ok: true, labels, topic, seams, relations }
 }
 
 // ------------------------------------------------------------ seams ---

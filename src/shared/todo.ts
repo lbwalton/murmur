@@ -18,6 +18,9 @@ export interface TodoItem {
 // (review gate 2026-09-21: a CRLF todo.md parsed as zero tasks and
 // reminders went silent on the machine this story exists for).
 const CHECKBOX = /^\s*[-*+]\s+\[( |x|X)\]\s+(.*)$/
+// A plain bullet with no box: how the ideas file is written. A bare
+// empty box with nothing after it is a box, not a bullet reading "[ ]".
+const BULLET = /^\s*[-*+]\s+(?!\[[ xX]\](?:\s|$))(.*)$/
 const HEADING = /^\s*#{1,6}\s+(.*)$/
 const FENCE = /^\s*(```|~~~)/
 // The source link the sorter appends, stripped for display so a
@@ -54,6 +57,76 @@ export function parseTodo(text: string): TodoItem[] {
 
 export function openItems(items: readonly TodoItem[]): TodoItem[] {
   return items.filter((item) => !item.done)
+}
+
+export interface ListItem extends TodoItem {
+  /** True for a checkbox line; a plain bullet (the ideas file) is not
+   *  something that can be ticked. */
+  checkbox: boolean
+}
+
+/** Every bullet in a file, checkbox or plain, in file order, with the
+ *  same fences, headings, links, and empty lines handled as parseTodo. */
+export function parseListItems(text: string): ListItem[] {
+  const items: ListItem[] = []
+  let group = ''
+  let fenced = false
+  for (const line of text.split(/\r?\n/)) {
+    if (FENCE.test(line)) {
+      fenced = !fenced
+      continue
+    }
+    if (fenced) continue
+    const heading = HEADING.exec(line)
+    if (heading) {
+      group = heading[1].trim()
+      continue
+    }
+    const box = CHECKBOX.exec(line)
+    if (box) {
+      const itemText = box[2].replace(TRAILING_LINK, '').trim()
+      if (itemText.length > 0) items.push({ text: itemText, done: box[1].toLowerCase() === 'x', group, checkbox: true })
+      continue
+    }
+    const bullet = BULLET.exec(line)
+    if (bullet) {
+      const itemText = bullet[1].replace(TRAILING_LINK, '').trim()
+      if (itemText.length > 0) items.push({ text: itemText, done: false, group, checkbox: false })
+    }
+  }
+  return items
+}
+
+export type TickResult = { ok: true; text: string } | { ok: false; reason: 'not found' | 'already done' }
+
+/**
+ * Tick the nth checkbox of a file (nth counted the way parseTodo counts,
+ * so a box inside a code fence or an empty box is skipped). The only
+ * change to the file is the space inside that one box becoming an x:
+ * every other byte, line ending, and blank line stays exactly as it was.
+ */
+export function tickLine(text: string, nth: number): TickResult {
+  const lines = text.split(/(\r?\n)/)
+  let count = -1
+  let fenced = false
+  for (let i = 0; i < lines.length; i += 2) {
+    const line = lines[i]
+    if (FENCE.test(line)) {
+      fenced = !fenced
+      continue
+    }
+    if (fenced) continue
+    const box = CHECKBOX.exec(line)
+    if (!box) continue
+    if (box[2].replace(TRAILING_LINK, '').trim().length === 0) continue
+    count += 1
+    if (count !== nth) continue
+    if (box[1].toLowerCase() === 'x') return { ok: false, reason: 'already done' }
+    const at = line.indexOf('[ ]')
+    lines[i] = `${line.slice(0, at)}[x]${line.slice(at + 3)}`
+    return { ok: true, text: lines.join('') }
+  }
+  return { ok: false, reason: 'not found' }
 }
 
 /** One line for a notification: the count, then as much of the next

@@ -74,7 +74,7 @@ describe('numberedList', () => {
 describe('validateSort', () => {
   it('accepts a complete labeling in any key order and casing', () => {
     const v = validateSort(3, '{"2": "Idea", "1": "task", "3": " note "}')
-    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'], topic: '', seams: {} })
+    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'], topic: '', seams: {}, relations: {} })
   })
 
   it('takes a topic only when one was asked for, and never lets a bad one fail the sort', () => {
@@ -83,7 +83,8 @@ describe('validateSort', () => {
       ok: true,
       labels: ['task'],
       topic: 'Dentist and travel',
-      seams: {}
+      seams: {},
+      relations: {}
     })
     // Not asked for: the reserved key is an unexpected sentence number.
     expect(validateSort(1, reply)).toEqual({ ok: false, reason: 'extra sentences' })
@@ -92,13 +93,15 @@ describe('validateSort', () => {
       ok: true,
       labels: ['task'],
       topic: '',
-      seams: {}
+      seams: {},
+      relations: {}
     })
     expect(validateSort(1, '{"1":"task"}', { topic: true })).toEqual({
       ok: true,
       labels: ['task'],
       topic: '',
-      seams: {}
+      seams: {},
+      relations: {}
     })
     // A stray key is still a rejection, topics or not.
     expect(validateSort(1, '{"1":"task","mood":"good"}', { topic: true })).toEqual({
@@ -362,18 +365,18 @@ describe('confirmedSeams', () => {
 describe('validateSort with seams', () => {
   it('reads confirmed seams under the reserved key when seams were offered', () => {
     const v = validateSort(2, '{"1":"task","2":"note","seams":{"1":[1]}}', { seamCounts: [2, 0] })
-    expect(v).toEqual({ ok: true, labels: ['task', 'note'], topic: '', seams: { 1: [1] } })
+    expect(v).toEqual({ ok: true, labels: ['task', 'note'], topic: '', seams: { 1: [1] }, relations: {} })
   })
 
   it('treats a missing key, a non-object, or a bad vote as no vote, per sentence', () => {
     expect(validateSort(1, '{"1":"task"}', { seamCounts: [2] })).toEqual({
-      ok: true, labels: ['task'], topic: '', seams: {}
+      ok: true, labels: ['task'], topic: '', seams: {}, relations: {}
     })
     expect(validateSort(1, '{"1":"task","seams":"1"}', { seamCounts: [2] })).toEqual({
-      ok: true, labels: ['task'], topic: '', seams: {}
+      ok: true, labels: ['task'], topic: '', seams: {}, relations: {}
     })
     expect(validateSort(2, '{"1":"task","2":"task","seams":{"1":[5],"2":[1],"9":[1]}}', { seamCounts: [2, 1] })).toEqual({
-      ok: true, labels: ['task', 'task'], topic: '', seams: { 2: [1] }
+      ok: true, labels: ['task', 'task'], topic: '', seams: { 2: [1] }, relations: {}
     })
   })
 
@@ -381,10 +384,25 @@ describe('validateSort with seams', () => {
     expect(validateSort(1, '{"1":"task","seams":{"1":[1]}}')).toEqual({ ok: false, reason: 'extra sentences' })
   })
 
+  it('reads relation votes under the reserved key only when items were offered', () => {
+    const reply = '{"1":"task","2":"task","relations":{"1":[1,2],"2":[2,9]}}'
+    expect(validateSort(2, reply, { items: 3 })).toEqual({
+      ok: true,
+      labels: ['task', 'task'],
+      topic: '',
+      seams: {},
+      relations: { 1: { relation: 'same', item: 2 } }
+    })
+    // Not offered: the reserved key is an unexpected sentence number.
+    expect(validateSort(2, reply)).toEqual({ ok: false, reason: 'extra sentences' })
+    // Offered and absent: exactly as before.
+    expect(validateSort(1, '{"1":"task"}', { items: 3 })).toMatchObject({ ok: true, relations: {} })
+  })
+
   it('carries both reserved keys together', () => {
     expect(
       validateSort(1, '{"1":"task","topic":"Errands","seams":{"1":[1]}}', { topic: true, seamCounts: [2] })
-    ).toEqual({ ok: true, labels: ['task'], topic: 'Errands', seams: { 1: [1] } })
+    ).toEqual({ ok: true, labels: ['task'], topic: 'Errands', seams: { 1: [1] }, relations: {} })
   })
 })
 

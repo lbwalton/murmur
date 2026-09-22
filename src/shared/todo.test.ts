@@ -5,9 +5,11 @@ import {
   dueReminders,
   markFired,
   openItems,
+  parseListItems,
   parseTodo,
   reminderBody,
-  resettleFired
+  resettleFired,
+  tickLine
 } from './todo'
 
 const FILE = `# My tasks
@@ -159,5 +161,54 @@ describe('resettleFired', () => {
 
   it('ignores cleared and malformed slots', () => {
     expect(resettleFired(at(23, 0), ['', 'nope', '08:00'])).toEqual({ '2': today })
+  })
+})
+
+
+describe('parseListItems', () => {
+  it('reads checkboxes and plain bullets alike, keeping which is which', () => {
+    const ideas = '## 2026-09-20\n- A thought. ([10:32](inbox/x.md))\n- [ ] a box\n* another\n'
+    expect(parseListItems(ideas)).toEqual([
+      { text: 'A thought.', done: false, group: '2026-09-20', checkbox: false },
+      { text: 'a box', done: false, group: '2026-09-20', checkbox: true },
+      { text: 'another', done: false, group: '2026-09-20', checkbox: false }
+    ])
+    expect(parseListItems('```\n- fenced\n```\n- real')).toEqual([{ text: 'real', done: false, group: '', checkbox: false }])
+    // A bare empty box is a placeholder, never an item reading "[ ]".
+    expect(parseListItems('- [ ]\n- [ ] \n- [x]')).toEqual([])
+  })
+})
+
+describe('tickLine', () => {
+  const file = '# Tasks\r\n\r\n## 2026-09-20\r\n- [ ] Call Bob. ([10:32](inbox/x.md))\r\n- [x] Done thing.\r\n- [ ] Renew the domain.\r\n\r\n'
+
+  it('changes exactly one box and nothing else, line endings included', () => {
+    const result = tickLine(file, 2)
+    expect(result.ok).toBe(true)
+    const text = result.ok ? result.text : ''
+    expect(text).toBe(file.replace('- [ ] Renew the domain.', '- [x] Renew the domain.'))
+    expect(text.length).toBe(file.length)
+    // Only one byte differs.
+    let diffs = 0
+    for (let i = 0; i < file.length; i++) if (file[i] !== text[i]) diffs += 1
+    expect(diffs).toBe(1)
+  })
+
+  it('counts boxes the way parseTodo does, so the nth matches the list the user saw', () => {
+    expect(parseTodo(file)[2].text).toBe('Renew the domain.')
+    const result = tickLine(file, 0)
+    expect(result.ok && result.text.includes('- [x] Call Bob.')).toBe(true)
+  })
+
+  it('refuses a box that is already ticked or that does not exist', () => {
+    expect(tickLine(file, 1)).toEqual({ ok: false, reason: 'already done' })
+    expect(tickLine(file, 9)).toEqual({ ok: false, reason: 'not found' })
+    expect(tickLine('', 0)).toEqual({ ok: false, reason: 'not found' })
+  })
+
+  it('skips fenced and empty boxes when counting', () => {
+    const tricky = '```\n- [ ] sample\n```\n- [ ]   \n- [ ] first real\n'
+    const result = tickLine(tricky, 0)
+    expect(result.ok && result.text).toBe('```\n- [ ] sample\n```\n- [ ]   \n- [x] first real\n')
   })
 })

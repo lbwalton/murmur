@@ -30,6 +30,26 @@ describe('buildDecisionRequest', () => {
     expect(req.questions.seam_3_1).toBeUndefined()
   })
 
+  it('adds a relation and an item Choice per sentence, and lists the items in the state, only when there are items', () => {
+    const items = [
+      { number: 1, file: 'tasks' as const, nth: 0, text: 'Renew the domain.', done: false, checkbox: true },
+      { number: 2, file: 'tasks' as const, nth: 1, text: 'Book the flight.', done: true, checkbox: true }
+    ]
+    const withItems = buildDecisionRequest('jev-latest', sentences, seams, items)
+    expect(withItems.state).toEqual({
+      sentences: ['1. Call the dentist.', '2. Buy eggs, and buy milk.', '3. Nice day.'],
+      items: ['1. [ ] Renew the domain.', '2. [x] Book the flight.']
+    })
+    const relation = withItems.questions.relation_1
+    expect(relation.type).toBe('choice')
+    expect(Object.keys(relation.criteria as Record<string, string>)).toEqual(['new', 'same', 'completes'])
+    const match = withItems.questions.match_3
+    expect(match.type).toBe('choice')
+    expect(match.criteria).toEqual({ '1': null, '2': null })
+    expect(req.questions.relation_1).toBeUndefined()
+    expect(Array.isArray(req.state)).toBe(true)
+  })
+
   it('never asks for a topic or any free text', () => {
     for (const q of Object.values(req.questions)) expect(['choice', 'noul']).toContain(q.type)
   })
@@ -50,7 +70,8 @@ describe('readDecisionAnswers', () => {
       labels: ['task', 'task', 'note'],
       topic: '',
       seams: { 2: [1] },
-      confidence: [0.97, 0.9, 0.8]
+      confidence: [0.97, 0.9, 0.8],
+      relations: {}
     })
   })
 
@@ -94,6 +115,26 @@ describe('readDecisionAnswers', () => {
     expect(verdict).toMatchObject({ ok: true, seams: { 1: [1, 2] } })
   })
 
+  it('reads a relation vote with its item, and treats anything else as new', () => {
+    const answers = {
+      label_1: { type: 'choice', choice: 'task' },
+      label_2: { type: 'choice', choice: 'task' },
+      label_3: { type: 'choice', choice: 'note' },
+      relation_1: { type: 'choice', choice: 'same' },
+      match_1: { type: 'choice', choice: '2' },
+      relation_2: { type: 'choice', choice: 'completes' },
+      match_2: { type: 'choice', choice: '9' },
+      relation_3: { type: 'choice', choice: 'new' },
+      match_3: { type: 'choice', choice: '1' }
+    }
+    expect(readDecisionAnswers(answers, 3, [0, 0, 0], 2)).toMatchObject({
+      ok: true,
+      relations: { 1: { relation: 'same', item: 2 } }
+    })
+    // No items offered: relation answers are ignored even if present.
+    expect(readDecisionAnswers(answers, 3, [0, 0, 0], 0)).toMatchObject({ ok: true, relations: {} })
+  })
+
   it('carries a confidence of one when the answer gives none', () => {
     const bare = { label_1: { type: 'choice', choice: 'idea' } }
     expect(readDecisionAnswers(bare, 1, [0])).toEqual({
@@ -101,7 +142,8 @@ describe('readDecisionAnswers', () => {
       labels: ['idea'],
       topic: '',
       seams: {},
-      confidence: [1]
+      confidence: [1],
+      relations: {}
     })
   })
 })

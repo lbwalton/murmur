@@ -6,9 +6,32 @@
 // the whole labeling is valid, so a rejected sort costs nothing: the
 // note is in the inbox, where it already was. Nothing here logs the
 // note's text.
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import {
+  appendFileSync,
+  closeSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync
+} from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { app } from 'electron'
+import {
+  type ContextFile,
+  type HeldReason,
+  SORT_RELATIONS_PROMPT,
+  buildCompareContext,
+  contextPrompt,
+  heldReasonFor,
+  pickRelated
+} from '../../shared/compare'
+import { parseTodo, tickLine } from '../../shared/todo'
 import {
   DEFAULT_IDEAS_TEMPLATE,
   DEFAULT_NOTE_ENTRY_TEMPLATE,
@@ -38,7 +61,7 @@ import {
   validateSort
 } from '../../shared/sorter'
 import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
-import type { SortVerdict } from '../../shared/sorter'
+import type { SortLabel, SortVerdict } from '../../shared/sorter'
 import { resolvePolishConnection } from '../formatter'
 import type { PolishConfig } from '../formatter/llm'
 import { askDecision } from './decide'
@@ -60,6 +83,24 @@ export interface SortInput {
 }
 
 export type SortOutcome = 'filed' | 'rejected' | 'failed' | 'skipped'
+
+/** A line a sort held in the inbox instead of filing (US-058 unsure,
+ *  US-055 related), with what it was tied to, for the panel's actions.
+ *  The text travels to the settings window only, like history does. */
+export interface HeldLine {
+  position: number
+  text: string
+  label: SortLabel
+  reason: HeldReason
+  match?: {
+    number: number
+    file: ContextFile
+    nth: number
+    text: string
+    done: boolean
+    checkbox: boolean
+  }
+}
 
 export interface SortReport {
   at: number
@@ -111,6 +152,109 @@ function settledSetFor(input: SortInput): Set<number> {
 
 function settleFor(input: SortInput, positions: readonly number[], keptLocal: readonly number[]): void {
   settled = settle(settledSetFor(input), positions, keptLocal)
+}
+
+// Held lines belong to the note they came from, like the settled set.
+let heldFor: SortInput | null = null
+let heldLines: HeldLine[] = []
+// The tasks file exactly as it was when a held line's match was read,
+// keyed by the held position. The one in-place edit accepts the file
+// only when it still starts with that text: murmur's own appends pass,
+// any edit in place refuses (review gate 2026-09-22: a hash refreshed
+// by a later append could launder a hand edit between two clicks).
+const heldSnapshots = new Map<number, { file: string; text: string }>()
+// The heading topic of the newest sort, so a line filed later by hand
+// lands under the same heading.
+let lastTopic = ''
+// What the newest held-line action did, for the panel; cleared when a
+// sort starts so a stale refusal never outlives the lines it was about.
+let lastAction: { ok: boolean; reason?: string } | null = null
+
+export function getHeldLines(): HeldLine[] {
+  return heldLines.map((h) => ({ ...h, match: h.match ? { ...h.match } : undefined }))
+}
+
+export function getLastAction(): { ok: boolean; reason?: string } | null {
+  return lastAction
+}
+
+function setAction(result: { ok: boolean; reason?: string }): { ok: boolean; reason?: string } {
+  lastAction = result
+  return result
+}
+
+function filedPaths(when: Date): {
+  tasksPath: ReturnType<typeof resolveTemplateOrDefault>
+  ideasPath: ReturnType<typeof resolveTemplateOrDefault>
+} {
+  const settings = getSettings().notes
+  return {
+    tasksPath: resolveTemplateOrDefault(settings.tasksTemplate, DEFAULT_TASKS_TEMPLATE, when, 'tasks'),
+    ideasPath: resolveTemplateOrDefault(settings.ideasTemplate, DEFAULT_IDEAS_TEMPLATE, when, 'ideas')
+  }
+}
+
+type WriteOutcome =
+  | { ok: true; counts: { tasks: number; ideas: number; notes: number } }
+  | { ok: false; reason: string; landed: { tasks: number; ideas: number; notes: number } }
+
+/**
+ * File sentences under their labels: tasks and ideas as lines with a
+ * link back, notes nowhere. Both files open before either is written,
+ * the heading is written once per file, and the files' state is
+ * remembered afterward for the one in-place edit.
+ */
+function writeEntries(
+  input: SortInput,
+  sentences: readonly string[],
+  labels: readonly SortLabel[],
+  topic: string,
+  paths: ReturnType<typeof filedPaths> = filedPaths(input.when)
+): WriteOutcome {
+  const settings = getSettings()
+  const { tasksPath, ideasPath } = paths
+  const plan = planFiling([...sentences], [...labels], {
+    time: noteMoment(input.when).time,
+    inboxFile: input.inboxRelative,
+    tasksFile: tasksPath.relative,
+    ideasFile: ideasPath.relative
+  })
+  const counts = { tasks: plan.tasks.length, ideas: plan.ideas.length, notes: plan.notes.length }
+  const tasksFile = join(input.base, ...tasksPath.segments)
+  const ideasFile = join(input.base, ...ideasPath.segments)
+  const writes: Array<{ file: string; lines: string[]; kind: 'tasks' | 'ideas' }> = []
+  if (plan.tasks.length > 0) writes.push({ file: tasksFile, lines: plan.tasks, kind: 'tasks' })
+  if (plan.ideas.length > 0) writes.push({ file: ideasFile, lines: plan.ideas, kind: 'ideas' })
+  let targets: ReturnType<typeof openTargets>
+  try {
+    targets = openTargets(writes.map((w) => w.file))
+  } catch (error) {
+    writeAppLog(`[sort] write failed reason=${errorCode(error)} before any line landed`)
+    return { ok: false, reason: `write ${errorCode(error)}`, landed: { tasks: 0, ideas: 0, notes: counts.notes } }
+  }
+  const landed = { tasks: 0, ideas: 0, notes: counts.notes }
+  const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when, topic)
+  try {
+    writes.forEach((write, i) => {
+      const existing = targets.texts[i]
+      const prefix = headingPrefix(heading, existing)
+      // A blank line sets a new heading apart from what came before it.
+      const gap = prefix !== '' && existing.trim().length > 0 ? '\n' : ''
+      writeSync(
+        targets.fds[i],
+        `${appendSeparator(targets.tails[i])}${gap}${prefix}${write.lines.join('\n')}\n`
+      )
+      landed[write.kind] = write.lines.length
+    })
+  } catch (error) {
+    writeAppLog(
+      `[sort] write failed reason=${errorCode(error)} landed tasks=${landed.tasks} ideas=${landed.ideas}`
+    )
+    for (const fd of targets.fds) closeSync(fd)
+    return { ok: false, reason: `write ${errorCode(error)}`, landed }
+  }
+  for (const fd of targets.fds) closeSync(fd)
+  return { ok: true, counts }
 }
 
 /** Sentence positions of a note a sort has not settled yet. */
@@ -278,6 +422,17 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const positions = only ?? all.map((_, i) => i)
   const sentences = positions.map((i) => all[i])
   if (sentences.length === 0) return record('skipped', NONE, 'nothing to sort')
+  // Held lines follow the note: a fresh note starts empty, and a line
+  // sent again gets a fresh verdict in place of its old one.
+  lastAction = null
+  if (heldFor !== input) {
+    heldFor = input
+    heldLines = []
+    heldSnapshots.clear()
+  } else {
+    heldLines = heldLines.filter((h) => !positions.includes(h.position))
+    for (const position of positions) heldSnapshots.delete(position)
+  }
 
   const resolved: ResolvedSortConnection | null = options.connection
     ? { config: options.connection, slot: 'separate', protocol: options.protocol ?? 'chat' }
@@ -298,6 +453,19 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const seamsBySentence = sentences.map(findSeams)
   const seamCounts = seamsBySentence.map((s) => s.length)
   const offerSeams = seamCounts.some((n) => n > 0)
+  // Filed items (US-055): what is already in the two files, read from
+  // the base this note landed in, so a dump is compared before it files.
+  let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
+  let ideasPath: ReturnType<typeof resolveTemplateOrDefault>
+  try {
+    ;({ tasksPath, ideasPath } = filedPaths(input.when))
+  } catch (error) {
+    writeAppLog(`[sort] failed reason=${errorCode(error)}`)
+    return record('failed', NONE, 'paths')
+  }
+  const tasksFile = join(input.base, ...tasksPath.segments)
+  const tasksText = fileText(tasksFile)
+  const items = buildCompareContext(tasksText, fileText(join(input.base, ...ideasPath.segments)))
 
   let verdict: SortVerdict | null = null
   let answeredBy = config.model
@@ -306,12 +474,12 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     // short of a complete set of answers falls back to the chat sorter,
     // so choosing the decision model can never be why a sort fails.
     const reply = await askDecision(
-      buildDecisionRequest(config.model, sentences, seamsBySentence),
+      buildDecisionRequest(config.model, sentences, seamsBySentence, items),
       config,
       fetchImpl,
       timeoutMs
     )
-    const read = reply.ok ? readDecisionAnswers(reply.answers, sentences.length, seamCounts) : null
+    const read = reply.ok ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length) : null
     if (reply.ok && read?.ok) {
       verdict = read
       answeredBy = reply.model
@@ -334,17 +502,20 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     const systemPrompt = [
       SORT_SYSTEM_PROMPT,
       ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
-      ...(offerSeams ? [SORT_SEAMS_PROMPT] : [])
+      ...(offerSeams ? [SORT_SEAMS_PROMPT] : []),
+      ...(items.length > 0 ? [SORT_RELATIONS_PROMPT] : [])
     ].join(' ')
-    const userPrompt = offerSeams
-      ? `${numberedList(sentences)}\n\nSeams:\n${seamPrompt(sentences, seamsBySentence)}`
-      : numberedList(sentences)
+    const userPrompt = [
+      numberedList(sentences),
+      ...(offerSeams ? [`Seams:\n${seamPrompt(sentences, seamsBySentence)}`] : []),
+      ...(items.length > 0 ? [contextPrompt(items)] : [])
+    ].join('\n\n')
     const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
     if (!reply.ok) {
       writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
       return record('failed', NONE, reply.reason)
     }
-    const chat = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts })
+    const chat = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts, items: items.length })
     if (!chat.ok) {
       writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
       return record('rejected', NONE, chat.reason)
@@ -352,25 +523,41 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     verdict = chat
   }
 
-  let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
-  let ideasPath: ReturnType<typeof resolveTemplateOrDefault>
-  try {
-    tasksPath = resolveTemplateOrDefault(settings.notes.tasksTemplate, DEFAULT_TASKS_TEMPLATE, input.when, 'tasks')
-    ideasPath = resolveTemplateOrDefault(settings.notes.ideasTemplate, DEFAULT_IDEAS_TEMPLATE, input.when, 'ideas')
-  } catch (error) {
-    writeAppLog(`[sort] failed reason=${errorCode(error)}`)
-    return record('failed', NONE, 'paths')
-  }
   // Held lines (US-058): on a decision connection, a line the model is
   // not sure of stays in the inbox, which is already verbatim, so
   // holding writes nothing. The chat path reports no confidence and
   // holds nothing. A note with nothing kept is a rejected sort.
   const threshold = settings.notes.connection.threshold
-  const { kept, held } = holdBelow(sentences.length, protocol === 'decide' ? verdict.confidence : undefined, threshold)
-  if (kept.length === 0) {
-    writeAppLog(`[sort] held every line reason=low confidence held=${held.length} threshold=${threshold} model=${answeredBy}`)
-    return record('rejected', { ...NONE, held: held.length }, 'low confidence')
+  const { kept: sure, held: unsure } = holdBelow(
+    sentences.length,
+    protocol === 'decide' ? verdict.confidence : undefined,
+    threshold
+  )
+  for (const i of unsure) {
+    heldLines.push({ position: positions[i], text: sentences[i], label: verdict.labels[i], reason: 'unsure' })
   }
+  if (sure.length === 0) {
+    writeAppLog(`[sort] held every line reason=low confidence held=${unsure.length} threshold=${threshold} model=${answeredBy}`)
+    return record('rejected', { ...NONE, held: unsure.length }, 'low confidence')
+  }
+
+  // Related lines (US-055): a task or idea the vote tied to a filed
+  // item is held with that item quoted, and settled, since the vote
+  // resolved it; File it anyway is the way to land it regardless.
+  const { related, kept } = pickRelated(sure, verdict.labels, verdict.relations, items)
+  for (const { local, vote, item } of related) {
+    heldLines.push({
+      position: positions[local],
+      text: sentences[local],
+      label: verdict.labels[local],
+      reason: heldReasonFor(vote, item),
+      match: { number: item.number, file: item.file, nth: item.nth, text: item.text, done: item.done, checkbox: item.checkbox }
+    })
+    heldSnapshots.set(positions[local], { file: tasksFile, text: tasksText })
+  }
+  settleFor(input, positions, related.map((r) => r.local))
+  const heldCount = unsure.length + related.length
+
   const keptSentences = kept.map((i) => sentences[i])
   const keptLabels = kept.map((i) => verdict.labels[i])
   const keptSeams = kept.map((i) => seamsBySentence[i])
@@ -383,44 +570,13 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     const label = keptLabels[Number(k) - 1]
     return label === 'task' || label === 'idea'
   }).length
-  const plan = planFiling(expanded.sentences, expanded.labels, {
-    time: noteMoment(input.when).time,
-    inboxFile: input.inboxRelative,
-    tasksFile: tasksPath.relative,
-    ideasFile: ideasPath.relative
-  })
-  const counts = { tasks: plan.tasks.length, ideas: plan.ideas.length, notes: plan.notes.length, held: held.length }
-  const writes: Array<{ file: string; lines: string[]; kind: 'tasks' | 'ideas' }> = []
-  if (plan.tasks.length > 0) writes.push({ file: join(input.base, ...tasksPath.segments), lines: plan.tasks, kind: 'tasks' })
-  if (plan.ideas.length > 0) writes.push({ file: join(input.base, ...ideasPath.segments), lines: plan.ideas, kind: 'ideas' })
-  let targets: ReturnType<typeof openTargets>
-  try {
-    targets = openTargets(writes.map((w) => w.file))
-  } catch (error) {
-    writeAppLog(`[sort] write failed reason=${errorCode(error)} before any line landed`)
-    return record('failed', NONE, `write ${errorCode(error)}`)
-  }
-  const landed = { tasks: 0, ideas: 0, notes: counts.notes, held: held.length }
-  const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when, verdict.topic)
-  try {
-    writes.forEach((write, i) => {
-      const existing = targets.texts[i]
-      const prefix = headingPrefix(heading, existing)
-      // A blank line sets a new heading apart from what came before it.
-      const gap = prefix !== '' && existing.trim().length > 0 ? '\n' : ''
-      writeSync(
-        targets.fds[i],
-        `${appendSeparator(targets.tails[i])}${gap}${prefix}${write.lines.join('\n')}\n`
-      )
-      landed[write.kind] = write.lines.length
-    })
-  } catch (error) {
-    writeAppLog(
-      `[sort] write failed reason=${errorCode(error)} landed tasks=${landed.tasks} ideas=${landed.ideas}`
-    )
+  lastTopic = verdict.topic
+  const written = writeEntries(input, expanded.sentences, expanded.labels, verdict.topic, { tasksPath, ideasPath })
+  if (!written.ok) {
     // Whatever landed is settled so Sort again cannot land it twice;
     // lines whose file failed stay pending in the verbatim inbox
     // (review gate 2026-09-22).
+    const landed = written.landed
     settleFor(
       input,
       positions,
@@ -429,19 +585,155 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
         return label === 'note' || (label === 'task' && landed.tasks > 0) || (label === 'idea' && landed.ideas > 0)
       })
     )
-    return record('failed', landed, `write ${errorCode(error)}`)
-  } finally {
-    for (const fd of targets.fds) closeSync(fd)
+    return record('failed', { ...landed, held: heldCount }, written.reason)
   }
-  // Everything kept is settled for this note; held lines stay pending
-  // so Sort again can send them alone.
+  // Everything kept is settled for this note; unsure lines stay
+  // pending so Sort again can send them alone.
   settleFor(input, positions, kept)
+  const counts = { ...written.counts, held: heldCount }
   const topicNote = wantsTopic && protocol === 'decide' ? ' topic=unavailable' : ''
-  const heldNote = held.length > 0 ? ` held=${held.length} threshold=${threshold}` : ''
+  const heldNote =
+    heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${related.length} threshold=${threshold}` : ''
   writeAppLog(
     `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}`
   )
   return record('filed', counts)
+}
+
+// ------------------------------------------------- held line actions ---
+// Every write past the sort itself is a click. File it anyway lands one
+// held line through the same writer, Skip drops it, and Tick it is the
+// one in-place edit murmur makes to a vault file.
+
+function takeHeld(position: number): HeldLine | null {
+  const entry = heldLines.find((h) => h.position === position) ?? null
+  return entry
+}
+
+function dropHeld(entry: HeldLine): void {
+  heldLines = heldLines.filter((h) => h !== entry)
+}
+
+/** Land one held line, with its link, under the newest sort's heading. */
+export function fileHeldLine(position: number): { ok: boolean; reason?: string } {
+  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  const input = heldFor
+  const entry = takeHeld(position)
+  if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
+  const written = writeEntries(input, [entry.text], [entry.label], lastTopic)
+  if (!written.ok) return setAction({ ok: false, reason: written.reason })
+  settleFor(input, [position], [0])
+  dropHeld(entry)
+  heldSnapshots.delete(position)
+  writeAppLog(`[sort] filed held line position=${position} reason=${entry.reason}`)
+  return setAction({ ok: true })
+}
+
+/** Drop a held line: it stays in the inbox and is not sent again. */
+export function skipHeldLine(position: number): { ok: boolean; reason?: string } {
+  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  const input = heldFor
+  const entry = takeHeld(position)
+  if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
+  settleFor(input, [position], [0])
+  dropHeld(entry)
+  heldSnapshots.delete(position)
+  writeAppLog(`[sort] skipped held line position=${position} reason=${entry.reason}`)
+  return setAction({ ok: true })
+}
+
+const BACKUP_KEEP_MS = 24 * 60 * 60 * 1000
+
+function backupDir(): string {
+  return join(app.getPath('userData'), 'notes-backups')
+}
+
+/** Keep a copy of a file as it was, and let yesterday's copies go. The
+ *  age of a copy is the moment in its name, never its mtime: on Windows
+ *  a copy inherits the source's last-write time and would prune itself
+ *  in the same call (review gate 2026-09-22). */
+function backup(file: string): void {
+  const dir = backupDir()
+  mkdirSync(dir, { recursive: true })
+  const now = Date.now()
+  copyFileSync(file, join(dir, `${basename(file, '.md')}.${now}.md`))
+  for (const name of readdirSync(dir)) {
+    const stamp = Number(/\.(\d{10,})\.md$/.exec(name)?.[1] ?? Number.NaN)
+    if (Number.isFinite(stamp) && stamp < now - BACKUP_KEEP_MS) {
+      try {
+        unlinkSync(join(dir, name))
+      } catch {
+        // A copy that cannot be removed is left alone.
+      }
+    }
+  }
+}
+
+/**
+ * Tick the item a held completion matched: the one box becomes [x],
+ * every other byte of the file stays as it was, the write goes through
+ * a temp file and a rename, a copy of the file as it was is kept for a
+ * day, and a file that changed in place since murmur read the match is
+ * refused. Only a checkbox in the tasks file can be ticked.
+ */
+export function tickHeldMatch(position: number): { ok: boolean; reason?: string } {
+  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  const input = heldFor
+  const entry = takeHeld(position)
+  if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
+  const match = entry.match
+  if (!match || match.file !== 'tasks' || !match.checkbox) {
+    return setAction({ ok: false, reason: 'that line has no box in the tasks file to tick' })
+  }
+  if (match.done) return setAction({ ok: false, reason: 'that item is already ticked' })
+  const snapshot = heldSnapshots.get(position)
+  if (!snapshot) return setAction({ ok: false, reason: 'the tasks file has not been read for that line' })
+  let raw: Buffer
+  try {
+    raw = readFileSync(snapshot.file)
+  } catch (error) {
+    return setAction({ ok: false, reason: `could not read the tasks file (${errorCode(error)})` })
+  }
+  const current = raw.toString('utf8')
+  // Bytes UTF-8 cannot represent would come back changed; refuse rather
+  // than rewrite more than one byte.
+  if (!Buffer.from(current, 'utf8').equals(raw)) {
+    return setAction({ ok: false, reason: 'the tasks file holds bytes murmur cannot preserve; tick it by hand' })
+  }
+  // murmur's own appends since the read are fine; anything else is not.
+  if (!current.startsWith(snapshot.text)) {
+    return setAction({ ok: false, reason: 'the tasks file changed since murmur read it; tick it by hand, or dump again' })
+  }
+  // The line must still be the line the match quoted.
+  if (parseTodo(current)[match.nth]?.text !== match.text) {
+    return setAction({ ok: false, reason: 'that item is no longer where murmur read it; tick it by hand' })
+  }
+  const ticked = tickLine(current, match.nth)
+  if (!ticked.ok) {
+    return setAction({
+      ok: false,
+      reason: ticked.reason === 'already done' ? 'that item is already ticked' : 'that item is no longer in the file'
+    })
+  }
+  const tmp = `${snapshot.file}.murmur-tmp`
+  try {
+    backup(snapshot.file)
+    writeFileSync(tmp, ticked.text, 'utf8')
+    renameSync(tmp, snapshot.file)
+  } catch (error) {
+    try {
+      unlinkSync(tmp)
+    } catch {
+      // Nothing to clean, or already gone.
+    }
+    writeAppLog(`[sort] tick failed reason=${errorCode(error)}`)
+    return setAction({ ok: false, reason: `could not write the file (${errorCode(error)})` })
+  }
+  settleFor(input, [position], [0])
+  dropHeld(entry)
+  heldSnapshots.delete(position)
+  writeAppLog(`[sort] ticked file=tasks nth=${match.nth}`)
+  return setAction({ ok: true })
 }
 
 /** Re-run the sort on the newest note (Sort again in settings): only
@@ -656,10 +948,13 @@ export function initSorter(): void {
         decidedTodo.endsWith(
           '- [ ] Renew the domain ([10:32](inbox/2026-09-18.md))\n- [ ] pay the invoice. ([10:32](inbox/2026-09-18.md))\n'
         ) &&
-        Array.isArray(decisionBody.state) &&
+        typeof decisionBody.state === 'object' &&
         decisionBody.questions?.label_1?.type === 'choice' &&
         decisionBody.questions?.label_2?.type === 'choice' &&
-        decisionBody.questions?.seam_1_1?.type === 'noul'
+        decisionBody.questions?.seam_1_1?.type === 'noul' &&
+        // Filed items exist by now, so the relation questions ride along.
+        decisionBody.questions?.relation_1?.type === 'choice' &&
+        decisionBody.questions?.match_1?.type === 'choice'
       const limited = await sortNote({ ...input, text: 'Book the flight.' }, {
         fetchImpl: routed(429),
         connection: decideCfg,
@@ -768,6 +1063,126 @@ export function initSorter(): void {
         allHeld.held === 2 &&
         read(todo) === afterRetry &&
         read(inbox) === inboxBefore
+
+      // Duplicates and completions (US-055). The model votes numbers
+      // against the filed items; a line tied to one is held with the
+      // item quoted and nothing is written for it. File it anyway lands
+      // exactly that line once; Tick it changes one box and nothing
+      // else and keeps a copy; a file that moved underneath is refused.
+      const numberOf = (text: string, open = false): number =>
+        buildCompareContext(read(todo), read(ideas)).find((i) => i.text === text && (!open || !i.done))?.number ?? 0
+      const vetNumber = numberOf('Call the vet.')
+      const dupInput: SortInput = { ...input, text: 'Call the vet. Renew the passport.' }
+      rememberForSort(dupInput)
+      const todoBeforeDup = read(todo)
+      const dup = await sortNote(dupInput, {
+        fetchImpl: mockReply(`{"1":"task","2":"task","relations":{"1":[1,${vetNumber}]}}`),
+        connection: cfg
+      })
+      const heldDup = getHeldLines()
+      const dupOk =
+        vetNumber > 0 &&
+        dup.outcome === 'filed' &&
+        dup.tasks === 1 &&
+        dup.held === 1 &&
+        read(todo) === `${todoBeforeDup}- [ ] Renew the passport. ([10:32](inbox/2026-09-18.md))\n` &&
+        heldDup.length === 1 &&
+        heldDup[0].reason === 'same' &&
+        heldDup[0].text === 'Call the vet.' &&
+        heldDup[0].match?.text === 'Call the vet.' &&
+        !canSortAgain() &&
+        read(inbox) === inboxBefore
+      const anyway = fileHeldLine(heldDup[0]?.position ?? -1)
+      const anywayOk =
+        anyway.ok &&
+        read(todo) ===
+          `${todoBeforeDup}- [ ] Renew the passport. ([10:32](inbox/2026-09-18.md))\n- [ ] Call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
+        getHeldLines().length === 0 &&
+        !fileHeldLine(heldDup[0]?.position ?? -1).ok
+
+      const passportNumber = numberOf('Renew the passport.')
+      const doneInput: SortInput = { ...input, text: 'I renewed the passport.' }
+      rememberForSort(doneInput)
+      const beforeTick = read(todo)
+      const done = await sortNote(doneInput, {
+        fetchImpl: mockReply(`{"1":"task","relations":{"1":[2,${passportNumber}]}}`),
+        connection: cfg
+      })
+      const heldDone = getHeldLines()
+      const completesOk =
+        done.outcome === 'filed' &&
+        done.tasks === 0 &&
+        done.held === 1 &&
+        heldDone[0]?.reason === 'completes' &&
+        heldDone[0]?.match?.text === 'Renew the passport.' &&
+        read(todo) === beforeTick
+      const ticked = tickHeldMatch(heldDone[0]?.position ?? -1)
+      const afterTick = read(todo)
+      const backups = existsSync(backupDir()) ? readdirSync(backupDir()) : []
+      const tickOk =
+        ticked.ok &&
+        afterTick === beforeTick.replace('- [ ] Renew the passport.', '- [x] Renew the passport.') &&
+        afterTick.length === beforeTick.length &&
+        getHeldLines().length === 0 &&
+        backups.length >= 1 &&
+        readFileSync(join(backupDir(), backups[backups.length - 1]), 'utf8') === beforeTick
+
+      const openVet = numberOf('Call the vet.', true)
+      const changedInput: SortInput = { ...input, text: 'I called the vet.' }
+      rememberForSort(changedInput)
+      await sortNote(changedInput, {
+        fetchImpl: mockReply(`{"1":"task","relations":{"1":[2,${openVet}]}}`),
+        connection: cfg
+      })
+      // An edit in place (a line removed) is refused even after murmur's
+      // own append re-baselined the file, and even when it only changes
+      // what comes after the read (an append by hand passes).
+      const beforeEdit = read(todo)
+      const edited = beforeEdit.replace('- [x] Renew the passport. ([10:32](inbox/2026-09-18.md))\n', '')
+      writeFileSync(todo, edited)
+      const refused = tickHeldMatch(getHeldLines()[0]?.position ?? -1)
+      appendFileSync(todo, '- [ ] edited by hand\n')
+      const refusedAgain = tickHeldMatch(getHeldLines()[0]?.position ?? -1)
+      const refusedOk =
+        edited !== beforeEdit &&
+        !refused.ok &&
+        (refused.reason ?? '').includes('changed') &&
+        !refusedAgain.ok &&
+        read(todo).endsWith('- [ ] edited by hand\n') &&
+        getLastAction()?.ok === false
+      const skipped = skipHeldLine(getHeldLines()[0]?.position ?? -1)
+      const skipOk = skipped.ok && getHeldLines().length === 0 && !canSortAgain()
+      // Put the removed line back so the next case finds the ticked passport.
+      writeFileSync(todo, `${beforeEdit}- [ ] edited by hand\n`)
+
+      // The same relation on a decision connection, from typed answers:
+      // the passport is ticked now, so the match reads as finished before.
+      const passportAgain = numberOf('Renew the passport.')
+      const decideDup: SortInput = { ...input, text: 'Renew the passport.' }
+      rememberForSort(decideDup)
+      const beforeDecideDup = read(todo)
+      const dd = await sortNote(decideDup, {
+        fetchImpl: routed(
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.9 },
+              relation_1: { type: 'choice', choice: 'same' },
+              match_1: { type: 'choice', choice: String(passportAgain) }
+            }
+          })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const decideDupOk =
+        dd.outcome === 'filed' &&
+        dd.held === 1 &&
+        // A sort clears the stale action note.
+        getLastAction() === null &&
+        read(todo) === beforeDecideDup &&
+        getHeldLines()[0]?.reason === 'done-before' &&
+        skipHeldLine(getHeldLines()[0]?.position ?? -1).ok
       const topicOk =
         withTopic.outcome === 'filed' &&
         badTopic.outcome === 'filed' &&
@@ -807,8 +1222,18 @@ export function initSorter(): void {
         partialOk &&
         retryOk &&
         allHeldOk &&
-        getLastSort() === allHeld &&
-        log.includes('held=1 threshold=0.5') &&
+        dupOk &&
+        anywayOk &&
+        completesOk &&
+        tickOk &&
+        refusedOk &&
+        skipOk &&
+        decideDupOk &&
+        getLastSort() === dd &&
+        log.includes('related=1') &&
+        log.includes('[sort] ticked file=tasks nth=') &&
+        log.includes('[sort] filed held line position=') &&
+        log.includes('held=1 unsure=1 related=0 threshold=0.5') &&
         log.includes('[sort] held every line reason=low confidence held=2 threshold=0.5') &&
         log.includes('[sort] decision failed reason=rate limit model=jev-latest; falling back to the chat sorter') &&
         log.includes('[sort] decision failed reason=validate: missing sentences model=jev-latest') &&

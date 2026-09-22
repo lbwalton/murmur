@@ -1049,3 +1049,15 @@ textarea.entry-field {
   resize: vertical;
   line-height: 1.45;
 }
+
+/* Held lines (US-055): each is a row of its own so the actions sit
+   beside the line they act on; the failure note reads in the alarm
+   color and clears on the next action. */
+.held-list .row-label {
+  font-weight: 500;
+}
+
+.held-note {
+  color: var(--red);
+  padding: 6px 0 0;
+}

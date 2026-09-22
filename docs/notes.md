@@ -132,7 +132,7 @@ A sentence can still hold several items, because a brain dump speaks in comma ru
 
 Only tasks and ideas are cut; a note stays as one sentence in the inbox anyway. A sentence with no possible cut, one the model voted to keep whole, or a vote that names a cut that does not exist files as one line, and the rest of the note is unaffected. "Eggs and bacon" in a sentence about shopping becomes two items; "rock and roll" stays one, because the model votes on meaning while murmur owns the words. A list you dictated as a list is already one line per item and is never cut again.
 
-The reply is checked strictly before anything is written: every sentence must be labeled exactly once, only those three labels count, and anything else (chatter around the JSON with numbers missing, an invented sentence number, a label that is not one of the three, a reply that is not JSON at all) rejects the whole sort. The cut votes are checked per sentence: a vote that is not a list of numbers, or names a cut that does not exist, means that one sentence stays whole while the others still split. Sorting works best at Full formatting, where sentences arrive punctuated; at Off, an unpunctuated ramble is one long sentence and gets one label.
+The reply is checked strictly before anything is written: every sentence must be labeled exactly once, only those three labels count, and anything else (chatter around the JSON with numbers missing, an invented sentence number, a label that is not one of the three, a reply that is not JSON at all) rejects the whole sort. The cut votes are checked per sentence: a vote that is not a list of numbers, or names a cut that does not exist, means that one sentence stays whole while the others still split. The relation votes are checked the same way: a malformed vote, or one naming an item that is not in the list, means new for that line only, so a bad reply can never hide a line. Sorting works best at Full formatting, where sentences arrive punctuated; at Off, an unpunctuated ramble is one long sentence and gets one label.
 
 ## What happens when a sort is rejected or fails?
 
@@ -144,7 +144,7 @@ By default the sort connection is Same as cleanup: it uses whatever your cleanup
 
 ## Can I sort with a decision model instead of a chat model?
 
-Yes. Under Sort connection choose Separate provider and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state, one typed question per sentence over the three labels, and one yes/no question per cut, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
+Yes. Under Sort connection choose Separate provider and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state (with the list of items already filed beside them, when there are any), one typed question per sentence over the three labels, one yes/no question per cut, and, when there are filed items, a relation question and an item-number question per sentence, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
 
 The one thing it gives up is naming: Name each note needs a model that can write, so on a decision connection the heading carries the date alone, and the panel says so. If the decision model does not answer, whether a rate limit, a network fault, or a missing answer, murmur falls back to your cleanup connection's chat model for that note and logs `[sort] decision failed reason=...; falling back to the chat sorter`. The filed log line names which protocol answered.
 
@@ -152,9 +152,23 @@ The one thing it gives up is naming: Name each note needs a model that can write
 
 On a decision connection, the model reports how sure it is of each label, and a line it is not sure of is held: it stays in the inbox exactly as you said it, files nowhere, and the Last note line says how many were held. A held line is never marked up on disk; the inbox stays the verbatim record. The threshold is the Confidence threshold row under the sort connection rows, shown only for a decision connection, with a default of 0.5 (Balanced): a line files when the model is at least half sure of its label. Lower it to file more, raise it to hold more.
 
-Sort again then sends only the held lines back for another look, never the ones that already landed, so a line can never file twice; that holds even when a write fails part way, because whatever landed is remembered and only the rest is sent again. A note the model is unsure of throughout behaves as a rejected sort: nothing is written and the log says `[sort] held every line reason=low confidence`. You can also file a held line by hand, since it is sitting in your inbox already.
+Sort again then sends only the unsure lines back for another look, never the ones that already landed, so a line can never file twice; that holds even when a write fails part way, because whatever landed is remembered and only the rest is sent again. A line held as a duplicate or a completion is not re-sent: it waits for its buttons. A note the model is unsure of throughout behaves as a rejected sort: nothing is written and the log says `[sort] held every line reason=low confidence`. You can also file a held line by hand, since it is sitting in your inbox already.
 
 A chat model has no honest confidence to report and asserts a label either way, so the threshold never applies on a chat connection: there, a sort is all or nothing, as before.
+
+## What happens when I say something that is already on my list?
+
+The sort compares before it files. The items already in your tasks and ideas files (the most recent sixty of each, ticked ones included) ride along with your new sentences, and for each new task or idea the model votes one relation: new, the same as an item, or a report that an item is finished. It votes with numbers only; it writes nothing. New lines file as always. A line tied to an item is held in the inbox, exactly as you said it, and the notes panel lists it with the item quoted from your file:
+
+- "looks like a duplicate of: Call the dentist about Thursday"
+- "sounds like you finished: Renew the domain"
+- "you finished this before: Book the flight", when the match is already ticked
+
+Each held line offers only actions that keep every write a click of yours. File it anyway lands that one line with its link, once. Skip leaves it in the inbox and nothing else. A completion whose match is a checkbox in your tasks file also offers Tick it, which marks that item done. A held line is resolved by those buttons, not by Sort again, which only re-sends lines the model was unsure of. Nothing is ever merged: two lines that say the same thing become one by skipping the second, never by rewriting either. The checkbox is the only truth about completion, and murmur never ticks one on its own. A wrong vote costs you one click, never a word.
+
+## Is Tick it safe?
+
+It is the one edit murmur makes inside a file it did not write that moment, so it is kept narrow. The matched line's `[ ]` becomes `[x]` and every other byte of the file stays exactly as it was, line endings included. The write goes to a temporary file and is renamed into place. A copy of the file as it was is kept in murmur's data folder under `notes-backups` for a day. And if the file changed in place since murmur read the match (you edited or reordered it, or a sync landed), Tick it is refused with a reason, even if murmur itself appended lines in between; tick it by hand or dump again. A file holding bytes that are not UTF-8 is refused too, rather than rewritten. The next reminder reads the file the same way and sees the tick the moment it lands.
 
 ## I keep raw notes for my own tools. Can I turn sorting off?
 

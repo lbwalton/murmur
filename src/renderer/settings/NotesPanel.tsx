@@ -38,9 +38,19 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
+/** Why a line was held, in the panel's own words, with the item it was
+ *  tied to quoted from the file. */
+function heldPhrase(line: NotesStatus['heldLines'][number]): string {
+  const item = line.match?.text ?? ''
+  if (line.reason === 'same') return `looks like a duplicate of: ${item}`
+  if (line.reason === 'completes') return `sounds like you finished: ${item}`
+  if (line.reason === 'done-before') return `you finished this before: ${item}`
+  return 'the model was not sure what this is'
+}
+
 /** One phrase for the sort outcome on the Last note line. */
 function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
-  const held = report.held > 0 ? `, ${plural(report.held, 'line', 'lines')} held in the inbox as unsure` : ''
+  const held = report.held > 0 ? `, ${plural(report.held, 'line', 'lines')} held in the inbox` : ''
   if (report.outcome === 'filed') {
     return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${held}`
   }
@@ -92,6 +102,7 @@ export function NotesPanel(props: {
   const [status, setStatus] = useState<NotesStatus | null>(null)
   const [sortKeyStatus, setSortKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
   const [sorting, setSorting] = useState(false)
+  const [acting, setActing] = useState<number | null>(null)
   const [capturing, setCapturing] = useState(false)
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [folderDraft, setFolderDraft] = useState(notes.folder)
@@ -177,6 +188,25 @@ export function NotesPanel(props: {
     const next = pathDraft.trim()
     if (next.length > 0 && next !== notes.pathTemplate) void update({ pathTemplate: next })
     else setPathDraft(notes.pathTemplate)
+  }
+
+  const heldAction = async (
+    position: number,
+    action: 'file' | 'skip' | 'tick'
+  ): Promise<void> => {
+    if (acting !== null) return
+    setActing(position)
+    try {
+      const next =
+        action === 'file'
+          ? await bridge().fileHeldLine(position)
+          : action === 'skip'
+            ? await bridge().skipHeldLine(position)
+            : await bridge().tickHeldMatch(position)
+      setStatus(next)
+    } finally {
+      setActing(null)
+    }
   }
 
   const sortAgain = async (): Promise<void> => {
@@ -343,6 +373,51 @@ export function NotesPanel(props: {
             </button>
           </div>
         </Row>
+      )}
+
+      {notes.sort && status && status.heldLines.length > 0 && (
+        <div className="held-list">
+          {status.lastAction && !status.lastAction.ok && (
+            <p className="row-desc held-note">{status.lastAction.reason ?? 'that did not work'}</p>
+          )}
+          {status.heldLines.map((line) => (
+            <Row
+              key={line.position}
+              label={`Held: ${line.text}`}
+              desc={`${heldPhrase(line)}. It stays in the inbox as you said it. File it anyway lands it as a ${line.label}; Skip leaves it there.${
+                line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done
+                  ? ' Tick it marks that item done in your tasks file, one box and nothing else.'
+                  : ''
+              }`}
+            >
+              <div className="inline">
+                {line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done && (
+                  <button
+                    className="btn"
+                    onClick={() => void heldAction(line.position, 'tick')}
+                    disabled={acting !== null}
+                  >
+                    Tick it
+                  </button>
+                )}
+                <button
+                  className="btn quiet-btn"
+                  onClick={() => void heldAction(line.position, 'file')}
+                  disabled={acting !== null}
+                >
+                  File it anyway
+                </button>
+                <button
+                  className="btn quiet-btn"
+                  onClick={() => void heldAction(line.position, 'skip')}
+                  disabled={acting !== null}
+                >
+                  Skip
+                </button>
+              </div>
+            </Row>
+          ))}
+        </div>
       )}
 
       <Row

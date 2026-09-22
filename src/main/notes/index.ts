@@ -17,7 +17,19 @@ import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
 import { probeDecision } from './decide'
 import { initReminders } from './reminders'
-import { type SortReport, canSortAgain, getLastSort, initSorter, sortLastNote } from './sorter'
+import {
+  type HeldLine,
+  type SortReport,
+  canSortAgain,
+  fileHeldLine,
+  getHeldLines,
+  getLastAction,
+  getLastSort,
+  initSorter,
+  skipHeldLine,
+  sortLastNote,
+  tickHeldMatch
+} from './sorter'
 
 export type NoteLocation = 'folder' | 'fallback'
 
@@ -43,6 +55,11 @@ export interface NotesStatus {
   /** The newest sort's outcome (US-051), or null before any sort. */
   lastSort: SortReport | null
   canSortAgain: boolean
+  /** Lines the newest sort held, with what each was tied to (US-055). */
+  heldLines: HeldLine[]
+  /** Set after a held-line action so the panel can say what happened;
+   *  cleared when the next sort starts. */
+  lastAction: { ok: boolean; reason?: string } | null
 }
 
 let lastSave: NotesStatus['lastSave'] = null
@@ -121,7 +138,9 @@ export function getNotesStatus(): NotesStatus {
     fallbackDir: fallbackDir(),
     lastSave,
     lastSort: getLastSort(),
-    canSortAgain: canSortAgain()
+    canSortAgain: canSortAgain(),
+    heldLines: getHeldLines(),
+    lastAction: getLastAction()
   }
 }
 
@@ -162,6 +181,21 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IpcChannels.notesOpenToday, () => openTodayNote())
   ipcMain.handle(IpcChannels.notesSortLast, async () => {
     await sortLastNote()
+    return getNotesStatus()
+  })
+  // The three held-line actions: every one is a click, and every one
+  // reports what it did so the panel never has to guess.
+  const position = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) ? v : -1)
+  ipcMain.handle(IpcChannels.notesFileHeld, (_event, at: unknown) => {
+    fileHeldLine(position(at))
+    return getNotesStatus()
+  })
+  ipcMain.handle(IpcChannels.notesSkipHeld, (_event, at: unknown) => {
+    skipHeldLine(position(at))
+    return getNotesStatus()
+  })
+  ipcMain.handle(IpcChannels.notesTickHeld, (_event, at: unknown) => {
+    tickHeldMatch(position(at))
     return getNotesStatus()
   })
   // The connection test for a decision connection is shaped like the

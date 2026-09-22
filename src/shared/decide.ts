@@ -6,6 +6,7 @@
 // cannot emit. This module builds that request and reads its answers
 // into the same SortVerdict the chat path produces, so everything
 // downstream of the verdict never knows which model answered.
+import { type ContextItem, type RelationVotes } from './compare'
 import { SORT_LABELS, type Seam, type SeamVotes, type SortLabel, type SortVerdict, seamSides } from './sorter'
 
 export const DECISION_LABEL_CRITERIA: Record<SortLabel, string> = {
@@ -25,19 +26,28 @@ export interface DecisionQuestion {
 
 export interface DecisionRequest {
   model: string
-  state: string[]
+  /** The numbered sentences alone, or, when there are filed items to
+   *  compare against, an object holding both lists. */
+  state: string[] | { sentences: string[]; items: string[] }
   questions: Record<string, DecisionQuestion>
 }
 
-/** One Choice per sentence over the three labels, and one Noul per
- *  seam with both sides as structured fields. No question here can
- *  return text. */
+/** One Choice per sentence over the three labels, one Noul per seam
+ *  with both sides as structured fields, and, when there are filed
+ *  items, a relation Choice and an item Choice per sentence. No
+ *  question here can return text. */
 export function buildDecisionRequest(
   model: string,
   sentences: readonly string[],
-  seamsBySentence: readonly Seam[][]
+  seamsBySentence: readonly Seam[][],
+  items: readonly ContextItem[] = []
 ): DecisionRequest {
   const questions: Record<string, DecisionQuestion> = {}
+  // The items are listed once, in the state; each option here is just
+  // its number, so a note with many sentences does not carry the whole
+  // list once per sentence (review gate 2026-09-22).
+  const itemOptions: Record<string, null> = {}
+  for (const item of items) itemOptions[String(item.number)] = null
   sentences.forEach((sentence, i) => {
     const n = i + 1
     questions[`label_${n}`] = {
@@ -48,6 +58,31 @@ export function buildDecisionRequest(
         text: sentence
       },
       criteria: DECISION_LABEL_CRITERIA
+    }
+    if (items.length > 0) {
+      questions[`relation_${n}`] = {
+        type: 'choice',
+        instructions: {
+          question:
+            'Against the items already filed (the items list in the state, the most recent of each file), is this sentence new, the same thing as one of them, or a report that one of them is finished? Relate it only when it clearly refers to the same thing.',
+          sentence: n,
+          text: sentence
+        },
+        criteria: {
+          new: 'Not about any filed item',
+          same: 'Says the same thing as a filed item',
+          completes: 'Reports a filed item as finished'
+        }
+      }
+      questions[`match_${n}`] = {
+        type: 'choice',
+        instructions: {
+          question: 'Which item in the items list does this sentence refer to, if any? Answer with its number; pick the closest.',
+          sentence: n,
+          text: sentence
+        },
+        criteria: itemOptions
+      }
     }
     seamsBySentence[i]?.forEach((seam, j) => {
       const { left, right } = seamSides(sentence, seam)
@@ -64,7 +99,12 @@ export function buildDecisionRequest(
       }
     })
   })
-  return { model, state: sentences.map((s, i) => `${i + 1}. ${s}`), questions }
+  const numbered = sentences.map((s, i) => `${i + 1}. ${s}`)
+  const state =
+    items.length > 0
+      ? { sentences: numbered, items: items.map((item) => `${item.number}. [${item.done ? 'x' : ' '}] ${item.text}`) }
+      : numbered
+  return { model, state, questions }
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -89,7 +129,8 @@ function confidenceOf(answer: Record<string, unknown>, choice: string): number {
 export function readDecisionAnswers(
   answers: unknown,
   count: number,
-  seamCounts: readonly number[]
+  seamCounts: readonly number[],
+  itemCount = 0
 ): SortVerdict {
   if (!isRecord(answers)) return { ok: false, reason: 'missing sentences' }
   const labels: SortLabel[] = []
@@ -113,5 +154,20 @@ export function readDecisionAnswers(
     }
     if (confirmed.length > 0) seams[i + 1] = confirmed
   })
-  return { ok: true, labels, topic: '', seams, confidence }
+  // Relations: a relation Choice other than new, with a match naming a
+  // real item, holds the line; anything else is new for that line.
+  const relations: RelationVotes = {}
+  if (itemCount > 0) {
+    for (let n = 1; n <= count; n++) {
+      const relation = answers[`relation_${n}`]
+      const match = answers[`match_${n}`]
+      if (!isRecord(relation) || !isRecord(match)) continue
+      const kind = relation.choice
+      if (kind !== 'same' && kind !== 'completes') continue
+      const item = Number(match.choice)
+      if (!Number.isInteger(item) || item < 1 || item > itemCount) continue
+      relations[n] = { relation: kind, item }
+    }
+  }
+  return { ok: true, labels, topic: '', seams, confidence, relations }
 }
