@@ -5,7 +5,7 @@
 // through here, so a fix lands in both and their rules cannot drift.
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
-import { type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
+import { type CatalogKind, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
 import { ModelPicker, Row, TextSetting } from './controls'
 
 export interface ConnectionValue {
@@ -26,6 +26,17 @@ export interface ConnectionLabels {
   keyDesc: string
   /** Shown when the base URL matches a connection that owns the key. */
   sharedDesc: string
+}
+
+export type ConnectionProtocol = 'chat' | 'decide'
+
+/** For a slot that can speak more than one protocol (the sort slot,
+ *  US-057): which one, and the words for the row that picks it. */
+export interface ConnectionProtocolControl {
+  value: ConnectionProtocol
+  onChange: (next: ConnectionProtocol) => Promise<void>
+  label: string
+  desc: string
 }
 
 export interface ConnectionKeyApi {
@@ -51,13 +62,26 @@ export function ConnectionRows(props: {
   placeholders?: { baseUrl?: string; model?: string }
   /** Row anchor for the first row (design QA captures, jump targets). */
   anchor?: string
+  protocol?: ConnectionProtocolControl
 }): React.JSX.Element {
   const { value, catalog, labels } = props
   const [draft, setDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
-  const llmProviders = catalog?.providers.filter((p) => p.kinds.includes('llm')) ?? []
+  // The presets a slot may pick from follow what it speaks: chat models
+  // for a chat protocol, decision models for a decision protocol.
+  const kind: CatalogKind = props.protocol?.value === 'decide' ? 'decide' : 'llm'
+  const llmProviders = catalog?.providers.filter((p) => p.kinds.includes(kind)) ?? []
   const matched = catalog ? providerForBaseUrl(catalog, value.baseUrl) : null
+  // A base URL that belongs to a provider of the other kind (a decision
+  // model left on the chat protocol, or the reverse) would pass a test
+  // and then fail every call; the row says so instead.
+  const matchedKind = matched !== null && matched.kinds.includes(kind)
+  const mismatch = matched !== null && !matchedKind && props.protocol !== undefined
+  const placeholders = {
+    baseUrl: props.placeholders?.baseUrl ?? (kind === 'decide' ? 'https://api.typesafe.ai/v1' : 'https://api.deepseek.com'),
+    model: props.placeholders?.model ?? (kind === 'decide' ? 'jev-latest' : 'deepseek-flash')
+  }
 
   // Same rule as the primary connection: a verdict earned against one
   // base URL never vouches for another.
@@ -109,12 +133,31 @@ export function ConnectionRows(props: {
           <option value="separate">Separate provider</option>
         </select>
       </Row>
+      {value.enabled && props.protocol && (
+        <Row label={props.protocol.label} desc={props.protocol.desc}>
+          <select
+            className="field"
+            value={props.protocol.value}
+            onChange={(e) => void props.protocol?.onChange(e.target.value === 'decide' ? 'decide' : 'chat')}
+          >
+            <option value="chat">OpenAI-compatible chat model</option>
+            <option value="decide">Decision model (TypeSafe)</option>
+          </select>
+        </Row>
+      )}
       {value.enabled && (
         <>
-          <Row label={labels.provider} desc="A preset fills the base URL and a recommended model.">
+          <Row
+            label={labels.provider}
+            desc={
+              mismatch
+                ? `${matched?.name ?? 'This provider'} is a ${kind === 'decide' ? 'chat' : 'decision'} model. Switch the sort protocol to use it, or pick a preset that speaks this one.`
+                : 'A preset fills the base URL and a recommended model.'
+            }
+          >
             <select
               className="field"
-              value={matched?.id ?? 'custom'}
+              value={matchedKind ? (matched?.id ?? 'custom') : 'custom'}
               onChange={(e) => {
                 const preset = llmProviders.find((p) => p.id === e.target.value)
                 if (!preset) return
@@ -133,11 +176,14 @@ export function ConnectionRows(props: {
               ))}
             </select>
           </Row>
-          <Row label={labels.baseUrl} desc="Any OpenAI-compatible chat endpoint.">
+          <Row
+            label={labels.baseUrl}
+            desc={kind === 'decide' ? "The decision endpoint's base URL, ending in /v1." : 'Any OpenAI-compatible chat endpoint.'}
+          >
             <TextSetting
               wide
               value={value.baseUrl}
-              placeholder={props.placeholders?.baseUrl ?? 'https://api.deepseek.com'}
+              placeholder={placeholders.baseUrl}
               onCommit={(baseUrl) => void props.onChange({ ...value, baseUrl })}
             />
           </Row>
@@ -146,13 +192,13 @@ export function ConnectionRows(props: {
               <ModelPicker
                 value={value.llmModel}
                 options={matched.llmModels.map((m) => m.id)}
-                placeholder={props.placeholders?.model ?? 'deepseek-flash'}
+                placeholder={placeholders.model}
                 onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
               />
             ) : (
               <TextSetting
                 value={value.llmModel}
-                placeholder={props.placeholders?.model ?? 'deepseek-flash'}
+                placeholder={placeholders.model}
                 onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
               />
             )}

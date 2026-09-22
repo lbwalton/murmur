@@ -8,11 +8,23 @@ murmur is bring-your-own-key. It talks to any service that speaks the OpenAI-com
 
 After any change, click **Test connection** in the setup panel. Green means your base URL and key work together.
 
-Provider facts below were verified on 2026-09-13. Model names drift; when in doubt, your provider's models page is the truth.
+Provider facts below were verified on 2026-09-13 unless a section carries its own date. Model names drift; when in doubt, your provider's models page is the truth.
 
 ## Do I need to re-enter my key when I switch providers?
 
 No. Each provider keeps its own key: saving a key files it under the provider you are on, and switching providers automatically switches to that provider's saved key. Every saved key is listed in setup under the key field, labeled with its provider, each with its own Remove. A key saved by an older murmur that predates this appears as one unassigned entry you can assign to the current provider or remove; nothing is ever dropped silently.
+
+## Which connection speaks which protocol?
+
+murmur has three connections. Speech and cleanup both speak the OpenAI-compatible API: any endpoint with `/audio/transcriptions` for speech and `/chat/completions` for cleanup. The sort connection, which files brain dump notes into tasks and ideas, speaks either that same chat protocol or a decision model's protocol. A decision model does not generate text; it answers typed questions with probabilities. The one murmur supports is TypeSafe's Jev, below.
+
+## How do I use TypeSafe (a decision model) for sorting?
+
+TypeSafe's Jev is a decision model, not a chat model: you send a state and typed questions, and it returns typed answers with probabilities. For sorting that means a label outside task, idea, and note is not something it declines to emit, it is something it cannot emit, and a reply arrives in well under a second. Verified against docs.typesafe.ai on 2026-09-21: the endpoint is `POST https://api.typesafe.ai/v1/systemone` with a Bearer key, the model alias `jev-latest` resolves to `jev-1.13.0`, and pricing is $0.042 per million input tokens with output tokens free. Access is waitlisted early access; a key comes from the console at console.typesafe.ai once your account is let in.
+
+To use it: under Settings, notes, set Sort connection to Separate provider, set Sort protocol to Decision model, pick the TypeSafe preset (it fills the base URL and `jev-latest`), save your key, and press Test. The test sends the smallest real request the endpoint accepts, so a good key reports connected and a wrong one reports rejected.
+
+One feature does not cross to this connection. Name each note asks the model to write a short name, and a decision model cannot write, so headings carry the date alone while a decision connection is in use; the panel says so where the protocol is chosen. If the decision model does not answer for any reason, a rate limit included, the sort falls back to your cleanup connection's chat model and the diagnostics log says so; choosing the decision model can never be the reason a sort fails.
 
 ## Can I use one provider for speech and a different one for cleanup?
 

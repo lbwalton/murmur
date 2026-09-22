@@ -71,7 +71,15 @@ export const SORT_SYSTEM_PROMPT = [
 ].join(' ')
 
 export type SortVerdict =
-  | { ok: true; labels: SortLabel[]; topic: string; seams: SeamVotes }
+  | {
+      ok: true
+      labels: SortLabel[]
+      topic: string
+      seams: SeamVotes
+      /** Per-sentence certainty behind each label, present only from a
+       *  backend that reports one (US-057); the chat path has none. */
+      confidence?: number[]
+    }
   | { ok: false; reason: string }
 
 /** Confirmed seam numbers per sentence number (US-056). Produced by

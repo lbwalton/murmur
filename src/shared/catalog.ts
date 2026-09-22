@@ -24,10 +24,15 @@ export interface CatalogLlmModel {
   currency?: string
 }
 
+/** What a provider serves: speech, an OpenAI-compatible chat model, or
+ *  a decision model (US-057) that answers typed questions and never
+ *  writes text, so it fits the sort connection only. */
+export type CatalogKind = 'stt' | 'llm' | 'decide'
+
 export interface CatalogProvider {
   id: string
   name: string
-  kinds: Array<'stt' | 'llm'>
+  kinds: CatalogKind[]
   baseUrl: string
   /** Cleanup connections use this instead of baseUrl when present
    *  (the local preset: speech and cleanup run on different ports). */
@@ -100,7 +105,9 @@ export function validateCatalog(data: unknown): ProviderCatalog | null {
   for (const p of data.providers) {
     if (!isRecord(p)) return null
     if (typeof p.id !== 'string' || typeof p.name !== 'string' || typeof p.baseUrl !== 'string') return null
-    if (!Array.isArray(p.kinds) || !p.kinds.every((k) => k === 'stt' || k === 'llm')) return null
+    if (!Array.isArray(p.kinds) || !p.kinds.every((k) => k === 'stt' || k === 'llm' || k === 'decide')) {
+      return null
+    }
     if (typeof p.verifiedOn !== 'string') return null
     if (!Array.isArray(p.nuances) || !p.nuances.every((n) => typeof n === 'string')) return null
     if (p.keyPrefixes !== undefined) {

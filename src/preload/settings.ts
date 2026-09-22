@@ -97,6 +97,9 @@ const api = {
   testConnectionFor: (baseUrl: string): Promise<ProviderTestResult> => {
     return ipcRenderer.invoke('provider:testFor', baseUrl)
   },
+  testDecisionFor: (baseUrl: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testDecideFor', baseUrl)
+  },
   sortLastNote: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:sortLast'),
   testNotesReminder: (): Promise<{
     outcome: 'shown' | 'empty' | 'missing' | 'suppressed'

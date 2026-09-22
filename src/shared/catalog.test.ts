@@ -23,6 +23,26 @@ describe('validateCatalog', () => {
   })
 })
 
+describe('validateCatalog with a decision provider', () => {
+  const catalog = validateCatalog(bundled)!
+
+  it('accepts the decide kind and still rejects a kind it does not know', () => {
+    const provider = catalog.providers.find((p) => p.id === 'typesafe')
+    expect(provider?.kinds).toEqual(['decide'])
+    expect(provider?.llmModels[0]).toMatchObject({ id: 'jev-latest', inputPerMTok: 0.042, outputPerMTok: 0 })
+    // A refreshed copy (the shape the app fetches) accepts it too.
+    expect(validateCatalog(JSON.parse(JSON.stringify(bundled)))?.providers.some((p) => p.id === 'typesafe')).toBe(true)
+    const broken = JSON.parse(JSON.stringify(bundled)) as { providers: Array<{ kinds: string[] }> }
+    broken.providers[0].kinds = ['decide', 'oracle']
+    expect(validateCatalog(broken)).toBeNull()
+  })
+
+  it('prices the decision model on input alone through the existing rates', () => {
+    const rates = ratesFromCatalog(catalog)
+    expect(rates.llm.models['jev-latest']).toEqual({ inputPerMTokUsd: 0.042, outputPerMTokUsd: 0 })
+  })
+})
+
 describe('ratesFromCatalog', () => {
   const rates = ratesFromCatalog(validateCatalog(bundled)!)
 

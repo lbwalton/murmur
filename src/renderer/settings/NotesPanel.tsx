@@ -362,7 +362,7 @@ export function NotesPanel(props: {
           catalog={props.catalog}
           keyStatus={sortKeyStatus}
           onKeyStatus={setSortKeyStatus}
-          onChange={(connection) => update({ connection })}
+          onChange={(connection) => update({ connection: { ...notes.connection, ...connection } })}
           labels={{
             connection: 'Sort connection',
             connectionDesc:
@@ -382,11 +382,23 @@ export function NotesPanel(props: {
             props.settings.polish.enabled ? props.settings.polish.baseUrl : ''
           ]}
           anchor="row-sort-connection"
+          protocol={{
+            value: notes.connection.protocol,
+            onChange: (protocol) => update({ connection: { ...notes.connection, protocol } }),
+            label: 'Sort protocol',
+            desc:
+              notes.connection.protocol === 'decide'
+                ? 'A decision model answers typed questions with probabilities and cannot write text: labels it cannot invent, about a tenth of a second, a fraction of a cent per note. It cannot name notes, so Name each note renders the date alone on this connection.'
+                : 'A chat model returns JSON that murmur checks strictly. A decision model (TypeSafe) answers typed questions instead and can only ever return one of the three labels.'
+          }}
           api={{
             setKey: (key) => bridge().setKeyFor(notes.connection.baseUrl, key),
             clearKey: () => bridge().clearKeyFor(notes.connection.baseUrl),
             status: () => bridge().getKeyStatusFor(notes.connection.baseUrl),
-            test: () => bridge().testConnectionFor(notes.connection.baseUrl)
+            test: () =>
+              notes.connection.protocol === 'decide'
+                ? bridge().testDecisionFor(notes.connection.baseUrl)
+                : bridge().testConnectionFor(notes.connection.baseUrl)
           }}
         />
       )}
@@ -490,7 +502,9 @@ export function NotesPanel(props: {
               desc={
                 !headingCarriesTopic
                   ? 'Put {topic} in the heading above to use this, and the sort model will name each note there.'
-                  : notes.topicHeadings
+                  : notes.connection.enabled && notes.connection.protocol === 'decide'
+                    ? 'Your sort connection is a decision model, which cannot write text, so the heading carries the date alone while it is in use. Switch the sort protocol to a chat model to name notes.'
+                    : notes.topicHeadings
                     ? "The sort model names what each note is about in at most five words, so a heading says travel plans rather than a date alone. The name goes in the heading only; your words are never changed. A name it cannot give safely leaves the rest of the heading standing."
                     : 'Off means headings carry the date alone. On asks the sort model for a short name for each note, so you can see what a group is about at a glance.'
               }

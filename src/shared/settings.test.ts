@@ -22,7 +22,7 @@ describe('mergeSettings', () => {
       filedHeadingTemplate: '## {date} {topic}',
       topicHeadings: false,
       reminders: { enabled: false, times: ['08:30', '13:00', '17:30'] },
-      connection: { enabled: false, baseUrl: '', llmModel: '' }
+      connection: { enabled: false, baseUrl: '', llmModel: '', protocol: 'chat' }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
     expect(merged.notes.folder).toBe('/tmp/vault')

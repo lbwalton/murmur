@@ -11,10 +11,11 @@ import { join } from 'node:path'
 import { type BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, renderNoteEntry } from '../../shared/notes'
-import { getSettings, updateSettings } from '../settings'
+import { getApiKeyFor, getSettings, updateSettings } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
+import { probeDecision } from './decide'
 import { initReminders } from './reminders'
 import { type SortReport, canSortAgain, getLastSort, initSorter, sortLastNote } from './sorter'
 
@@ -162,6 +163,30 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IpcChannels.notesSortLast, async () => {
     await sortLastNote()
     return getNotesStatus()
+  })
+  // The connection test for a decision connection is shaped like the
+  // endpoint it tests; a chat-shaped probe would call a good key bad.
+  ipcMain.handle(IpcChannels.providerTestDecideFor, async (_event, baseUrl: unknown) => {
+    if (typeof baseUrl !== 'string' || baseUrl === '') return { ok: false, detail: 'no base URL set' }
+    return probeDecision(baseUrl, getApiKeyFor(baseUrl))
+  })
+
+  registerSmokeCheck('decisionProbe', async () => {
+    const reply = (status: number, body = '{}'): typeof fetch =>
+      (async () => new Response(body, { status })) as typeof fetch
+    const url = 'https://mock-decide.local/v1'
+    const good = await probeDecision(url, 'k', reply(200, JSON.stringify({ answers: { ok: { type: 'noul', noul: 0.99 } } })))
+    const rejected = await probeDecision(url, 'k', reply(401))
+    const limited = await probeDecision(url, 'k', reply(429))
+    const noKey = await probeDecision(url, null)
+    return (
+      good.ok &&
+      good.detail === 'connected' &&
+      !rejected.ok &&
+      rejected.detail === 'key rejected (http 401)' &&
+      limited.ok &&
+      !noKey.ok
+    )
   })
   initSorter()
   initReminders()

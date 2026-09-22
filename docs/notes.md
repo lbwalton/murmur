@@ -142,6 +142,12 @@ Nothing is written until the whole labeling has passed, and both files are opene
 
 By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Choose Separate provider under Sort connection to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
 
+## Can I sort with a decision model instead of a chat model?
+
+Yes. Under Sort connection choose Separate provider and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state, one typed question per sentence over the three labels, and one yes/no question per cut, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
+
+The one thing it gives up is naming: Name each note needs a model that can write, so on a decision connection the heading carries the date alone, and the panel says so. If the decision model does not answer, whether a rate limit, a network fault, or a missing answer, murmur falls back to your cleanup connection's chat model for that note and logs `[sort] decision failed reason=...; falling back to the chat sorter`. The filed log line names which protocol answered.
+
 ## I keep raw notes for my own tools. Can I turn sorting off?
 
 Yes, and it starts off. With Sort into tasks and ideas off, murmur writes each note to the inbox and touches nothing else, so your own agents and scripts can read the raw notes and do whatever you like with them. Turn sorting on when you want the to-do list and the ideas file to happen inside murmur.

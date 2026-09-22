@@ -33,8 +33,11 @@ import {
   splitSentences,
   validateSort
 } from '../../shared/sorter'
+import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
+import type { SortVerdict } from '../../shared/sorter'
 import { resolvePolishConnection } from '../formatter'
 import type { PolishConfig } from '../formatter/llm'
+import { askDecision } from './decide'
 import { getApiKeyFor, getSettings, ringClearKey, ringSetKey, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
@@ -63,11 +66,19 @@ export interface SortReport {
   reason?: string
 }
 
+/** What the sort connection speaks: an OpenAI-compatible chat model,
+ *  or a decision model that answers typed questions (US-057). */
+export type SortProtocol = 'chat' | 'decide'
+
 export interface SortOptions {
   fetchImpl?: typeof fetch
   timeoutMs?: number
   /** Smoke only: a connection that bypasses the ring and settings. */
   connection?: PolishConfig
+  /** Smoke only: the protocol for that connection. */
+  protocol?: SortProtocol
+  /** Smoke only: the chat connection a failed decision falls back to. */
+  fallback?: PolishConfig
 }
 
 let lastSort: SortReport | null = null
@@ -94,20 +105,31 @@ export function rememberForSort(input: SortInput): void {
   lastInput = input
 }
 
+export interface ResolvedSortConnection {
+  config: PolishConfig
+  slot: 'separate' | 'cleanup'
+  protocol: SortProtocol
+}
+
 /** The connection the sort runs on: the separate slot when complete
- *  (its key served by the ring under its base URL), else whatever the
- *  cleanup pass would use (the cleanup slot, or the speech provider). */
-export function resolveSortConnection(
-  settings: Settings
-): { config: PolishConfig; slot: 'separate' | 'cleanup' } | null {
+ *  (its key served by the ring under its base URL), speaking whatever
+ *  protocol it was set to; else whatever the cleanup pass would use
+ *  (the cleanup slot, or the speech provider), which is always chat. */
+export function resolveSortConnection(settings: Settings): ResolvedSortConnection | null {
   const slot = settings.notes.connection
   if (slot.enabled && slot.baseUrl !== '' && slot.llmModel !== '') {
     const key = getApiKeyFor(slot.baseUrl)
-    if (key) return { config: { baseUrl: slot.baseUrl, model: slot.llmModel, apiKey: key }, slot: 'separate' }
+    if (key) {
+      return {
+        config: { baseUrl: slot.baseUrl, model: slot.llmModel, apiKey: key },
+        slot: 'separate',
+        protocol: slot.protocol === 'decide' ? 'decide' : 'chat'
+      }
+    }
     writeAppLog('[sort] separate connection has no key; using the cleanup connection')
   }
   const cleanup = resolvePolishConnection(settings)
-  return cleanup ? { config: cleanup, slot: 'cleanup' } : null
+  return cleanup ? { config: cleanup, slot: 'cleanup', protocol: 'chat' } : null
 }
 
 type ModelReply = { ok: true; content: string } | { ok: false; reason: string }
@@ -163,13 +185,18 @@ async function askModel(
       signal: controller.signal
     })
     if (!response.ok) return { ok: false, reason: `http ${response.status}` }
-    let body: { choices?: Array<{ message?: { content?: unknown } }> }
+    let body: unknown
     try {
-      body = (await response.json()) as typeof body
+      body = await response.json()
     } catch {
       return { ok: false, reason: 'response not json' }
     }
-    const content = body.choices?.[0]?.message?.content
+    // A body that parses but is not an object (null, a list) is a
+    // missing-text reply, not a network fault.
+    const content =
+      typeof body === 'object' && body !== null && !Array.isArray(body)
+        ? (body as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content
+        : undefined
     if (typeof content !== 'string') return { ok: false, reason: 'response missing text' }
     return { ok: true, content }
   } catch (error) {
@@ -211,15 +238,18 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
   const sentences = splitSentences(input.text)
   if (sentences.length === 0) return record('skipped', NONE, 'nothing to sort')
 
-  const resolved = options.connection
-    ? { config: options.connection, slot: 'separate' as const }
+  const resolved: ResolvedSortConnection | null = options.connection
+    ? { config: options.connection, slot: 'separate', protocol: options.protocol ?? 'chat' }
     : resolveSortConnection(settings)
   if (!resolved) {
     writeAppLog('[sort] failed reason=no connection; save a key for the speech, cleanup, or sort connection')
     return record('failed', NONE, 'no connection')
   }
-  const { config, slot } = resolved
-  // Topics only mean something when a heading can carry them.
+  let { config, slot, protocol } = resolved
+  const fetchImpl = options.fetchImpl ?? fetch
+  const timeoutMs = options.timeoutMs ?? 12_000
+  // Topics only mean something when a heading can carry them, and only
+  // a chat model can write one.
   const wantsTopic =
     settings.notes.topicHeadings && settings.notes.filedHeadingTemplate.includes('{topic}')
   // Seams (US-056): the code finds where a sentence could be cut and the
@@ -227,29 +257,58 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
   const seamsBySentence = sentences.map(findSeams)
   const seamCounts = seamsBySentence.map((s) => s.length)
   const offerSeams = seamCounts.some((n) => n > 0)
-  const systemPrompt = [
-    SORT_SYSTEM_PROMPT,
-    ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
-    ...(offerSeams ? [SORT_SEAMS_PROMPT] : [])
-  ].join(' ')
-  const userPrompt = offerSeams
-    ? `${numberedList(sentences)}\n\nSeams:\n${seamPrompt(sentences, seamsBySentence)}`
-    : numberedList(sentences)
-  const reply = await askModel(
-    systemPrompt,
-    userPrompt,
-    config,
-    options.fetchImpl ?? fetch,
-    options.timeoutMs ?? 12_000
-  )
-  if (!reply.ok) {
-    writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
-    return record('failed', NONE, reply.reason)
+
+  let verdict: SortVerdict | null = null
+  let answeredBy = config.model
+  if (protocol === 'decide') {
+    // One request: a Choice per sentence, a Noul per seam. Anything
+    // short of a complete set of answers falls back to the chat sorter,
+    // so choosing the decision model can never be why a sort fails.
+    const reply = await askDecision(
+      buildDecisionRequest(config.model, sentences, seamsBySentence),
+      config,
+      fetchImpl,
+      timeoutMs
+    )
+    const read = reply.ok ? readDecisionAnswers(reply.answers, sentences.length, seamCounts) : null
+    if (reply.ok && read?.ok) {
+      verdict = read
+      answeredBy = reply.model
+    } else {
+      const reason = reply.ok ? `validate: ${read && !read.ok ? read.reason : 'unknown'}` : reply.reason
+      writeAppLog(`[sort] decision failed reason=${reason} model=${config.model}; falling back to the chat sorter`)
+      const cleanup = options.fallback ?? resolvePolishConnection(settings)
+      if (!cleanup) {
+        writeAppLog('[sort] failed reason=no connection; the decision model did not answer and no chat connection has a key')
+        return record('failed', NONE, 'no connection')
+      }
+      config = cleanup
+      slot = 'cleanup'
+      protocol = 'chat'
+      answeredBy = cleanup.model
+    }
   }
-  const verdict = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts })
-  if (!verdict.ok) {
-    writeAppLog(`[sort] rejected reason=${verdict.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
-    return record('rejected', NONE, verdict.reason)
+
+  if (verdict === null) {
+    const systemPrompt = [
+      SORT_SYSTEM_PROMPT,
+      ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
+      ...(offerSeams ? [SORT_SEAMS_PROMPT] : [])
+    ].join(' ')
+    const userPrompt = offerSeams
+      ? `${numberedList(sentences)}\n\nSeams:\n${seamPrompt(sentences, seamsBySentence)}`
+      : numberedList(sentences)
+    const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
+    if (!reply.ok) {
+      writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
+      return record('failed', NONE, reply.reason)
+    }
+    const chat = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts })
+    if (!chat.ok) {
+      writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
+      return record('rejected', NONE, chat.reason)
+    }
+    verdict = chat
   }
 
   let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
@@ -308,8 +367,9 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     for (const fd of targets.fds) closeSync(fd)
   }
   lastFiledInput = input
+  const topicNote = wantsTopic && protocol === 'decide' ? ' topic=unavailable' : ''
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} model=${config.model} slot=${slot}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${topicNote}`
   )
   return record('filed', counts)
 }
@@ -485,6 +545,90 @@ export function initSorter(): void {
         wholeVote.tasks === 3 &&
         read(todo) ===
           `${afterSplit}- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n`
+
+      // Decision connection (US-057): the same filing from typed answers
+      // (a Choice per sentence, a Noul per seam, in one request), and a
+      // decision that fails for any reason falling back to the chat
+      // sorter with a log line rather than failing the sort.
+      const decideCfg: PolishConfig = { baseUrl: 'https://mock-decide.local/v1', model: 'jev-latest', apiKey: 'k' }
+      let decisionBody: { state?: unknown; questions?: Record<string, { type?: string }> } = {}
+      const routed = (decision: string | number, chat = '{"1":"task"}'): typeof fetch =>
+        (async (url: unknown, init?: RequestInit) => {
+          if (String(url).endsWith('/systemone')) {
+            decisionBody = JSON.parse(String(init?.body ?? '{}')) as typeof decisionBody
+            if (typeof decision === 'number') return new Response('{}', { status: decision })
+            return new Response(decision, { status: 200 })
+          }
+          return new Response(JSON.stringify({ choices: [{ message: { content: chat } }] }), { status: 200 })
+        }) as typeof fetch
+      const decidedInput: SortInput = { ...input, text: 'Renew the domain, and pay the invoice. Nice day.' }
+      const decided = await sortNote(decidedInput, {
+        fetchImpl: routed(
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.9, probabilities: { task: 0.9, idea: 0.05, note: 0.05 } },
+              label_2: { type: 'choice', choice: 'note', confidence: 0.8, probabilities: { task: 0.1, idea: 0.1, note: 0.8 } },
+              seam_1_1: { type: 'noul', noul: 0.91 }
+            }
+          })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const decidedTodo = read(todo)
+      const decisionOk =
+        decided.outcome === 'filed' &&
+        decided.tasks === 2 &&
+        decided.notes === 1 &&
+        decidedTodo.endsWith(
+          '- [ ] Renew the domain ([10:32](inbox/2026-09-18.md))\n- [ ] pay the invoice. ([10:32](inbox/2026-09-18.md))\n'
+        ) &&
+        Array.isArray(decisionBody.state) &&
+        decisionBody.questions?.label_1?.type === 'choice' &&
+        decisionBody.questions?.label_2?.type === 'choice' &&
+        decisionBody.questions?.seam_1_1?.type === 'noul'
+      const limited = await sortNote({ ...input, text: 'Book the flight.' }, {
+        fetchImpl: routed(429),
+        connection: decideCfg,
+        protocol: 'decide',
+        fallback: cfg
+      })
+      const limitedOk =
+        limited.outcome === 'filed' &&
+        limited.tasks === 1 &&
+        read(todo).endsWith('- [ ] Book the flight. ([10:32](inbox/2026-09-18.md))\n')
+      const unanswered = await sortNote({ ...input, text: 'Water the plants.' }, {
+        fetchImpl: routed(JSON.stringify({ model: 'jev-1.13.0', answers: {} })),
+        connection: decideCfg,
+        protocol: 'decide',
+        fallback: cfg
+      })
+      const unansweredOk = unanswered.outcome === 'filed' && unanswered.tasks === 1
+      // The chat path's own two-sentence fixture on the decide path: one
+      // seam confirmed, one refused, so the same sentence splits and the
+      // same sentence stays whole whichever model voted.
+      const sameFixture = await sortNote(pair, {
+        fetchImpl: routed(
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.9, probabilities: { task: 0.9, idea: 0.05, note: 0.05 } },
+              label_2: { type: 'choice', choice: 'task', confidence: 0.9, probabilities: { task: 0.9, idea: 0.05, note: 0.05 } },
+              seam_1_1: { type: 'noul', noul: 0.88 },
+              seam_2_1: { type: 'noul', noul: 0.12 }
+            }
+          })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const sameFixtureOk =
+        sameFixture.outcome === 'filed' &&
+        sameFixture.tasks === 3 &&
+        read(todo).endsWith(
+          '- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n'
+        )
       const topicOk =
         withTopic.outcome === 'filed' &&
         badTopic.outcome === 'filed' &&
@@ -517,9 +661,16 @@ export function initSorter(): void {
         promptOk &&
         splitOk &&
         wholeOk &&
-        getLastSort() === wholeVote &&
-        log.includes('[sort] filed tasks=2 ideas=1 notes=1 split=0 model=smoke-sorter') &&
-        log.includes('[sort] filed tasks=3 ideas=0 notes=0 split=1 model=smoke-sorter') &&
+        decisionOk &&
+        limitedOk &&
+        unansweredOk &&
+        sameFixtureOk &&
+        getLastSort() === sameFixture &&
+        log.includes('[sort] decision failed reason=rate limit model=jev-latest; falling back to the chat sorter') &&
+        log.includes('[sort] decision failed reason=validate: missing sentences model=jev-latest') &&
+        log.includes('split=1 protocol=decide model=jev-1.13.0 slot=separate') &&
+        log.includes('[sort] filed tasks=2 ideas=1 notes=1 split=0 protocol=chat model=smoke-sorter') &&
+        log.includes('[sort] filed tasks=3 ideas=0 notes=0 split=1 protocol=chat model=smoke-sorter') &&
         log.includes('[sort] rejected reason=missing sentences model=smoke-sorter') &&
         log.includes('[sort] failed reason=http 500 model=smoke-sorter') &&
         log.includes('[sort] write failed reason=') &&
@@ -538,21 +689,29 @@ export function initSorter(): void {
     const before = getSettings()
     const sortUrl = 'https://smoke-sort.example/v1'
     try {
-      updateSettings({ notes: { connection: { enabled: true, baseUrl: sortUrl, llmModel: 'sort-m' } } })
+      updateSettings({ notes: { connection: { enabled: true, baseUrl: sortUrl, llmModel: 'sort-m', protocol: 'chat' } } })
       ringSetKey(sortUrl, 'smoke-sort-key-1234567890')
       const separate = resolveSortConnection(getSettings())
-      const separateOk = separate?.slot === 'separate' && separate.config.baseUrl === sortUrl && separate.config.model === 'sort-m'
+      const separateOk =
+        separate?.slot === 'separate' &&
+        separate.protocol === 'chat' &&
+        separate.config.baseUrl === sortUrl &&
+        separate.config.model === 'sort-m'
+      updateSettings({ notes: { connection: { protocol: 'decide', llmModel: 'jev-latest' } } })
+      const decide = resolveSortConnection(getSettings())
+      const decideOk = decide?.slot === 'separate' && decide.protocol === 'decide' && decide.config.model === 'jev-latest'
       ringClearKey(sortUrl)
       // No sort key, and the primary provider holds one: cleanup path.
       ringSetKey(before.provider.baseUrl, 'smoke-primary-key-1234567890')
       const cleanup = resolveSortConnection(getSettings())
-      const cleanupOk = cleanup?.slot === 'cleanup' && cleanup.config.baseUrl === before.provider.baseUrl
+      const cleanupOk =
+        cleanup?.slot === 'cleanup' && cleanup.protocol === 'chat' && cleanup.config.baseUrl === before.provider.baseUrl
       updateSettings({ notes: { connection: { enabled: false } } })
       const same = resolveSortConnection(getSettings())
       const sameOk = same?.slot === 'cleanup' && same.config.baseUrl === before.provider.baseUrl
       ringClearKey(before.provider.baseUrl)
       const none = resolveSortConnection(getSettings())
-      return separateOk && cleanupOk && sameOk && none === null
+      return separateOk && decideOk && cleanupOk && sameOk && none === null
     } finally {
       ringClearKey(sortUrl)
       updateSettings({ notes: { connection: before.notes.connection } })

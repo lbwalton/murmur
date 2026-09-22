@@ -107,11 +107,15 @@ export interface Settings {
       times: string[]
     }
     /** The sort connection, shaped like the cleanup slot: enabled false
-     *  means same as cleanup; a complete separate slot runs on its own. */
+     *  means same as cleanup; a complete separate slot runs on its own.
+     *  protocol says what the separate slot speaks: an OpenAI-compatible
+     *  chat model, or a decision model (US-057) that answers typed
+     *  questions and never writes text. */
     connection: {
       enabled: boolean
       baseUrl: string
       llmModel: string
+      protocol: 'chat' | 'decide'
     }
   }
   autostart: boolean
@@ -207,7 +211,8 @@ export const DEFAULT_SETTINGS: Settings = {
     connection: {
       enabled: false,
       baseUrl: '',
-      llmModel: ''
+      llmModel: '',
+      protocol: 'chat'
     }
   },
   autostart: false,
