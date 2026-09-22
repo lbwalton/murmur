@@ -16,6 +16,9 @@ export interface SessionEvent {
   day?: string
   /** Local hour (0-23) at record time, stored for the same reason. */
   hour?: number
+  /** Where the words went: absent means the cursor, 'note' means a
+   *  notes file (US-050). Notes count like any dictation everywhere. */
+  kind?: 'note'
 }
 
 /** The day an event belongs to: stored key first, derived as fallback. */
@@ -75,6 +78,7 @@ export function isSessionEvent(value: unknown): value is SessionEvent {
     typeof v.words === 'number' &&
     typeof v.wpm === 'number' &&
     (v.day === undefined || typeof v.day === 'string') &&
-    (v.hour === undefined || typeof v.hour === 'number')
+    (v.hour === undefined || typeof v.hour === 'number') &&
+    (v.kind === undefined || v.kind === 'note')
   )
 }

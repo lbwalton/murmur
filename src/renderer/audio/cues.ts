@@ -3,7 +3,7 @@
 // no files anywhere. The palette is quiet on purpose; cues confirm, they
 // never announce.
 
-export type CueName = 'start' | 'stop' | 'insert' | 'error' | 'nospeech'
+export type CueName = 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted'
 
 interface Tone {
   freq: number
@@ -23,6 +23,17 @@ const CUES: Record<CueName, Tone[]> = {
     { freq: 620, at: 0.05, duration: 0.08, gain: 0.4 }
   ],
   insert: [{ freq: 1040, at: 0, duration: 0.12, gain: 0.45 }],
+  // Note mode answers a chord with a three-step climb, so a wrong
+  // chord is audible at the first press, not at the end.
+  noteStart: [
+    { freq: 520, at: 0, duration: 0.06, gain: 0.45 },
+    { freq: 700, at: 0.055, duration: 0.06, gain: 0.45 },
+    { freq: 940, at: 0.11, duration: 0.09, gain: 0.45 }
+  ],
+  noted: [
+    { freq: 940, at: 0, duration: 0.08, gain: 0.4 },
+    { freq: 1250, at: 0.07, duration: 0.14, gain: 0.4 }
+  ],
   nospeech: [{ freq: 440, at: 0, duration: 0.1, gain: 0.3 }],
   error: [
     { freq: 220, at: 0, duration: 0.16, gain: 0.5, type: 'square' },

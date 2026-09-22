@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings shape, defaults, and the pure merge logic. IO lives in
 // src/main/settings; keeping this file pure keeps it unit-testable.
+import {
+  DEFAULT_IDEAS_TEMPLATE,
+  DEFAULT_NOTE_ENTRY_TEMPLATE,
+  DEFAULT_NOTE_PATH_TEMPLATE,
+  DEFAULT_TASKS_TEMPLATE
+} from './notes'
+import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 
 export interface Settings {
   hotkey: {
@@ -71,6 +78,49 @@ export interface Settings {
   recap: {
     enabled: boolean
     time: string
+  }
+  /** Brain dump: a second chord dictates into a markdown file instead
+   *  of the cursor. The folder is any folder (an Obsidian vault is one);
+   *  empty keeps the whole feature dormant. Templates are relative to
+   *  the folder and rendered by shared/notes.ts. */
+  notes: {
+    binding: string
+    folder: string
+    pathTemplate: string
+    entryTemplate: string
+    /** Sorting (US-051): after a note lands, a model labels each
+     *  sentence task, idea, or note and murmur copies tasks and ideas
+     *  to their files with links back. Off writes the inbox only. */
+    sort: boolean
+    tasksTemplate: string
+    ideasTemplate: string
+    /** Heading a day's filed lines gather under in the tasks and ideas
+     *  files. Empty writes one flat list. */
+    filedHeadingTemplate: string
+    /** Ask the sort model to name each note, so {topic} in the heading
+     *  says what a group is about at a glance. */
+    topicHeadings: boolean
+    /** Desktop reminders that read the tasks file and say what is
+     *  still open. Off by default: notifications are opt in. */
+    reminders: {
+      enabled: boolean
+      times: string[]
+    }
+    /** The sort connection, shaped like the cleanup slot: enabled false
+     *  means same as cleanup; a complete separate slot runs on its own.
+     *  protocol says what the separate slot speaks: an OpenAI-compatible
+     *  chat model, or a decision model (US-057) that answers typed
+     *  questions and never writes text. */
+    connection: {
+      enabled: boolean
+      baseUrl: string
+      llmModel: string
+      protocol: 'chat' | 'decide'
+      /** On a decision connection, a line whose label confidence falls
+       *  below this stays in the inbox instead of filing (US-058).
+       *  A chat model reports no confidence, so it never applies there. */
+      threshold: number
+    }
   }
   autostart: boolean
   showDockIcon: boolean
@@ -148,6 +198,28 @@ export const DEFAULT_SETTINGS: Settings = {
     enabled: false,
     time: '17:30'
   },
+  notes: {
+    binding: '',
+    folder: '',
+    pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
+    entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
+    sort: false,
+    tasksTemplate: DEFAULT_TASKS_TEMPLATE,
+    ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+    filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
+    topicHeadings: false,
+    reminders: {
+      enabled: false,
+      times: ['08:30', '13:00', '17:30']
+    },
+    connection: {
+      enabled: false,
+      baseUrl: '',
+      llmModel: '',
+      protocol: 'chat',
+      threshold: 0.5
+    }
+  },
   autostart: false,
   showDockIcon: false,
   catalogRefresh: true,
@@ -203,6 +275,21 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   }
   if (Array.isArray(out.expansions)) {
     out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
+  }
+  // Reminder times feed a scheduler that runs every minute, so a
+  // non-string here would throw on a timer forever (review gate
+  // 2026-09-21), the same class of failure the entry lists guard.
+  const notes = out.notes as Record<string, unknown> | undefined
+  const reminders = notes?.reminders as Record<string, unknown> | undefined
+  if (reminders && Array.isArray(reminders.times)) {
+    reminders.times = reminders.times.filter((t) => typeof t === 'string')
+  }
+  // The threshold is a probability: anything outside 0..1 would hold
+  // every line or none forever with no option to show for it.
+  const connection = notes?.connection as Record<string, unknown> | undefined
+  if (connection && typeof connection.threshold === 'number') {
+    const t = connection.threshold
+    connection.threshold = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0.5
   }
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {

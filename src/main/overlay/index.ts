@@ -6,7 +6,14 @@ import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, screen } from 'electron'
 import { watchWindow } from '../window-watch'
 import { IpcChannels } from '../../shared/ipc'
-import { OverlayMachine, type OverlayPhase, type OverlayState } from '../../shared/overlay-state'
+import {
+  OverlayMachine,
+  type OverlayMode,
+  type OverlayPhase,
+  type OverlayState,
+  type TransitionExtras
+} from '../../shared/overlay-state'
+import { NOTE_FOLDER_HINT } from '../../shared/notes'
 import { getSettings, onSettingsChanged } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
@@ -14,6 +21,8 @@ const WIDTH = 340
 const HEIGHT = 84
 const MARGIN_BOTTOM = 28
 const LINGER_MS = 1400
+// A hint is text the user has to read, so it stays a beat longer.
+const HINT_LINGER_MS = 2400
 
 let overlayWindow: BrowserWindow | null = null
 const machine = new OverlayMachine()
@@ -82,8 +91,12 @@ function sendState(state: OverlayState): void {
 }
 
 /** Drive the overlay. Illegal transitions are ignored, never thrown. */
-export function setOverlayPhase(phase: OverlayPhase, wpm: number | null = null): OverlayState | null {
-  const state = machine.transition(phase, undefined, wpm)
+export function setOverlayPhase(
+  phase: OverlayPhase,
+  wpm: number | null = null,
+  extras: TransitionExtras = {}
+): OverlayState | null {
+  const state = machine.transition(phase, undefined, wpm, extras)
   if (!state || !overlayWindow) return state
   if (lingerTimer) {
     clearTimeout(lingerTimer)
@@ -92,23 +105,37 @@ export function setOverlayPhase(phase: OverlayPhase, wpm: number | null = null):
 
   const win = aliveOverlay()
   if (!win) return state
-  if (phase === 'recording') {
+  // Recording and hint both start from rest, so both bring the pill up.
+  if (phase === 'recording' || phase === 'hint') {
     positionOverlay(win)
     if (!isSmoke) win.showInactive()
   }
   sendState(state)
 
-  if (phase === 'inserted' || phase === 'error' || phase === 'nospeech') {
-    lingerTimer = setTimeout(() => {
-      setOverlayPhase('idle')
-    }, LINGER_MS)
+  if (phase === 'inserted' || phase === 'error' || phase === 'nospeech' || phase === 'hint') {
+    lingerTimer = setTimeout(
+      () => {
+        setOverlayPhase('idle')
+      },
+      phase === 'hint' ? HINT_LINGER_MS : LINGER_MS
+    )
   }
   if (phase === 'idle' && !isSmoke) win.hide()
   return state
 }
 
+/** A short message from rest: the pill says it, lingers, and hides.
+ *  Refused while a session is live (the machine rejects the jump). */
+export function showOverlayHint(text: string, mode: OverlayMode = 'dictation'): boolean {
+  return setOverlayPhase('hint', null, { mode, hint: text }) !== null
+}
+
 export function getOverlayPhase(): OverlayPhase {
   return machine.get().phase
+}
+
+export function getOverlayState(): OverlayState {
+  return machine.get()
 }
 
 /** Show the pill with synthetic levels for a moment: settings "preview". */
@@ -192,11 +219,14 @@ export function initOverlay(): void {
   })
 
   // Design QA hook: MURMUR_OVERLAY_PREVIEW=1 shows the pill recording
-  // with synthetic levels, no mic or hotkey needed.
+  // with synthetic levels, no mic or hotkey needed; MURMUR_OVERLAY_MODE
+  // =note shows the note state instead.
   if (process.env.MURMUR_OVERLAY_PREVIEW === '1') {
     overlayWindow.webContents.once('did-finish-load', () => {
       const kickoff = setTimeout(() => {
-        setOverlayPhase('recording')
+        setOverlayPhase('recording', null, {
+          mode: process.env.MURMUR_OVERLAY_MODE === 'note' ? 'note' : 'dictation'
+        })
         let t = 0
         const levels = setInterval(() => {
           t += 1
@@ -249,6 +279,54 @@ export function initOverlay(): void {
     if (!overlayWindow) return false
     const kind = await overlayWindow.webContents.executeJavaScript('typeof window.murmurOverlay')
     return kind === 'object'
+  })
+
+  registerSmokeCheck('overlayHint', async () => {
+    // The real hint text reaches the DOM with the note styling AND fits
+    // inside the fixed pill (review gate 2026-09-18: the first cut
+    // clipped the last word), idle clears it, and a hint mid-session
+    // is refused.
+    if (!overlayWindow) return false
+    const read = (): Promise<string> => {
+      return overlayWindow!.webContents.executeJavaScript(
+        `(() => {
+          const pill = document.querySelector('.pill')
+          const box = pill ? pill.getBoundingClientRect() : null
+          return JSON.stringify({
+            phase: document.body.dataset.phase,
+            mode: document.body.dataset.mode,
+            hint: (document.querySelector('[data-hint]') || {}).textContent,
+            note: document.querySelector('.pill-note') !== null,
+            fits: box !== null && box.left >= 0 && box.right <= window.innerWidth
+          })
+        })()`
+      )
+    }
+    if (!showOverlayHint(NOTE_FOLDER_HINT, 'note')) return false
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const shown = JSON.parse(await read()) as {
+      phase: string
+      mode: string
+      hint: string | null
+      note: boolean
+      fits: boolean
+    }
+    setOverlayPhase('idle')
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    const idle = JSON.parse(await read()) as { phase: string; note: boolean }
+    setOverlayPhase('recording')
+    const refused = !showOverlayHint('nope')
+    setOverlayPhase('idle')
+    return (
+      shown.phase === 'hint' &&
+      shown.mode === 'note' &&
+      shown.hint === NOTE_FOLDER_HINT &&
+      shown.note &&
+      shown.fits &&
+      idle.phase === 'idle' &&
+      !idle.note &&
+      refused
+    )
   })
 
   registerSmokeCheck('overlayStatesAndTimer', async () => {

@@ -37,6 +37,10 @@ Set a chord under Settings, dictation, Paste last dictation. Pressing it pastes 
 
 Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fire by accident), and it must not contain your dictation hotkey's modifiers (holding Ctrl+Alt+V with a Ctrl+Alt dictation hotkey would start a recording before the V lands), so murmur refuses those at capture and says why. murmur listens globally without swallowing keys, so pick a combo your apps ignore: a modifier plus an F-key (Ctrl+F12) is the safest shape. Holding the chord pastes once, and it does nothing while a recording or transcription is in flight. With empty history it plays the soft no-speech cue and touches nothing.
 
+## How do I speak a note instead of pasting it?
+
+Set a note chord and a notes folder under Settings, notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes.md](./notes.md).
+
 ## What is the difference between hold to talk and toggle?
 
 **Hold to talk**: recording runs while the hotkey is held, stops when released. Best for short, frequent dictations. **Toggle**: tap once to start, tap again to stop. Best for long passages. Rapid accidental double-taps are absorbed.

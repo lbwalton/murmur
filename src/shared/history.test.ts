@@ -45,4 +45,9 @@ describe('isSessionEvent', () => {
     expect(isSessionEvent({ at: 'nope' })).toBe(false)
     expect(isSessionEvent({ ...make(1, 2), words: '10' })).toBe(false)
   })
+
+  it('accepts a note kind and nothing else', () => {
+    expect(isSessionEvent({ ...make(1, 2), kind: 'note' })).toBe(true)
+    expect(isSessionEvent({ ...make(1, 2), kind: 'paste' })).toBe(false)
+  })
 })

@@ -104,6 +104,7 @@ export function HomeView(props: {
               <div className="log-entry" key={event.at}>
                 <div className="log-meta">
                   <span className="mono-inline dim">{timeOf(event.at)}</span>
+                  {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
                   <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                   <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
                     {copiedAt === event.at ? 'copied' : 'copy'}

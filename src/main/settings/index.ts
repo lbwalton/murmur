@@ -201,6 +201,42 @@ export function initSettings(): void {
     return probeConnection(polish.baseUrl, getPolishApiKey())
   })
 
+  // Generic slot access for connections that are not the speech or
+  // cleanup slot (the sort connection, US-051): the ring keyed by base
+  // URL, and a clear that never deletes a key another slot shares.
+  ipcMain.handle('apikey:setFor', (_event, baseUrl: unknown, key: unknown) => {
+    if (typeof baseUrl === 'string' && baseUrl !== '') ring?.set(baseUrl, String(key))
+    return keyStatusFor(baseUrl)
+  })
+  ipcMain.handle('apikey:statusFor', (_event, baseUrl: unknown) => keyStatusFor(baseUrl))
+  ipcMain.handle('apikey:clearFor', (_event, baseUrl: unknown) => {
+    if (typeof baseUrl === 'string' && baseUrl !== '' && !sharedSlotUrl(baseUrl)) ring?.clear(baseUrl)
+    return keyStatusFor(baseUrl)
+  })
+  ipcMain.handle('provider:testFor', async (_event, baseUrl: unknown) => {
+    if (typeof baseUrl !== 'string' || baseUrl === '') return { ok: false, detail: 'no base URL set' }
+    return probeConnection(baseUrl, ring?.get(baseUrl) ?? null)
+  })
+
+  function keyStatusFor(baseUrl: unknown): { present: boolean; masked: string | null } {
+    if (typeof baseUrl !== 'string' || baseUrl === '') return { present: false, masked: null }
+    return ring?.status(baseUrl) ?? { present: false, masked: null }
+  }
+
+  // The speech slot and an enabled cleanup slot own their keys; a
+  // third slot pointed at the same base URL rides them and must never
+  // remove them. A cleanup URL left behind with cleanup on Same owns
+  // nothing (review gate 2026-09-20).
+  function sharedSlotUrl(baseUrl: string): boolean {
+    const strip = (u: string): string => u.replace(/\/$/, '')
+    const current = settingsStore?.get()
+    const owners = [
+      current?.provider.baseUrl ?? '',
+      current?.polish.enabled ? (current.polish.baseUrl ?? '') : ''
+    ].filter((u) => u !== '')
+    return owners.some((u) => strip(u) === strip(baseUrl))
+  }
+
   registerSmokeCheck('settings', () => {
     if (!settingsStore) return false
     const before = settingsStore.get()
@@ -235,6 +271,11 @@ export function getApiKey(): string | null {
   return ring?.get(baseUrl) ?? legacyStore?.get() ?? null
 }
 
+/** The key saved under any base URL, or null. Never expose to renderers. */
+export function getApiKeyFor(baseUrl: string): string | null {
+  return baseUrl !== '' ? (ring?.get(baseUrl) ?? null) : null
+}
+
 /** The cleanup connection's key, or null when none is saved. */
 export function getPolishApiKey(): string | null {
   const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
@@ -260,4 +301,9 @@ export function ringHasKeyFor(baseUrl: string): boolean {
 /** File a key under a base URL (pre-ring profile blob migration). */
 export function ringSetKey(baseUrl: string, key: string): void {
   if (baseUrl !== '') ring?.set(baseUrl, key)
+}
+
+/** Remove the key under a base URL (smoke cleanup). */
+export function ringClearKey(baseUrl: string): void {
+  if (baseUrl !== '') ring?.clear(baseUrl)
 }

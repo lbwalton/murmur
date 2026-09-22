@@ -39,7 +39,10 @@ export interface HotkeysStatus {
   hookStarted: boolean
   bindingValid: boolean
   pasteBindingValid: boolean
+  noteBindingValid: boolean
 }
+
+export type NotesStatus = import('../main/notes').NotesStatus
 
 const api = {
   appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
@@ -86,6 +89,26 @@ const api = {
   saveDiagnostics: (): Promise<boolean> => ipcRenderer.invoke('diag:save'),
   openLogFolder: (): Promise<void> => ipcRenderer.invoke('diag:openLogs'),
   testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
+  setKeyFor: (baseUrl: string, key: string): Promise<KeyStatus> => {
+    return ipcRenderer.invoke('apikey:setFor', baseUrl, key)
+  },
+  getKeyStatusFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:statusFor', baseUrl),
+  clearKeyFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clearFor', baseUrl),
+  testConnectionFor: (baseUrl: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testFor', baseUrl)
+  },
+  testDecisionFor: (baseUrl: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testDecideFor', baseUrl)
+  },
+  sortLastNote: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:sortLast'),
+  fileHeldLine: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:fileHeld', id),
+  skipHeldLine: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:skipHeld', id),
+  tickHeldMatch: (id: number): Promise<NotesStatus> => ipcRenderer.invoke('notes:tickHeld', id),
+  testNotesReminder: (): Promise<{
+    outcome: 'shown' | 'empty' | 'missing' | 'suppressed'
+    body: string
+    open: number
+  }> => ipcRenderer.invoke('notes:testReminder'),
   getCatalog: (): Promise<import('../shared/catalog').ProviderCatalog> => {
     return ipcRenderer.invoke('catalog:get')
   },
@@ -95,10 +118,13 @@ const api = {
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
   captureHotkey: (
-    target: 'dictation' | 'pasteLast' = 'dictation'
+    target: 'dictation' | 'pasteLast' | 'note' = 'dictation'
   ): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture', target)
   },
+  chooseNotesFolder: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:chooseFolder'),
+  getNotesStatus: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:status'),
+  openTodayNote: (): Promise<'file' | 'folder' | 'none'> => ipcRenderer.invoke('notes:openToday'),
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
   clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),

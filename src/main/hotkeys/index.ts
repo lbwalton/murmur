@@ -10,10 +10,10 @@ import { registerSmokeCheck } from '../smoke'
 import {
   type ParsedBinding,
   buildKeyMap,
+  chordRefusal,
   isSafeBinding,
   matchesEvent,
-  parseBinding,
-  pasteBindingRefusal
+  parseBinding
 } from './binding'
 import { HotkeyDispatcher, type ModifierCodes } from './dispatch'
 import { type DictationCallbacks, HoldMachine, ToggleMachine, type TriggerMachine } from './machines'
@@ -35,6 +35,12 @@ let pasteBinding: ParsedBinding | null = null
 // paste must land once per press, so the chord latches until its key
 // comes back up.
 let pasteChordHeld = false
+// The note chord is a second dictation trigger with its own machine
+// and dispatcher, so hold and toggle behave exactly like the main
+// hotkey; the dictation module decides who owns a live session.
+let noteBinding: ParsedBinding | null = null
+let noteMachine: TriggerMachine | null = null
+let noteDispatcher: HotkeyDispatcher | null = null
 let hookStarted = false
 let suppressed = false
 
@@ -49,22 +55,52 @@ export function isBindingParseable(bindingString: string): boolean {
   return parsed !== null && isSafeBinding(parsed)
 }
 
-/**
- * Why a candidate paste-last chord cannot be saved, or null when it
- * can. Checked against the CURRENT dictation binding at capture time;
- * apply() re-checks on every settings change, so a later dictation
- * rebind that creates a collision just disarms the paste chord.
- */
-export function pasteBindingProblem(bindingString: string): 'invalid' | 'needs-key' | 'collides' | null {
+type ChordProblem = 'invalid' | 'needs-key' | 'collides' | null
+
+function chordProblem(bindingString: string, takenStrings: string[]): ChordProblem {
   const parsed = parseBinding(bindingString, keyMap)
   if (!parsed || !isSafeBinding(parsed)) return 'invalid'
   const dictation = parseBinding(getSettings().hotkey.binding, keyMap)
-  return pasteBindingRefusal(parsed, dictation)
+  const taken = takenStrings
+    .filter((s) => s !== '')
+    .map((s) => parseBinding(s, keyMap))
+    .filter((b): b is ParsedBinding => b !== null)
+  return chordRefusal(parsed, dictation, taken)
 }
 
-function apply(settings: Settings, callbacks: DictationCallbacks): void {
+/**
+ * Why a candidate paste-last chord cannot be saved, or null when it
+ * can. Checked against the CURRENT dictation binding and note chord at
+ * capture time; apply() re-checks on every settings change, so a later
+ * dictation rebind that creates a collision just disarms the chord.
+ */
+export function pasteBindingProblem(bindingString: string): ChordProblem {
+  return chordProblem(bindingString, [getSettings().notes.binding])
+}
+
+/** Same rules for the note chord, checked against the paste chord. */
+export function noteBindingProblem(bindingString: string): ChordProblem {
+  return chordProblem(bindingString, [getSettings().hotkey.pasteLastBinding])
+}
+
+/** The chord as it would arm, or null when it must stay disarmed. */
+function armChord(raw: string, dictation: ParsedBinding | null, taken: ParsedBinding[]): ParsedBinding | null {
+  if (raw === '') return null
+  const parsed = parseBinding(raw, keyMap)
+  if (!parsed || !isSafeBinding(parsed)) return null
+  return chordRefusal(parsed, dictation, taken) === null ? parsed : null
+}
+
+export interface HotkeyCallbacks extends DictationCallbacks {
+  pasteLast?: () => void
+  /** The note chord's start and stop: a dictation whose words go to a file. */
+  note?: DictationCallbacks
+}
+
+function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
   // A live hold must not leak a stuck recording across a rebind.
   if (machine?.isActive()) callbacks.stop()
+  if (noteMachine?.isActive()) callbacks.note?.stop()
   const parsed = parseBinding(settings.hotkey.binding, keyMap)
   // Unsafe bindings (a bare letter would fire on every keystroke) are
   // treated as invalid: the checklist surfaces it, dictation stays off.
@@ -73,16 +109,21 @@ function apply(settings: Settings, callbacks: DictationCallbacks): void {
     settings.hotkey.mode === 'hold' ? new HoldMachine(callbacks) : new ToggleMachine(callbacks)
   dispatcher = binding ? new HotkeyDispatcher(binding, machine, MODIFIER_CODES) : null
 
-  // The paste-last chord arms only when set and valid against the
-  // dictation binding that was just applied; anything else disarms it.
-  pasteBinding = null
+  // The secondary chords arm only when set and valid against the
+  // dictation binding that was just applied and against each other;
+  // anything else disarms them. The paste chord is checked first, so
+  // a hand-edited duplicate disarms the note chord, never the paste.
+  pasteBinding = armChord(settings.hotkey.pasteLastBinding, parsed, [])
   pasteChordHeld = false
-  const pasteRaw = settings.hotkey.pasteLastBinding
-  if (pasteRaw !== '') {
-    const pasteParsed = parseBinding(pasteRaw, keyMap)
-    if (pasteParsed && isSafeBinding(pasteParsed) && pasteBindingRefusal(pasteParsed, parsed) === null) {
-      pasteBinding = pasteParsed
-    }
+  noteBinding = armChord(settings.notes.binding, parsed, pasteBinding ? [pasteBinding] : [])
+  noteMachine = null
+  noteDispatcher = null
+  if (noteBinding && callbacks.note) {
+    noteMachine =
+      settings.hotkey.mode === 'hold'
+        ? new HoldMachine(callbacks.note)
+        : new ToggleMachine(callbacks.note)
+    noteDispatcher = new HotkeyDispatcher(noteBinding, noteMachine, MODIFIER_CODES)
   }
 }
 
@@ -93,19 +134,26 @@ export interface HotkeysStatus {
    *  dictation rebind made it collide, or it stopped parsing); the
    *  settings row must say so instead of showing a dead chord. */
   pasteBindingValid: boolean
+  /** Same truth for the note chord. */
+  noteBindingValid: boolean
 }
 
 function pasteBindingValid(): boolean {
   return getSettings().hotkey.pasteLastBinding === '' || pasteBinding !== null
 }
 
-export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => void }): HotkeysStatus {
+function noteBindingValid(): boolean {
+  return getSettings().notes.binding === '' || noteBinding !== null
+}
+
+export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
   apply(getSettings(), callbacks)
   onSettingsChanged((settings) => apply(settings, callbacks))
 
   uIOhook.on('keydown', (event) => {
     if (suppressed) return
     dispatcher?.keydown(event)
+    noteDispatcher?.keydown(event)
     if (pasteBinding && matchesEvent(pasteBinding, event)) {
       if (!pasteChordHeld) {
         pasteChordHeld = true
@@ -116,6 +164,7 @@ export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => 
   uIOhook.on('keyup', (event) => {
     if (suppressed) return
     dispatcher?.keyup(event)
+    noteDispatcher?.keyup(event)
     if (pasteBinding && event.keycode === pasteBinding.code) pasteChordHeld = false
   })
 
@@ -133,7 +182,7 @@ export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => 
   void import('../window-watch')
     .then(({ writeAppLog }) => {
       writeAppLog(
-        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()}`
+        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()} noteBindingValid=${noteBindingValid()}`
       )
     })
     .catch(() => undefined)
@@ -154,7 +203,40 @@ export function initHotkeys(callbacks: DictationCallbacks & { pasteLast?: () => 
     return rebound && restored
   })
 
-  return { hookStarted, bindingValid: binding !== null, pasteBindingValid: pasteBindingValid() }
+  registerSmokeCheck('noteChord', async () => {
+    // The note chord arms beside the main hotkey under the shared
+    // rules: a valid chord builds its own dispatcher, a chord that
+    // duplicates the paste chord stays disarmed, and clearing it
+    // tears the dispatcher down again.
+    const { updateSettings } = await import('../settings')
+    const before = getSettings()
+    try {
+      updateSettings({ hotkey: { pasteLastBinding: 'Ctrl+Shift+F17' }, notes: { binding: 'Ctrl+Shift+F18' } })
+      const armed = noteDispatcher !== null && noteBinding?.code === keyMap.f18 && noteBindingValid()
+      updateSettings({ notes: { binding: 'Ctrl+Shift+F17' } })
+      const refused = noteDispatcher === null && !noteBindingValid() && pasteBinding !== null
+      const problem = noteBindingProblem('Ctrl+Shift+F17') === 'collides'
+      updateSettings({ notes: { binding: '' } })
+      const cleared = noteDispatcher === null && noteBindingValid()
+      return armed && refused && problem && cleared
+    } finally {
+      updateSettings({
+        hotkey: { pasteLastBinding: before.hotkey.pasteLastBinding },
+        notes: { binding: before.notes.binding }
+      })
+    }
+  })
+
+  return status()
+}
+
+function status(): HotkeysStatus {
+  return {
+    hookStarted,
+    bindingValid: binding !== null,
+    pasteBindingValid: pasteBindingValid(),
+    noteBindingValid: noteBindingValid()
+  }
 }
 
 export function stopHotkeys(): void {
@@ -166,7 +248,7 @@ export function stopHotkeys(): void {
 
 /** Live status for the settings surface. */
 export function getHotkeysStatus(): HotkeysStatus {
-  return { hookStarted, bindingValid: binding !== null, pasteBindingValid: pasteBindingValid() }
+  return status()
 }
 
 // ------------------------------------------------------------- capture ---

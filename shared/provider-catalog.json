@@ -1,7 +1,7 @@
 {
   "comment": "Single source of truth for provider presets, model rates, and billing nuances. Estimates only; every provider bills you directly and murmur never sees it. Refreshed weekly by .github/workflows/pricing-watch.yml, which re-checks each rate against the vendor's primary source and opens a PR when a number drifts; the app can also fetch this file from the repo at launch (Settings, Price refresh). Rates without a currency are USD.",
   "catalogVersion": 1,
-  "verifiedOn": "2026-09-13",
+  "verifiedOn": "2026-09-21",
   "estimate": {
     "comment": "Cleanup-pass token model shared with analytics: roughly 1.35 tokens per word each way plus a fixed per-session prompt overhead, amortized here as sessionsPer1kWords typical dictation sessions. fallbackWpm seeds the cost preview before any history exists.",
     "tokensPerWord": 1.35,
@@ -226,6 +226,34 @@
       ],
       "sttModels": [],
       "llmModels": []
+    },
+    {
+      "id": "typesafe",
+      "name": "TypeSafe",
+      "kinds": [
+        "decide"
+      ],
+      "baseUrl": "https://api.typesafe.ai/v1",
+      "keyUrl": "https://console.typesafe.ai",
+      "verifiedOn": "2026-09-21",
+      "sources": [
+        "https://docs.typesafe.ai/models.md",
+        "https://docs.typesafe.ai/introduction/quickstart.md"
+      ],
+      "nuances": [
+        "A decision model, not a chat model: it answers typed questions and never writes text, so it serves the sort connection only and cannot name notes for a {topic} heading.",
+        "Billed on input tokens only; output tokens are free.",
+        "Early access is waitlisted; a key comes from the console once your account is let in."
+      ],
+      "sttModels": [],
+      "llmModels": [
+        {
+          "id": "jev-latest",
+          "label": "decision model",
+          "inputPerMTok": 0.042,
+          "outputPerMTok": 0
+        }
+      ]
     }
   ]
 }

@@ -25,7 +25,7 @@ export function effectiveLlmModel(settings: Settings): string {
 // Anything less than a complete polish slot falls back to the primary
 // provider connection, so a half-set-up slot degrades to exactly the
 // old behavior instead of silently losing the cleanup pass.
-function resolvePolishConnection(settings: Settings): PolishConfig | null {
+export function resolvePolishConnection(settings: Settings): PolishConfig | null {
   if (polishSlotActive(settings)) {
     const key = getPolishApiKey()
     if (key) return { baseUrl: settings.polish.baseUrl, model: settings.polish.llmModel, apiKey: key }

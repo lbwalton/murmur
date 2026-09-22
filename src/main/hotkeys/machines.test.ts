@@ -7,8 +7,12 @@ function recorder() {
   return {
     events,
     cb: {
-      start: () => events.push('start'),
-      stop: () => events.push('stop')
+      start: (): void => {
+        events.push('start')
+      },
+      stop: (): void => {
+        events.push('stop')
+      }
     }
   }
 }
@@ -74,5 +78,71 @@ describe('ToggleMachine', () => {
     const m = new ToggleMachine(cb, () => 0)
     m.keyUp()
     expect(events).toEqual([])
+  })
+})
+
+describe('a refused start (review gate 2026-09-18, two chords sharing one mic)', () => {
+  it('leaves a hold machine inactive so its release stops nothing', () => {
+    const calls: string[] = []
+    const m = new HoldMachine({
+      start: () => {
+        calls.push('start')
+        return false
+      },
+      stop: () => calls.push('stop')
+    })
+    m.keyDown()
+    expect(m.isActive()).toBe(false)
+    m.keyUp()
+    expect(calls).toEqual(['start'])
+  })
+
+  it('tries a refused start once per physical press, not once per key repeat', () => {
+    const calls: string[] = []
+    const m = new HoldMachine({
+      start: () => {
+        calls.push('start')
+        return false
+      },
+      stop: () => calls.push('stop')
+    })
+    m.keyDown()
+    m.keyDown() // OS key repeat while held
+    m.keyDown()
+    expect(calls).toEqual(['start'])
+    m.keyUp()
+    m.keyDown() // a new physical press tries again
+    expect(calls).toEqual(['start', 'start'])
+    expect(m.isActive()).toBe(false)
+  })
+
+  it('leaves a toggle machine inactive so the next tap is a fresh start, not a stop', () => {
+    const calls: string[] = []
+    let allow = false
+    let t = 0
+    const m = new ToggleMachine(
+      {
+        start: () => {
+          calls.push('start')
+          return allow
+        },
+        stop: () => calls.push('stop')
+      },
+      () => (t += 1000)
+    )
+    m.keyDown()
+    expect(m.isActive()).toBe(false)
+    allow = true
+    m.keyDown()
+    expect(m.isActive()).toBe(true)
+    m.keyDown()
+    expect(m.isActive()).toBe(false)
+    expect(calls).toEqual(['start', 'start', 'stop'])
+  })
+
+  it('treats a start that returns nothing as begun', () => {
+    const m = new HoldMachine({ start: () => undefined, stop: () => undefined })
+    m.keyDown()
+    expect(m.isActive()).toBe(true)
   })
 })

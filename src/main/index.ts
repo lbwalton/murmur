@@ -21,11 +21,12 @@ import { RotatingLog } from './logging'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
+import { initNotes, openTodayNote } from './notes'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { watchWindow } from './window-watch'
-import { createTray, getTray } from './tray'
+import { createTray, getTray, setTrayInboxVisible } from './tray'
 
 // Development builds get their own userData so the lock, settings, and
 // logs never collide with an installed murmur (or the legacy app still
@@ -252,6 +253,7 @@ app.whenReady().then(async () => {
   })
   initInsertion()
   initDictation()
+  initNotes(() => settingsWindow)
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
 
@@ -262,6 +264,12 @@ app.whenReady().then(async () => {
     },
     pasteLast: () => {
       void pasteLastDictation()
+    },
+    note: {
+      start: () => dictationStart('note'),
+      stop: () => {
+        void dictationStop('note')
+      }
     }
   })
   initPermissions()
@@ -297,11 +305,12 @@ app.whenReady().then(async () => {
   // Capture a new hotkey: global trigger paused, keys intercepted ahead
   // of menu accelerators, binding validated against the real key map,
   // and saved through the normal settings path on success. The target
-  // picks which binding is being set: the dictation trigger, or the
-  // paste-last chord with its stricter rules.
+  // picks which binding is being set: the dictation trigger, or one of
+  // the chords (paste-last, note) with their stricter rules.
   ipcMain.handle('hotkeys:capture', async (_event, target: unknown) => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
     const forPasteLast = target === 'pasteLast'
+    const forNote = target === 'note'
     setHotkeysSuppressed(true)
     try {
       // Prefer the global hook (the same source the trigger reads, and
@@ -318,6 +327,13 @@ app.whenReady().then(async () => {
         updateSettings({ hotkey: { pasteLastBinding: outcome.binding } })
         return { ok: true, binding: outcome.binding }
       }
+      if (forNote) {
+        const { noteBindingProblem } = await import('./hotkeys')
+        const problem = noteBindingProblem(outcome.binding)
+        if (problem) return { ok: false, reason: problem }
+        updateSettings({ notes: { binding: outcome.binding } })
+        return { ok: true, binding: outcome.binding }
+      }
       if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }
       updateSettings({ hotkey: { binding: outcome.binding } })
       return { ok: true, binding: outcome.binding }
@@ -328,8 +344,14 @@ app.whenReady().then(async () => {
 
   createTray({
     onOpen: showSettingsWindow,
-    onQuit: () => app.quit()
+    onQuit: () => app.quit(),
+    onOpenInbox: () => {
+      void openTodayNote()
+    }
   })
+  // The inbox item exists only while there is a folder to open.
+  setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
+  onSettingsChanged((s) => setTrayInboxVisible(s.notes.folder.trim() !== ''))
 
   settingsWindow = createSettingsWindow()
   const settingsLoaded = whenLoaded(settingsWindow)
@@ -411,6 +433,30 @@ app.whenReady().then(async () => {
   if (settingsCapture && settingsWindow) {
     await settingsLoaded.catch(() => undefined)
     await new Promise((resolve) => setTimeout(resolve, 900))
+    // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
+    // row to the top, and unfolds any disclosure in its panel, so any
+    // row can be shot, not just the home tab.
+    const anchor = process.env.MURMUR_SETTINGS_ANCHOR
+    if (anchor) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === 'settings')
+          if (nav) nav.click()
+          return true
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const row = document.getElementById(${JSON.stringify(anchor)})
+          const panel = row ? row.closest('.panel') : null
+          for (const d of panel ? panel.querySelectorAll('details') : []) d.setAttribute('open', '')
+          if (row) row.scrollIntoView({ block: 'start' })
+          return true
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
     const image = await settingsWindow.webContents.capturePage()
     const { writeFile } = await import('node:fs/promises')
     await writeFile(settingsCapture, image.toPNG())

@@ -34,5 +34,18 @@ export const IpcChannels = {
   providerTest: 'provider:test',
   permsStatus: 'perms:status',
   permsOpen: 'perms:open',
-  hotkeysStatus: 'hotkeys:status'
+  hotkeysStatus: 'hotkeys:status',
+  notesChooseFolder: 'notes:chooseFolder',
+  notesStatus: 'notes:status',
+  notesOpenToday: 'notes:openToday',
+  notesSortLast: 'notes:sortLast',
+  notesFileHeld: 'notes:fileHeld',
+  notesSkipHeld: 'notes:skipHeld',
+  notesTickHeld: 'notes:tickHeld',
+  notesTestReminder: 'notes:testReminder',
+  apiKeySetFor: 'apikey:setFor',
+  apiKeyStatusFor: 'apikey:statusFor',
+  apiKeyClearFor: 'apikey:clearFor',
+  providerTestFor: 'provider:testFor',
+  providerTestDecideFor: 'provider:testDecideFor'
 } as const
