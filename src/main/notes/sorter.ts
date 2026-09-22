@@ -20,12 +20,16 @@ import {
 import type { Settings } from '../../shared/settings'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
+  SORT_SEAMS_PROMPT,
   SORT_SYSTEM_PROMPT,
   SORT_TOPIC_PROMPT,
+  applySplits,
+  findSeams,
   headingPrefix,
   numberedList,
   planFiling,
   renderFiledHeading,
+  seamPrompt,
   splitSentences,
   validateSort
 } from '../../shared/sorter'
@@ -136,11 +140,11 @@ function openTargets(files: string[]): {
 }
 
 async function askModel(
+  systemPrompt: string,
   prompt: string,
   cfg: PolishConfig,
   fetchImpl: typeof fetch,
-  timeoutMs: number,
-  wantsTopic: boolean
+  timeoutMs: number
 ): Promise<ModelReply> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -152,10 +156,7 @@ async function askModel(
         model: cfg.model,
         temperature: 0,
         messages: [
-          {
-            role: 'system',
-            content: wantsTopic ? `${SORT_SYSTEM_PROMPT} ${SORT_TOPIC_PROMPT}` : SORT_SYSTEM_PROMPT
-          },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ]
       }),
@@ -221,18 +222,31 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
   // Topics only mean something when a heading can carry them.
   const wantsTopic =
     settings.notes.topicHeadings && settings.notes.filedHeadingTemplate.includes('{topic}')
+  // Seams (US-056): the code finds where a sentence could be cut and the
+  // model only votes per seam; a note with no seam offers none.
+  const seamsBySentence = sentences.map(findSeams)
+  const seamCounts = seamsBySentence.map((s) => s.length)
+  const offerSeams = seamCounts.some((n) => n > 0)
+  const systemPrompt = [
+    SORT_SYSTEM_PROMPT,
+    ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
+    ...(offerSeams ? [SORT_SEAMS_PROMPT] : [])
+  ].join(' ')
+  const userPrompt = offerSeams
+    ? `${numberedList(sentences)}\n\nSeams:\n${seamPrompt(sentences, seamsBySentence)}`
+    : numberedList(sentences)
   const reply = await askModel(
-    numberedList(sentences),
+    systemPrompt,
+    userPrompt,
     config,
     options.fetchImpl ?? fetch,
-    options.timeoutMs ?? 12_000,
-    wantsTopic
+    options.timeoutMs ?? 12_000
   )
   if (!reply.ok) {
     writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
     return record('failed', NONE, reply.reason)
   }
-  const verdict = validateSort(sentences.length, reply.content, { topic: wantsTopic })
+  const verdict = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts })
   if (!verdict.ok) {
     writeAppLog(`[sort] rejected reason=${verdict.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
     return record('rejected', NONE, verdict.reason)
@@ -247,7 +261,14 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     writeAppLog(`[sort] failed reason=${errorCode(error)}`)
     return record('failed', NONE, 'paths')
   }
-  const plan = planFiling(sentences, verdict.labels, {
+  // Cut at the confirmed seams before filing; only task and idea lines
+  // split, and a sentence with no vote stays whole.
+  const expanded = applySplits(sentences, verdict.labels, seamsBySentence, verdict.seams)
+  const splitCount = Object.keys(verdict.seams).filter((k) => {
+    const label = verdict.labels[Number(k) - 1]
+    return label === 'task' || label === 'idea'
+  }).length
+  const plan = planFiling(expanded.sentences, expanded.labels, {
     time: noteMoment(input.when).time,
     inboxFile: input.inboxRelative,
     tasksFile: tasksPath.relative,
@@ -288,7 +309,7 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
   }
   lastFiledInput = input
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} model=${config.model} slot=${slot}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} model=${config.model} slot=${slot}`
   )
   return record('filed', counts)
 }
@@ -415,6 +436,55 @@ export function initSorter(): void {
       updateSettings({ notes: { topicHeadings: false } })
       const namedTodo = read(todo)
       const namedIdeas = read(ideas)
+
+      // Seams (US-056): the prompt offers the seams murmur found with
+      // both sides shown, a vote of yes on two of them cuts the sentence
+      // into three lines with every word kept, and a vote naming a seam
+      // that does not exist leaves the sentence whole.
+      const run: SortInput = {
+        ...input,
+        text: 'Tomorrow we are getting groceries, getting tacos, and going to the playground.'
+      }
+      let captured = { system: '', user: '' }
+      const capturing = (content: string): typeof fetch =>
+        (async (_url: unknown, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? '{}')) as {
+            messages?: Array<{ role: string; content: string }>
+          }
+          captured = {
+            system: body.messages?.find((m) => m.role === 'system')?.content ?? '',
+            user: body.messages?.find((m) => m.role === 'user')?.content ?? ''
+          }
+          return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 })
+        }) as typeof fetch
+      const todoBeforeSplit = read(todo)
+      const splitVote = await sortNote(run, {
+        fetchImpl: capturing('{"1":"task","seams":{"1":[1,2]}}'),
+        connection: cfg
+      })
+      const afterSplit = read(todo)
+      const promptOk =
+        captured.system.includes('key "seams"') &&
+        captured.user.includes(
+          '1.1: "Tomorrow we are getting groceries" | "getting tacos, and going to the playground."'
+        ) &&
+        captured.user.includes('1.2: "Tomorrow we are getting groceries, getting tacos" | "going to the playground."')
+      const splitOk =
+        splitVote.outcome === 'filed' &&
+        splitVote.tasks === 3 &&
+        afterSplit ===
+          `${todoBeforeSplit}- [ ] Tomorrow we are getting groceries ([10:32](inbox/2026-09-18.md))\n- [ ] getting tacos ([10:32](inbox/2026-09-18.md))\n- [ ] going to the playground. ([10:32](inbox/2026-09-18.md))\n`
+      // One sentence's bad vote leaves it whole while the other still splits.
+      const pair: SortInput = { ...input, text: 'Buy eggs, and buy milk. Call Bob, then call Ann.' }
+      const wholeVote = await sortNote(pair, {
+        fetchImpl: mockReply('{"1":"task","2":"task","seams":{"1":[1],"2":[9]}}'),
+        connection: cfg
+      })
+      const wholeOk =
+        wholeVote.outcome === 'filed' &&
+        wholeVote.tasks === 3 &&
+        read(todo) ===
+          `${afterSplit}- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n`
       const topicOk =
         withTopic.outcome === 'filed' &&
         badTopic.outcome === 'filed' &&
@@ -444,8 +514,12 @@ export function initSorter(): void {
         untouched &&
         // The status surface always shows the newest outcome, which is
         // the last filing above, not the failures before it.
-        getLastSort() === badTopic &&
-        log.includes('[sort] filed tasks=2 ideas=1 notes=1 model=smoke-sorter') &&
+        promptOk &&
+        splitOk &&
+        wholeOk &&
+        getLastSort() === wholeVote &&
+        log.includes('[sort] filed tasks=2 ideas=1 notes=1 split=0 model=smoke-sorter') &&
+        log.includes('[sort] filed tasks=3 ideas=0 notes=0 split=1 model=smoke-sorter') &&
         log.includes('[sort] rejected reason=missing sentences model=smoke-sorter') &&
         log.includes('[sort] failed reason=http 500 model=smoke-sorter') &&
         log.includes('[sort] write failed reason=') &&

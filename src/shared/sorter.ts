@@ -71,8 +71,13 @@ export const SORT_SYSTEM_PROMPT = [
 ].join(' ')
 
 export type SortVerdict =
-  | { ok: true; labels: SortLabel[]; topic: string }
+  | { ok: true; labels: SortLabel[]; topic: string; seams: SeamVotes }
   | { ok: false; reason: string }
+
+/** Confirmed seam numbers per sentence number (US-056). Produced by
+ *  whichever connection voted and consumed by the cutter, so a second
+ *  backend supplies votes without touching the cutter. */
+export type SeamVotes = Record<number, number[]>
 
 /** Asked for only when topic headings are on. */
 export const SORT_TOPIC_PROMPT = [
@@ -117,7 +122,7 @@ function extractObject(candidate: string): string | null {
 export function validateSort(
   count: number,
   candidate: string,
-  opts: { topic?: boolean } = {}
+  opts: { topic?: boolean; seamCounts?: readonly number[] } = {}
 ): SortVerdict {
   const text = candidate.trim()
   if (text.length === 0) return { ok: false, reason: 'empty' }
@@ -133,9 +138,11 @@ export function validateSort(
   }
   const entries = Object.entries(parsed as Record<string, unknown>)
   const expected = new Set(Array.from({ length: count }, (_, i) => String(i + 1)))
-  // The topic rides the same object under a reserved key; every other
-  // key still has to be a sentence number.
-  const numbered = entries.filter(([key]) => key !== 'topic' || !opts.topic)
+  // The topic and the seam votes ride the same object under reserved
+  // keys; every other key still has to be a sentence number.
+  const offeredSeams = (opts.seamCounts ?? []).some((n) => n > 0)
+  const reserved = new Set<string>([...(opts.topic ? ['topic'] : []), ...(offeredSeams ? ['seams'] : [])])
+  const numbered = entries.filter(([key]) => !reserved.has(key))
   for (const [key] of numbered) {
     if (!expected.has(key)) return { ok: false, reason: 'extra sentences' }
   }
@@ -148,7 +155,159 @@ export function validateSort(
     labels.push(label as SortLabel)
   }
   const topic = opts.topic ? sanitizeTopic((parsed as Record<string, unknown>).topic) : ''
-  return { ok: true, labels, topic }
+  const seams = offeredSeams
+    ? readSeamVotes((parsed as Record<string, unknown>).seams, opts.seamCounts ?? [])
+    : {}
+  return { ok: true, labels, topic, seams }
+}
+
+// ------------------------------------------------------------ seams ---
+// A comma run spoken in one breath is one sentence, and the sorter's
+// unit is the sentence, so it would file as one checkbox. The code finds
+// the places a sentence could be cut and the model only votes yes or no
+// per seam; it never returns text, so every word the speaker said lands
+// on exactly one line by construction (US-056).
+
+export interface Seam {
+  /** The seam text's span in the sentence: what cutting removes. */
+  start: number
+  end: number
+}
+
+const CONNECTOR = '(?:and then|and also|and|then|also)'
+// A punctuation seam may carry a connector after it (", and then ");
+// a bare connector between word runs is a seam on its own.
+const SEAM = new RegExp(`[,;]\\s+(?:${CONNECTOR}\\s+)?|\\s+${CONNECTOR}\\s+`, 'gi')
+
+// A side that is nothing but joining words ("And", "then") is not an
+// item, and a cut inside an open quote or parenthesis would leave both
+// lines with half of it; neither is offered (review gate 2026-09-21).
+const ONLY_CONNECTORS = /^(?:\s*(?:and|then|also)\b[\s.,;!?]*)+$/i
+
+function hasWords(side: string): boolean {
+  return /\w/.test(side) && !ONLY_CONNECTORS.test(side)
+}
+
+function insideQuoteOrParen(left: string): boolean {
+  const opens = (left.match(/\(/g) ?? []).length
+  const closes = (left.match(/\)/g) ?? []).length
+  const quotes = (left.match(/"/g) ?? []).length
+  return opens > closes || quotes % 2 === 1
+}
+
+/** Candidate seams, in order. None inside a list line (its items are
+ *  already lines), none where either side has no words of its own, and
+ *  none inside a quote or parenthesis. A comma inside a number never
+ *  matches because it has no space after it. */
+export function findSeams(sentence: string): Seam[] {
+  if (LIST_LINE.test(sentence)) return []
+  const seams: Seam[] = []
+  for (const match of sentence.matchAll(SEAM)) {
+    const start = match.index ?? 0
+    const end = start + match[0].length
+    const left = sentence.slice(0, start)
+    const right = sentence.slice(end)
+    if (!hasWords(left) || !hasWords(right) || insideQuoteOrParen(left)) continue
+    seams.push({ start, end })
+  }
+  return seams
+}
+
+/** The two sides of a seam, for a prompt or a decision question. */
+export function seamSides(sentence: string, seam: Seam): { left: string; right: string } {
+  return { left: sentence.slice(0, seam.start).trim(), right: sentence.slice(seam.end).trim() }
+}
+
+/** Cut at the confirmed seams only, removing the seam text and nothing
+ *  else; a sentence with no confirmed seam comes back whole. The cutter
+ *  is the boundary every backend's votes cross, so it enforces the rule
+ *  itself: a vote naming a seam that does not exist leaves the whole
+ *  sentence as one line, never a partial cut. A joining comma left at
+ *  the end of a piece by doubled punctuation is trimmed. */
+export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: readonly number[]): string[] {
+  if (confirmed.some((n) => !Number.isInteger(n) || n < 1 || n > seams.length)) return [sentence]
+  const chosen = [...new Set(confirmed)].map((n) => seams[n - 1]).sort((a, b) => a.start - b.start)
+  const pieces: string[] = []
+  let cursor = 0
+  for (const seam of chosen) {
+    pieces.push(sentence.slice(cursor, seam.start))
+    cursor = seam.end
+  }
+  pieces.push(sentence.slice(cursor))
+  return pieces.map((p) => p.trim().replace(/[,;]+$/, '').trim()).filter((p) => p.length > 0)
+}
+
+/** A vote as a clean list of seam numbers, or null when it is not a
+ *  list of numbers or names a seam that does not exist: either way
+ *  that sentence files whole. */
+export function confirmedSeams(vote: unknown, seamCount: number): number[] | null {
+  if (!Array.isArray(vote)) return null
+  const numbers: number[] = []
+  for (const value of vote) {
+    if (typeof value !== 'number' || !Number.isInteger(value)) return null
+    if (value < 1 || value > seamCount) return null
+    if (!numbers.includes(value)) numbers.push(value)
+  }
+  return numbers.sort((a, b) => a - b)
+}
+
+function readSeamVotes(raw: unknown, seamCounts: readonly number[]): SeamVotes {
+  const votes: SeamVotes = {}
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return votes
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const sentence = Number(key)
+    if (!Number.isInteger(sentence) || sentence < 1 || sentence > seamCounts.length) continue
+    const count = seamCounts[sentence - 1]
+    if (count === 0) continue
+    const confirmed = confirmedSeams(value, count)
+    if (confirmed !== null && confirmed.length > 0) votes[sentence] = confirmed
+  }
+  return votes
+}
+
+/** Appended to the system prompt only when a sentence has seams. */
+export const SORT_SEAMS_PROMPT = [
+  'Some sentences list seams below, numbered N.M, each showing the sentence cut into a left side and a right side.',
+  'A seam separates two distinct items the speaker would act on separately (errands, purchases, steps). A seam inside one thought, one item, or a figure of speech does not.',
+  'Also include the key "seams": an object mapping a sentence number to the list of its seam numbers that separate distinct items, for example {"3":[1,2]}. Include only sentences with at least one such seam. Seam numbers only, never text.'
+].join(' ')
+
+/** The seams as the chat model sees them, numbered under their
+ *  sentence; empty when no sentence has a seam. */
+export function seamPrompt(sentences: readonly string[], seamsBySentence: readonly Seam[][]): string {
+  const lines: string[] = []
+  sentences.forEach((sentence, i) => {
+    seamsBySentence[i]?.forEach((seam, j) => {
+      const { left, right } = seamSides(sentence, seam)
+      lines.push(`${i + 1}.${j + 1}: "${left}" | "${right}"`)
+    })
+  })
+  return lines.join('\n')
+}
+
+/** Expand task and idea sentences with a confirmed vote into their
+ *  pieces, each piece keeping the label; everything else passes through. */
+export function applySplits(
+  sentences: readonly string[],
+  labels: readonly SortLabel[],
+  seamsBySentence: readonly Seam[][],
+  votes: SeamVotes
+): { sentences: string[]; labels: SortLabel[] } {
+  const out: { sentences: string[]; labels: SortLabel[] } = { sentences: [], labels: [] }
+  sentences.forEach((sentence, i) => {
+    const label = labels[i]
+    const confirmed = votes[i + 1]
+    if ((label === 'task' || label === 'idea') && confirmed && confirmed.length > 0) {
+      for (const piece of cutAtSeams(sentence, seamsBySentence[i] ?? [], confirmed)) {
+        out.sentences.push(piece)
+        out.labels.push(label)
+      }
+      return
+    }
+    out.sentences.push(sentence)
+    out.labels.push(label)
+  })
+  return out
 }
 
 /**

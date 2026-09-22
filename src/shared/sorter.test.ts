@@ -2,13 +2,19 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
+  type SortLabel,
+  applySplits,
+  confirmedSeams,
+  cutAtSeams,
+  findSeams,
   headingPrefix,
-  sanitizeTopic,
   ideaLine,
   numberedList,
-  renderFiledHeading,
   planFiling,
   relativeLink,
+  renderFiledHeading,
+  sanitizeTopic,
+  seamPrompt,
   splitSentences,
   taskLine,
   validateSort
@@ -64,7 +70,7 @@ describe('numberedList', () => {
 describe('validateSort', () => {
   it('accepts a complete labeling in any key order and casing', () => {
     const v = validateSort(3, '{"2": "Idea", "1": "task", "3": " note "}')
-    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'], topic: '' })
+    expect(v).toEqual({ ok: true, labels: ['task', 'idea', 'note'], topic: '', seams: {} })
   })
 
   it('takes a topic only when one was asked for, and never lets a bad one fail the sort', () => {
@@ -72,7 +78,8 @@ describe('validateSort', () => {
     expect(validateSort(1, reply, { topic: true })).toEqual({
       ok: true,
       labels: ['task'],
-      topic: 'Dentist and travel'
+      topic: 'Dentist and travel',
+      seams: {}
     })
     // Not asked for: the reserved key is an unexpected sentence number.
     expect(validateSort(1, reply)).toEqual({ ok: false, reason: 'extra sentences' })
@@ -80,12 +87,14 @@ describe('validateSort', () => {
     expect(validateSort(1, '{"1":"task","topic":""}', { topic: true })).toEqual({
       ok: true,
       labels: ['task'],
-      topic: ''
+      topic: '',
+      seams: {}
     })
     expect(validateSort(1, '{"1":"task"}', { topic: true })).toEqual({
       ok: true,
       labels: ['task'],
-      topic: ''
+      topic: '',
+      seams: {}
     })
     // A stray key is still a rejection, topics or not.
     expect(validateSort(1, '{"1":"task","mood":"good"}', { topic: true })).toEqual({
@@ -229,5 +238,168 @@ describe('planFiling', () => {
     ])
     expect(plan.ideas).toEqual(['- Maybe the wizard asks for the vault. ([10:32](inbox/2026-09-20.md))'])
     expect(plan.notes).toEqual(['Nice weather today.'])
+  })
+})
+
+describe('findSeams (US-056)', () => {
+  const sides = (s: string) =>
+    findSeams(s).map((seam) => [s.slice(0, seam.start).trim(), s.slice(seam.end).trim()])
+
+  it('finds a seam at a comma or semicolon followed by a space', () => {
+    expect(sides('getting groceries, getting tacos; going home')).toEqual([
+      ['getting groceries', 'getting tacos; going home'],
+      ['getting groceries, getting tacos', 'going home']
+    ])
+  })
+
+  it('finds a seam at the connectors and, then, also between word runs', () => {
+    expect(sides('eggs and bacon')).toEqual([['eggs', 'bacon']])
+    expect(sides('call Bob then email Ann also ping Sam')).toEqual([
+      ['call Bob', 'email Ann also ping Sam'],
+      ['call Bob then email Ann', 'ping Sam']
+    ])
+  })
+
+  it('counts a compound connector as one seam', () => {
+    expect(sides('getting tacos, and then going to the playground.')).toEqual([
+      ['getting tacos', 'going to the playground.']
+    ])
+    expect(sides('one and also two')).toEqual([['one', 'two']])
+    expect(sides('one, also two')).toEqual([['one', 'two']])
+  })
+
+  it('finds nothing inside a list line, a number, or a single word run', () => {
+    expect(findSeams('- eggs, bacon, and toast')).toEqual([])
+    expect(findSeams('1. eggs and bacon')).toEqual([])
+    expect(findSeams('pay 1,000 dollars')).toEqual([])
+    expect(findSeams('Tomorrow.')).toEqual([])
+    expect(findSeams('and then')).toEqual([])
+    expect(findSeams(', so')).toEqual([])
+  })
+
+  it('does not treat a connector inside a word as a seam', () => {
+    expect(findSeams('the band played')).toEqual([])
+    expect(findSeams('sandwiches then')).toEqual([])
+  })
+
+  it('never offers a side that is only joining words', () => {
+    expect(findSeams('And then we went home')).toEqual([])
+    expect(findSeams('wait, then')).toEqual([])
+    expect(findSeams('buy milk, and.')).toEqual([])
+    expect(sides('And then we went home, and ate')).toEqual([['And then we went home', 'ate']])
+  })
+
+  it('never offers a seam inside a quote or a parenthesis', () => {
+    expect(sides('buy milk (whole, not skim) and eggs')).toEqual([['buy milk (whole, not skim)', 'eggs']])
+    expect(sides('he said "eggs, bacon", and left')).toEqual([['he said "eggs, bacon"', 'left']])
+  })
+})
+
+describe('cutAtSeams', () => {
+  const s = 'Tomorrow we are getting groceries, getting tacos, and going to the playground.'
+
+  it('cuts only at confirmed seams, removing the seam text and nothing else', () => {
+    const seams = findSeams(s)
+    expect(cutAtSeams(s, seams, [1, 2])).toEqual([
+      'Tomorrow we are getting groceries',
+      'getting tacos',
+      'going to the playground.'
+    ])
+    expect(cutAtSeams(s, seams, [2])).toEqual([
+      'Tomorrow we are getting groceries, getting tacos',
+      'going to the playground.'
+    ])
+  })
+
+  it('keeps every word of the sentence on exactly one line, in order', () => {
+    const seams = findSeams(s)
+    const words = (t: string) => t.replace(/[.,;]/g, ' ').split(/\s+/).filter(Boolean)
+    expect(cutAtSeams(s, seams, [1, 2]).flatMap(words)).toEqual(words(s).filter((w) => w !== 'and'))
+  })
+
+  it('leaves a sentence whole with no confirmed seam', () => {
+    expect(cutAtSeams(s, findSeams(s), [])).toEqual([s])
+  })
+
+  it('refuses a vote naming a seam that does not exist, whole sentence, never a partial cut', () => {
+    const seams = findSeams(s)
+    expect(cutAtSeams(s, seams, [1, 9])).toEqual([s])
+    expect(cutAtSeams(s, seams, [0])).toEqual([s])
+    expect(cutAtSeams(s, seams, [1.5])).toEqual([s])
+    expect(cutAtSeams(s, seams, [2, 1, 1])).toEqual([
+      'Tomorrow we are getting groceries',
+      'getting tacos',
+      'going to the playground.'
+    ])
+  })
+
+  it('trims a joining comma that doubled punctuation would leave dangling', () => {
+    const t = 'a,, b'
+    expect(cutAtSeams(t, findSeams(t), [1])).toEqual(['a', 'b'])
+  })
+})
+
+describe('confirmedSeams', () => {
+  it('accepts a list of seam numbers inside the range, deduped and ordered', () => {
+    expect(confirmedSeams([2, 1, 2], 2)).toEqual([1, 2])
+    expect(confirmedSeams([], 3)).toEqual([])
+  })
+
+  it('rejects a vote naming a seam that does not exist, and anything that is not a list of numbers', () => {
+    expect(confirmedSeams([1, 9], 2)).toBeNull()
+    expect(confirmedSeams([0], 2)).toBeNull()
+    expect(confirmedSeams(['1'], 2)).toBeNull()
+    expect(confirmedSeams('1', 2)).toBeNull()
+    expect(confirmedSeams(null, 2)).toBeNull()
+    expect(confirmedSeams([1.5], 2)).toBeNull()
+  })
+})
+
+describe('validateSort with seams', () => {
+  it('reads confirmed seams under the reserved key when seams were offered', () => {
+    const v = validateSort(2, '{"1":"task","2":"note","seams":{"1":[1]}}', { seamCounts: [2, 0] })
+    expect(v).toEqual({ ok: true, labels: ['task', 'note'], topic: '', seams: { 1: [1] } })
+  })
+
+  it('treats a missing key, a non-object, or a bad vote as no vote, per sentence', () => {
+    expect(validateSort(1, '{"1":"task"}', { seamCounts: [2] })).toEqual({
+      ok: true, labels: ['task'], topic: '', seams: {}
+    })
+    expect(validateSort(1, '{"1":"task","seams":"1"}', { seamCounts: [2] })).toEqual({
+      ok: true, labels: ['task'], topic: '', seams: {}
+    })
+    expect(validateSort(2, '{"1":"task","2":"task","seams":{"1":[5],"2":[1],"9":[1]}}', { seamCounts: [2, 1] })).toEqual({
+      ok: true, labels: ['task', 'task'], topic: '', seams: { 2: [1] }
+    })
+  })
+
+  it('still refuses the reserved key when seams were not offered', () => {
+    expect(validateSort(1, '{"1":"task","seams":{"1":[1]}}')).toEqual({ ok: false, reason: 'extra sentences' })
+  })
+
+  it('carries both reserved keys together', () => {
+    expect(
+      validateSort(1, '{"1":"task","topic":"Errands","seams":{"1":[1]}}', { topic: true, seamCounts: [2] })
+    ).toEqual({ ok: true, labels: ['task'], topic: 'Errands', seams: { 1: [1] } })
+  })
+})
+
+describe('applySplits', () => {
+  it('expands only task and idea sentences with a confirmed vote, labels following their pieces', () => {
+    const sentences = ['A, and B.', 'C, then D.', 'E, F.']
+    const labels: SortLabel[] = ['task', 'note', 'idea']
+    const seams = sentences.map(findSeams)
+    const out = applySplits(sentences, labels, seams, { 1: [1], 2: [1], 3: [] })
+    expect(out.sentences).toEqual(['A', 'B.', 'C, then D.', 'E, F.'])
+    expect(out.labels).toEqual(['task', 'task', 'note', 'idea'])
+  })
+})
+
+describe('seamPrompt', () => {
+  it('numbers each seam under its sentence with both sides shown, and is empty with no seams', () => {
+    const sentences = ['Tomorrow.', 'eggs and bacon, then toast']
+    const text = seamPrompt(sentences, sentences.map(findSeams))
+    expect(text).toBe('2.1: "eggs" | "bacon, then toast"\n2.2: "eggs and bacon" | "toast"')
+    expect(seamPrompt(['Tomorrow.'], [[]])).toBe('')
   })
 })
