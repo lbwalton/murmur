@@ -40,8 +40,12 @@ function plural(n: number, one: string, many: string): string {
 
 /** One phrase for the sort outcome on the Last note line. */
 function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
+  const held = report.held > 0 ? `, ${plural(report.held, 'line', 'lines')} held in the inbox as unsure` : ''
   if (report.outcome === 'filed') {
-    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}`
+    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${held}`
+  }
+  if (report.outcome === 'rejected' && report.reason === 'low confidence') {
+    return `held every line in the inbox as unsure (${plural(report.held, 'line', 'lines')}), nothing filed`
   }
   if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed`
   if (report.outcome === 'failed') {
@@ -436,6 +440,28 @@ export function NotesPanel(props: {
               Test
             </button>
           </div>
+        </Row>
+      )}
+
+      {notes.sort && notes.connection.enabled && notes.connection.protocol === 'decide' && (
+        <Row
+          label="Confidence threshold"
+          anchor="row-sort-threshold"
+          desc="A decision model says how sure it is of each label. A line below this stays in the inbox as unsure instead of filing, and Sort again sends just those lines back. Balanced keeps a line the model is at least half sure of; a chat model reports no confidence, so this never applies there."
+        >
+          <select
+            className="field"
+            value={String(notes.connection.threshold)}
+            onChange={(e) =>
+              void update({ connection: { ...notes.connection, threshold: Number(e.target.value) } })
+            }
+          >
+            <option value="0">File everything (0)</option>
+            <option value="0.3">Lenient (0.3)</option>
+            <option value="0.5">Balanced (0.5), the default</option>
+            <option value="0.7">Strict (0.7)</option>
+            <option value="0.9">Very strict (0.9)</option>
+          </select>
         </Row>
       )}
 

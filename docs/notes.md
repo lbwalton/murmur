@@ -148,6 +148,14 @@ Yes. Under Sort connection choose Separate provider and set Sort protocol to Dec
 
 The one thing it gives up is naming: Name each note needs a model that can write, so on a decision connection the heading carries the date alone, and the panel says so. If the decision model does not answer, whether a rate limit, a network fault, or a missing answer, murmur falls back to your cleanup connection's chat model for that note and logs `[sort] decision failed reason=...; falling back to the chat sorter`. The filed log line names which protocol answered.
 
+## Why did a line stay in the inbox after a sort?
+
+On a decision connection, the model reports how sure it is of each label, and a line it is not sure of is held: it stays in the inbox exactly as you said it, files nowhere, and the Last note line says how many were held. A held line is never marked up on disk; the inbox stays the verbatim record. The threshold is the Confidence threshold row under the sort connection rows, shown only for a decision connection, with a default of 0.5 (Balanced): a line files when the model is at least half sure of its label. Lower it to file more, raise it to hold more.
+
+Sort again then sends only the held lines back for another look, never the ones that already landed, so a line can never file twice; that holds even when a write fails part way, because whatever landed is remembered and only the rest is sent again. A note the model is unsure of throughout behaves as a rejected sort: nothing is written and the log says `[sort] held every line reason=low confidence`. You can also file a held line by hand, since it is sitting in your inbox already.
+
+A chat model has no honest confidence to report and asserts a label either way, so the threshold never applies on a chat connection: there, a sort is all or nothing, as before.
+
 ## I keep raw notes for my own tools. Can I turn sorting off?
 
 Yes, and it starts off. With Sort into tasks and ideas off, murmur writes each note to the inbox and touches nothing else, so your own agents and scripts can read the raw notes and do whatever you like with them. Turn sorting on when you want the to-do list and the ideas file to happen inside murmur.

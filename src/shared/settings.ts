@@ -116,6 +116,10 @@ export interface Settings {
       baseUrl: string
       llmModel: string
       protocol: 'chat' | 'decide'
+      /** On a decision connection, a line whose label confidence falls
+       *  below this stays in the inbox instead of filing (US-058).
+       *  A chat model reports no confidence, so it never applies there. */
+      threshold: number
     }
   }
   autostart: boolean
@@ -212,7 +216,8 @@ export const DEFAULT_SETTINGS: Settings = {
       enabled: false,
       baseUrl: '',
       llmModel: '',
-      protocol: 'chat'
+      protocol: 'chat',
+      threshold: 0.5
     }
   },
   autostart: false,
@@ -278,6 +283,13 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   const reminders = notes?.reminders as Record<string, unknown> | undefined
   if (reminders && Array.isArray(reminders.times)) {
     reminders.times = reminders.times.filter((t) => typeof t === 'string')
+  }
+  // The threshold is a probability: anything outside 0..1 would hold
+  // every line or none forever with no option to show for it.
+  const connection = notes?.connection as Record<string, unknown> | undefined
+  if (connection && typeof connection.threshold === 'number') {
+    const t = connection.threshold
+    connection.threshold = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0.5
   }
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {

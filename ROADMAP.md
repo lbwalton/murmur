@@ -62,11 +62,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
 - [ ] **US-056** One sentence, several tasks: splitting that cannot reword
 - [ ] **US-057** Sorting on a decision model, optional
+- [ ] **US-058** Low-confidence lines stay in the inbox
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [ ] **US-053** A silent stream heals before the first press
 - [ ] **US-054** Speak an edit: transform the text you have selected
-- [ ] **US-058** Low-confidence lines stay in the inbox
 - [ ] **US-055** Duplicates and completions: suggestions, never silent edits

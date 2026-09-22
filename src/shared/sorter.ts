@@ -376,6 +376,68 @@ export function headingPrefix(heading: string, existing: string): string {
   return carried ? '' : `${heading}\n`
 }
 
+// ------------------------------------------------------- held lines ---
+// A decision model reports how sure it is of each label (US-057), and a
+// flat distribution is what an ambiguous line looks like from the
+// inside. US-058 spends that: lines at or above a threshold file, lines
+// below stay in the inbox, and Sort again re-runs only what is still
+// unsettled, so a landed line is never filed twice.
+
+/** Which sentences a threshold keeps and which it holds. No confidence
+ *  (the chat path) keeps everything: it has no honest doubt to report. */
+export function holdBelow(
+  count: number,
+  confidence: readonly number[] | undefined,
+  threshold: number
+): { kept: number[]; held: number[] } {
+  const kept: number[] = []
+  const held: number[] = []
+  for (let i = 0; i < count; i++) {
+    const c = confidence?.[i]
+    if (c !== undefined && c < threshold) held.push(i)
+    else kept.push(i)
+  }
+  return { kept, held }
+}
+
+/** Sentence positions a sort of this note has not settled yet, in
+ *  order: what Sort again sends and nothing else. */
+export function remainingSentences(count: number, settled: ReadonlySet<number>): number[] {
+  return Array.from({ length: count }, (_, i) => i).filter((i) => !settled.has(i))
+}
+
+/**
+ * Record which sentences a sort settled. `positions` are the original
+ * positions that were SENT (a fresh note sends them all, Sort again
+ * sends the remainder) and `keptLocal` the indexes among those the sort
+ * kept, so a landed line is remembered under its original position and
+ * can never be sent again.
+ */
+export function settle(
+  settled: ReadonlySet<number>,
+  positions: readonly number[],
+  keptLocal: readonly number[]
+): Set<number> {
+  const next = new Set(settled)
+  for (const i of keptLocal) {
+    const position = positions[i]
+    if (position !== undefined) next.add(position)
+  }
+  return next
+}
+
+/** Seam votes keyed by position among the sentences sent, re-keyed to
+ *  positions among the sentences kept, so the cutter sees a contiguous
+ *  list after held lines drop out. */
+export function rekeyVotes(votes: SeamVotes, kept: readonly number[]): SeamVotes {
+  const out: SeamVotes = {}
+  kept.forEach((sentenceIndex, newIndex) => {
+    const vote = votes[sentenceIndex + 1]
+    if (vote && vote.length > 0) out[newIndex + 1] = vote
+  })
+  return out
+}
+
 /** Copy each sentence into its bucket, in spoken order, untouched. */
 export function planFiling(
   sentences: string[],

@@ -22,7 +22,7 @@ describe('mergeSettings', () => {
       filedHeadingTemplate: '## {date} {topic}',
       topicHeadings: false,
       reminders: { enabled: false, times: ['08:30', '13:00', '17:30'] },
-      connection: { enabled: false, baseUrl: '', llmModel: '', protocol: 'chat' }
+      connection: { enabled: false, baseUrl: '', llmModel: '', protocol: 'chat', threshold: 0.5 }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
     expect(merged.notes.folder).toBe('/tmp/vault')
@@ -46,6 +46,16 @@ describe('mergeSettings', () => {
       notes: { reminders: { enabled: true, times: ['08:30', 123, null, '17:30'] } }
     })
     expect(merged.notes.reminders.times).toEqual(['08:30', '17:30'])
+  })
+
+  it('clamps a sort threshold into 0..1 and repairs one that is not a number', () => {
+    const at = (threshold: unknown): number =>
+      mergeSettings(DEFAULT_SETTINGS, { notes: { connection: { threshold } } }).notes.connection.threshold
+    expect(at(1.5)).toBe(1)
+    expect(at(-2)).toBe(0)
+    expect(at(Number.NaN)).toBe(0.5)
+    expect(at('0.7')).toBe(0.5)
+    expect(at(0.7)).toBe(0.7)
   })
 
   it('preserves unknown keys from newer builds', () => {

@@ -8,13 +8,17 @@ import {
   cutAtSeams,
   findSeams,
   headingPrefix,
+  holdBelow,
   ideaLine,
   numberedList,
   planFiling,
+  rekeyVotes,
   relativeLink,
+  remainingSentences,
   renderFiledHeading,
   sanitizeTopic,
   seamPrompt,
+  settle,
   splitSentences,
   taskLine,
   validateSort
@@ -401,5 +405,52 @@ describe('seamPrompt', () => {
     const text = seamPrompt(sentences, sentences.map(findSeams))
     expect(text).toBe('2.1: "eggs" | "bacon, then toast"\n2.2: "eggs and bacon" | "toast"')
     expect(seamPrompt(['Tomorrow.'], [[]])).toBe('')
+  })
+})
+
+
+describe('held lines (US-058)', () => {
+  it('holds only lines below the threshold, and keeps a line exactly at it', () => {
+    expect(holdBelow(4, [0.9, 0.2, 0.5, 0.49], 0.5)).toEqual({ kept: [0, 2], held: [1, 3] })
+  })
+
+  it('keeps everything when there is no confidence to spend', () => {
+    expect(holdBelow(3, undefined, 0.5)).toEqual({ kept: [0, 1, 2], held: [] })
+    expect(holdBelow(3, [], 0.5)).toEqual({ kept: [0, 1, 2], held: [] })
+  })
+
+  it('a threshold of zero holds nothing', () => {
+    expect(holdBelow(2, [0, 0.01], 0)).toEqual({ kept: [0, 1], held: [] })
+  })
+
+  it('a partial file followed by a second sort settles every line exactly once', () => {
+    // Four sentences; a fresh note sends them all. The first sort holds
+    // positions 1 and 3.
+    const all = [0, 1, 2, 3]
+    const first = holdBelow(4, [0.9, 0.2, 0.8, 0.4], 0.5)
+    let settled = settle(new Set(), all, first.kept)
+    expect([...settled].sort()).toEqual([0, 2])
+    const pending = remainingSentences(4, settled)
+    expect(pending).toEqual([1, 3])
+    // Sort again sends only those two, numbered from zero again, and
+    // keeps the second of them: original position 3 settles, 1 stays.
+    const second = holdBelow(pending.length, [0.3, 0.7], 0.5)
+    settled = settle(settled, pending, second.kept)
+    expect([...settled].sort()).toEqual([0, 2, 3])
+    expect(remainingSentences(4, settled)).toEqual([1])
+    // A third pass keeps it; nothing is left to send and no position
+    // was ever recorded twice.
+    settled = settle(settled, remainingSentences(4, settled), [0])
+    expect(remainingSentences(4, settled)).toEqual([])
+    expect(settled.size).toBe(4)
+    // A kept index past the sent list is ignored, never a phantom position.
+    expect(settle(new Set(), [5], [0, 1]).size).toBe(1)
+  })
+
+  it('re-keys seam votes to the kept positions', () => {
+    // Sent 1..3; kept sentences 0 and 2; votes on sent 1 and 3.
+    expect(rekeyVotes({ 1: [1], 3: [2] }, [0, 2])).toEqual({ 1: [1], 2: [2] })
+    // A vote on a held sentence is dropped with it.
+    expect(rekeyVotes({ 2: [1] }, [0, 2])).toEqual({})
   })
 })

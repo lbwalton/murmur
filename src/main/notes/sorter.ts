@@ -26,10 +26,14 @@ import {
   applySplits,
   findSeams,
   headingPrefix,
+  holdBelow,
   numberedList,
   planFiling,
+  rekeyVotes,
+  remainingSentences,
   renderFiledHeading,
   seamPrompt,
+  settle,
   splitSentences,
   validateSort
 } from '../../shared/sorter'
@@ -63,6 +67,9 @@ export interface SortReport {
   tasks: number
   ideas: number
   notes: number
+  /** Lines left in the inbox because a decision model was unsure of
+   *  their label (US-058). Always zero on a chat connection. */
+  held: number
   reason?: string
 }
 
@@ -83,9 +90,33 @@ export interface SortOptions {
 
 let lastSort: SortReport | null = null
 let lastInput: SortInput | null = null
-// The input whose lines already landed: Sort again must never file it
-// twice (review gate 2026-09-20).
-let lastFiledInput: SortInput | null = null
+// Which sentence positions of the newest note a sort has settled (filed
+// as a task or idea, or kept as a note). Sort again re-runs only the
+// rest, so a landed line is never filed twice (review gate 2026-09-20,
+// made per-line by US-058 so a held line can be retried on its own).
+let settledFor: SortInput | null = null
+let settled = new Set<number>()
+
+// Invariant that keeps this one-slot memory honest: sorts run one at a
+// time (inFlight), and every input that reaches here is the current or
+// a former lastInput, so a read for another note resetting the slot can
+// never race a sort that is still settling lines.
+function settledSetFor(input: SortInput): Set<number> {
+  if (settledFor !== input) {
+    settledFor = input
+    settled = new Set()
+  }
+  return settled
+}
+
+function settleFor(input: SortInput, positions: readonly number[], keptLocal: readonly number[]): void {
+  settled = settle(settledSetFor(input), positions, keptLocal)
+}
+
+/** Sentence positions of a note a sort has not settled yet. */
+function pendingFor(input: SortInput): number[] {
+  return remainingSentences(splitSentences(input.text).length, settledSetFor(input))
+}
 // One sort at a time: a Sort again click during the model round trip
 // joins the running sort instead of starting a second one that would
 // append every line twice.
@@ -95,9 +126,11 @@ export function getLastSort(): SortReport | null {
   return lastSort
 }
 
-/** Sort again is offered only for a note that has not been filed. */
+/** Sort again is offered only while the newest note has lines a sort
+ *  has not settled: everything after a rejection, the held lines after
+ *  a partial filing, nothing after a full one. */
 export function canSortAgain(): boolean {
-  return lastInput !== null && lastInput !== lastFiledInput
+  return lastInput !== null && pendingFor(lastInput).length > 0
 }
 
 /** Keep the newest note so Sort again can re-run it after a reject. */
@@ -209,33 +242,41 @@ async function askModel(
 
 function record(
   outcome: SortOutcome,
-  counts: { tasks: number; ideas: number; notes: number },
+  counts: { tasks: number; ideas: number; notes: number; held?: number },
   reason?: string
 ): SortReport {
-  lastSort = { at: Date.now(), outcome, ...counts, ...(reason ? { reason } : {}) }
+  lastSort = { at: Date.now(), outcome, held: 0, ...counts, ...(reason ? { reason } : {}) }
   return lastSort
 }
 
-const NONE = { tasks: 0, ideas: 0, notes: 0 }
+const NONE = { tasks: 0, ideas: 0, notes: 0, held: 0 }
 
 /**
  * Sort one note. Never throws; every outcome is a report and a log
  * line with a reason. Files are written only after the whole labeling
  * validated, tasks first, then ideas.
  */
-export async function sortNote(input: SortInput, options: SortOptions = {}): Promise<SortReport> {
+export async function sortNote(
+  input: SortInput,
+  options: SortOptions = {},
+  only?: readonly number[]
+): Promise<SortReport> {
   if (inFlight) return inFlight
-  inFlight = runSort(input, options).finally(() => {
+  inFlight = runSort(input, options, only).finally(() => {
     inFlight = null
   })
   return inFlight
 }
 
-async function runSort(input: SortInput, options: SortOptions): Promise<SortReport> {
+async function runSort(input: SortInput, options: SortOptions, only?: readonly number[]): Promise<SortReport> {
   const settings = getSettings()
   if (!settings.notes.sort) return record('skipped', NONE, 'sorting off')
   if (isSmoke && !options.fetchImpl) return record('skipped', NONE, 'smoke')
-  const sentences = splitSentences(input.text)
+  const all = splitSentences(input.text)
+  // Sort again sends only the positions still unsettled; a fresh note
+  // sends everything. The model sees whatever it gets numbered from 1.
+  const positions = only ?? all.map((_, i) => i)
+  const sentences = positions.map((i) => all[i])
   if (sentences.length === 0) return record('skipped', NONE, 'nothing to sort')
 
   const resolved: ResolvedSortConnection | null = options.connection
@@ -320,11 +361,26 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     writeAppLog(`[sort] failed reason=${errorCode(error)}`)
     return record('failed', NONE, 'paths')
   }
+  // Held lines (US-058): on a decision connection, a line the model is
+  // not sure of stays in the inbox, which is already verbatim, so
+  // holding writes nothing. The chat path reports no confidence and
+  // holds nothing. A note with nothing kept is a rejected sort.
+  const threshold = settings.notes.connection.threshold
+  const { kept, held } = holdBelow(sentences.length, protocol === 'decide' ? verdict.confidence : undefined, threshold)
+  if (kept.length === 0) {
+    writeAppLog(`[sort] held every line reason=low confidence held=${held.length} threshold=${threshold} model=${answeredBy}`)
+    return record('rejected', { ...NONE, held: held.length }, 'low confidence')
+  }
+  const keptSentences = kept.map((i) => sentences[i])
+  const keptLabels = kept.map((i) => verdict.labels[i])
+  const keptSeams = kept.map((i) => seamsBySentence[i])
+  const keptVotes = rekeyVotes(verdict.seams, kept)
+
   // Cut at the confirmed seams before filing; only task and idea lines
   // split, and a sentence with no vote stays whole.
-  const expanded = applySplits(sentences, verdict.labels, seamsBySentence, verdict.seams)
-  const splitCount = Object.keys(verdict.seams).filter((k) => {
-    const label = verdict.labels[Number(k) - 1]
+  const expanded = applySplits(keptSentences, keptLabels, keptSeams, keptVotes)
+  const splitCount = Object.keys(keptVotes).filter((k) => {
+    const label = keptLabels[Number(k) - 1]
     return label === 'task' || label === 'idea'
   }).length
   const plan = planFiling(expanded.sentences, expanded.labels, {
@@ -333,7 +389,7 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     tasksFile: tasksPath.relative,
     ideasFile: ideasPath.relative
   })
-  const counts = { tasks: plan.tasks.length, ideas: plan.ideas.length, notes: plan.notes.length }
+  const counts = { tasks: plan.tasks.length, ideas: plan.ideas.length, notes: plan.notes.length, held: held.length }
   const writes: Array<{ file: string; lines: string[]; kind: 'tasks' | 'ideas' }> = []
   if (plan.tasks.length > 0) writes.push({ file: join(input.base, ...tasksPath.segments), lines: plan.tasks, kind: 'tasks' })
   if (plan.ideas.length > 0) writes.push({ file: join(input.base, ...ideasPath.segments), lines: plan.ideas, kind: 'ideas' })
@@ -344,7 +400,7 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     writeAppLog(`[sort] write failed reason=${errorCode(error)} before any line landed`)
     return record('failed', NONE, `write ${errorCode(error)}`)
   }
-  const landed = { tasks: 0, ideas: 0, notes: counts.notes }
+  const landed = { tasks: 0, ideas: 0, notes: counts.notes, held: held.length }
   const heading = renderFiledHeading(settings.notes.filedHeadingTemplate, input.when, verdict.topic)
   try {
     writes.forEach((write, i) => {
@@ -362,24 +418,40 @@ async function runSort(input: SortInput, options: SortOptions): Promise<SortRepo
     writeAppLog(
       `[sort] write failed reason=${errorCode(error)} landed tasks=${landed.tasks} ideas=${landed.ideas}`
     )
+    // Whatever landed is settled so Sort again cannot land it twice;
+    // lines whose file failed stay pending in the verbatim inbox
+    // (review gate 2026-09-22).
+    settleFor(
+      input,
+      positions,
+      kept.filter((_, k) => {
+        const label = keptLabels[k]
+        return label === 'note' || (label === 'task' && landed.tasks > 0) || (label === 'idea' && landed.ideas > 0)
+      })
+    )
     return record('failed', landed, `write ${errorCode(error)}`)
   } finally {
     for (const fd of targets.fds) closeSync(fd)
   }
-  lastFiledInput = input
+  // Everything kept is settled for this note; held lines stay pending
+  // so Sort again can send them alone.
+  settleFor(input, positions, kept)
   const topicNote = wantsTopic && protocol === 'decide' ? ' topic=unavailable' : ''
+  const heldNote = held.length > 0 ? ` held=${held.length} threshold=${threshold}` : ''
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${topicNote}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}`
   )
   return record('filed', counts)
 }
 
-/** Re-run the sort on the newest note (Sort again in settings): never
- *  a note whose lines already landed, and never beside a running sort. */
-export async function sortLastNote(): Promise<SortReport | null> {
+/** Re-run the sort on the newest note (Sort again in settings): only
+ *  the lines no sort has settled, never beside a running sort. */
+export async function sortLastNote(options: SortOptions = {}): Promise<SortReport | null> {
   if (inFlight) return inFlight
-  if (!lastInput || lastInput === lastFiledInput) return lastSort
-  return sortNote(lastInput)
+  if (!lastInput) return lastSort
+  const pending = pendingFor(lastInput)
+  if (pending.length === 0) return lastSort
+  return sortNote(lastInput, options, pending)
 }
 
 export function initSorter(): void {
@@ -629,6 +701,73 @@ export function initSorter(): void {
         read(todo).endsWith(
           '- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n'
         )
+
+      // Held lines (US-058): an unsure label stays in the inbox, the sure
+      // ones file, Sort again sends only the held line and files it
+      // without doubling the landed one, and a note the model is unsure
+      // of throughout is a rejected sort with nothing written.
+      const heldInput: SortInput = { ...input, text: 'Call the vet. Maybe something. Email Ann.' }
+      rememberForSort(heldInput)
+      const partial = await sortNote(heldInput, {
+        fetchImpl: routed(
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'task', confidence: 0.95 },
+              label_2: { type: 'choice', choice: 'idea', confidence: 0.2 },
+              label_3: { type: 'choice', choice: 'task', confidence: 0.9 }
+            }
+          })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const afterPartial = read(todo)
+      const partialOk =
+        partial.outcome === 'filed' &&
+        partial.tasks === 2 &&
+        partial.held === 1 &&
+        afterPartial.endsWith(
+          '- [ ] Call the vet. ([10:32](inbox/2026-09-18.md))\n- [ ] Email Ann. ([10:32](inbox/2026-09-18.md))\n'
+        ) &&
+        !afterPartial.includes('Maybe something') &&
+        read(inbox) === inboxBefore &&
+        canSortAgain()
+      const retried = await sortLastNote({
+        fetchImpl: routed(
+          JSON.stringify({ model: 'jev-1.13.0', answers: { label_1: { type: 'choice', choice: 'task', confidence: 0.8 } } })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const afterRetry = read(todo)
+      const retryOk =
+        retried?.outcome === 'filed' &&
+        retried.tasks === 1 &&
+        retried.held === 0 &&
+        afterRetry === `${afterPartial}- [ ] Maybe something. ([10:32](inbox/2026-09-18.md))\n` &&
+        afterRetry.split('Call the vet.').length === 2 &&
+        read(inbox) === inboxBefore &&
+        !canSortAgain()
+      const allHeld = await sortNote({ ...input, text: 'Hmm. Well.' }, {
+        fetchImpl: routed(
+          JSON.stringify({
+            model: 'jev-1.13.0',
+            answers: {
+              label_1: { type: 'choice', choice: 'note', confidence: 0.3 },
+              label_2: { type: 'choice', choice: 'task', confidence: 0.1 }
+            }
+          })
+        ),
+        connection: decideCfg,
+        protocol: 'decide'
+      })
+      const allHeldOk =
+        allHeld.outcome === 'rejected' &&
+        allHeld.reason === 'low confidence' &&
+        allHeld.held === 2 &&
+        read(todo) === afterRetry &&
+        read(inbox) === inboxBefore
       const topicOk =
         withTopic.outcome === 'filed' &&
         badTopic.outcome === 'filed' &&
@@ -665,7 +804,12 @@ export function initSorter(): void {
         limitedOk &&
         unansweredOk &&
         sameFixtureOk &&
-        getLastSort() === sameFixture &&
+        partialOk &&
+        retryOk &&
+        allHeldOk &&
+        getLastSort() === allHeld &&
+        log.includes('held=1 threshold=0.5') &&
+        log.includes('[sort] held every line reason=low confidence held=2 threshold=0.5') &&
         log.includes('[sort] decision failed reason=rate limit model=jev-latest; falling back to the chat sorter') &&
         log.includes('[sort] decision failed reason=validate: missing sentences model=jev-latest') &&
         log.includes('split=1 protocol=decide model=jev-1.13.0 slot=separate') &&
