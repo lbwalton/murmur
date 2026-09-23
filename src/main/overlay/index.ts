@@ -117,7 +117,8 @@ export function setOverlayPhase(
       () => {
         setOverlayPhase('idle')
       },
-      phase === 'hint' ? HINT_LINGER_MS : LINGER_MS
+      // An error that says why is read like a hint, so it lingers like one.
+      phase === 'hint' || (phase === 'error' && state.hint) ? HINT_LINGER_MS : LINGER_MS
     )
   }
   if (phase === 'idle' && !isSmoke) win.hide()
@@ -160,13 +161,13 @@ async function resolveAccent(): Promise<string> {
     const { resolveAccentColor } = await import('../../shared/cosmetics')
     const { computeProgress } = await import('../../shared/ranks')
     const { evaluateAchievements } = await import('../../shared/achievements')
-    const { readHistory } = await import('../history')
+    const { readStatsHistory } = await import('../history')
     const { existsSync } = await import('node:fs')
     const { join } = await import('node:path')
     const cosmeticsSpec = (await import('../../../shared/cosmetics.json')).default
     const ranksSpec = (await import('../../../shared/ranks.json')).default
     const defs = (await import('../../../shared/achievements.json')).default
-    const events = readHistory()
+    const events = readStatsHistory()
     const founder = existsSync(join(app.getPath('userData'), 'founder'))
     const progress = computeProgress(events, ranksSpec as never, { founder })
     const earned = evaluateAchievements(events, defs as never)

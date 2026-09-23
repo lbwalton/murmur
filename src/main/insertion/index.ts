@@ -7,10 +7,11 @@
 // afterward, so a screenshot copied before dictating survives. Smoke
 // and copy-only mode skip the keystroke entirely.
 import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { ClipboardItem, clipboard } from 'electron'
 import { getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { pasteCommand, planRestore } from './plan'
+import { type SelectionVerdict, copyCommand, judgeSelection, pasteCommand, planRestore } from './plan'
 
 export type InsertOutcome = 'inserted' | 'copied' | 'error'
 
@@ -105,7 +106,14 @@ async function settleAndRestore(captured: Captured, insertedText: string): Promi
 }
 
 function sendPasteKeystroke(): Promise<boolean> {
-  const cmd = pasteCommand(process.platform)
+  return runKeystroke(pasteCommand(process.platform))
+}
+
+function sendCopyKeystroke(): Promise<boolean> {
+  return runKeystroke(copyCommand(process.platform))
+}
+
+function runKeystroke(cmd: { file: string; args: string[] } | null): Promise<boolean> {
   if (!cmd) return Promise.resolve(false)
   return new Promise((resolve) => {
     execFile(cmd.file, cmd.args, { timeout: KEYSTROKE_TIMEOUT_MS }, (error) => {
@@ -152,6 +160,56 @@ export async function insertText(text: string): Promise<InsertOutcome> {
   return 'inserted'
 }
 
+// How long a copy keystroke gets to land on the clipboard. Apps answer
+// Cmd+C in tens of milliseconds, but a loaded system has starved apps
+// past a second before (the paste settle's 2026-09-12 lesson), and a
+// copy landing after the restore would orphan the selection on the
+// user's clipboard. A read that lands returns at once, so only the
+// unreadable path pays this wait (review gate 2026-09-22).
+const COPY_WAIT_MS = 1_500
+const COPY_POLL_MS = 25
+
+export type SelectionRead = SelectionVerdict | { ok: false; reason: 'keystroke' }
+
+/**
+ * Read the focused app's selection (US-054): snapshot the clipboard,
+ * write a unique marker, send the copy keystroke, and watch for the
+ * marker to be replaced. The user's clipboard is put back before this
+ * returns, on every path, so the caller holds the selection in memory
+ * and the clipboard is theirs again during the model call. A clipboard
+ * that holds something other than the marker or the selection by then
+ * is a copy the user made, and theirs wins.
+ */
+export async function readSelection(
+  options: { sendCopy?: () => Promise<boolean>; waitMs?: number } = {}
+): Promise<SelectionRead> {
+  const { sendCopy = isSmoke ? async () => false : sendCopyKeystroke, waitMs = COPY_WAIT_MS } = options
+  flushSettle?.()
+  await pendingRestore
+  const captured = await captureClipboard()
+  const marker = `murmur-selection-probe-${randomUUID()}`
+  let result: SelectionRead = { ok: false, reason: 'keystroke' }
+  try {
+    await clipboard.writeText(marker)
+    if (!(await sendCopy())) return result
+    const deadline = Date.now() + waitMs
+    let current = marker
+    while (current === marker && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, COPY_POLL_MS))
+      current = await clipboard.readText().catch(() => marker)
+    }
+    result = judgeSelection(marker, current)
+    return result
+  } finally {
+    const now = await clipboard.readText().catch(() => marker)
+    const ours = now === marker || (result.ok && now === result.text) || now.trim() === ''
+    if (ours) {
+      if (captured.items.length > 0 || captured.text) await restoreClipboard(captured)
+      else clipboard.clear()
+    }
+  }
+}
+
 export function initInsertion(): void {
   registerSmokeCheck('insertion', async () => {
     // Copy path end to end, plus a full capture-and-restore round trip
@@ -170,6 +228,36 @@ export function initInsertion(): void {
     } catch {
       await restoreClipboard(before)
       return false
+    }
+  })
+
+  registerSmokeCheck('selectionRead', async () => {
+    // The selection reader against a simulated copy: a copy that lands
+    // is read, a copy that does nothing reads as unreadable, and the
+    // clipboard holds exactly what it held before, every time.
+    const before = await captureClipboard()
+    const probe = 'murmur smoke clipboard before transform'
+    try {
+      await clipboard.writeText(probe)
+      const read = await readSelection({
+        sendCopy: async () => {
+          await clipboard.writeText('Selected smoke text.')
+          return true
+        }
+      })
+      const afterRead = await clipboard.readText()
+      const dead = await readSelection({ sendCopy: async () => true, waitMs: 150 })
+      const afterDead = await clipboard.readText()
+      return (
+        read.ok &&
+        read.text === 'Selected smoke text.' &&
+        afterRead === probe &&
+        !dead.ok &&
+        dead.reason === 'unchanged' &&
+        afterDead === probe
+      )
+    } finally {
+      await restoreClipboard(before)
     }
   })
 }

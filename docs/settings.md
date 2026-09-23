@@ -41,6 +41,10 @@ Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fi
 
 Set a note chord and a notes folder under Settings, notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes.md](./notes.md).
 
+## How do I rewrite selected text by speaking?
+
+Set a transform chord under Settings, transform. Select text in any app, hold the chord, and say what to do ("tighten this paragraph"); the result replaces the selection, and paste-last brings the original back. What gets sent, the 8,000 character limit, the separate connection, and the Keep originals in history switch are on their own page: [transform.md](./transform.md).
+
 ## What is the difference between hold to talk and toggle?
 
 **Hold to talk**: recording runs while the hotkey is held, stops when released. Best for short, frequent dictations. **Toggle**: tap once to start, tap again to stop. Best for long passages. Rapid accidental double-taps are absorbed.

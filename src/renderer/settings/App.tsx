@@ -20,6 +20,7 @@ import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
+import { TransformPanel } from './TransformPanel'
 import { ModelPicker, Row, TextSetting, TimeInput } from './controls'
 
 declare global {
@@ -1042,6 +1043,14 @@ export function App(): React.JSX.Element {
       </section>
 
       <NotesPanel
+        settings={settings}
+        catalog={catalog}
+        hotkeys={hotkeys}
+        onUpdate={update}
+        onRefresh={refresh}
+      />
+
+      <TransformPanel
         settings={settings}
         catalog={catalog}
         hotkeys={hotkeys}

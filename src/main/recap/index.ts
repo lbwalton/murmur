@@ -9,7 +9,7 @@ import { dayKey, eventDay } from '../../shared/history'
 import { shouldFire } from '../../shared/recap'
 import { getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { readHistory } from '../history'
+import { readStatsHistory } from '../history'
 
 interface RecapState {
   lastFiredDay: string | null
@@ -39,7 +39,7 @@ function todaySummary(): { sessions: number; words: number; minutes: number } {
   let sessions = 0
   let words = 0
   let minutes = 0
-  for (const event of readHistory()) {
+  for (const event of readStatsHistory()) {
     if (eventDay(event) !== today) continue
     sessions += 1
     words += event.words

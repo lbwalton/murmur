@@ -122,6 +122,23 @@ export interface Settings {
       threshold: number
     }
   }
+  /** Speak an edit (US-054): a third chord turns the selection into
+   *  the subject of a spoken instruction. */
+  transform: {
+    binding: string
+    /** Keep each transform's original selection in the history file.
+     *  Off holds it in memory only: paste-last still restores it until
+     *  the next transform or quit, and nothing is written to disk. */
+    keepOriginals: boolean
+    /** The transform connection, shaped like the cleanup slot: enabled
+     *  false means same as cleanup; a complete separate slot (key served
+     *  by the ring under its base URL) runs on its own. */
+    connection: {
+      enabled: boolean
+      baseUrl: string
+      llmModel: string
+    }
+  }
   autostart: boolean
   showDockIcon: boolean
   /** Refresh the bundled provider catalog (rates, presets, nuances)
@@ -218,6 +235,15 @@ export const DEFAULT_SETTINGS: Settings = {
       llmModel: '',
       protocol: 'chat',
       threshold: 0.5
+    }
+  },
+  transform: {
+    binding: '',
+    keepOriginals: true,
+    connection: {
+      enabled: false,
+      baseUrl: '',
+      llmModel: ''
     }
   },
   autostart: false,

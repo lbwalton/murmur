@@ -84,3 +84,22 @@ describe('OverlayMachine', () => {
     expect(m.transition('error')?.phase).toBe('error')
   })
 })
+
+describe('error reasons (US-054)', () => {
+  it('an error can say why, and the reason clears at idle', () => {
+    const m = new OverlayMachine()
+    m.transition('recording', undefined, null, { mode: 'transform' })
+    m.transition('processing')
+    const failed = m.transition('error', undefined, null, { hint: 'could not read the selection' })
+    expect(failed?.hint).toBe('could not read the selection')
+    expect(failed?.mode).toBe('transform')
+    expect(m.transition('idle')?.hint).toBeNull()
+  })
+
+  it('a plain error carries no reason', () => {
+    const m = new OverlayMachine()
+    m.transition('recording')
+    m.transition('processing')
+    expect(m.transition('error')?.hint).toBeNull()
+  })
+})

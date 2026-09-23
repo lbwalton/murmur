@@ -41,6 +41,16 @@ let pasteChordHeld = false
 let noteBinding: ParsedBinding | null = null
 let noteMachine: TriggerMachine | null = null
 let noteDispatcher: HotkeyDispatcher | null = null
+// The transform chord (US-054): a third trigger, same shape as the note
+// chord, whose take becomes an instruction for the selected text.
+let transformBinding: ParsedBinding | null = null
+let transformMachine: TriggerMachine | null = null
+let transformDispatcher: HotkeyDispatcher | null = null
+// Physical modifier keys down right now, by key code. A synthetic copy
+// sent while the user still holds a chord's modifiers arrives as a
+// different shortcut (Ctrl+Cmd+C is not copy), so the transform waits
+// on this before reading the selection.
+const heldModifiers = new Set<number>()
 let hookStarted = false
 let suppressed = false
 
@@ -75,12 +85,38 @@ function chordProblem(bindingString: string, takenStrings: string[]): ChordProbl
  * dictation rebind that creates a collision just disarms the chord.
  */
 export function pasteBindingProblem(bindingString: string): ChordProblem {
-  return chordProblem(bindingString, [getSettings().notes.binding])
+  const s = getSettings()
+  return chordProblem(bindingString, [s.notes.binding, s.transform.binding])
 }
 
-/** Same rules for the note chord, checked against the paste chord. */
+/** Same rules for the note chord, checked against the other chords. */
 export function noteBindingProblem(bindingString: string): ChordProblem {
-  return chordProblem(bindingString, [getSettings().hotkey.pasteLastBinding])
+  const s = getSettings()
+  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.transform.binding])
+}
+
+/** Same rules for the transform chord, checked against the other chords. */
+export function transformBindingProblem(bindingString: string): ChordProblem {
+  const s = getSettings()
+  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.notes.binding])
+}
+
+/**
+ * Resolve once no modifier key is physically down, or after timeoutMs.
+ * Resolves true when released in time. The hook is the only source
+ * that sees physical keys, so without it this resolves true at once.
+ */
+export function waitForModifiersReleased(timeoutMs = 1_000): Promise<boolean> {
+  if (!hookStarted || heldModifiers.size === 0) return Promise.resolve(true)
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs
+    const tick = (): void => {
+      if (heldModifiers.size === 0) resolve(true)
+      else if (Date.now() >= deadline) resolve(false)
+      else setTimeout(tick, 15)
+    }
+    tick()
+  })
 }
 
 /** The chord as it would arm, or null when it must stay disarmed. */
@@ -95,12 +131,15 @@ export interface HotkeyCallbacks extends DictationCallbacks {
   pasteLast?: () => void
   /** The note chord's start and stop: a dictation whose words go to a file. */
   note?: DictationCallbacks
+  /** The transform chord's start and stop: a take that edits the selection. */
+  transform?: DictationCallbacks
 }
 
 function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
   // A live hold must not leak a stuck recording across a rebind.
   if (machine?.isActive()) callbacks.stop()
   if (noteMachine?.isActive()) callbacks.note?.stop()
+  if (transformMachine?.isActive()) callbacks.transform?.stop()
   const parsed = parseBinding(settings.hotkey.binding, keyMap)
   // Unsafe bindings (a bare letter would fire on every keystroke) are
   // treated as invalid: the checklist surfaces it, dictation stays off.
@@ -125,6 +164,17 @@ function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
         : new ToggleMachine(callbacks.note)
     noteDispatcher = new HotkeyDispatcher(noteBinding, noteMachine, MODIFIER_CODES)
   }
+  const taken = [pasteBinding, noteBinding].filter((b): b is ParsedBinding => b !== null)
+  transformBinding = armChord(settings.transform.binding, parsed, taken)
+  transformMachine = null
+  transformDispatcher = null
+  if (transformBinding && callbacks.transform) {
+    transformMachine =
+      settings.hotkey.mode === 'hold'
+        ? new HoldMachine(callbacks.transform)
+        : new ToggleMachine(callbacks.transform)
+    transformDispatcher = new HotkeyDispatcher(transformBinding, transformMachine, MODIFIER_CODES)
+  }
 }
 
 export interface HotkeysStatus {
@@ -136,6 +186,8 @@ export interface HotkeysStatus {
   pasteBindingValid: boolean
   /** Same truth for the note chord. */
   noteBindingValid: boolean
+  /** Same truth for the transform chord. */
+  transformBindingValid: boolean
 }
 
 function pasteBindingValid(): boolean {
@@ -146,14 +198,20 @@ function noteBindingValid(): boolean {
   return getSettings().notes.binding === '' || noteBinding !== null
 }
 
+function transformBindingValid(): boolean {
+  return getSettings().transform.binding === '' || transformBinding !== null
+}
+
 export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
   apply(getSettings(), callbacks)
   onSettingsChanged((settings) => apply(settings, callbacks))
 
   uIOhook.on('keydown', (event) => {
+    if (MODIFIER_BY_CODE.has(event.keycode)) heldModifiers.add(event.keycode)
     if (suppressed) return
     dispatcher?.keydown(event)
     noteDispatcher?.keydown(event)
+    transformDispatcher?.keydown(event)
     if (pasteBinding && matchesEvent(pasteBinding, event)) {
       if (!pasteChordHeld) {
         pasteChordHeld = true
@@ -162,9 +220,11 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
     }
   })
   uIOhook.on('keyup', (event) => {
+    heldModifiers.delete(event.keycode)
     if (suppressed) return
     dispatcher?.keyup(event)
     noteDispatcher?.keyup(event)
+    transformDispatcher?.keyup(event)
     if (pasteBinding && event.keycode === pasteBinding.code) pasteChordHeld = false
   })
 
@@ -182,7 +242,7 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
   void import('../window-watch')
     .then(({ writeAppLog }) => {
       writeAppLog(
-        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()} noteBindingValid=${noteBindingValid()}`
+        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()} noteBindingValid=${noteBindingValid()} transformBindingValid=${transformBindingValid()}`
       )
     })
     .catch(() => undefined)
@@ -227,6 +287,37 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
     }
   })
 
+  registerSmokeCheck('transformChord', async () => {
+    // The transform chord arms under the shared rules: a valid chord
+    // builds its own dispatcher, one that duplicates the note chord
+    // stays disarmed, and clearing it tears the dispatcher down.
+    const { updateSettings } = await import('../settings')
+    const before = getSettings()
+    try {
+      updateSettings({
+        hotkey: { pasteLastBinding: 'Ctrl+Shift+F17' },
+        notes: { binding: 'Ctrl+Shift+F18' },
+        transform: { binding: 'Ctrl+Shift+F16' }
+      })
+      const armed =
+        transformDispatcher !== null && transformBinding?.code === keyMap.f16 && transformBindingValid()
+      // The other chords now refuse the transform chord's keys.
+      const guarded = noteBindingProblem('Ctrl+Shift+F16') === 'collides'
+      updateSettings({ transform: { binding: 'Ctrl+Shift+F18' } })
+      const refused = transformDispatcher === null && !transformBindingValid() && noteBinding !== null
+      const problem = transformBindingProblem('Ctrl+Shift+F17') === 'collides'
+      updateSettings({ transform: { binding: '' } })
+      const cleared = transformDispatcher === null && transformBindingValid()
+      return armed && refused && problem && guarded && cleared
+    } finally {
+      updateSettings({
+        hotkey: { pasteLastBinding: before.hotkey.pasteLastBinding },
+        notes: { binding: before.notes.binding },
+        transform: { binding: before.transform.binding }
+      })
+    }
+  })
+
   return status()
 }
 
@@ -235,7 +326,8 @@ function status(): HotkeysStatus {
     hookStarted,
     bindingValid: binding !== null,
     pasteBindingValid: pasteBindingValid(),
-    noteBindingValid: noteBindingValid()
+    noteBindingValid: noteBindingValid(),
+    transformBindingValid: transformBindingValid()
   }
 }
 

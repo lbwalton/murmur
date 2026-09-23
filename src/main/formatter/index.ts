@@ -4,7 +4,7 @@
 // every other path is the deterministic formatter alone.
 import { dictionaryHint } from '../../shared/dictionary'
 import type { Settings } from '../../shared/settings'
-import { getApiKey, getPolishApiKey, getSettings } from '../settings'
+import { getApiKey, getApiKeyFor, getPolishApiKey, getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { type PolishConfig, polishTranscript } from './llm'
 
@@ -36,6 +36,23 @@ export function resolvePolishConnection(settings: Settings): PolishConfig | null
   const apiKey = getApiKey()
   if (!apiKey) return null
   return { baseUrl: settings.provider.baseUrl, model: settings.provider.llmModel, apiKey }
+}
+
+/** The connection a transform runs on (US-054): its own slot when
+ *  enabled and complete with a key the ring serves under its base URL,
+ *  else whatever the cleanup pass would use. Unlike cleanup, it does
+ *  not care about the formatting level: a transform is its own ask. */
+export function resolveTransformConnection(
+  settings: Settings
+): { config: PolishConfig; slot: 'separate' | 'cleanup' } | null {
+  const slot = settings.transform.connection
+  if (slot.enabled && slot.baseUrl !== '' && slot.llmModel !== '') {
+    const key = getApiKeyFor(slot.baseUrl)
+    if (key) return { config: { baseUrl: slot.baseUrl, model: slot.llmModel, apiKey: key }, slot: 'separate' }
+    console.error('[murmur] transform connection has no key; using the cleanup connection')
+  }
+  const cleanup = resolvePolishConnection(settings)
+  return cleanup ? { config: cleanup, slot: 'cleanup' } : null
 }
 
 /**

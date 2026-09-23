@@ -17,8 +17,22 @@ export interface SessionEvent {
   /** Local hour (0-23) at record time, stored for the same reason. */
   hour?: number
   /** Where the words went: absent means the cursor, 'note' means a
-   *  notes file (US-050). Notes count like any dictation everywhere. */
-  kind?: 'note'
+   *  notes file (US-050). Notes count like any dictation everywhere.
+   *  'transform' (US-054) is a spoken edit: rawText is the spoken
+   *  instruction and finalText the ORIGINAL selection, so paste-last
+   *  restores it. Transforms never count toward stats: the selected
+   *  words were not dictated. */
+  kind?: 'note' | 'transform'
+  /** On a transform whose selection was never sent (too long), the
+   *  entry keeps the spoken instruction as finalText so the thought is
+   *  one paste-last away. */
+  unsent?: boolean
+}
+
+/** Whether an event counts toward words, belts, achievements, recaps,
+ *  and analytics. Transforms are recoverability records, not speech. */
+export function countsTowardStats(event: SessionEvent): boolean {
+  return event.kind !== 'transform'
 }
 
 /** The day an event belongs to: stored key first, derived as fallback. */
@@ -79,6 +93,7 @@ export function isSessionEvent(value: unknown): value is SessionEvent {
     typeof v.wpm === 'number' &&
     (v.day === undefined || typeof v.day === 'string') &&
     (v.hour === undefined || typeof v.hour === 'number') &&
-    (v.kind === undefined || v.kind === 'note')
+    (v.kind === undefined || v.kind === 'note' || v.kind === 'transform') &&
+    (v.unsent === undefined || typeof v.unsent === 'boolean')
   )
 }

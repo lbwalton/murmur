@@ -1020,6 +1020,17 @@ details[open] > .ladder-summary::after {
   text-transform: uppercase;
 }
 
+/* A transform entry: the spoken instruction above, the original it
+   replaced below, one paste-last away. */
+.log-instruction {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.log-original {
+  margin: 8px 0 2px;
+}
+
 .fold {
   margin-top: 4px;
 }

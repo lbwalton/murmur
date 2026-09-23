@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute } from './history'
+import { countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute } from './history'
 
 const event = (at: number, words = 10): ReturnType<typeof make> => make(at, words)
 function make(at: number, words: number) {
@@ -49,5 +49,22 @@ describe('isSessionEvent', () => {
   it('accepts a note kind and nothing else', () => {
     expect(isSessionEvent({ ...make(1, 2), kind: 'note' })).toBe(true)
     expect(isSessionEvent({ ...make(1, 2), kind: 'paste' })).toBe(false)
+  })
+})
+
+describe('transform entries (US-054)', () => {
+  const base = { at: 1, durationMs: 1, rawText: 'make a list', finalText: 'original', words: 1, wpm: 1 }
+
+  it('are valid events, with or without the unsent flag', () => {
+    expect(isSessionEvent({ ...base, kind: 'transform' })).toBe(true)
+    expect(isSessionEvent({ ...base, kind: 'transform', unsent: true })).toBe(true)
+    expect(isSessionEvent({ ...base, kind: 'transform', unsent: 'yes' })).toBe(false)
+    expect(isSessionEvent({ ...base, kind: 'edit' })).toBe(false)
+  })
+
+  it('never count toward stats; dictations and notes do', () => {
+    expect(countsTowardStats({ ...base, kind: 'transform' })).toBe(false)
+    expect(countsTowardStats({ ...base, kind: 'note' })).toBe(true)
+    expect(countsTowardStats(base)).toBe(true)
   })
 })
