@@ -18,6 +18,18 @@ export type OverlayPhase =
  *  outcome, reset at idle. */
 export type OverlayMode = 'dictation' | 'note' | 'transform'
 
+/** How the pill is drawn (US-061): the classic pill, the same pill at
+ *  about two thirds, or no box at all (a translucent waveform with the
+ *  timer beneath it). Text that has to be read always gets the pill. */
+export const OVERLAY_LOOKS = ['pill', 'compact', 'bare'] as const
+export type OverlayLook = (typeof OVERLAY_LOOKS)[number]
+
+/** A usable look: the value itself when it is one of the three, else
+ *  pill, so a stored or foreign value can never leave the pill undrawn. */
+export function normalizeOverlayLook(value: unknown): OverlayLook {
+  return (OVERLAY_LOOKS as readonly unknown[]).includes(value) ? (value as OverlayLook) : 'pill'
+}
+
 export interface OverlayState {
   phase: OverlayPhase
   /** Epoch ms when recording began; drives the live timer. */

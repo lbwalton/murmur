@@ -9,6 +9,8 @@ import type { OverlayState } from '../shared/overlay-state'
 export interface OverlayConfig {
   style: string
   accent?: string
+  /** pill, compact, or bare (US-061); the renderer normalizes it. */
+  look?: string
 }
 
 const api = {

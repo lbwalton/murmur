@@ -84,7 +84,17 @@ An expansion turns a spoken trigger phrase into a saved snippet: say "insert my 
 
 ## What are the waveform styles?
 
-How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview overlay** shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
+How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview**, beside Overlay look, shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
+
+## How do I make the overlay smaller or less intrusive?
+
+Settings, dictation, Overlay look. Three looks:
+
+- **Pill** is the classic: the dot, the waveform, and the timer in a rounded box.
+- **Compact** is the same pill at about two thirds, for when the box covers what you are reading.
+- **Bare** drops the box and the border entirely: a slightly translucent waveform with the timer in small type beneath it, each with a faint shadow so they read over a light app. It just appears, more instrument than window.
+
+One rule holds in every look: text that has to be read (a hint such as "set a notes folder in settings", an error, no speech) always comes in the full pill, because a sentence with no backing is unreadable over a busy window. In bare, a note dictation shows its small note tag but not the gold edge the pill wears, since there is no edge to color. Preview shows the current look without dictating. The overlay never takes focus and clicks pass straight through it in every look, so it can never steal a keystroke from the app you are dictating into.
 
 ## How do recaps and the wrap-up work?
 

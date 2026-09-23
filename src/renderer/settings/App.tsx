@@ -13,6 +13,7 @@ import type {
 import proConfig from '../../../shared/pro.json'
 import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { normalizeOverlayLook } from '../../shared/overlay-state'
 import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
@@ -959,9 +960,7 @@ export function App(): React.JSX.Element {
           <select
             className="field"
             value={settings.overlay.style}
-            onChange={(e) =>
-              void update({ overlay: { style: e.target.value } as Settings['overlay'] })
-            }
+            onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
           >
             {(cosmetics?.overlayStyles ?? []).map((item) => (
               <option key={item.id} value={item.id} disabled={!item.unlocked}>
@@ -969,6 +968,28 @@ export function App(): React.JSX.Element {
               </option>
             ))}
           </select>
+        </Row>
+
+        <Row
+          label="Overlay look"
+          desc="Pill is the classic. Compact is the same pill at two thirds. Bare drops the box: a translucent waveform with the timer beneath it. A hint or an error always gets the pill, since a sentence needs a backing to be read. Preview shows the current look without dictating."
+        >
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.overlay.look}
+              onChange={(e) =>
+                void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(e.target.value) } })
+              }
+            >
+              <option value="pill">pill</option>
+              <option value="compact">compact</option>
+              <option value="bare">bare</option>
+            </select>
+            <button className="btn" onClick={() => void bridge().previewOverlay()}>
+              Preview
+            </button>
+          </div>
         </Row>
 
         <Row
@@ -1028,12 +1049,6 @@ export function App(): React.JSX.Element {
               ) : null
             })()}
           </div>
-        </Row>
-
-        <Row label="Overlay" desc="See the pill without dictating.">
-          <button className="btn" onClick={() => void bridge().previewOverlay()}>
-            Preview overlay
-          </button>
         </Row>
 
         <Row label="Setup wizard" desc="Walk the guided setup again anytime.">

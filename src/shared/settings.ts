@@ -7,6 +7,7 @@ import {
   DEFAULT_NOTE_PATH_TEMPLATE,
   DEFAULT_TASKS_TEMPLATE
 } from './notes'
+import { type OverlayLook, normalizeOverlayLook } from './overlay-state'
 import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 
@@ -55,6 +56,8 @@ export interface Settings {
   }
   overlay: {
     style: string
+    /** How the pill is drawn (US-061): pill, compact, or bare. */
+    look: OverlayLook
   }
   cosmetics: {
     accent: string
@@ -207,7 +210,8 @@ export const DEFAULT_SETTINGS: Settings = {
     mode: 'paste'
   },
   overlay: {
-    style: 'bars'
+    style: 'bars',
+    look: 'pill'
   },
   cosmetics: {
     accent: 'amber',
@@ -338,6 +342,9 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   // as hours per take or as nothing at all; the same clamp the math uses.
   const timeBack = out.timeBack as Record<string, unknown> | undefined
   if (timeBack) timeBack.typingWpm = clampTypingWpm(timeBack.typingWpm)
+  // A look outside the three would leave the pill undrawn.
+  const overlay = out.overlay as Record<string, unknown> | undefined
+  if (overlay) overlay.look = normalizeOverlayLook(overlay.look)
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {
     provider.profiles = provider.profiles.filter(

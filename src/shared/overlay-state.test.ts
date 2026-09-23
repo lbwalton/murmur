@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { OverlayMachine } from './overlay-state'
+import { OVERLAY_LOOKS, OverlayMachine, normalizeOverlayLook } from './overlay-state'
+
+describe('normalizeOverlayLook', () => {
+  it('keeps the three looks and falls back to pill for anything else', () => {
+    expect(OVERLAY_LOOKS).toEqual(['pill', 'compact', 'bare'])
+    expect(normalizeOverlayLook('pill')).toBe('pill')
+    expect(normalizeOverlayLook('compact')).toBe('compact')
+    expect(normalizeOverlayLook('bare')).toBe('bare')
+    expect(normalizeOverlayLook('huge')).toBe('pill')
+    expect(normalizeOverlayLook('')).toBe('pill')
+    expect(normalizeOverlayLook(undefined)).toBe('pill')
+    expect(normalizeOverlayLook(3)).toBe('pill')
+  })
+})
 
 describe('OverlayMachine', () => {
   it('walks the happy path idle to recording to processing to inserted to idle', () => {

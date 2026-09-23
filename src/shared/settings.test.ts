@@ -58,6 +58,18 @@ describe('mergeSettings', () => {
     expect(at(0.7)).toBe(0.7)
   })
 
+  it('ships the overlay as the classic pill and repairs an unknown look', () => {
+    expect(DEFAULT_SETTINGS.overlay).toEqual({ style: 'bars', look: 'pill' })
+    const at = (look: unknown): string => mergeSettings(DEFAULT_SETTINGS, { overlay: { look } }).overlay.look
+    expect(at('compact')).toBe('compact')
+    expect(at('bare')).toBe('bare')
+    expect(at('huge')).toBe('pill')
+    expect(at(7)).toBe('pill')
+    // A style-only save (the waveform picker) leaves the look alone.
+    const merged = mergeSettings({ ...DEFAULT_SETTINGS, overlay: { style: 'bars', look: 'bare' } }, { overlay: { style: 'pulse' } })
+    expect(merged.overlay).toEqual({ style: 'pulse', look: 'bare' })
+  })
+
   it('ships time back at 40 wpm and repairs a typing speed that cannot be used', () => {
     expect(DEFAULT_SETTINGS.timeBack).toEqual({ typingWpm: 40, milestones: true })
     const at = (typingWpm: unknown): number =>
