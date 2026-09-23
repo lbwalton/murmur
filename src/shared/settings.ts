@@ -128,7 +128,8 @@ export interface Settings {
     binding: string
     /** Keep each transform's original selection in the history file.
      *  Off holds it in memory only: paste-last still restores it until
-     *  the next transform or quit, and nothing is written to disk. */
+     *  the next dictation or transform, or quit, and nothing is written
+     *  to disk. */
     keepOriginals: boolean
     /** The transform connection, shaped like the cleanup slot: enabled
      *  false means same as cleanup; a complete separate slot (key served

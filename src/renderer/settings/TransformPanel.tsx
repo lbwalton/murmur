@@ -96,7 +96,7 @@ export function TransformPanel(props: {
         desc={
           transform.keepOriginals
             ? 'Each original selection is saved to history before the model sees it, so paste-last or the home tab always brings it back.'
-            : 'Originals are held in memory only: paste-last still brings back the latest one until the next transform or until murmur quits, and nothing is written to disk.'
+            : 'Originals are held in memory only, and nothing is written to disk. Paste-last still brings back the latest one until your next dictation or transform, or until murmur quits.'
         }
       >
         <select

@@ -155,6 +155,11 @@ export function readHistory(): SessionEvent[] {
   return events
 }
 
+/** True when this event is the memory-only entry (never on disk). */
+export function isMemoryOnly(event: SessionEvent): boolean {
+  return memoryOnly !== null && event === memoryOnly
+}
+
 /** The events that measure speech (recap, overlay accent): transforms
  *  excluded. */
 export function readStatsHistory(): SessionEvent[] {

@@ -303,20 +303,32 @@ export function dictationCancel(): void {
  */
 export async function pasteLastDictation(): Promise<void> {
   const phase = getOverlayPhase()
-  if (phase === 'recording' || phase === 'processing') return
-  const { readHistory } = await import('./history')
+  if (phase === 'recording' || phase === 'processing') {
+    void logDictation(`paste-last ignored phase=${phase}`)
+    return
+  }
+  const { readHistory, isMemoryOnly } = await import('./history')
   const events = readHistory()
   const last = events[events.length - 1]
   if (!last || last.finalText.length === 0) {
+    void logDictation('paste-last found nothing to paste')
     playCue('nospeech')
     return
   }
+  // Content-free trail: where the entry came from and how the paste
+  // went, never the text (live-found 2026-09-23, a memory-only
+  // transform original was reported as pasting nothing).
+  const source = isMemoryOnly(last) ? 'memory' : 'log'
   try {
     const outcome = await insertText(last.finalText)
+    void logDictation(
+      `paste-last outcome=${outcome} source=${source} kind=${last.kind ?? 'dictation'} chars=${last.finalText.length}`
+    )
     if (outcome === 'error') playCue('error')
     else playCue('insert')
   } catch (error) {
     console.error('[murmur] paste last dictation failed:', error)
+    void logDictation(`paste-last failed source=${source}`)
     playCue('error')
   }
 }

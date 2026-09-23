@@ -61,7 +61,7 @@ Unlike cleanup, transforms do not depend on your formatting level: they run at O
 
 By default, yes: each original selection is saved to history (a file on your machine, never uploaded, and cleared by your history retention setting) so it can always be recovered.
 
-For more privacy, set Keep originals in history to Off. murmur then keeps only the latest original in memory: paste-last still brings it back until your next transform or until murmur quits, and nothing is written to disk.
+For more privacy, set Keep originals in history to Off. murmur then keeps only the latest original in memory, and nothing is written to disk. Paste-last always pastes your newest entry, so it brings the original back until your next dictation or transform, or until murmur quits.
 
 ## Do transforms count toward my words, belt, or stats?
 

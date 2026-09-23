@@ -131,6 +131,7 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
     kind: 'transform',
     persist: settings.transform.keepOriginals
   })
+  if (!settings.transform.keepOriginals) await log('original held in memory only')
 
   const resolved =
     deps.connection !== undefined

@@ -4,7 +4,7 @@
 // every other path is the deterministic formatter alone.
 import { dictionaryHint } from '../../shared/dictionary'
 import type { Settings } from '../../shared/settings'
-import { getApiKey, getApiKeyFor, getPolishApiKey, getSettings } from '../settings'
+import { getApiKey, getApiKeyFor, getPolishApiKey, getSettings, ringClearKey, ringSetKey } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { type PolishConfig, polishTranscript } from './llm'
 
@@ -108,6 +108,40 @@ export function initFormatter(): void {
     const roundTrip = saved.length === 1 && saved[0].trigger === 'insert my email'
     updateSettings({ expansions: before })
     return expanded && bounded && roundTrip
+  })
+
+  registerSmokeCheck('transformConnection', async () => {
+    // US-054: the transform slot wins only when complete with its own
+    // ring key; anything less falls through to whatever the cleanup
+    // pass would use, and with no key anywhere there is no connection.
+    // Throwaway keys only: every smoke run has a fresh temp profile.
+    const { updateSettings } = await import('../settings')
+    const before = getSettings()
+    const url = 'https://smoke-transform.example/v1'
+    try {
+      updateSettings({ transform: { connection: { enabled: true, baseUrl: url, llmModel: 'edit-m' } } })
+      ringSetKey(url, 'smoke-transform-key-1234567890')
+      const separate = resolveTransformConnection(getSettings())
+      const separateOk =
+        separate?.slot === 'separate' &&
+        separate.config.baseUrl === url &&
+        separate.config.model === 'edit-m' &&
+        separate.config.apiKey === 'smoke-transform-key-1234567890'
+      ringClearKey(url)
+      // No transform key, and the primary provider holds one: cleanup path.
+      ringSetKey(before.provider.baseUrl, 'smoke-primary-key-1234567890')
+      const cleanup = resolveTransformConnection(getSettings())
+      const cleanupOk = cleanup?.slot === 'cleanup' && cleanup.config.baseUrl === before.provider.baseUrl
+      updateSettings({ transform: { connection: { enabled: false } } })
+      const same = resolveTransformConnection(getSettings())
+      const sameOk = same?.slot === 'cleanup' && same.config.model === before.provider.llmModel
+      ringClearKey(before.provider.baseUrl)
+      const none = resolveTransformConnection(getSettings())
+      return separateOk && cleanupOk && sameOk && none === null
+    } finally {
+      ringClearKey(url)
+      updateSettings({ transform: { connection: before.transform.connection } })
+    }
   })
 
   registerSmokeCheck('llmFormatter', async () => {
