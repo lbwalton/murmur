@@ -32,10 +32,23 @@ export function planRestore(
 
 /** Build the platform paste-keystroke command. Pure for testing. */
 export function pasteCommand(platform: NodeJS.Platform): { file: string; args: string[] } | null {
+  return shortcutCommand(platform, 'v')
+}
+
+/** Build the platform copy-keystroke command (US-054 reads the
+ *  selection this way). Pure for testing. */
+export function copyCommand(platform: NodeJS.Platform): { file: string; args: string[] } | null {
+  return shortcutCommand(platform, 'c')
+}
+
+function shortcutCommand(
+  platform: NodeJS.Platform,
+  key: 'c' | 'v'
+): { file: string; args: string[] } | null {
   if (platform === 'darwin') {
     return {
       file: 'osascript',
-      args: ['-e', 'tell application "System Events" to keystroke "v" using command down']
+      args: ['-e', `tell application "System Events" to keystroke "${key}" using command down`]
     }
   }
   if (platform === 'win32') {
@@ -45,9 +58,26 @@ export function pasteCommand(platform: NodeJS.Platform): { file: string; args: s
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        '$w = New-Object -ComObject wscript.shell; $w.SendKeys("^v")'
+        `$w = New-Object -ComObject wscript.shell; $w.SendKeys("^${key}")`
       ]
     }
   }
   return null
+}
+
+export type SelectionVerdict =
+  | { ok: true; text: string }
+  | { ok: false; reason: 'unchanged' | 'empty' }
+
+/**
+ * Judge a selection read. murmur writes a unique marker to the
+ * clipboard before the copy keystroke, so the marker still being there
+ * means the copy did nothing (a terminal, a locked-down window, no
+ * selection): that is unreadable, never "the same text as before".
+ * A copy that yields no text (an image) or only whitespace is empty.
+ */
+export function judgeSelection(marker: string, after: string): SelectionVerdict {
+  if (after === marker) return { ok: false, reason: 'unchanged' }
+  if (after.trim().length === 0) return { ok: false, reason: 'empty' }
+  return { ok: true, text: after }
 }

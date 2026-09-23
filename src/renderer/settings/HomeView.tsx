@@ -105,11 +105,23 @@ export function HomeView(props: {
                 <div className="log-meta">
                   <span className="mono-inline dim">{timeOf(event.at)}</span>
                   {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
-                  <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
+                  {event.kind === 'transform' && (
+                    <span className="mono-inline note-tag">{event.unsent ? 'transform · not sent' : 'transform'}</span>
+                  )}
+                  {event.kind !== 'transform' && (
+                    <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
+                  )}
                   <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
                     {copiedAt === event.at ? 'copied' : 'copy'}
                   </button>
                 </div>
+                {event.kind === 'transform' && !event.unsent && (
+                  <p className="log-instruction dim">you said: {event.rawText}</p>
+                )}
+                {event.kind === 'transform' && event.unsent && (
+                  <p className="log-instruction dim">the selection was too long to send; your words are kept below</p>
+                )}
+                {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
                 <p className="log-text">{event.finalText}</p>
               </div>
             ))}

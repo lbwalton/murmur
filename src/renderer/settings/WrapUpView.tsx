@@ -2,7 +2,7 @@
 // The wrap-up: today's dictation in one quiet page. The recap
 // notification lands here.
 import { useEffect, useState } from 'react'
-import { type SessionEvent, dayKey, eventDay } from '../../shared/history'
+import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
@@ -14,7 +14,7 @@ export function WrapUpView(): React.JSX.Element {
     const load = (): void => {
       void bridge()
         .listHistory()
-        .then((all) => setEvents(all.filter((e) => eventDay(e) === dayKey(Date.now()))))
+        .then((all) => setEvents(all.filter((e) => countsTowardStats(e) && eventDay(e) === dayKey(Date.now()))))
     }
     load()
     return bridge().onHistoryAppended(() => load())

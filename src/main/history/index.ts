@@ -2,21 +2,35 @@
 // History wiring: userData path, IPC for the home view, live append
 // notifications to the settings window, retention pruning, smoke.
 import { type BrowserWindow, app, ipcMain } from 'electron'
-import { type SessionEvent, countWords, dayKey, wordsPerMinute } from '../../shared/history'
+import { type SessionEvent, countWords, countsTowardStats, dayKey, wordsPerMinute } from '../../shared/history'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { HistoryLog } from './log'
 
 let log: HistoryLog | null = null
 let getTargetWindow: (() => BrowserWindow | null) | null = null
+// The newest entry recorded with persist false (a transform original
+// with keep-originals off): held in memory only, so paste-last can
+// still restore it until the next one or quit.
+let memoryOnly: SessionEvent | null = null
+
+// Everything that measures speech reads this, never the raw log.
+function statsEvents(): SessionEvent[] {
+  return (log?.readAll() ?? []).filter(countsTowardStats)
+}
 
 /** Record a finished dictation and notify the settings window. */
 export function recordSession(input: {
   startedAt: number
   rawText: string
   finalText: string
-  /** 'note' when the words went to a notes file instead of the cursor. */
-  kind?: 'note'
+  /** 'note' when the words went to a notes file instead of the cursor;
+   *  'transform' for a spoken edit's original selection (US-054). */
+  kind?: 'note' | 'transform'
+  unsent?: boolean
+  /** False keeps the event in memory only: never on disk, never sent
+   *  to a window. Defaults to true. */
+  persist?: boolean
 }): SessionEvent | null {
   if (!log) return null
   const now = Date.now()
@@ -30,8 +44,14 @@ export function recordSession(input: {
     wpm: wordsPerMinute(words, Math.max(1, now - input.startedAt)),
     day: dayKey(now),
     hour: new Date(now).getHours(),
-    ...(input.kind ? { kind: input.kind } : {})
+    ...(input.kind ? { kind: input.kind } : {}),
+    ...(input.unsent ? { unsent: true } : {})
   }
+  if (input.persist === false) {
+    memoryOnly = event
+    return event
+  }
+  memoryOnly = null
   log.append(event)
   // Transcripts are sensitive: only the settings window (which renders
   // the log) receives them, never the overlay or audio windows.
@@ -65,7 +85,7 @@ async function notifyNewAchievements(): Promise<void> {
       // Corrupt state re-announces at worst; unlock truth is unaffected.
     }
 
-    const earned = evaluateAchievements(log.readAll(), defs as never)
+    const earned = evaluateAchievements(statsEvents(), defs as never)
     const fresh = earned.filter((e) => !announced.includes(e.id))
     if (fresh.length === 0) return
     // Only ids actually shown get persisted (review gate finding: the
@@ -108,7 +128,7 @@ async function notifyNewPromotions(): Promise<void> {
       // Corrupt state re-announces at worst.
     }
 
-    const progress = computeProgress(log.readAll(), ranksSpec as never)
+    const progress = computeProgress(statsEvents(), ranksSpec as never)
     const fresh = progress.promotions.filter((promo) => !announced.includes(promo.id))
     if (fresh.length === 0 || !Notification.isSupported()) return
     const ladder = (ranksSpec as never as { ranks: { id: string; label: string; title: string }[] }).ranks
@@ -126,9 +146,24 @@ async function notifyNewPromotions(): Promise<void> {
   }
 }
 
-/** Read-only access to the log for other main subsystems (recap). */
+/** Every recorded event, oldest first, for recovery (paste-last). A
+ *  memory-only entry newer than the log's tail rides at the end. */
 export function readHistory(): SessionEvent[] {
-  return log?.readAll() ?? []
+  const events = log?.readAll() ?? []
+  const last = events[events.length - 1]
+  if (memoryOnly && (!last || memoryOnly.at >= last.at)) events.push(memoryOnly)
+  return events
+}
+
+/** True when this event is the memory-only entry (never on disk). */
+export function isMemoryOnly(event: SessionEvent): boolean {
+  return memoryOnly !== null && event === memoryOnly
+}
+
+/** The events that measure speech (recap, overlay accent): transforms
+ *  excluded. */
+export function readStatsHistory(): SessionEvent[] {
+  return statsEvents()
 }
 
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
@@ -148,6 +183,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
   ipcMain.handle('history:clear', () => {
     log?.clear()
+    memoryOnly = null
     return []
   })
 
@@ -160,7 +196,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const { join } = await import('node:path')
     const ranksSpec = (await import('../../../shared/ranks.json')).default
     const founder = existsSync(join(app.getPath('userData'), 'founder'))
-    return computeProgress(log?.readAll() ?? [], ranksSpec as never, { founder })
+    return computeProgress(statsEvents(), ranksSpec as never, { founder })
   })
 
   ipcMain.handle('achievements:defs', async () => {
@@ -177,7 +213,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const cosmeticsSpec = (await import('../../../shared/cosmetics.json')).default
     const ranksSpec = (await import('../../../shared/ranks.json')).default
     const achievementDefs = (await import('../../../shared/achievements.json')).default
-    const events = log?.readAll() ?? []
+    const events = statsEvents()
     const founder = existsSync(join(app.getPath('userData'), 'founder'))
     const progress = computeProgress(events, ranksSpec as never, { founder })
     const earned = evaluateAchievements(events, achievementDefs as never)
@@ -187,7 +223,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle('equivalents:line', async (_event, pick: unknown) => {
     const { equivalentLine } = await import('../../shared/equivalents')
     const spec = (await import('../../../shared/equivalents.json')).default
-    const words = (log?.readAll() ?? []).reduce((n, e) => n + e.words, 0)
+    const words = statsEvents().reduce((n, e) => n + e.words, 0)
     const p = typeof pick === 'number' && pick >= 0 && pick <= 1 ? pick : 0.5
     return equivalentLine(words, spec as never, p)
   })
@@ -195,7 +231,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle('achievements:earned', async () => {
     const { evaluateAchievements } = await import('../../shared/achievements')
     const defs = (await import('../../../shared/achievements.json')).default
-    return evaluateAchievements(log?.readAll() ?? [], defs as never)
+    return evaluateAchievements(statsEvents(), defs as never)
   })
 
   registerSmokeCheck('achievements', async () => {
@@ -241,7 +277,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const catalog = validateCatalog((await import('../../../shared/provider-catalog.json')).default)
     if (!catalog) throw new Error('bundled provider catalog failed validation')
     const settings = getSettings()
-    return aggregate(log?.readAll() ?? [], ratesFromCatalog(catalog), {
+    return aggregate(statsEvents(), ratesFromCatalog(catalog), {
       sttModel: settings.provider.sttModel,
       // Priced with the same rule the pipeline routes with: an active
       // separate cleanup connection is what these sessions actually ran.
@@ -254,7 +290,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   ipcMain.handle('analytics:heatmap', async (_event, year: unknown) => {
     const { heatmap } = await import('../../shared/analytics')
     const picked = typeof year === 'number' && Number.isInteger(year) ? year : null
-    return heatmap(log?.readAll() ?? [], { year: picked })
+    return heatmap(statsEvents(), { year: picked })
   })
 
   registerSmokeCheck('history', () => {

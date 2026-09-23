@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { pasteCommand, planRestore } from './plan'
+import { copyCommand, judgeSelection, pasteCommand, planRestore } from './plan'
 
 describe('planRestore', () => {
   it('prefers wholesale item restore after a clean insertion', () => {
@@ -39,5 +39,28 @@ describe('pasteCommand', () => {
 
   it('returns null on unsupported platforms', () => {
     expect(pasteCommand('linux')).toBeNull()
+  })
+})
+
+describe('copyCommand', () => {
+  it('sends the platform copy shortcut', () => {
+    expect(copyCommand('darwin')?.args.join(' ')).toContain('keystroke "c" using command down')
+    expect(copyCommand('win32')?.args.join(' ')).toContain('SendKeys("^c")')
+    expect(copyCommand('linux')).toBeNull()
+  })
+})
+
+describe('judgeSelection', () => {
+  it('reads a selection the copy delivered', () => {
+    expect(judgeSelection('m-1', 'Call the dentist.')).toEqual({ ok: true, text: 'Call the dentist.' })
+  })
+
+  it('calls an untouched marker unreadable, even if the selection matched the old clipboard', () => {
+    expect(judgeSelection('m-1', 'm-1')).toEqual({ ok: false, reason: 'unchanged' })
+  })
+
+  it('calls a copy with no text empty', () => {
+    expect(judgeSelection('m-1', '')).toEqual({ ok: false, reason: 'empty' })
+    expect(judgeSelection('m-1', '  \n')).toEqual({ ok: false, reason: 'empty' })
   })
 })

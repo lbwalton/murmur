@@ -161,13 +161,21 @@ body {
   margin-right: 8px;
 }
 
+/* Transform mode wears the same brand edge as a note: a quiet mode,
+   named in mono beside the timer. */
+.pill-transform {
+  border-color: var(--brand-edge);
+}
+
 /* A hint is a sentence from rest: no session, so no needle at all. The
    wave gives its room to the words, which must fit the fixed pill. */
-.pill-hint .wave {
+.pill-hint .wave,
+.pill-says .wave {
   display: none;
 }
 
-.pill-hint .status-slot {
+.pill-hint .status-slot,
+.pill-says .status-slot {
   white-space: nowrap;
   text-align: left;
 }

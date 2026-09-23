@@ -16,6 +16,8 @@ import {
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording } from './audio'
 import { NOTE_FOLDER_HINT } from '../shared/notes'
+import { resolveTransformConnection } from './formatter'
+import { getSettings } from './settings'
 import { insertText } from './insertion'
 import { notesConfigured, saveNote } from './notes'
 import { rememberForSort, sortNote } from './notes/sorter'
@@ -27,10 +29,12 @@ import {
   showOverlayHint
 } from './overlay'
 import { SMOKE_TRANSCRIPT, transcribeWav } from './transcribe'
+import { TRANSFORM_NO_CONNECTION_HINT, performTransform } from './transform'
 import { registerSmokeCheck } from './smoke'
 
-/** Where a session's words go: the cursor, or a notes file (US-050). */
-export type DictationKind = 'dictation' | 'note'
+/** Where a session's words go: the cursor, a notes file (US-050), or
+ *  an instruction for the selected text (US-054). */
+export type DictationKind = 'dictation' | 'note' | 'transform'
 
 let sessionStartedAt = 0
 // The chord that started the live session owns it: a hold on the other
@@ -68,6 +72,14 @@ export function dictationStart(kind: DictationKind = 'dictation'): boolean {
     showOverlayHint(NOTE_FOLDER_HINT, 'note')
     playCue('nospeech')
     void logDictation('note chord pressed with no notes folder set')
+    return false
+  }
+  if (kind === 'transform' && !resolveTransformConnection(getSettings())) {
+    // Same rule: a transform with no model to run on says so before
+    // the user spends a sentence on it.
+    showOverlayHint(TRANSFORM_NO_CONNECTION_HINT, 'transform')
+    playCue('nospeech')
+    void logDictation('transform chord pressed with no model connection')
     return false
   }
   if (!setOverlayPhase('recording', null, { mode: kind })) return false
@@ -127,6 +139,19 @@ export async function dictationStop(kind: DictationKind = 'dictation'): Promise<
   } catch {
     setOverlayPhase('error')
     playCue('error')
+    return
+  }
+
+  if (kind === 'transform') {
+    // The selection is read before the instruction is transcribed, so
+    // an unreadable selection sends nothing at all.
+    try {
+      await performTransform({ startedAt: sessionStartedAt, transcribe: () => transcribeWav(upload) })
+    } catch (error) {
+      console.error('[murmur] transform threw:', error)
+      setOverlayPhase('error')
+      playCue('error')
+    }
     return
   }
 
@@ -278,20 +303,32 @@ export function dictationCancel(): void {
  */
 export async function pasteLastDictation(): Promise<void> {
   const phase = getOverlayPhase()
-  if (phase === 'recording' || phase === 'processing') return
-  const { readHistory } = await import('./history')
+  if (phase === 'recording' || phase === 'processing') {
+    void logDictation(`paste-last ignored phase=${phase}`)
+    return
+  }
+  const { readHistory, isMemoryOnly } = await import('./history')
   const events = readHistory()
   const last = events[events.length - 1]
   if (!last || last.finalText.length === 0) {
+    void logDictation('paste-last found nothing to paste')
     playCue('nospeech')
     return
   }
+  // Content-free trail: where the entry came from and how the paste
+  // went, never the text (live-found 2026-09-23, a memory-only
+  // transform original was reported as pasting nothing).
+  const source = isMemoryOnly(last) ? 'memory' : 'log'
   try {
     const outcome = await insertText(last.finalText)
+    void logDictation(
+      `paste-last outcome=${outcome} source=${source} kind=${last.kind ?? 'dictation'} chars=${last.finalText.length}`
+    )
     if (outcome === 'error') playCue('error')
     else playCue('insert')
   } catch (error) {
     console.error('[murmur] paste last dictation failed:', error)
+    void logDictation(`paste-last failed source=${source}`)
     playCue('error')
   }
 }

@@ -69,7 +69,9 @@ export function App(): React.JSX.Element {
 
   const live = state.phase === 'recording'
   return (
-    <div className={`pill pill-${state.phase}${state.mode === 'note' ? ' pill-note' : ''}`}>
+    <div
+      className={`pill pill-${state.phase}${state.mode === 'note' ? ' pill-note' : ''}${state.mode === 'transform' ? ' pill-transform' : ''}${state.phase === 'error' && state.hint ? ' pill-says' : ''}`}
+    >
       <span className={`dot ${live ? 'dot-live' : ''}`} />
       <div
         className="wave"
@@ -94,6 +96,7 @@ export function App(): React.JSX.Element {
         {(state.phase === 'recording' || state.phase === 'processing') && (
           <>
             {state.mode === 'note' && <span className="mode-tag">note</span>}
+            {state.mode === 'transform' && <span className="mode-tag">transform</span>}
             <span className="timer" data-timer="">
               {formatDuration(elapsed)}
             </span>
@@ -101,7 +104,13 @@ export function App(): React.JSX.Element {
         )}
         {state.phase === 'inserted' && (
           <span className="ok" data-wpm="">
-            {state.mode === 'note' ? 'noted' : state.wpm && state.wpm > 0 ? `${state.wpm} wpm` : 'inserted'}
+            {state.mode === 'note'
+              ? 'noted'
+              : state.mode === 'transform'
+                ? 'transformed'
+                : state.wpm && state.wpm > 0
+                  ? `${state.wpm} wpm`
+                  : 'inserted'}
           </span>
         )}
         {state.phase === 'hint' && (
@@ -110,7 +119,11 @@ export function App(): React.JSX.Element {
           </span>
         )}
         {state.phase === 'nospeech' && <span className="quiet">no speech</span>}
-        {state.phase === 'error' && <span className="err">error</span>}
+        {state.phase === 'error' && (
+          <span className="err" data-error="">
+            {state.hint ?? 'error'}
+          </span>
+        )}
       </span>
     </div>
   )

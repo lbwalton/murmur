@@ -13,9 +13,10 @@ export type OverlayPhase =
    *  its setting exists). Shown from rest, lingers, returns to idle. */
   | 'hint'
 
-/** What a session is for: the cursor, or a note file. Set when
- *  recording starts, carried through the outcome, reset at idle. */
-export type OverlayMode = 'dictation' | 'note'
+/** What a session is for: the cursor, a note file, or an edit of the
+ *  selection (US-054). Set when recording starts, carried through the
+ *  outcome, reset at idle. */
+export type OverlayMode = 'dictation' | 'note' | 'transform'
 
 export interface OverlayState {
   phase: OverlayPhase
@@ -24,7 +25,9 @@ export interface OverlayState {
   /** Words per minute of the finished session, shown on inserted. */
   wpm: number | null
   mode: OverlayMode
-  /** The message of a hint phase; null in every other phase. */
+  /** The message of a hint phase, or an error's reason when the error
+   *  has one worth saying (a selection that could not be read); null
+   *  otherwise. */
   hint: string | null
 }
 
@@ -71,7 +74,7 @@ export class OverlayMachine {
       startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null,
       wpm: to === 'inserted' ? wpm : null,
       mode,
-      hint: to === 'hint' ? (extras.hint ?? '') : null
+      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' ? (extras.hint ?? null) : null
     }
     return this.get()
   }

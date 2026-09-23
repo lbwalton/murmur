@@ -22,6 +22,7 @@ import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
+import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
@@ -254,6 +255,7 @@ app.whenReady().then(async () => {
   initInsertion()
   initDictation()
   initNotes(() => settingsWindow)
+  initTransform()
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
 
@@ -269,6 +271,12 @@ app.whenReady().then(async () => {
       start: () => dictationStart('note'),
       stop: () => {
         void dictationStop('note')
+      }
+    },
+    transform: {
+      start: () => dictationStart('transform'),
+      stop: () => {
+        void dictationStop('transform')
       }
     }
   })
@@ -311,6 +319,7 @@ app.whenReady().then(async () => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
     const forPasteLast = target === 'pasteLast'
     const forNote = target === 'note'
+    const forTransform = target === 'transform'
     setHotkeysSuppressed(true)
     try {
       // Prefer the global hook (the same source the trigger reads, and
@@ -332,6 +341,13 @@ app.whenReady().then(async () => {
         const problem = noteBindingProblem(outcome.binding)
         if (problem) return { ok: false, reason: problem }
         updateSettings({ notes: { binding: outcome.binding } })
+        return { ok: true, binding: outcome.binding }
+      }
+      if (forTransform) {
+        const { transformBindingProblem } = await import('./hotkeys')
+        const problem = transformBindingProblem(outcome.binding)
+        if (problem) return { ok: false, reason: problem }
+        updateSettings({ transform: { binding: outcome.binding } })
         return { ok: true, binding: outcome.binding }
       }
       if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }

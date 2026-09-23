@@ -40,6 +40,7 @@ export interface HotkeysStatus {
   bindingValid: boolean
   pasteBindingValid: boolean
   noteBindingValid: boolean
+  transformBindingValid: boolean
 }
 
 export type NotesStatus = import('../main/notes').NotesStatus
@@ -118,7 +119,7 @@ const api = {
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
   captureHotkey: (
-    target: 'dictation' | 'pasteLast' | 'note' = 'dictation'
+    target: 'dictation' | 'pasteLast' | 'note' | 'transform' = 'dictation'
   ): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture', target)
   },
