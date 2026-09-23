@@ -2,27 +2,39 @@
 // The wrap-up: today's dictation in one quiet page. The recap
 // notification lands here.
 import { useEffect, useState } from 'react'
+import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
+import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
 
-export function WrapUpView(): React.JSX.Element {
+export function WrapUpView(props: {
+  /** The speed time back is measured against, from the settings App
+   *  already holds, so the sentence never flashes a placeholder. */
+  typingWpm: number
+}): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
 
   useEffect(() => {
     const load = (): void => {
       void bridge()
         .listHistory()
         .then((all) => setEvents(all.filter((e) => countsTowardStats(e) && eventDay(e) === dayKey(Date.now()))))
+      // Time back comes from main at the typing speed in settings, the
+      // same number the home card reads.
+      void bridge().getAnalytics().then(setSummary)
     }
     load()
     return bridge().onHistoryAppended(() => load())
-  }, [])
+  }, [props.typingWpm])
 
+  const typingWpm = props.typingWpm
   const words = events.reduce((n, e) => n + e.words, 0)
   const minutes = Math.round(events.reduce((n, e) => n + e.durationMs / 60_000, 0) * 10) / 10
   const bestWpm = events.reduce((n, e) => Math.max(n, e.wpm), 0)
+  const back = summary?.today.minutesBack ?? 0
 
   return (
     <div className="home">
@@ -49,12 +61,17 @@ export function WrapUpView(): React.JSX.Element {
                 <div className="stat-value">{bestWpm}</div>
                 <div className="stat-label">best wpm</div>
               </div>
+              {summary && (
+                <div className="stat">
+                  <div className="stat-value">{formatMinutesBack(back)}</div>
+                  <div className="stat-label">time back</div>
+                </div>
+              )}
             </div>
-            {words / 40 - minutes > 0.5 && (
+            {back >= 1 && (
               <p className="row-desc rates-note">
-                Typed at 40 wpm, that is roughly {Math.round(words / 40 - minutes)}{' '}
-                {Math.round(words / 40 - minutes) === 1 ? 'minute' : 'minutes'} you did not spend
-                typing.
+                At your typing speed of {typingWpm} wpm, that is roughly {formatMinutesBack(back)} you
+                did not spend typing.
               </p>
             )}
           </>

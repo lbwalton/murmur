@@ -13,6 +13,7 @@ import type {
 import proConfig from '../../../shared/pro.json'
 import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
 import { JourneyView } from './JourneyView'
@@ -21,7 +22,7 @@ import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
-import { ModelPicker, Row, TextSetting, TimeInput } from './controls'
+import { ModelPicker, NumberSetting, Row, TextSetting, TimeInput } from './controls'
 
 declare global {
   interface Window {
@@ -489,7 +490,7 @@ export function App(): React.JSX.Element {
 
       {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
       {page === 'analytics' && <AnalyticsView />}
-      {page === 'wrapup' && <WrapUpView />}
+      {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
       {page === 'journey' && <JourneyView />}
 
       <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
@@ -1195,6 +1196,18 @@ export function App(): React.JSX.Element {
           Electron while running from source (the installed app shows as murmur) and pick
           the Banners style.
         </p>
+        <Row
+          label="Typing speed"
+          desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average; make it yours and every day restates."
+        >
+          <NumberSetting
+            value={settings.timeBack.typingWpm}
+            min={MIN_TYPING_WPM}
+            max={MAX_TYPING_WPM}
+            suffix="wpm"
+            onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
+          />
+        </Row>
       </section>
 
       {isMac && (

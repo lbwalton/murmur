@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The home view: your transcription log, grouped by day, newest first,
-// updating live as dictations land.
+// The home view: today's time back, then your transcription log,
+// grouped by day, newest first, updating live as dictations land.
 import { useEffect, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
+import type { AnalyticsSummary } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, groupByDay } from '../../shared/history'
+import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { Settings } from '../../shared/settings'
 
@@ -65,6 +67,8 @@ export function HomeView(props: {
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const typingWpm = props.settings.timeBack.typingWpm
 
   useEffect(() => {
     void bridge().listHistory().then(setEvents)
@@ -74,6 +78,16 @@ export function HomeView(props: {
       setEvents((prev) => [...prev, event].slice(-500))
     })
   }, [])
+
+  // Time back is computed in main from the whole log at the typing
+  // speed in settings, so a speed edit restates the card at once.
+  useEffect(() => {
+    const load = (): void => {
+      void bridge().getAnalytics().then(setSummary)
+    }
+    load()
+    return bridge().onHistoryAppended(() => load())
+  }, [typingWpm])
 
   const copy = async (event: SessionEvent): Promise<void> => {
     await bridge().copyText(event.finalText)
@@ -86,6 +100,21 @@ export function HomeView(props: {
   return (
     <div className="home">
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
+      {events.length > 0 && summary && (
+        <section className="panel">
+          <p className="micro-label">back today</p>
+          <div
+            className="timeback-value"
+            title={`Typing at ${typingWpm} wpm, minus the time you spent speaking`}
+          >
+            {formatMinutesBack(summary.today.minutesBack)}
+          </div>
+          <p className="timeback-spans">
+            {formatMinutesBack(summary.month.minutesBack)} this month ·{' '}
+            {formatMinutesBack(summary.lifetime.minutesBack)} lifetime
+          </p>
+        </section>
+      )}
       {grouped.length === 0 && (
         <section className="panel empty-log">
           <p className="micro-label">transcriptions</p>

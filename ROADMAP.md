@@ -67,10 +67,10 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
+- [ ] **US-059** Time back: the minutes you did not spend typing
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-059** Time back: the minutes you did not spend typing
 - [ ] **US-060** Time back arrives: the recap says it, and every 30 minutes gets a nod
 - [ ] **US-061** Overlay look: pill, compact, or bare

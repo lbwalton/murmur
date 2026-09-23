@@ -58,6 +58,17 @@ describe('mergeSettings', () => {
     expect(at(0.7)).toBe(0.7)
   })
 
+  it('ships time back at 40 wpm and repairs a typing speed that cannot be used', () => {
+    expect(DEFAULT_SETTINGS.timeBack).toEqual({ typingWpm: 40 })
+    const at = (typingWpm: unknown): number =>
+      mergeSettings(DEFAULT_SETTINGS, { timeBack: { typingWpm } }).timeBack.typingWpm
+    expect(at(65)).toBe(65)
+    expect(at('fast')).toBe(40)
+    expect(at(Number.NaN)).toBe(40)
+    expect(at(0)).toBe(10)
+    expect(at(9000)).toBe(200)
+  })
+
   it('preserves unknown keys from newer builds', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, { futureFeature: { on: true } })
     expect((merged as unknown as Record<string, unknown>).futureFeature).toEqual({ on: true })

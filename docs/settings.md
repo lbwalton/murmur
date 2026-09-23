@@ -4,7 +4,7 @@ Everything the settings window can do, in the order it appears. For provider set
 
 ## What is the home view?
 
-The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. A red ✗ next to the settings tab means setup needs attention.
+The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A red ✗ next to the settings tab means setup needs attention.
 
 ## How long is my history kept, and where?
 
@@ -72,7 +72,7 @@ Lists use plain text markers ("- " and "1. "), so they paste correctly everywher
 
 ## What does the analytics tab show, and how is the cost estimated?
 
-The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
+The analytics tab shows your dictation in numbers: minutes, words, sessions, time back, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. Time back is the minutes you did not spend typing, computed as described under "How does murmur calculate time earned back?" below. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
 
 ## How does the custom dictionary work?
 
@@ -88,7 +88,17 @@ How the overlay pill visualizes your voice while recording. **Bars** is the clas
 
 ## How do recaps and the wrap-up work?
 
-Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers. Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, an estimate of the typing time you saved, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers. Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, your time back at your own typing speed, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+
+## How does murmur calculate time earned back?
+
+Time back is the time you did not spend typing. For every dictation, murmur takes the words that landed, works out how long typing them would have taken at your typing speed, and subtracts the time you actually held the key. Those per-take numbers add up into today, this month, and lifetime, shown on the home card, the analytics tab, and the wrap-up.
+
+The formula for one take is `words / typing speed - minutes spoken`. At the default 40 words per minute, a 400-word dictation spoken in two minutes is ten minutes of typing minus two of speaking: eight minutes back.
+
+The typing speed is yours to set: Settings, recap, Typing speed, anywhere from 10 to 200 words per minute. 40 is a fair average for a working typist; if you know you type at 70, say so and the number gets honest. Nothing is stored per take, so changing the speed restates every day you have on record, past ones included.
+
+Two rules keep the number truthful. A take where you held the key while thinking and said little counts against the day, because murmur cost that time; but a day never shows below zero. And notes dictated with the note chord count exactly like any other dictation.
 
 ## Which macOS permissions does murmur need, and why?
 
