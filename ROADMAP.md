@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (57/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (57/62 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -71,3 +71,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
+- [ ] **US-059** Time back: the minutes you did not spend typing
+- [ ] **US-060** Time back arrives: the recap says it, and every 30 minutes gets a nod
+- [ ] **US-061** Overlay look: pill, compact, or bare
