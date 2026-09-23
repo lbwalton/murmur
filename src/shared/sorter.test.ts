@@ -34,12 +34,29 @@ describe('splitSentences', () => {
   })
 
   it('treats every line as its own unit and keeps list lines whole', () => {
-    expect(splitSentences('Groceries:\n- eggs. big ones\n1. call Bob. then Ann\nDone.')).toEqual([
-      'Groceries:',
+    expect(splitSentences('Shopping today.\n- eggs. big ones\n1. call Bob. then Ann\nDone.')).toEqual([
+      'Shopping today.',
       '- eggs. big ones',
       '1. call Bob. then Ann',
       'Done.'
     ])
+  })
+
+  it('never sends a list heading as its own unit (live-found 2026-09-23)', () => {
+    // Smart lists turns "I need to buy eggs, milk, and bread" into a
+    // colon intro over list lines; the decision model filed the intro
+    // as a task. The heading stays in the inbox, the items sort.
+    expect(
+      splitSentences('Call the dentist. Maybe the wizard asks first. I need to buy:\n- eggs\n- milk\n- bread')
+    ).toEqual(['Call the dentist.', 'Maybe the wizard asks first.', '- eggs', '- milk', '- bread'])
+    expect(splitSentences('Groceries:\n\n1. eggs\n2. milk')).toEqual(['1. eggs', '2. milk'])
+    expect(splitSentences('Today:\n- [ ] call Bob')).toEqual(['- [ ] call Bob'])
+  })
+
+  it('keeps a colon line that heads no list', () => {
+    expect(splitSentences('Here is the thing: call Bob.')).toEqual(['Here is the thing: call Bob.'])
+    expect(splitSentences('Remember this:\nCall Bob.')).toEqual(['Remember this:', 'Call Bob.'])
+    expect(splitSentences('I need to buy:')).toEqual(['I need to buy:'])
   })
 
   it('handles closing quotes and brackets after the terminator', () => {

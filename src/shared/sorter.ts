@@ -28,17 +28,21 @@ const ABBREVIATION = /(?:^|\s)(?:Dr|Mr|Mrs|Ms|Prof|Jr|Sr|St|vs|etc|approx|e\.g|i
 /**
  * The units the model labels: one per line, and a prose line further
  * split at sentence ends. List lines stay whole, so a list the speaker
- * dictated is never torn into fragments.
+ * dictated is never torn into fragments. A list's heading (the piece
+ * ending in a colon right above list lines, the shape smart lists
+ * writes) is never a unit: it names the items and is no task or idea
+ * of its own (live-found 2026-09-23, the decision model filed "I need
+ * to buy:" as a task). It stays in the inbox like everything else.
  */
 export function splitSentences(text: string): string[] {
   const out: string[] = []
-  for (const rawLine of text.split('\n')) {
-    const line = rawLine.trim()
-    if (line.length === 0) continue
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
+  for (const [index, line] of lines.entries()) {
     if (LIST_LINE.test(line)) {
       out.push(line)
       continue
     }
+    const headsList = index + 1 < lines.length && LIST_LINE.test(lines[index + 1])
     const pieces = line.split(SENTENCE_END).map((p) => p.trim()).filter((p) => p.length > 0)
     let carry = ''
     for (const piece of pieces) {
@@ -51,6 +55,7 @@ export function splitSentences(text: string): string[] {
       carry = ''
     }
     if (carry.length > 0) out.push(carry)
+    if (headsList && out.length > 0 && out[out.length - 1].endsWith(':')) out.pop()
   }
   return out
 }
