@@ -18,6 +18,7 @@ This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walt
 
 - `prd.json` is the spec. Every change maps to a story; each story has acceptance criteria and a `passes` flag. Never set `passes: true` until every criterion is verified, and record how it was verified in `notes`.
 - Stories with `needs_human: true` require LaBroi (live mic, real API key, a Windows machine, install tests). Build and smoke-verify what you can, then add the human step to `HANDOFF.md` and move on.
+- Whenever you add or change action items in `HANDOFF.md`, also spell those same items out in your chat reply (LaBroi directive, 2026-09-22): he works in the terminal and should never have to open HANDOFF.md to find his to-dos. Write them as numbered steps in plain language, the way you would explain it to a fifth grader: what to click, what to say, and what he should see if it worked. Name the setting by where it lives on screen, not by code names.
 - Verify with `npm run smoke` after any main-process or preload change. It boots every subsystem headlessly and prints `SMOKE_RESULT` JSON; it must stay green and new subsystems get a check added.
 - `npm run typecheck` and `npm run test` must be green before any commit.
 - After changing prd.json, run `npm run roadmap` so ROADMAP.md stays true.
