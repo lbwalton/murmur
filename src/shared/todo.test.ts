@@ -212,3 +212,35 @@ describe('tickLine', () => {
     expect(result.ok && result.text).toBe('```\n- [ ] sample\n```\n- [ ]   \n- [x] first real\n')
   })
 })
+
+describe('nested runs under a lead line (US-062)', () => {
+  const file = [
+    '## 2026-09-23',
+    '- [ ] Call Sam. ([08:59](inbox/2026-09-23.md))',
+    '- I need to buy:',
+    '  - [ ] apples ([08:59](inbox/2026-09-23.md))',
+    '  - [x] rice ([08:59](inbox/2026-09-23.md))',
+    '- A plain idea ending in a colon:',
+    '- Maybe try:',
+    '  - a smoothie bar ([08:59](inbox/2026-09-23.md))'
+  ].join('\n')
+
+  it('reads the nested items and never the lead line', () => {
+    expect(parseListItems(file).map((i) => i.text)).toEqual([
+      'Call Sam.',
+      'apples',
+      'rice',
+      'A plain idea ending in a colon:',
+      'a smoothie bar'
+    ])
+  })
+
+  it('reminders count nested checkboxes and nothing else', () => {
+    expect(openItems(parseTodo(file)).map((i) => i.text)).toEqual(['Call Sam.', 'apples'])
+  })
+
+  it('tick counts a nested box like any other', () => {
+    const ticked = tickLine(file, 1)
+    expect(ticked.ok && ticked.text.includes('  - [x] apples')).toBe(true)
+  })
+})

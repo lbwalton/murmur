@@ -389,7 +389,7 @@ export function NotesPanel(props: {
           {status.heldLines.map((line) => (
             <Row
               key={line.id}
-              label={`Held: ${line.text}`}
+              label={`Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`}
               desc={`${withStop(heldPhrase(line))} It stays in the inbox as you said it.${
                 line.label === 'note'
                   ? ''

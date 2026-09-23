@@ -25,6 +25,14 @@ const SENTENCE_END = /(?<=[.!?]["”')\]]?)\s+/
 // 2026-09-20: "Dr." alone would have become a task line).
 const ABBREVIATION = /(?:^|\s)(?:Dr|Mr|Mrs|Ms|Prof|Jr|Sr|St|vs|etc|approx|e\.g|i\.e)\.$/i
 
+/** A lead-in (US-062): the words that introduce a run of items, such
+ *  as "I need to buy". Filed once as a plain line with the items nested
+ *  under it. group tells two runs with the same words apart. */
+export interface LeadIn {
+  text: string
+  group: string
+}
+
 /**
  * The units the model labels: one per line, and a prose line further
  * split at sentence ends. List lines stay whole, so a list the speaker
@@ -32,19 +40,25 @@ const ABBREVIATION = /(?:^|\s)(?:Dr|Mr|Mrs|Ms|Prof|Jr|Sr|St|vs|etc|approx|e\.g|i
  * ending in a colon right above list lines, the shape smart lists
  * writes) is never a unit: it names the items and is no task or idea
  * of its own (live-found 2026-09-23, the decision model filed "I need
- * to buy:" as a task). It stays in the inbox like everything else.
+ * to buy:" as a task). It becomes the lead-in of the list lines under
+ * it (US-062), and it stays in the inbox like everything else.
  */
-export function splitSentences(text: string): string[] {
-  const out: string[] = []
+export function splitUnits(text: string): { sentences: string[]; leads: Array<LeadIn | null> } {
+  const sentences: string[] = []
+  const leads: Array<LeadIn | null> = []
   const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0)
+  let heading: LeadIn | null = null
   for (const [index, line] of lines.entries()) {
     if (LIST_LINE.test(line)) {
-      out.push(line)
+      sentences.push(line)
+      leads.push(heading)
       continue
     }
+    heading = null
     const headsList = index + 1 < lines.length && LIST_LINE.test(lines[index + 1])
     const pieces = line.split(SENTENCE_END).map((p) => p.trim()).filter((p) => p.length > 0)
     let carry = ''
+    const out: string[] = []
     for (const piece of pieces) {
       const joined = carry.length > 0 ? `${carry} ${piece}` : piece
       if (ABBREVIATION.test(joined)) {
@@ -55,9 +69,20 @@ export function splitSentences(text: string): string[] {
       carry = ''
     }
     if (carry.length > 0) out.push(carry)
-    if (headsList && out.length > 0 && out[out.length - 1].endsWith(':')) out.pop()
+    if (headsList && out.length > 0 && out[out.length - 1].endsWith(':')) {
+      heading = { text: out.pop() as string, group: `heading-${index}` }
+    }
+    for (const sentence of out) {
+      sentences.push(sentence)
+      leads.push(null)
+    }
   }
-  return out
+  return { sentences, leads }
+}
+
+/** The units alone, for every caller that only needs positions. */
+export function splitSentences(text: string): string[] {
+  return splitUnits(text).sentences
 }
 
 /** What the model receives: the sentences, numbered from one. */
@@ -88,6 +113,9 @@ export type SortVerdict =
       /** Relation votes against the items already filed (US-055);
        *  empty when there was nothing to compare against. */
       relations: RelationVotes
+      /** Where each cut run's first item begins (US-062); absent or
+       *  empty means no lead-in anywhere. */
+      starts?: LeadStarts
     }
   | { ok: false; reason: string }
 
@@ -95,6 +123,10 @@ export type SortVerdict =
  *  whichever connection voted and consumed by the cutter, so a second
  *  backend supplies votes without touching the cutter. */
 export type SeamVotes = Record<number, number[]>
+
+/** Where each sentence's first item begins, by sentence number: a word
+ *  number among leadWords (US-062). Absent means no lead-in. */
+export type LeadStarts = Record<number, number>
 
 /** Asked for only when topic headings are on. */
 export const SORT_TOPIC_PROMPT = [
@@ -139,7 +171,7 @@ function extractObject(candidate: string): string | null {
 export function validateSort(
   count: number,
   candidate: string,
-  opts: { topic?: boolean; seamCounts?: readonly number[]; items?: number } = {}
+  opts: { topic?: boolean; seamCounts?: readonly number[]; items?: number; leadCounts?: readonly number[] } = {}
 ): SortVerdict {
   const text = candidate.trim()
   if (text.length === 0) return { ok: false, reason: 'empty' }
@@ -159,10 +191,12 @@ export function validateSort(
   // keys; every other key still has to be a sentence number.
   const offeredSeams = (opts.seamCounts ?? []).some((n) => n > 0)
   const offeredItems = (opts.items ?? 0) > 0
+  const offeredLeads = (opts.leadCounts ?? []).some((n) => n > 0)
   const reserved = new Set<string>([
     ...(opts.topic ? ['topic'] : []),
     ...(offeredSeams ? ['seams'] : []),
-    ...(offeredItems ? ['relations'] : [])
+    ...(offeredItems ? ['relations'] : []),
+    ...(offeredLeads ? ['starts'] : [])
   ])
   const numbered = entries.filter(([key]) => !reserved.has(key))
   for (const [key] of numbered) {
@@ -183,7 +217,10 @@ export function validateSort(
   const relations = offeredItems
     ? readRelationVotes((parsed as Record<string, unknown>).relations, count, opts.items ?? 0)
     : {}
-  return { ok: true, labels, topic, seams, relations }
+  const starts = offeredLeads
+    ? { starts: readLeadStarts((parsed as Record<string, unknown>).starts, opts.leadCounts ?? []) }
+    : {}
+  return { ok: true, labels, topic, seams, relations, ...starts }
 }
 
 // ------------------------------------------------------------ seams ---
@@ -299,6 +336,39 @@ export const SORT_SEAMS_PROMPT = [
 
 /** The seams as the chat model sees them, numbered under their
  *  sentence; empty when no sentence has a seam. */
+/** Asked for only when some sentence offers lead words (US-062). */
+export const SORT_LEADS_PROMPT = [
+  'Some sentences also list their opening words, numbered, under Lead words.',
+  'When such a sentence runs through several items (the ones its seams separate), find the word where the FIRST item begins: the words before it only introduce the run, for example I need to buy.',
+  'Also include the key "starts": an object mapping the sentence number to that word number, for example {"3":5}. Leave a sentence out when it is not a run of items or its first item begins at word 1. Word numbers only, never text.'
+].join(' ')
+
+/** The lead words as the chat model sees them, numbered under their
+ *  sentence; empty when no sentence offers any. */
+export function leadPrompt(sentences: readonly string[], seamsBySentence: readonly Seam[][]): string {
+  const lines: string[] = []
+  sentences.forEach((sentence, i) => {
+    const words = leadWords(sentence, seamsBySentence[i] ?? [])
+    if (words.length > 0) lines.push(`${i + 1}: ${words.map((w, j) => `${j + 1} ${w}`).join(' | ')}`)
+  })
+  return lines.join('\n')
+}
+
+/** Read a starts vote: per sentence, a word number from 2 to the count
+ *  offered. Anything else means no lead-in for that sentence only. */
+export function readLeadStarts(raw: unknown, leadCounts: readonly number[]): LeadStarts {
+  const starts: LeadStarts = {}
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return starts
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const sentence = Number(key)
+    if (!Number.isInteger(sentence) || sentence < 1 || sentence > leadCounts.length) continue
+    const word = typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value) : value
+    if (typeof word !== 'number' || !Number.isInteger(word)) continue
+    if (word >= 2 && word <= leadCounts[sentence - 1]) starts[sentence] = word
+  }
+  return starts
+}
+
 export function seamPrompt(sentences: readonly string[], seamsBySentence: readonly Seam[][]): string {
   const lines: string[] = []
   sentences.forEach((sentence, i) => {
@@ -316,21 +386,31 @@ export function applySplits(
   sentences: readonly string[],
   labels: readonly SortLabel[],
   seamsBySentence: readonly Seam[][],
-  votes: SeamVotes
-): { sentences: string[]; labels: SortLabel[] } {
-  const out: { sentences: string[]; labels: SortLabel[] } = { sentences: [], labels: [] }
+  votes: SeamVotes,
+  starts: LeadStarts = {},
+  group = 'run'
+): { sentences: string[]; labels: SortLabel[]; leads: Array<LeadIn | null> } {
+  const out: { sentences: string[]; labels: SortLabel[]; leads: Array<LeadIn | null> } = {
+    sentences: [],
+    labels: [],
+    leads: []
+  }
   sentences.forEach((sentence, i) => {
     const label = labels[i]
     const confirmed = votes[i + 1]
     if ((label === 'task' || label === 'idea') && confirmed && confirmed.length > 0) {
-      for (const piece of cutAtSeams(sentence, seamsBySentence[i] ?? [], confirmed)) {
+      const run = cutRun(sentence, seamsBySentence[i] ?? [], confirmed, starts[i + 1])
+      const lead: LeadIn | null = run.lead ? { text: run.lead, group: `${group}-${i + 1}` } : null
+      for (const piece of run.pieces) {
         out.sentences.push(piece)
         out.labels.push(label)
+        out.leads.push(lead)
       }
       return
     }
     out.sentences.push(sentence)
     out.labels.push(label)
+    out.leads.push(null)
   })
   return out
 }
@@ -455,20 +535,106 @@ export function rekeyVotes(votes: SeamVotes, kept: readonly number[]): SeamVotes
   return out
 }
 
-/** Copy each sentence into its bucket, in spoken order, untouched. */
+/**
+ * Copy each sentence into its bucket, in spoken order, untouched. An
+ * item with a lead-in (US-062) nests under it: the first item of a run
+ * in a file carries the lead line in front of it, so the plan stays one
+ * entry per item and every count downstream stays an item count.
+ */
 export function planFiling(
   sentences: string[],
   labels: SortLabel[],
-  link: { time: string; inboxFile: string; tasksFile: string; ideasFile: string }
+  link: { time: string; inboxFile: string; tasksFile: string; ideasFile: string },
+  leads: ReadonlyArray<LeadIn | null> = []
 ): FiledLines {
   const plan: FiledLines = { tasks: [], ideas: [], notes: [] }
   const taskLink = relativeLink(link.tasksFile, link.inboxFile)
   const ideaLink = relativeLink(link.ideasFile, link.inboxFile)
+  const open: Record<'task' | 'idea', string | null> = { task: null, idea: null }
   sentences.forEach((sentence, i) => {
     const label = labels[i]
-    if (label === 'task') plan.tasks.push(taskLine(sentence, link.time, taskLink))
-    else if (label === 'idea') plan.ideas.push(ideaLine(sentence, link.time, ideaLink))
-    else plan.notes.push(sentence)
+    if (label !== 'task' && label !== 'idea') {
+      plan.notes.push(sentence)
+      return
+    }
+    const line = label === 'task' ? taskLine(sentence, link.time, taskLink) : ideaLine(sentence, link.time, ideaLink)
+    const lead = leads[i] ?? null
+    let entry = line
+    if (lead === null) {
+      open[label] = null
+    } else {
+      entry = `  ${line}`
+      if (open[label] !== lead.group) {
+        entry = `- ${leadLine(lead.text)}\n${entry}`
+        open[label] = lead.group
+      }
+    }
+    if (label === 'task') plan.tasks.push(entry)
+    else plan.ideas.push(entry)
   })
   return plan
+}
+
+/** A lead-in as it is filed: its words, closed with one colon. */
+export function leadLine(text: string): string {
+  return `${text.replace(/[\s,;:.]+$/, '')}:`
+}
+
+// A word as the lead-in question numbers it: any run of non-spaces.
+const WORD = /\S+/g
+
+/**
+ * The words the lead-in question offers for a sentence (US-062): the
+ * first side of its first candidate seam, numbered from one. Empty when
+ * the sentence has no seam or that side is a single word, since then
+ * there is nothing to introduce a run.
+ */
+export function leadWords(sentence: string, seams: readonly Seam[]): string[] {
+  if (seams.length === 0) return []
+  const words = sentence.slice(0, seams[0].start).match(WORD) ?? []
+  return words.length >= 2 ? words : []
+}
+
+/**
+ * Split a run's first piece where the first item begins: the words
+ * before word `start` are the lead-in. Null when there is no lead-in
+ * to take (start 1, out of range, or either side left empty).
+ */
+export function splitLeadIn(piece: string, start: number): { lead: string; item: string } | null {
+  if (!Number.isInteger(start) || start <= 1) return null
+  const words = [...piece.matchAll(WORD)]
+  if (start > words.length) return null
+  const at = words[start - 1].index ?? 0
+  const lead = piece.slice(0, at).trim().replace(/[\s,;:]+$/, '')
+  const item = piece.slice(at).trim()
+  if (lead.length === 0 || item.length === 0) return null
+  return { lead, item }
+}
+
+/**
+ * Cut a sentence at its confirmed seams and, when that makes a run of
+ * two or more items, take the lead-in the model pointed at and trim the
+ * run's final period so the items match. Every word lands once: in the
+ * lead-in or in an item. A sentence left whole is returned as it was.
+ */
+export function cutRun(
+  sentence: string,
+  seams: readonly Seam[],
+  confirmed: readonly number[],
+  start?: number
+): { lead: string | null; pieces: string[] } {
+  const pieces = cutAtSeams(sentence, seams, confirmed)
+  if (pieces.length < 2) return { lead: null, pieces }
+  // The run's final period goes, unless it belongs to an ellipsis or
+  // an abbreviation ("etc.", "Dr."): that period is part of the word
+  // (review gate 2026-09-23, the same class as the 2026-09-20 "Dr." fix).
+  const last = pieces.length - 1
+  if (!ABBREVIATION.test(pieces[last])) {
+    const trimmed = pieces[last].replace(/(?<!\.)\.$/, '').trim()
+    if (trimmed.length > 0) pieces[last] = trimmed
+  }
+  const offered = leadWords(sentence, seams).length
+  const split = start !== undefined && start <= offered ? splitLeadIn(pieces[0], start) : null
+  if (split) pieces[0] = split.item
+  return { lead: split ? split.lead : null, pieces }
 }

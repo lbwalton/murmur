@@ -22,7 +22,7 @@ describe('piecesToCompare', () => {
       { local: 2, vote: vet, item: items[0] }
     ]
     const { cut, whole } = piecesToCompare(related, sentences, ['task', 'task', 'idea'], seams, { 1: [1] })
-    expect(cut).toEqual([{ local: 0, label: 'task', pieces: ['Pay the gas bill', 'call the vet.'] }])
+    expect(cut).toEqual([{ local: 0, label: 'task', pieces: ['Pay the gas bill', 'call the vet'], lead: null }])
     // No seam vote for sentence 3, no seam at all in sentence 2.
     expect(whole.map((w) => w.local)).toEqual([1, 2])
   })
@@ -30,7 +30,7 @@ describe('piecesToCompare', () => {
   it('cuts a related idea the same way', () => {
     const related: RelatedLine[] = [{ local: 0, vote: vet, item: items[0] }]
     const { cut } = piecesToCompare(related, sentences, ['idea', 'task', 'task'], seams, { 1: [1] })
-    expect(cut).toEqual([{ local: 0, label: 'idea', pieces: ['Pay the gas bill', 'call the vet.'] }])
+    expect(cut).toEqual([{ local: 0, label: 'idea', pieces: ['Pay the gas bill', 'call the vet'], lead: null }])
   })
 
   it('never cuts a note, and a cut that yields one piece stays whole', () => {
@@ -40,10 +40,21 @@ describe('piecesToCompare', () => {
   })
 })
 
+describe('piecesToCompare with a lead-in (US-062)', () => {
+  it('compares the pieces bare and carries the lead-in on the set', () => {
+    const sentence = 'I need to buy eggs, milk, and bread.'
+    const related: RelatedLine[] = [{ local: 0, vote: vet, item: items[0] }]
+    const { cut } = piecesToCompare(related, [sentence], ['task'], [findSeams(sentence)], { 1: [1, 2] }, { 1: 5 })
+    expect(cut).toEqual([
+      { local: 0, label: 'task', pieces: ['eggs', 'milk', 'bread'], lead: { text: 'I need to buy', group: 'run-1' } }
+    ])
+  })
+})
+
 describe('flattenPieces and assignPieceVotes', () => {
   const cut = [
-    { local: 0, label: 'task' as const, pieces: ['Pay the gas bill', 'call the vet.'] },
-    { local: 3, label: 'idea' as const, pieces: ['a smaller pill', 'a quieter tray'] }
+    { local: 0, label: 'task' as const, pieces: ['Pay the gas bill', 'call the vet.'], lead: null },
+    { local: 3, label: 'idea' as const, pieces: ['a smaller pill', 'a quieter tray'], lead: { text: 'Maybe try', group: 'run-4' } }
   ]
 
   it('numbers every piece in sentence order with its sentence label', () => {
@@ -55,11 +66,11 @@ describe('flattenPieces and assignPieceVotes', () => {
 
   it('holds only the piece a vote tied to a real item and files the rest', () => {
     const { held, filed } = assignPieceVotes(cut, { 2: vet, 4: { relation: 'same', item: 99 } }, items)
-    expect(held).toEqual([{ local: 0, text: 'call the vet.', label: 'task', vote: vet, item: items[0] }])
+    expect(held).toEqual([{ local: 0, text: 'call the vet.', label: 'task', vote: vet, item: items[0], lead: null }])
     expect(filed).toEqual([
-      { local: 0, text: 'Pay the gas bill', label: 'task' },
-      { local: 3, text: 'a smaller pill', label: 'idea' },
-      { local: 3, text: 'a quieter tray', label: 'idea' }
+      { local: 0, text: 'Pay the gas bill', label: 'task', lead: null },
+      { local: 3, text: 'a smaller pill', label: 'idea', lead: { text: 'Maybe try', group: 'run-4' } },
+      { local: 3, text: 'a quieter tray', label: 'idea', lead: { text: 'Maybe try', group: 'run-4' } }
     ])
   })
 
@@ -67,8 +78,8 @@ describe('flattenPieces and assignPieceVotes', () => {
     const flight = { relation: 'completes' as const, item: 2 }
     const { held, filed } = assignPieceVotes(cut, { 1: vet, 2: flight }, items)
     expect(held).toEqual([
-      { local: 0, text: 'Pay the gas bill', label: 'task', vote: vet, item: items[0] },
-      { local: 0, text: 'call the vet.', label: 'task', vote: flight, item: items[1] }
+      { local: 0, text: 'Pay the gas bill', label: 'task', vote: vet, item: items[0], lead: null },
+      { local: 0, text: 'call the vet.', label: 'task', vote: flight, item: items[1], lead: null }
     ])
     expect(filed.map((f) => f.local)).toEqual([3, 3])
   })

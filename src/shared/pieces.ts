@@ -8,13 +8,16 @@
 // answered, the whole sentence is held as before, carrying its pieces
 // so File it anyway still lands one line per item.
 import { type ContextItem, type RelatedLine, type RelationVote, type RelationVotes, pickRelated } from './compare'
-import { type Seam, type SeamVotes, type SortLabel, cutAtSeams } from './sorter'
+import { type LeadIn, type LeadStarts, type Seam, type SeamVotes, type SortLabel, cutRun } from './sorter'
 
 export interface PieceSet {
   /** Index of the sentence among the ones sent. */
   local: number
   label: SortLabel
   pieces: string[]
+  /** The run's lead-in (US-062): the pieces are compared bare, and
+   *  whichever of them files or is held later nests under it. */
+  lead: LeadIn | null
 }
 
 /**
@@ -27,19 +30,23 @@ export function piecesToCompare(
   sentences: readonly string[],
   labels: readonly SortLabel[],
   seamsBySentence: readonly Seam[][],
-  votes: SeamVotes
+  votes: SeamVotes,
+  starts: LeadStarts = {},
+  group = 'run'
 ): { cut: PieceSet[]; whole: RelatedLine[] } {
   const cut: PieceSet[] = []
   const whole: RelatedLine[] = []
   for (const line of related) {
     const label = labels[line.local]
     const confirmed = votes[line.local + 1]
-    const pieces =
+    const run =
       (label === 'task' || label === 'idea') && confirmed && confirmed.length > 0
-        ? cutAtSeams(sentences[line.local] ?? '', seamsBySentence[line.local] ?? [], confirmed)
-        : []
-    if (pieces.length > 1 && (label === 'task' || label === 'idea')) cut.push({ local: line.local, label, pieces })
-    else whole.push(line)
+        ? cutRun(sentences[line.local] ?? '', seamsBySentence[line.local] ?? [], confirmed, starts[line.local + 1])
+        : { lead: null, pieces: [] }
+    if (run.pieces.length > 1 && (label === 'task' || label === 'idea')) {
+      const lead = run.lead ? { text: run.lead, group: `${group}-${line.local + 1}` } : null
+      cut.push({ local: line.local, label, pieces: run.pieces, lead })
+    } else whole.push(line)
   }
   return { cut, whole }
 }
@@ -63,12 +70,14 @@ export interface HeldPiece {
   label: SortLabel
   vote: RelationVote
   item: ContextItem
+  lead: LeadIn | null
 }
 
 export interface FiledPiece {
   local: number
   text: string
   label: SortLabel
+  lead: LeadIn | null
 }
 
 /**
@@ -83,7 +92,9 @@ export function assignPieceVotes(
   items: readonly ContextItem[]
 ): { held: HeldPiece[]; filed: FiledPiece[] } {
   const owners: FiledPiece[] = []
-  for (const set of cut) for (const piece of set.pieces) owners.push({ local: set.local, text: piece, label: set.label })
+  for (const set of cut) {
+    for (const piece of set.pieces) owners.push({ local: set.local, text: piece, label: set.label, lead: set.lead })
+  }
   const flat = flattenPieces(cut)
   const all = flat.sentences.map((_, i) => i)
   const { related, kept } = pickRelated(all, flat.labels, relations, items)

@@ -122,17 +122,35 @@ Sorting is off by default. With it off, murmur writes the inbox and nothing else
 
 The model never writes a word of your note. murmur splits the note into numbered sentences (a dictated list stays one line per item) and sends the numbered list. The model replies with a small JSON object that assigns each number one label: task, idea, or note. murmur then copies the original sentences, untouched, into the right files. Rewording is impossible by construction.
 
-A sentence can still hold several items, because a brain dump speaks in comma runs: "tomorrow we are getting groceries, getting tacos, and going to the playground." murmur handles that without ever asking the model for text. It finds the places the sentence could be cut itself: at a comma or semicolon followed by a space (so 1,000 is never a cut), and at the words and, then, and also between two runs of words, with a compound like ", and then" counting as one cut. A cut is never offered inside a quote or a parenthesis, and never where one side would be only a joining word. Each possible cut is numbered and shown to the model with its two sides, and the model only votes whether that cut separates two things you would act on separately. murmur cuts at the cuts that came back yes and removes only the joining words, so every word you said lands on exactly one line, in order:
+A sentence can still hold several items, because a brain dump speaks in comma runs: "tomorrow we are getting groceries, getting tacos, and going to the playground." murmur handles that without ever asking the model for text. It finds the places the sentence could be cut itself: at a comma or semicolon followed by a space (so 1,000 is never a cut), and at the words and, then, and also between two runs of words, with a compound like ", and then" counting as one cut. A cut is never offered inside a quote or a parenthesis, and never where one side would be only a joining word. Each possible cut is numbered and shown to the model with its two sides, and the model only votes whether that cut separates two things you would act on separately. murmur cuts at the cuts that came back yes and removes only the joining words and the run's final period. For a sentence it cut, the model also points at the word where the first item begins (a word number, never text), and the words before it become a lead-in line, so every word you said lands exactly once, in order:
 
 ```
-- [ ] Tomorrow we are getting groceries ([22:32](inbox/2026-09-20.md))
-- [ ] getting tacos ([22:32](inbox/2026-09-20.md))
-- [ ] going to the playground. ([22:32](inbox/2026-09-20.md))
+- Tomorrow we are:
+  - [ ] getting groceries ([22:32](inbox/2026-09-20.md))
+  - [ ] getting tacos ([22:32](inbox/2026-09-20.md))
+  - [ ] going to the playground ([22:32](inbox/2026-09-20.md))
 ```
 
-Only tasks and ideas are cut; a note stays as one sentence in the inbox anyway. A sentence with no possible cut, one the model voted to keep whole, or a vote that names a cut that does not exist files as one line, and the rest of the note is unaffected. "Eggs and bacon" in a sentence about shopping becomes two items; "rock and roll" stays one, because the model votes on meaning while murmur owns the words. A list you dictated as a list is already one line per item and is never cut again. A list's heading, the line ending in a colon right above its items ("I need to buy:" over eggs, milk, and bread, which is how Smart lists writes a spoken list), is never sent to the model: it names the items rather than being a task or an idea, so it stays in the inbox and the items file on their own.
+Only tasks and ideas are cut; a note stays as one sentence in the inbox anyway. A sentence with no possible cut, one the model voted to keep whole, or a vote that names a cut that does not exist files as one line, and the rest of the note is unaffected. "Eggs and bacon" in a sentence about shopping becomes two items; "rock and roll" stays one, because the model votes on meaning while murmur owns the words. A list you dictated as a list is already one line per item and is never cut again. A list's heading, the line ending in a colon right above its items ("I need to buy:" over eggs, milk, and bread, which is how Smart lists writes a spoken list), is never sent to the model: it names the items rather than being a task or an idea, so it becomes their lead-in line, below.
 
 The reply is checked strictly before anything is written: every sentence must be labeled exactly once, only those three labels count, and anything else (chatter around the JSON with numbers missing, an invented sentence number, a label that is not one of the three, a reply that is not JSON at all) rejects the whole sort. The cut votes are checked per sentence: a vote that is not a list of numbers, or names a cut that does not exist, means that one sentence stays whole while the others still split. The relation votes are checked the same way: a malformed vote, or one naming an item that is not in the list, means new for that line only, so a bad reply can never hide a line. Sorting works best at Full formatting, where sentences arrive punctuated; at Off, an unpunctuated ramble is one long sentence and gets one label.
+
+## Why do my list items sit under a line like "I need to buy:"?
+
+That line is the lead-in: the words that introduced the list when you said it. Say "I need to buy apples, rice, and coffee" and todo.md gets:
+
+```
+- I need to buy:
+  - [ ] apples ([08:59](notes/2026-09-23.md))
+  - [ ] rice ([08:59](notes/2026-09-23.md))
+  - [ ] coffee ([08:59](notes/2026-09-23.md))
+```
+
+The lead-in is a plain line, never a checkbox, so it never counts as a task: reminders count the three items, and nothing ever asks you to tick "I need to buy". It keeps the context right where you read your list. Ideas nest the same way in ideas.md.
+
+You get the same shape whichever way cleanup wrote your words. When Smart lists turned them into a list ("I need to buy:" over dash lines), that heading becomes the lead-in. When cleanup kept a sentence, murmur cuts it at the commas and asks the model where the first item begins: a word number on a chat connection, a choice among the sentence's opening words on a decision connection. The model can only point; it cannot add or change a word. When it points at the first word, or its answer is missing or malformed, there is no lead-in and the sentence files as cut lines exactly as before.
+
+A piece held as a duplicate keeps its lead-in, so File it anyway lands it under a lead line of its own. The notes panel shows it that way too, for example Held: I need to buy: apples. Your inbox note is never changed; it keeps the sentence exactly as you said it.
 
 ## What happens when a sort is rejected or fails?
 

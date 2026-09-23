@@ -6,10 +6,14 @@ import {
   applySplits,
   confirmedSeams,
   cutAtSeams,
+  cutRun,
   findSeams,
   headingPrefix,
   holdBelow,
   ideaLine,
+  leadLine,
+  leadPrompt,
+  leadWords,
   numberedList,
   planFiling,
   rekeyVotes,
@@ -19,7 +23,9 @@ import {
   sanitizeTopic,
   seamPrompt,
   settle,
+  splitLeadIn,
   splitSentences,
+  splitUnits,
   taskLine,
   validateSort
 } from './sorter'
@@ -429,8 +435,11 @@ describe('applySplits', () => {
     const labels: SortLabel[] = ['task', 'note', 'idea']
     const seams = sentences.map(findSeams)
     const out = applySplits(sentences, labels, seams, { 1: [1], 2: [1], 3: [] })
-    expect(out.sentences).toEqual(['A', 'B.', 'C, then D.', 'E, F.'])
+    // A cut run's final period is trimmed so its items match (US-062);
+    // a sentence left whole keeps every character.
+    expect(out.sentences).toEqual(['A', 'B', 'C, then D.', 'E, F.'])
     expect(out.labels).toEqual(['task', 'task', 'note', 'idea'])
+    expect(out.leads).toEqual([null, null, null, null])
   })
 })
 
@@ -487,5 +496,116 @@ describe('held lines (US-058)', () => {
     expect(rekeyVotes({ 1: [1], 3: [2] }, [0, 2])).toEqual({ 1: [1], 2: [2] })
     // A vote on a held sentence is dropped with it.
     expect(rekeyVotes({ 2: [1] }, [0, 2])).toEqual({})
+  })
+})
+
+describe('lead-ins (US-062)', () => {
+  const sentence = 'I need to buy apples, rice, and coffee.'
+  const seams = findSeams(sentence)
+
+  it('a list heading becomes the lead-in of the list lines under it', () => {
+    const { sentences, leads } = splitUnits('Call Sam. I need to buy:\n- eggs\n- milk\nDone for today.')
+    expect(sentences).toEqual(['Call Sam.', '- eggs', '- milk', 'Done for today.'])
+    expect(leads.map((l) => l?.text ?? null)).toEqual([null, 'I need to buy:', 'I need to buy:', null])
+    expect(leads[1]?.group).toBe(leads[2]?.group)
+  })
+
+  it('two headings in one note are two groups', () => {
+    const { leads } = splitUnits('Buy:\n- eggs\nBuy:\n- milk')
+    expect(leads[0]?.group).not.toBe(leads[1]?.group)
+  })
+
+  it('offers the first side of the first seam as numbered words', () => {
+    expect(leadWords(sentence, seams)).toEqual(['I', 'need', 'to', 'buy', 'apples'])
+    expect(leadWords('Call the vet.', findSeams('Call the vet.'))).toEqual([])
+    expect(leadWords('Eggs, milk.', findSeams('Eggs, milk.'))).toEqual([])
+  })
+
+  it('splits a piece where the first item begins and never loses a word', () => {
+    expect(splitLeadIn('I need to buy apples', 5)).toEqual({ lead: 'I need to buy', item: 'apples' })
+    expect(splitLeadIn('For the party: chips', 4)).toEqual({ lead: 'For the party', item: 'chips' })
+    expect(splitLeadIn('I need to buy apples', 1)).toBeNull()
+    expect(splitLeadIn('I need to buy apples', 6)).toBeNull()
+    expect(splitLeadIn('I need to buy apples', 2.5)).toBeNull()
+  })
+
+  it('cuts a run into a lead-in and matching items, trimming only the final period', () => {
+    expect(cutRun(sentence, seams, [1, 2], 5)).toEqual({ lead: 'I need to buy', pieces: ['apples', 'rice', 'coffee'] })
+    // Every word lands once: in the lead-in or in an item.
+    const run = cutRun(sentence, seams, [1, 2], 5)
+    expect([run.lead, ...run.pieces].join(' ')).toBe('I need to buy apples rice coffee')
+    expect(cutRun(sentence, seams, [1, 2])).toEqual({ lead: null, pieces: ['I need to buy apples', 'rice', 'coffee'] })
+    expect(cutRun('Buy eggs, and wait...', findSeams('Buy eggs, and wait...'), [1]).pieces).toEqual(['Buy eggs', 'wait...'])
+    expect(cutRun('Is it eggs, or milk?', findSeams('Is it eggs, or milk?'), [1]).pieces.at(-1)).toBe('or milk?')
+    // An abbreviation's period is part of the word, never trimmed.
+    const etc = 'Buy milk, eggs, bread, etc.'
+    expect(cutRun(etc, findSeams(etc), [1, 2, 3]).pieces.at(-1)).toBe('etc.')
+    const doctor = 'Call the vet, and see Dr.'
+    expect(cutRun(doctor, findSeams(doctor), [1]).pieces.at(-1)).toBe('see Dr.')
+  })
+
+  it('takes no lead-in from a sentence left whole or a start beyond the words offered', () => {
+    expect(cutRun(sentence, seams, [], 5)).toEqual({ lead: null, pieces: [sentence] })
+    expect(cutRun(sentence, seams, [9], 5)).toEqual({ lead: null, pieces: [sentence] })
+    expect(cutRun(sentence, seams, [1, 2], 6).lead).toBeNull()
+  })
+
+  it('closes a lead line with exactly one colon', () => {
+    expect(leadLine('I need to buy')).toBe('I need to buy:')
+    expect(leadLine('I need to buy:')).toBe('I need to buy:')
+    expect(leadLine('Groceries, ')).toBe('Groceries:')
+  })
+
+  it('applySplits carries the lead-in on every piece of the run', () => {
+    const out = applySplits([sentence], ['task'], [seams], { 1: [1, 2] }, { 1: 5 }, 'n')
+    expect(out.sentences).toEqual(['apples', 'rice', 'coffee'])
+    expect(out.leads.every((l) => l?.text === 'I need to buy' && l.group === 'n-1')).toBe(true)
+    const none = applySplits([sentence], ['note'], [seams], { 1: [1, 2] }, { 1: 5 })
+    expect(none.sentences).toEqual([sentence])
+    expect(none.leads).toEqual([null])
+  })
+
+  it('files the lead line once with the run nested under it, in each file it reaches', () => {
+    const lead = { text: 'I need to buy', group: 'g1' }
+    const plan = planFiling(
+      ['Call Sam.', 'apples', 'rice', 'coffee', 'a smoothie bar'],
+      ['task', 'task', 'task', 'task', 'idea'],
+      { time: '08:59', inboxFile: 'murmur/inbox/2026-09-23.md', tasksFile: 'murmur/todo.md', ideasFile: 'murmur/ideas.md' },
+      [null, lead, lead, lead, lead]
+    )
+    expect(plan.tasks).toEqual([
+      '- [ ] Call Sam. ([08:59](inbox/2026-09-23.md))',
+      '- I need to buy:\n  - [ ] apples ([08:59](inbox/2026-09-23.md))',
+      '  - [ ] rice ([08:59](inbox/2026-09-23.md))',
+      '  - [ ] coffee ([08:59](inbox/2026-09-23.md))'
+    ])
+    expect(plan.ideas).toEqual(['- I need to buy:\n  - a smoothie bar ([08:59](inbox/2026-09-23.md))'])
+  })
+
+  it('a second run with the same words gets its own lead line', () => {
+    const plan = planFiling(
+      ['eggs', 'milk'],
+      ['task', 'task'],
+      { time: '09:00', inboxFile: 'i.md', tasksFile: 't.md', ideasFile: 'd.md' },
+      [
+        { text: 'Buy', group: 'a' },
+        { text: 'Buy', group: 'b' }
+      ]
+    )
+    expect(plan.tasks[1].startsWith('- Buy:\n')).toBe(true)
+  })
+
+  it('the chat reply may carry starts; bad values mean no lead-in for that sentence only', () => {
+    const leadCounts = [0, 5, 3]
+    const v = validateSort(3, '{"1":"note","2":"task","3":"task","starts":{"2":5,"3":9}}', { leadCounts })
+    expect(v).toMatchObject({ ok: true, starts: { 2: 5 } })
+    const odd = validateSort(3, '{"1":"note","2":"task","3":"task","starts":"five"}', { leadCounts })
+    expect(odd).toMatchObject({ ok: true, starts: {} })
+    // Without lead words offered, starts is not a reserved key.
+    expect(validateSort(1, '{"1":"task","starts":{}}')).toMatchObject({ ok: false, reason: 'extra sentences' })
+  })
+
+  it('numbers the lead words for the chat model', () => {
+    expect(leadPrompt(['Call Sam.', sentence], [[], seams])).toBe('2: 1 I | 2 need | 3 to | 4 buy | 5 apples')
   })
 })

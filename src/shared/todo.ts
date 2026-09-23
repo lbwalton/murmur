@@ -71,7 +71,8 @@ export function parseListItems(text: string): ListItem[] {
   const items: ListItem[] = []
   let group = ''
   let fenced = false
-  for (const line of text.split(/\r?\n/)) {
+  const lines = text.split(/\r?\n/)
+  for (const [index, line] of lines.entries()) {
     if (FENCE.test(line)) {
       fenced = !fenced
       continue
@@ -90,11 +91,24 @@ export function parseListItems(text: string): ListItem[] {
     }
     const bullet = BULLET.exec(line)
     if (bullet) {
+      if (isLeadLine(line, lines, index)) continue
       const itemText = bullet[1].replace(TRAILING_LINK, '').trim()
       if (itemText.length > 0) items.push({ text: itemText, done: false, group, checkbox: false })
     }
   }
   return items
+}
+
+// A lead line (US-062) introduces the items nested under it, such as
+// "- I need to buy:" over indented checkboxes. It is context, never an
+// item: a plain bullet ending in a colon whose next non-empty line is a
+// deeper bullet.
+function isLeadLine(line: string, lines: readonly string[], index: number): boolean {
+  if (!line.trimEnd().endsWith(':')) return false
+  const next = lines.slice(index + 1).find((l) => l.trim().length > 0)
+  if (next === undefined) return false
+  const indent = (l: string): number => l.length - l.trimStart().length
+  return /^\s*[-*+]\s/.test(next) && indent(next) > indent(line)
 }
 
 export type TickResult = { ok: true; text: string } | { ok: false; reason: 'not found' | 'already done' }

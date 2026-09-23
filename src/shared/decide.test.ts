@@ -147,3 +147,25 @@ describe('readDecisionAnswers', () => {
     })
   })
 })
+
+describe('lead-in question (US-062)', () => {
+  const run = 'I need to buy apples, rice, and coffee.'
+  const req = buildDecisionRequest('jev-latest', ['Call Sam.', run], [[], findSeams(run)])
+
+  it('asks one Choice over the first side word numbers, only where a run is possible', () => {
+    expect(req.questions.lead_1).toBeUndefined()
+    const q = req.questions.lead_2
+    expect(q.type).toBe('choice')
+    expect(q.criteria).toEqual({ '1': 'I', '2': 'need', '3': 'to', '4': 'buy', '5': 'apples' })
+  })
+
+  it('reads a word number from 2 to the count offered, and nothing else', () => {
+    const labels = { label_1: { type: 'choice', choice: 'note' }, label_2: { type: 'choice', choice: 'task' } }
+    const read = (lead: unknown) =>
+      readDecisionAnswers({ ...labels, lead_2: lead }, 2, [0, 2], 0, [0, 5])
+    expect(read({ type: 'choice', choice: '5' })).toMatchObject({ ok: true, starts: { 2: 5 } })
+    expect(read({ type: 'choice', choice: '1' })).toMatchObject({ ok: true, starts: {} })
+    expect(read({ type: 'choice', choice: '6' })).toMatchObject({ ok: true, starts: {} })
+    expect(read(undefined)).toMatchObject({ ok: true, starts: {} })
+  })
+})

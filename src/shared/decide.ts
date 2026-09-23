@@ -7,7 +7,16 @@
 // into the same SortVerdict the chat path produces, so everything
 // downstream of the verdict never knows which model answered.
 import { type ContextItem, type RelationVotes } from './compare'
-import { SORT_LABELS, type Seam, type SeamVotes, type SortLabel, type SortVerdict, seamSides } from './sorter'
+import {
+  type LeadStarts,
+  SORT_LABELS,
+  type Seam,
+  type SeamVotes,
+  type SortLabel,
+  type SortVerdict,
+  leadWords,
+  seamSides
+} from './sorter'
 
 export const DECISION_LABEL_CRITERIA: Record<SortLabel, string> = {
   task: 'Something the speaker intends to do, must do, or wants done: an action with an implied owner.',
@@ -84,6 +93,26 @@ export function buildDecisionRequest(
         criteria: itemOptions
       }
     }
+    // US-062: where the first item of a run begins, as a word number.
+    // Each option is a number whose description is that word, so the
+    // answer can only ever point; it cannot supply text.
+    const words = leadWords(sentence, seamsBySentence[i] ?? [])
+    if (words.length > 0) {
+      const options: Record<string, string> = {}
+      words.forEach((word, j) => {
+        options[String(j + 1)] = word
+      })
+      questions[`lead_${n}`] = {
+        type: 'choice',
+        instructions: {
+          question:
+            'If this sentence runs through several items, at which word does the FIRST item begin? The words before it only introduce the run (for example I need to buy). Pick 1 when it is not a run of items or nothing introduces it.',
+          sentence: n,
+          text: sentence
+        },
+        criteria: options
+      }
+    }
     seamsBySentence[i]?.forEach((seam, j) => {
       const { left, right } = seamSides(sentence, seam)
       questions[`seam_${n}_${j + 1}`] = {
@@ -130,7 +159,8 @@ export function readDecisionAnswers(
   answers: unknown,
   count: number,
   seamCounts: readonly number[],
-  itemCount = 0
+  itemCount = 0,
+  leadCounts: readonly number[] = []
 ): SortVerdict {
   if (!isRecord(answers)) return { ok: false, reason: 'missing sentences' }
   const labels: SortLabel[] = []
@@ -169,5 +199,16 @@ export function readDecisionAnswers(
       relations[n] = { relation: kind, item }
     }
   }
-  return { ok: true, labels, topic: '', seams, confidence, relations }
+  // Lead-ins (US-062): a word number from 2 to the count offered; any
+  // other answer, or none, means no lead-in for that sentence.
+  const starts: LeadStarts = {}
+  leadCounts.forEach((offered, i) => {
+    if (offered < 2) return
+    const answer = answers[`lead_${i + 1}`]
+    if (!isRecord(answer)) return
+    const word = Number(answer.choice)
+    if (Number.isInteger(word) && word >= 2 && word <= offered) starts[i + 1] = word
+  })
+  const offeredLeads = leadCounts.some((n) => n >= 2)
+  return { ok: true, labels, topic: '', seams, confidence, relations, ...(offeredLeads ? { starts } : {}) }
 }
