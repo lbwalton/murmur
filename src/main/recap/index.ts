@@ -6,7 +6,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Notification, app, ipcMain } from 'electron'
 import { dayKey, eventDay } from '../../shared/history'
-import { shouldFire } from '../../shared/recap'
+import { type RecapSummary, recapBody, shouldFire } from '../../shared/recap'
+import { dayMinutesBack } from '../../shared/timeback'
 import { getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { readStatsHistory } from '../history'
@@ -34,24 +35,27 @@ function writeState(state: RecapState): void {
   writeFileSync(stateFile, JSON.stringify(state))
 }
 
-function todaySummary(): { sessions: number; words: number; minutes: number } {
+function todaySummary(): RecapSummary {
   const today = dayKey(Date.now())
+  // Transforms are recoverability records, not speech: stats never see them.
+  const events = readStatsHistory()
   let sessions = 0
   let words = 0
   let minutes = 0
-  for (const event of readStatsHistory()) {
+  for (const event of events) {
     if (eventDay(event) !== today) continue
     sessions += 1
     words += event.words
     minutes += event.durationMs / 60_000
   }
-  return { sessions, words, minutes: Math.round(minutes * 10) / 10 }
-}
-
-function recapBody(): string {
-  const { sessions, words, minutes } = todaySummary()
-  if (sessions === 0) return 'A quiet day: no dictations. Your hotkey misses you.'
-  return `${sessions} ${sessions === 1 ? 'session' : 'sessions'}, ${minutes} minutes, ${words.toLocaleString()} words today.`
+  const back = dayMinutesBack(events, today, getSettings().timeBack.typingWpm)
+  return {
+    sessions,
+    words,
+    minutes: Math.round(minutes * 10) / 10,
+    // The same floor and rounding the analytics buckets apply.
+    minutesBack: Math.round(Math.max(0, back) * 10) / 10
+  }
 }
 
 function fireNotification(): void {
@@ -62,7 +66,7 @@ function fireNotification(): void {
   const supported = Notification.isSupported()
   console.log('[murmur] recap notification: supported =', supported)
   if (!supported) return
-  const notification = new Notification({ title: 'murmur recap', body: recapBody() })
+  const notification = new Notification({ title: 'murmur recap', body: recapBody(todaySummary()) })
   notification.on('click', () => onOpenWrapup?.())
   notification.on('show', () => console.log('[murmur] recap notification: handed to the OS'))
   notification.show()
@@ -88,15 +92,26 @@ export function initRecap(handlers: { openWrapup: () => void }): void {
   // The test button fires immediately without consuming today's recap.
   ipcMain.handle('recap:test', () => {
     fireNotification()
-    return recapBody()
+    return recapBody(todaySummary())
   })
 
   registerSmokeCheck('recap', () => {
     // Scheduler math plus the wrap-up data query, no UI notifications.
+    // The body builder is exercised on a known day so the time back
+    // clause is proven to join the sentence (US-060).
     const summary = todaySummary()
     const mathHolds =
       shouldFire(Date.now(), '00:00', null) &&
       !shouldFire(Date.now(), '00:00', dayKey(Date.now()))
-    return mathHolds && typeof summary.sessions === 'number' && summary.sessions >= 0
+    const clauseJoins = recapBody({ sessions: 4, words: 1240, minutes: 12, minutesBack: 19 }).endsWith(
+      ' 19 minutes back.'
+    )
+    return (
+      mathHolds &&
+      clauseJoins &&
+      typeof summary.sessions === 'number' &&
+      summary.sessions >= 0 &&
+      summary.minutesBack >= 0
+    )
   })
 }

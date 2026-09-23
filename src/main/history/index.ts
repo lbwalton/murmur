@@ -59,7 +59,21 @@ export function recordSession(input: {
   if (win && !win.isDestroyed()) win.webContents.send('history:appended', event)
   void notifyNewAchievements()
   void notifyNewPromotions()
+  void notifyTimeBack(event)
   return event
+}
+
+// Time back arrives after every take (US-060): the tray tooltip
+// restates, and a 30-minute mark crossed by this take gets its nod.
+// Lazily imported like the other announcers so a failure here can
+// never cost the dictation that was just recorded.
+async function notifyTimeBack(event: SessionEvent): Promise<void> {
+  try {
+    const { sessionLanded } = await import('../timeback')
+    sessionLanded(event)
+  } catch (error) {
+    console.error('[murmur] time back notify failed:', error)
+  }
 }
 
 // Achievement truth derives from the log; this state file only tracks

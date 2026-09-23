@@ -1208,6 +1208,21 @@ export function App(): React.JSX.Element {
             onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
           />
         </Row>
+        <Row
+          label="Milestone alerts"
+          desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
+        >
+          <select
+            className="field"
+            value={settings.timeBack.milestones ? 'on' : 'off'}
+            onChange={(e) =>
+              void update({ timeBack: { ...settings.timeBack, milestones: e.target.value === 'on' } })
+            }
+          >
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
+        </Row>
       </section>
 
       {isMac && (

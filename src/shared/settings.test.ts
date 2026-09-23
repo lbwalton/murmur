@@ -59,7 +59,7 @@ describe('mergeSettings', () => {
   })
 
   it('ships time back at 40 wpm and repairs a typing speed that cannot be used', () => {
-    expect(DEFAULT_SETTINGS.timeBack).toEqual({ typingWpm: 40 })
+    expect(DEFAULT_SETTINGS.timeBack).toEqual({ typingWpm: 40, milestones: true })
     const at = (typingWpm: unknown): number =>
       mergeSettings(DEFAULT_SETTINGS, { timeBack: { typingWpm } }).timeBack.typingWpm
     expect(at(65)).toBe(65)
@@ -67,6 +67,9 @@ describe('mergeSettings', () => {
     expect(at(Number.NaN)).toBe(40)
     expect(at(0)).toBe(10)
     expect(at(9000)).toBe(200)
+    // The switch takes only a boolean; a foreign value keeps the default.
+    expect(mergeSettings(DEFAULT_SETTINGS, { timeBack: { milestones: 'yes' } }).timeBack.milestones).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { timeBack: { milestones: false } }).timeBack.milestones).toBe(false)
   })
 
   it('preserves unknown keys from newer builds', () => {

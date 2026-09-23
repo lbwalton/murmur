@@ -86,6 +86,10 @@ export interface Settings {
    *  zero or invent hours. */
   timeBack: {
     typingWpm: number
+    /** The 30-minute nod (US-060): a notification each time today's
+     *  time back crosses a mark. On by default, a celebration like
+     *  promotions and unlocks, with a switch those two lack. */
+    milestones: boolean
   }
   /** Brain dump: a second chord dictates into a markdown file instead
    *  of the cursor. The folder is any folder (an Obsidian vault is one);
@@ -225,7 +229,8 @@ export const DEFAULT_SETTINGS: Settings = {
     time: '17:30'
   },
   timeBack: {
-    typingWpm: DEFAULT_TYPING_WPM
+    typingWpm: DEFAULT_TYPING_WPM,
+    milestones: true
   },
   notes: {
     binding: '',
