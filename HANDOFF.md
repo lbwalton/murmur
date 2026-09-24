@@ -11,6 +11,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Shipped
 
+- [ ] v0.1.7 published 2026-09-24 (brain dump notes with sorting, lead-ins, duplicates and reminders; transform; the first press after a wake). Both platforms, notarized, auto-update live; installed on the Mac. On the PC: let it update itself (murmur checks at launch), then three quick checks. (1) The home tab's what's new line reads 0.1.7. (2) US-054 on Windows: in Notepad, select a sentence, hold the transform chord, say "make this shorter", and the shorter sentence replaces it; paste-last brings the original back. (3) US-052 on Windows: set one reminder time a couple of minutes ahead and confirm the notification arrives once.
+
 - [x] v0.1.6 published 2026-09-17: the full test-cycle release (smart lists, provider catalog and key ring, paste-last chord, license switching, diagnostics, the self-healing mic, tray and paste fixes, what's new, Eze Media LLC attribution). Both platforms, notarized, auto-update live.
 
 ## Live verification queue
