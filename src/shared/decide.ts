@@ -106,7 +106,7 @@ export function buildDecisionRequest(
         type: 'choice',
         instructions: {
           question:
-            'If this sentence runs through several items, at which word does the FIRST item begin? The words before it only introduce the run (for example I need to buy). Pick 1 when it is not a run of items or nothing introduces it.',
+            'If this sentence runs through several items, at which word does the FIRST item begin? The words before it only introduce the run (for example I need to buy, or For the party, I need). Pick 1 when it is not a run of items or nothing introduces it.',
           sentence: n,
           text: sentence
         },

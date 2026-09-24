@@ -515,8 +515,8 @@ describe('lead-ins (US-062)', () => {
     expect(leads[0]?.group).not.toBe(leads[1]?.group)
   })
 
-  it('offers the first side of the first seam as numbered words', () => {
-    expect(leadWords(sentence, seams)).toEqual(['I', 'need', 'to', 'buy', 'apples'])
+  it('offers every word before the last seam, bare of commas', () => {
+    expect(leadWords(sentence, seams)).toEqual(['I', 'need', 'to', 'buy', 'apples', 'rice'])
     expect(leadWords('Call the vet.', findSeams('Call the vet.'))).toEqual([])
     expect(leadWords('Eggs, milk.', findSeams('Eggs, milk.'))).toEqual([])
   })
@@ -544,9 +544,26 @@ describe('lead-ins (US-062)', () => {
     expect(cutRun(doctor, findSeams(doctor), [1]).pieces.at(-1)).toBe('see Dr.')
   })
 
+  it('reaches a first item past an unconfirmed clause comma (live-found 2026-09-23)', () => {
+    // "For the party" alone was all the old question offered, so the
+    // model could not point at chips and cut inside the lead-in.
+    const party = 'For the party, I need to buy chips, salsa, and plates.'
+    const partySeams = findSeams(party)
+    expect(leadWords(party, partySeams)).toEqual(['For', 'the', 'party', 'I', 'need', 'to', 'buy', 'chips', 'salsa'])
+    // Seam 1 (the clause comma) stays whole; seams 2 and 3 cut the run.
+    expect(cutRun(party, partySeams, [2, 3], 8)).toEqual({
+      lead: 'For the party, I need to buy',
+      pieces: ['chips', 'salsa', 'plates']
+    })
+    // A start past the first piece's words means no lead-in.
+    expect(cutRun(party, partySeams, [2, 3], 9).lead).toBeNull()
+  })
+
   it('takes no lead-in from a sentence left whole or a start beyond the words offered', () => {
     expect(cutRun(sentence, seams, [], 5)).toEqual({ lead: null, pieces: [sentence] })
     expect(cutRun(sentence, seams, [9], 5)).toEqual({ lead: null, pieces: [sentence] })
+    expect(cutRun(sentence, seams, [1, 2], 7).lead).toBeNull()
+    // Pointing past the first piece (rice sits in piece two) is no lead-in.
     expect(cutRun(sentence, seams, [1, 2], 6).lead).toBeNull()
   })
 
@@ -596,7 +613,7 @@ describe('lead-ins (US-062)', () => {
   })
 
   it('the chat reply may carry starts; bad values mean no lead-in for that sentence only', () => {
-    const leadCounts = [0, 5, 3]
+    const leadCounts = [0, 6, 3]
     const v = validateSort(3, '{"1":"note","2":"task","3":"task","starts":{"2":5,"3":9}}', { leadCounts })
     expect(v).toMatchObject({ ok: true, starts: { 2: 5 } })
     const odd = validateSort(3, '{"1":"note","2":"task","3":"task","starts":"five"}', { leadCounts })
@@ -606,6 +623,6 @@ describe('lead-ins (US-062)', () => {
   })
 
   it('numbers the lead words for the chat model', () => {
-    expect(leadPrompt(['Call Sam.', sentence], [[], seams])).toBe('2: 1 I | 2 need | 3 to | 4 buy | 5 apples')
+    expect(leadPrompt(['Call Sam.', sentence], [[], seams])).toBe('2: 1 I | 2 need | 3 to | 4 buy | 5 apples | 6 rice')
   })
 })

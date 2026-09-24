@@ -339,7 +339,7 @@ export const SORT_SEAMS_PROMPT = [
 /** Asked for only when some sentence offers lead words (US-062). */
 export const SORT_LEADS_PROMPT = [
   'Some sentences also list their opening words, numbered, under Lead words.',
-  'When such a sentence runs through several items (the ones its seams separate), find the word where the FIRST item begins: the words before it only introduce the run, for example I need to buy.',
+  'When such a sentence runs through several items (the ones its seams separate), find the word where the FIRST item begins: the words before it only introduce the run, for example I need to buy, or For the party, I need.',
   'Also include the key "starts": an object mapping the sentence number to that word number, for example {"3":5}. Leave a sentence out when it is not a run of items or its first item begins at word 1. Word numbers only, never text.'
 ].join(' ')
 
@@ -583,16 +583,25 @@ export function leadLine(text: string): string {
 // A word as the lead-in question numbers it: any run of non-spaces.
 const WORD = /\S+/g
 
+// A sentence longer than this before its last seam is not a list
+// intro worth asking about; the question stays a sane size.
+const LEAD_WORDS_MAX = 40
+
 /**
- * The words the lead-in question offers for a sentence (US-062): the
- * first side of its first candidate seam, numbered from one. Empty when
- * the sentence has no seam or that side is a single word, since then
- * there is nothing to introduce a run.
+ * The words the lead-in question offers for a sentence (US-062): every
+ * word before its LAST candidate seam, numbered from one and shown bare
+ * of trailing commas. Not just the first side: a clause comma the model
+ * will not cut ("For the party, I need to buy chips, salsa") sits before
+ * the first item, and stopping at it left the right answer off the list
+ * (live-found 2026-09-23). The numbering is the same /\S+/ tokens the
+ * cutter counts, so a number means the same word on both sides. Empty
+ * when there is no seam, a single word, or too many to be an intro.
  */
 export function leadWords(sentence: string, seams: readonly Seam[]): string[] {
   if (seams.length === 0) return []
-  const words = sentence.slice(0, seams[0].start).match(WORD) ?? []
-  return words.length >= 2 ? words : []
+  const words = sentence.slice(0, seams[seams.length - 1].start).match(WORD) ?? []
+  if (words.length < 2 || words.length > LEAD_WORDS_MAX) return []
+  return words.map((word) => word.replace(/[,;:]+$/, '') || word)
 }
 
 /**

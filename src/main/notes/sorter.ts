@@ -1703,7 +1703,7 @@ export function initSorter(): void {
         run.outcome === 'filed' &&
         run.tasks === 3 &&
         sent.messages[0].content.includes('key "starts"') &&
-        sent.messages[1].content.includes('Lead words:\n1: 1 I | 2 need | 3 to | 4 buy | 5 apples') &&
+        sent.messages[1].content.includes('Lead words:\n1: 1 I | 2 need | 3 to | 4 buy | 5 apples | 6 rice') &&
         read(todo) ===
           `## 2026-09-18\n- I need to buy:\n  - [ ] apples ${link}\n  - [ ] rice ${link}\n  - [ ] coffee ${link}\n`
 

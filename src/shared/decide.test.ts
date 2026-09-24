@@ -156,7 +156,7 @@ describe('lead-in question (US-062)', () => {
     expect(req.questions.lead_1).toBeUndefined()
     const q = req.questions.lead_2
     expect(q.type).toBe('choice')
-    expect(q.criteria).toEqual({ '1': 'I', '2': 'need', '3': 'to', '4': 'buy', '5': 'apples' })
+    expect(q.criteria).toEqual({ '1': 'I', '2': 'need', '3': 'to', '4': 'buy', '5': 'apples', '6': 'rice' })
   })
 
   it('reads a word number from 2 to the count offered, and nothing else', () => {
