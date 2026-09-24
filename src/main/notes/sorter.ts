@@ -578,6 +578,15 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // holding writes nothing. The chat path reports no confidence and
   // holds nothing. A note with nothing kept is a rejected sort.
   const threshold = settings.notes.connection.threshold
+  // What the model was sure of, per line: number, label, and confidence,
+  // never the words (live-found 2026-09-24: without it, a line held as a
+  // repeat and a line held as unsure were indistinguishable, and a
+  // confident label could not be told from a lucky one).
+  if (protocol === 'decide' && verdict.confidence) {
+    const confidence = verdict.confidence
+    const perLine = verdict.labels.map((label, i) => `${i + 1}=${label}:${(confidence[i] ?? 1).toFixed(2)}`)
+    writeAppLog(`[sort] confidence ${perLine.join(' ')} threshold=${threshold} model=${answeredBy}`)
+  }
   const { kept: sure, held: unsure } = holdBelow(
     sentences.length,
     protocol === 'decide' ? verdict.confidence : undefined,
@@ -1678,6 +1687,7 @@ export function initSorter(): void {
         log.includes('[sort] compared pieces=2 of=1 held=1 protocol=chat') &&
         log.includes('[sort] compared pieces=2 of=1 held=1 protocol=decide') &&
         log.includes('[sort] piece compare failed reason=http 500') &&
+        log.includes('[sort] confidence 1=task:0.90 2=note:0.80 threshold=0.5 model=jev-1.13.0') &&
         // The seam fixtures run once items are filed, so their runs meet
         // the piece look (US-062). On chat the canned reply cannot answer
         // it and the runs file cut, the output splitOk and wholeOk pin; on
