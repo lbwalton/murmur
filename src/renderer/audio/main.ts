@@ -74,6 +74,10 @@ if (synthetic) {
     recorder.simulateSilence(count)
     bridge.armed(false)
   })
+  bridge.onSimulateHang((count) => {
+    recorder.simulateHang(count)
+    bridge.armed(false)
+  })
 }
 
 // Sound cues share this window's audio stack. A dedicated context so

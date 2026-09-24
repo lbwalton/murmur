@@ -204,6 +204,105 @@ export function initAudio(): void {
     return info.sampleCount > 1_000 && info.peak > 0.05
   })
 
+  registerSmokeCheck('recordingPressHeal', async () => {
+    // The 2026-09-24 report end to end: the mic goes dead after an idle
+    // spell and every rebuild the signal watchdog tries comes back dead
+    // too, so its budget runs out on a dead graph. The next press must
+    // still capture: it rebuilds capture under the take. Five silent
+    // graphs against a budget of four leave the recorder exhausted on
+    // the fifth; the press's rebuild is the first live one.
+    await whenAudioReady()
+    const { existsSync, readFileSync } = await import('node:fs')
+    const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+    const count = (needle: string): number =>
+      existsSync(logFile) ? readFileSync(logFile, 'utf8').split(needle).length - 1 : 0
+    const exhaustedBefore = count('stayed silent after')
+    const pressBefore = count('press found a silent stream')
+    const acked = new Promise<boolean>((resolve) => {
+      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+    })
+    aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
+    if (!(await acked)) {
+      console.error('smoke recordingPressHeal: silence was not acknowledged')
+      return false
+    }
+    // Proof of damage: wait for the budget to run out (five silent
+    // windows and their rebuilds, about 2s at smoke timings).
+    const deadline = Date.now() + 6_000
+    while (count('stayed silent after') === exhaustedBefore && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (count('stayed silent after') === exhaustedBefore) {
+      console.error('smoke recordingPressHeal: the silent budget never ran out')
+      return false
+    }
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 900))
+    const wav = await stopRecording()
+    if (!wav) {
+      console.error('smoke recordingPressHeal: stop returned null')
+      return false
+    }
+    const info = parseWav(wav)
+    const logged = count('press found a silent stream') > pressBefore
+    if (!(info.peak > 0.05) || !logged) {
+      console.error(`smoke recordingPressHeal: press did not recover capture (peak=${info.peak} logged=${logged})`)
+      return false
+    }
+    return info.sampleCount > 1_000
+  })
+
+  registerSmokeCheck('recordingPressHang', async () => {
+    // The review gate's race (2026-09-24): a press on a silent stream
+    // starts a hot swap, and right after a wake the replacement's open
+    // can hang. The watchdog abandons it, and its retry must keep the
+    // old graph feeding the take; a cold retry would tear the take's
+    // only source down and, if it hung too, leave seconds of the take
+    // with no audio at all. Two hangs force two abandons (2.5s each at
+    // smoke timings); the take must run unbroken across both.
+    await whenAudioReady()
+    const { existsSync, readFileSync } = await import('node:fs')
+    const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+    const count = (needle: string): number =>
+      existsSync(logFile) ? readFileSync(logFile, 'utf8').split(needle).length - 1 : 0
+    const exhaustedBefore = count('stayed silent after')
+    const ack = (): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      })
+    const silenced = ack()
+    aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
+    if (!(await silenced)) return false
+    const deadline = Date.now() + 4_000
+    while (count('stayed silent after') === exhaustedBefore && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (count('stayed silent after') === exhaustedBefore) {
+      console.error('smoke recordingPressHang: the silent budget never ran out')
+      return false
+    }
+    const hung = ack()
+    aliveAudio()?.webContents.send(IpcChannels.audioSimulateHang, 2)
+    if (!(await hung)) return false
+    startRecording()
+    await new Promise((resolve) => setTimeout(resolve, 5_800))
+    const wav = await stopRecording()
+    if (!wav) {
+      console.error('smoke recordingPressHang: stop returned null')
+      return false
+    }
+    // Unbroken is about 5.8s of 16k samples (~93k, less chunk lag); a
+    // cold retry leaves only ~2.6s of the old graph plus the tail
+    // (~50k). The third attempt installs a live graph, so the take
+    // ends with sound.
+    const info = parseWav(wav)
+    if (info.sampleCount < 75_000 || !(info.peak > 0.05)) {
+      console.error(`smoke recordingPressHang: take broken across the hung swap (samples=${info.sampleCount} peak=${info.peak})`)
+      return false
+    }
+    return true
+  })
+
   registerSmokeCheck('recordingRevive', async () => {
     // A dead audio renderer process (GPU reset, OS kill during sleep)
     // must come back on its own, and with it the warm mic.

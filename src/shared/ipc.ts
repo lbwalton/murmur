@@ -13,6 +13,7 @@ export const IpcChannels = {
   audioRearm: 'audio:rearm',
   audioSimulateOutage: 'audio:simulate-outage',
   audioSimulateSilence: 'audio:simulate-silence',
+  audioSimulateHang: 'audio:simulate-hang',
   audioReady: 'audio:ready',
   audioArmed: 'audio:armed',
   audioResult: 'audio:result',
