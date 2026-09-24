@@ -33,7 +33,14 @@ import {
   heldReasonFor,
   pickRelated
 } from '../../shared/compare'
-import { type FiledPiece, type HeldPiece, assignPieceVotes, flattenPieces, piecesToCompare } from '../../shared/pieces'
+import {
+  type FiledPiece,
+  type HeldPiece,
+  assignPieceVotes,
+  flattenPieces,
+  piecesToCompare,
+  runsToCompare
+} from '../../shared/pieces'
 import { parseTodo, tickLine } from '../../shared/todo'
 import {
   DEFAULT_IDEAS_TEMPLATE,
@@ -46,6 +53,8 @@ import {
 import type { Settings } from '../../shared/settings'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
+  type LeadIn,
+  SORT_LEADS_PROMPT,
   SORT_SEAMS_PROMPT,
   SORT_SYSTEM_PROMPT,
   SORT_TOPIC_PROMPT,
@@ -53,6 +62,8 @@ import {
   findSeams,
   headingPrefix,
   holdBelow,
+  leadPrompt,
+  leadWords,
   numberedList,
   planFiling,
   remainingSentences,
@@ -60,6 +71,7 @@ import {
   seamPrompt,
   settle,
   splitSentences,
+  splitUnits,
   validateSort
 } from '../../shared/sorter'
 import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
@@ -102,6 +114,9 @@ export interface HeldLine {
    *  piece-by-piece look could not be answered: File it anyway then
    *  lands one line per piece. */
   pieces?: string[]
+  /** The lead-in of the run this line came from (US-062): File it
+   *  anyway nests the line under it. */
+  lead?: LeadIn
   match?: {
     number: number
     file: ContextFile
@@ -220,16 +235,22 @@ function writeEntries(
   sentences: readonly string[],
   labels: readonly SortLabel[],
   topic: string,
-  paths: ReturnType<typeof filedPaths> = filedPaths(input.when)
+  paths: ReturnType<typeof filedPaths> = filedPaths(input.when),
+  leads: ReadonlyArray<LeadIn | null> = []
 ): WriteOutcome {
   const settings = getSettings()
   const { tasksPath, ideasPath } = paths
-  const plan = planFiling([...sentences], [...labels], {
-    time: noteMoment(input.when).time,
-    inboxFile: input.inboxRelative,
-    tasksFile: tasksPath.relative,
-    ideasFile: ideasPath.relative
-  })
+  const plan = planFiling(
+    [...sentences],
+    [...labels],
+    {
+      time: noteMoment(input.when).time,
+      inboxFile: input.inboxRelative,
+      tasksFile: tasksPath.relative,
+      ideasFile: ideasPath.relative
+    },
+    leads
+  )
   const counts = { tasks: plan.tasks.length, ideas: plan.ideas.length, notes: plan.notes.length }
   const tasksFile = join(input.base, ...tasksPath.segments)
   const ideasFile = join(input.base, ...ideasPath.segments)
@@ -427,11 +448,15 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const settings = getSettings()
   if (!settings.notes.sort) return record('skipped', NONE, 'sorting off')
   if (isSmoke && !options.fetchImpl) return record('skipped', NONE, 'smoke')
-  const all = splitSentences(input.text)
+  const units = splitUnits(input.text)
+  const all = units.sentences
   // Sort again sends only the positions still unsettled; a fresh note
   // sends everything. The model sees whatever it gets numbered from 1.
   const positions = only ?? all.map((_, i) => i)
   const sentences = positions.map((i) => all[i])
+  // A list line under a heading carries that heading as its lead-in
+  // (US-062); the heading itself is never sent.
+  const unitLeads = positions.map((i) => units.leads[i] ?? null)
   if (sentences.length === 0) return record('skipped', NONE, 'nothing to sort')
   // Held lines follow the note: a fresh note starts empty, and a line
   // sent again gets a fresh verdict in place of its old one.
@@ -465,6 +490,10 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const seamsBySentence = sentences.map(findSeams)
   const seamCounts = seamsBySentence.map((s) => s.length)
   const offerSeams = seamCounts.some((n) => n > 0)
+  // Lead-ins (US-062): for a sentence that could be a run, the model
+  // points at the word where its first item begins; numbers only.
+  const leadCounts = sentences.map((sentence, i) => leadWords(sentence, seamsBySentence[i] ?? []).length)
+  const offerLeads = leadCounts.some((n) => n > 0)
   // Filed items (US-055): what is already in the two files, read from
   // the base this note landed in, so a dump is compared before it files.
   let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
@@ -491,7 +520,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       fetchImpl,
       timeoutMs
     )
-    const read = reply.ok ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length) : null
+    const read = reply.ok
+      ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length, leadCounts)
+      : null
     if (reply.ok && read?.ok) {
       verdict = read
       answeredBy = reply.model
@@ -515,11 +546,13 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       SORT_SYSTEM_PROMPT,
       ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
       ...(offerSeams ? [SORT_SEAMS_PROMPT] : []),
+      ...(offerLeads ? [SORT_LEADS_PROMPT] : []),
       ...(items.length > 0 ? [SORT_RELATIONS_PROMPT] : [])
     ].join(' ')
     const userPrompt = [
       numberedList(sentences),
       ...(offerSeams ? [`Seams:\n${seamPrompt(sentences, seamsBySentence)}`] : []),
+      ...(offerLeads ? [`Lead words:\n${leadPrompt(sentences, seamsBySentence)}`] : []),
       ...(items.length > 0 ? [contextPrompt(items)] : [])
     ].join('\n\n')
     const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
@@ -527,7 +560,12 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
       return record('failed', NONE, reply.reason)
     }
-    const chat = validateSort(sentences.length, reply.content, { topic: wantsTopic, seamCounts, items: items.length })
+    const chat = validateSort(sentences.length, reply.content, {
+      topic: wantsTopic,
+      seamCounts,
+      items: items.length,
+      leadCounts
+    })
     if (!chat.ok) {
       writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
       return record('rejected', NONE, chat.reason)
@@ -546,7 +584,15 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     threshold
   )
   for (const i of unsure) {
-    heldLines.push({ id: nextHeldId++, position: positions[i], text: sentences[i], label: verdict.labels[i], reason: 'unsure' })
+    const lead = unitLeads[i]
+    heldLines.push({
+      id: nextHeldId++,
+      position: positions[i],
+      text: sentences[i],
+      label: verdict.labels[i],
+      reason: 'unsure',
+      ...(lead ? { lead } : {})
+    })
   }
   if (sure.length === 0) {
     writeAppLog(`[sort] held every line reason=low confidence held=${unsure.length} threshold=${threshold} model=${answeredBy}`)
@@ -563,23 +609,35 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // first and ask about the pieces alone, so only the matching piece
   // is held and the rest file. If that second look cannot be answered
   // the whole line is held as before, carrying its pieces.
-  const { cut, whole } = piecesToCompare(related, sentences, verdict.labels, seamsBySentence, verdict.seams)
+  const starts = verdict.starts ?? {}
+  const { cut, whole } = piecesToCompare(related, sentences, verdict.labels, seamsBySentence, verdict.seams, starts, 'piece')
   let heldPieces: HeldPiece[] = []
   let filedPieces: FiledPiece[] = []
   // Sentences that were really cut and compared; on a failed second
   // look nothing is cut, so the log's split count leaves them out.
   let cutFiled = 0
-  if (cut.length > 0) {
-    const flat = flattenPieces(cut)
+  // Runs the sentence-level vote called new join the same look when
+  // there is anything filed to compare against (US-062): a run mixing
+  // a filed item with a new one reads as new as a whole. If the look
+  // cannot be answered they file exactly as they would have.
+  const keptRuns = items.length > 0 ? runsToCompare(kept, sentences, verdict.labels, seamsBySentence, verdict.seams, starts, 'piece') : []
+  const compared = [...cut, ...keptRuns].sort((a, b) => a.local - b.local)
+  const comparedKept = new Set<number>()
+  let comparedLeads = 0
+  if (compared.length > 0) {
+    const flat = flattenPieces(compared)
     const second = await askRelations(flat.sentences, items, { config, protocol, fetchImpl, timeoutMs })
     if (second.ok) {
-      ;({ held: heldPieces, filed: filedPieces } = assignPieceVotes(cut, second.relations, items))
-      cutFiled = cut.length
+      ;({ held: heldPieces, filed: filedPieces } = assignPieceVotes(compared, second.relations, items))
+      cutFiled = compared.length
+      for (const set of keptRuns) comparedKept.add(set.local)
+      comparedLeads = compared.filter((set) => set.lead !== null).length
       writeAppLog(
-        `[sort] compared pieces=${flat.sentences.length} of=${cut.length} held=${heldPieces.length} protocol=${protocol} model=${answeredBy}`
+        `[sort] compared pieces=${flat.sentences.length} of=${compared.length} held=${heldPieces.length} protocol=${protocol} model=${answeredBy}`
       )
     } else {
-      writeAppLog(`[sort] piece compare failed reason=${second.reason} model=${answeredBy}; holding the whole line`)
+      const fallback = cut.length > 0 ? 'holding the whole line' : 'filing the runs as cut'
+      writeAppLog(`[sort] piece compare failed reason=${second.reason} model=${answeredBy}; ${fallback}`)
       for (const set of cut) {
         const line = related.find((r) => r.local === set.local)
         if (line) whole.push(line)
@@ -587,6 +645,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     }
   }
   const wholePieces = new Map(cut.map((set) => [set.local, set.pieces]))
+  const wholeLeads = new Map(cut.map((set) => [set.local, set.lead]))
   const snapshot = { file: tasksFile, text: tasksText }
   const matchOf = (item: ContextItem): NonNullable<HeldLine['match']> => ({
     number: item.number,
@@ -598,6 +657,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   })
   for (const { local, vote, item } of whole) {
     const id = nextHeldId++
+    // A line held whole files whole: its heading lead-in, if any (a cut
+    // run held whole carries its pieces bare and the run's lead-in).
+    const lead = wholeLeads.get(local) ?? unitLeads[local]
     heldLines.push({
       id,
       position: positions[local],
@@ -605,7 +667,8 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       label: verdict.labels[local],
       reason: heldReasonFor(vote, item),
       pieces: wholePieces.get(local),
-      match: matchOf(item)
+      match: matchOf(item),
+      ...(lead ? { lead } : {})
     })
     heldSnapshots.set(id, snapshot)
   }
@@ -617,7 +680,8 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       text: piece.text,
       label: piece.label,
       reason: heldReasonFor(piece.vote, piece.item),
-      match: matchOf(piece.item)
+      match: matchOf(piece.item),
+      ...(piece.lead ? { lead: piece.lead } : {})
     })
     heldSnapshots.set(id, snapshot)
   }
@@ -632,30 +696,49 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // confirmed seams (only task and idea lines split, and a sentence
   // with no vote stays whole), and a compared sentence lands the
   // pieces no vote tied to an item (review gate 2026-09-22).
-  const expanded: { sentences: string[]; labels: SortLabel[] } = { sentences: [], labels: [] }
+  const expanded: { sentences: string[]; labels: SortLabel[]; leads: Array<LeadIn | null> } = {
+    sentences: [],
+    labels: [],
+    leads: []
+  }
   let splitCount = cutFiled
+  let leadCount = comparedLeads
   for (const i of sure) {
-    if (kept.includes(i)) {
+    if (kept.includes(i) && !comparedKept.has(i)) {
       const seamVote = verdict.seams[i + 1]
+      const start = starts[i + 1]
       const one = applySplits(
         [sentences[i]],
         [verdict.labels[i]],
         [seamsBySentence[i] ?? []],
-        seamVote ? { 1: seamVote } : {}
+        seamVote ? { 1: seamVote } : {},
+        start !== undefined ? { 1: start } : {},
+        `run-${positions[i]}`
       )
       if (one.sentences.length > 1) splitCount += 1
+      if (one.leads[0]) leadCount += 1
       expanded.sentences.push(...one.sentences)
       expanded.labels.push(...one.labels)
+      // A list line keeps its heading's lead-in; a cut run its own.
+      expanded.leads.push(...one.leads.map((lead) => lead ?? unitLeads[i]))
       continue
     }
     for (const piece of filedPieces) {
       if (piece.local !== i) continue
       expanded.sentences.push(piece.text)
       expanded.labels.push(piece.label)
+      expanded.leads.push(piece.lead)
     }
   }
   lastTopic = verdict.topic
-  const written = writeEntries(input, expanded.sentences, expanded.labels, verdict.topic, { tasksPath, ideasPath })
+  const written = writeEntries(
+    input,
+    expanded.sentences,
+    expanded.labels,
+    verdict.topic,
+    { tasksPath, ideasPath },
+    expanded.leads
+  )
   if (!written.ok) {
     // Whatever landed is settled so Sort again cannot land it twice;
     // lines whose file failed stay pending in the verbatim inbox
@@ -679,7 +762,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const heldNote =
     heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${relatedHeld} threshold=${threshold}` : ''
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}`
   )
   return record('filed', counts)
 }
@@ -745,7 +828,9 @@ export function fileHeldLine(id: number): { ok: boolean; reason?: string } {
     input,
     lines,
     lines.map(() => entry.label),
-    lastTopic
+    lastTopic,
+    filedPaths(input.when),
+    lines.map(() => entry.lead ?? null)
   )
   if (!written.ok) return setAction({ ok: false, reason: written.reason })
   settleFor(input, [entry.position], [0])
@@ -996,17 +1081,23 @@ export function initSorter(): void {
         text: 'Tomorrow we are getting groceries, getting tacos, and going to the playground.'
       }
       let captured = { system: '', user: '' }
-      const capturing = (content: string): typeof fetch =>
-        (async (_url: unknown, init?: RequestInit) => {
+      // The sort's own request is the first one; a run can be followed
+      // by the piece-by-piece look (US-062), which must not overwrite it.
+      const capturing = (content: string): typeof fetch => {
+        let first = true
+        return (async (_url: unknown, init?: RequestInit) => {
           const body = JSON.parse(String(init?.body ?? '{}')) as {
             messages?: Array<{ role: string; content: string }>
           }
+          if (!first) return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 })
+          first = false
           captured = {
             system: body.messages?.find((m) => m.role === 'system')?.content ?? '',
             user: body.messages?.find((m) => m.role === 'user')?.content ?? ''
           }
           return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 })
         }) as typeof fetch
+      }
       const todoBeforeSplit = read(todo)
       const splitVote = await sortNote(run, {
         fetchImpl: capturing('{"1":"task","seams":{"1":[1,2]}}'),
@@ -1023,7 +1114,7 @@ export function initSorter(): void {
         splitVote.outcome === 'filed' &&
         splitVote.tasks === 3 &&
         afterSplit ===
-          `${todoBeforeSplit}- [ ] Tomorrow we are getting groceries ([10:32](inbox/2026-09-18.md))\n- [ ] getting tacos ([10:32](inbox/2026-09-18.md))\n- [ ] going to the playground. ([10:32](inbox/2026-09-18.md))\n`
+          `${todoBeforeSplit}- [ ] Tomorrow we are getting groceries ([10:32](inbox/2026-09-18.md))\n- [ ] getting tacos ([10:32](inbox/2026-09-18.md))\n- [ ] going to the playground ([10:32](inbox/2026-09-18.md))\n`
       // One sentence's bad vote leaves it whole while the other still splits.
       const pair: SortInput = { ...input, text: 'Buy eggs, and buy milk. Call Bob, then call Ann.' }
       const wholeVote = await sortNote(pair, {
@@ -1034,7 +1125,7 @@ export function initSorter(): void {
         wholeVote.outcome === 'filed' &&
         wholeVote.tasks === 3 &&
         read(todo) ===
-          `${afterSplit}- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n`
+          `${afterSplit}- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n`
 
       // Decision connection (US-057): the same filing from typed answers
       // (a Choice per sentence, a Noul per seam, in one request), and a
@@ -1042,15 +1133,20 @@ export function initSorter(): void {
       // sorter with a log line rather than failing the sort.
       const decideCfg: PolishConfig = { baseUrl: 'https://mock-decide.local/v1', model: 'jev-latest', apiKey: 'k' }
       let decisionBody: { state?: unknown; questions?: Record<string, { type?: string }> } = {}
-      const routed = (decision: string | number, chat = '{"1":"task"}'): typeof fetch =>
-        (async (url: unknown, init?: RequestInit) => {
+      // Keeps the sort's own decision request; a piece-by-piece look
+      // that follows a run (US-062) must not overwrite it.
+      const routed = (decision: string | number, chat = '{"1":"task"}'): typeof fetch => {
+        let first = true
+        return (async (url: unknown, init?: RequestInit) => {
           if (String(url).endsWith('/systemone')) {
-            decisionBody = JSON.parse(String(init?.body ?? '{}')) as typeof decisionBody
+            if (first) decisionBody = JSON.parse(String(init?.body ?? '{}')) as typeof decisionBody
+            first = false
             if (typeof decision === 'number') return new Response('{}', { status: decision })
             return new Response(decision, { status: 200 })
           }
           return new Response(JSON.stringify({ choices: [{ message: { content: chat } }] }), { status: 200 })
         }) as typeof fetch
+      }
       const decidedInput: SortInput = { ...input, text: 'Renew the domain, and pay the invoice. Nice day.' }
       const decided = await sortNote(decidedInput, {
         fetchImpl: routed(
@@ -1072,7 +1168,7 @@ export function initSorter(): void {
         decided.tasks === 2 &&
         decided.notes === 1 &&
         decidedTodo.endsWith(
-          '- [ ] Renew the domain ([10:32](inbox/2026-09-18.md))\n- [ ] pay the invoice. ([10:32](inbox/2026-09-18.md))\n'
+          '- [ ] Renew the domain ([10:32](inbox/2026-09-18.md))\n- [ ] pay the invoice ([10:32](inbox/2026-09-18.md))\n'
         ) &&
         typeof decisionBody.state === 'object' &&
         decisionBody.questions?.label_1?.type === 'choice' &&
@@ -1120,7 +1216,7 @@ export function initSorter(): void {
         sameFixture.outcome === 'filed' &&
         sameFixture.tasks === 3 &&
         read(todo).endsWith(
-          '- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk. ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n'
+          '- [ ] Buy eggs ([10:32](inbox/2026-09-18.md))\n- [ ] buy milk ([10:32](inbox/2026-09-18.md))\n- [ ] Call Bob, then call Ann. ([10:32](inbox/2026-09-18.md))\n'
         )
 
       // Held lines (US-058): an unsure label stays in the inbox, the sure
@@ -1345,7 +1441,7 @@ export function initSorter(): void {
         comma.held === 1 &&
         bodies.length === 2 &&
         secondBody.includes('1. Pay the gas bill') &&
-        secondBody.includes('2. call the vet.') &&
+        secondBody.includes('2. call the vet') &&
         // The later sentence is not among the numbered pieces (it may
         // well sit in the items list, which is the point of the list).
         !/\d+\. Email Bob/.test(secondBody) &&
@@ -1356,7 +1452,7 @@ export function initSorter(): void {
           `${beforeRun}- [ ] Pay the gas bill ([10:32](inbox/2026-09-18.md))\n- [ ] Email Bob. ([10:32](inbox/2026-09-18.md))\n` &&
         read(logPath).slice(logBeforeRun).includes('split=1 ') &&
         heldRun.length === 1 &&
-        heldRun[0]?.text === 'call the vet.' &&
+        heldRun[0]?.text === 'call the vet' &&
         heldRun[0]?.reason === 'same' &&
         heldRun[0]?.match?.text === 'Call the vet.' &&
         heldRun[0]?.pieces === undefined &&
@@ -1365,7 +1461,7 @@ export function initSorter(): void {
       const pieceFiled = fileHeldLine(heldRun[0]?.id ?? -1)
       const pieceFiledOk =
         pieceFiled.ok &&
-        read(todo) === `${runTodo}- [ ] call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
+        read(todo) === `${runTodo}- [ ] call the vet ([10:32](inbox/2026-09-18.md))\n` &&
         getHeldLines().length === 0 &&
         !fileHeldLine(heldRun[0]?.id ?? -1).ok
 
@@ -1393,7 +1489,7 @@ export function initSorter(): void {
         read(logPath).slice(logBeforeFail).includes('split=0 ') &&
         fileHeldLine(heldFail[0]?.id ?? -1).ok &&
         read(todo) ===
-          `${beforeFail}- [ ] Buy stamps ([10:32](inbox/2026-09-18.md))\n- [ ] call the vet. ([10:32](inbox/2026-09-18.md))\n` &&
+          `${beforeFail}- [ ] Buy stamps ([10:32](inbox/2026-09-18.md))\n- [ ] call the vet ([10:32](inbox/2026-09-18.md))\n` &&
         getHeldLines().length === 0
 
       // Two pieces of one sentence held side by side, each with its own
@@ -1420,7 +1516,7 @@ export function initSorter(): void {
         heldTwo[0]?.id !== heldTwo[1]?.id &&
         heldTwo[0]?.text === 'Call the vet' &&
         heldTwo[0]?.reason === 'same' &&
-        heldTwo[1]?.text === 'renew the passport.' &&
+        heldTwo[1]?.text === 'renew the passport' &&
         heldTwo[1]?.reason === 'done-before' &&
         fileHeldLine(heldTwo[0]?.id ?? -1).ok &&
         read(todo) === `${beforeTwo}- [ ] Call the vet ([10:32](inbox/2026-09-18.md))\n` &&
@@ -1522,7 +1618,7 @@ export function initSorter(): void {
         secondQuestions.includes('match_2') &&
         secondQuestions.every((k) => !k.startsWith('seam_')) &&
         read(todo) === `${beforeDp}- [ ] Order toner ([10:32](inbox/2026-09-18.md))\n` &&
-        getHeldLines()[0]?.text === 'call the vet.' &&
+        getHeldLines()[0]?.text === 'call the vet' &&
         skipHeldLine(getHeldLines()[0]?.id ?? -1).ok
 
       const topicOk =
@@ -1582,6 +1678,13 @@ export function initSorter(): void {
         log.includes('[sort] compared pieces=2 of=1 held=1 protocol=chat') &&
         log.includes('[sort] compared pieces=2 of=1 held=1 protocol=decide') &&
         log.includes('[sort] piece compare failed reason=http 500') &&
+        // The seam fixtures run once items are filed, so their runs meet
+        // the piece look (US-062). On chat the canned reply cannot answer
+        // it and the runs file cut, the output splitOk and wholeOk pin; on
+        // the decision fixtures it answers with no relation and every
+        // piece files, the output decisionOk and sameFixtureOk pin.
+        log.includes('[sort] piece compare failed reason=extra sentences model=smoke-sorter; filing the runs as cut') &&
+        log.includes('[sort] compared pieces=2 of=1 held=0 protocol=decide model=jev-1.13.0') &&
         log.includes('related=1') &&
         log.includes('[sort] ticked file=tasks nth=') &&
         log.includes('[sort] filed held line position=') &&
@@ -1596,6 +1699,172 @@ export function initSorter(): void {
         log.includes('[sort] failed reason=http 500 model=smoke-sorter') &&
         log.includes('[sort] write failed reason=') &&
         log.includes('before any line landed')
+      )
+    } finally {
+      updateSettings({ notes: before })
+    }
+  })
+
+  registerSmokeCheck('noteLeadIns', async () => {
+    // US-062: a spoken run files under its lead-in on both connections,
+    // a cleanup-written list heading becomes the same lead line, and a
+    // held piece keeps its lead-in so File it anyway nests it too.
+    const before = getSettings().notes
+    const vault = join(app.getPath('userData'), 'smoke-vault-leads')
+    const todo = join(vault, 'murmur', 'todo.md')
+    const read = (file: string): string => (existsSync(file) ? readFileSync(file, 'utf8') : '')
+    const link = '([10:32](inbox/2026-09-18.md))'
+    const base = { base: vault, inboxRelative: 'murmur/inbox/2026-09-18.md', when: probeMoment }
+    const reply = (content: string): Response =>
+      new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 })
+    try {
+      mkdirSync(join(vault, 'murmur', 'inbox'), { recursive: true })
+      updateSettings({ notes: { folder: vault, sort: true, ...layout } })
+
+      // Chat: the lead words ride the prompt and "starts" points at the
+      // first item; the run nests under one lead line.
+      let body = ''
+      const run = await sortNote(
+        { ...base, text: 'I need to buy apples, rice, and coffee.' },
+        {
+          fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+            body = String(init?.body ?? '')
+            return reply('{"1":"task","seams":{"1":[1,2]},"starts":{"1":5}}')
+          }) as typeof fetch,
+          connection: cfg
+        }
+      )
+      const sent = JSON.parse(body) as { messages: Array<{ content: string }> }
+      const chatOk =
+        run.outcome === 'filed' &&
+        run.tasks === 3 &&
+        sent.messages[0].content.includes('key "starts"') &&
+        sent.messages[1].content.includes('Lead words:\n1: 1 I | 2 need | 3 to | 4 buy | 5 apples | 6 rice') &&
+        read(todo) ===
+          `## 2026-09-18\n- I need to buy:\n  - [ ] apples ${link}\n  - [ ] rice ${link}\n  - [ ] coffee ${link}\n`
+
+      // A list heading from cleanup: never sent, filed as the lead line.
+      const afterChat = read(todo)
+      let listBody = ''
+      const listed = await sortNote(
+        { ...base, text: 'For the party:\n- chips\n- salsa' },
+        {
+          fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+            listBody = String(init?.body ?? '')
+            return reply('{"1":"task","2":"task"}')
+          }) as typeof fetch,
+          connection: cfg
+        }
+      )
+      const listOk =
+        listed.outcome === 'filed' &&
+        listed.tasks === 2 &&
+        !listBody.includes('For the party') &&
+        read(todo) === `${afterChat}- For the party:\n  - [ ] chips ${link}\n  - [ ] salsa ${link}\n`
+
+      // Decision: a Choice over the first side's words, answered 3.
+      const afterList = read(todo)
+      let decisionBody: { questions?: Record<string, { criteria?: unknown }> } = {}
+      const decided = await sortNote(
+        { ...base, text: 'We need toner, paper, and ink.' },
+        {
+          fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+            // The sort's own request; the piece look that follows is not it.
+            if (!decisionBody.questions) decisionBody = JSON.parse(String(init?.body ?? '{}')) as typeof decisionBody
+            return new Response(
+              JSON.stringify({
+                model: 'jev-1.13.0',
+                answers: {
+                  label_1: { type: 'choice', choice: 'task', confidence: 0.9 },
+                  seam_1_1: { type: 'noul', noul: 0.9 },
+                  seam_1_2: { type: 'noul', noul: 0.9 },
+                  lead_1: { type: 'choice', choice: '3' }
+                }
+              }),
+              { status: 200 }
+            )
+          }) as typeof fetch,
+          connection: { baseUrl: 'https://mock-decide.local/v1', model: 'jev-latest', apiKey: 'k' },
+          protocol: 'decide'
+        }
+      )
+      const criteria = decisionBody.questions?.lead_1?.criteria as Record<string, string> | undefined
+      const decideOk =
+        decided.outcome === 'filed' &&
+        decided.tasks === 3 &&
+        criteria?.['1'] === 'We' &&
+        criteria?.['3'] === 'toner' &&
+        read(todo) === `${afterList}- We need:\n  - [ ] toner ${link}\n  - [ ] paper ${link}\n  - [ ] ink ${link}\n`
+
+      // A held piece keeps its lead-in: apples is already open, so it is
+      // held and bread files under the lead line; File it anyway nests
+      // apples under its own lead line.
+      const afterDecide = read(todo)
+      const apples = buildCompareContext(afterDecide, '').find((item) => item.text === 'apples')
+      const replies = [
+        `{"1":"task","seams":{"1":[1]},"starts":{"1":5},"relations":{"1":[1,${apples?.number ?? 0}]}}`,
+        `{"1":"task","2":"task","relations":{"1":[1,${apples?.number ?? 0}]}}`
+      ]
+      let n = 0
+      const heldInput: SortInput = { ...base, text: 'I need to buy apples, and bread.' }
+      rememberForSort(heldInput)
+      const compared = await sortNote(heldInput, {
+        fetchImpl: (async () => reply(replies[Math.min(n++, 1)])) as typeof fetch,
+        connection: cfg
+      })
+      const held = getHeldLines()
+      const afterHeld = read(todo)
+      const filedAnyway = fileHeldLine(held[0]?.id ?? -1).ok
+      const heldOk =
+        apples !== undefined &&
+        compared.outcome === 'filed' &&
+        compared.tasks === 1 &&
+        held.length === 1 &&
+        held[0]?.text === 'apples' &&
+        held[0]?.lead?.text === 'I need to buy' &&
+        afterHeld === `${afterDecide}- I need to buy:\n  - [ ] bread ${link}\n` &&
+        filedAnyway &&
+        read(todo) === `${afterHeld}- I need to buy:\n  - [ ] apples ${link}\n`
+
+      // A mixed run the sentence-level vote calls new (live-found
+      // 2026-09-23): its pieces are still compared, so rice is held and
+      // bread files under the lead line.
+      const afterAnyway = read(todo)
+      const rice = buildCompareContext(afterAnyway, '').find((item) => item.text === 'rice')
+      const mixedReplies = [
+        '{"1":"task","seams":{"1":[1]},"starts":{"1":5}}',
+        `{"1":"task","2":"task","relations":{"1":[1,${rice?.number ?? 0}]}}`
+      ]
+      let m = 0
+      const mixedInput: SortInput = { ...base, text: 'I need to buy rice, and bread.' }
+      rememberForSort(mixedInput)
+      const mixed = await sortNote(mixedInput, {
+        fetchImpl: (async () => reply(mixedReplies[Math.min(m++, 1)])) as typeof fetch,
+        connection: cfg
+      })
+      const mixedHeld = getHeldLines()
+      const mixedOk =
+        rice !== undefined &&
+        m === 2 &&
+        mixed.outcome === 'filed' &&
+        mixed.tasks === 1 &&
+        mixed.held === 1 &&
+        mixedHeld.length === 1 &&
+        mixedHeld[0]?.text === 'rice' &&
+        mixedHeld[0]?.lead?.text === 'I need to buy' &&
+        read(todo) === `${afterAnyway}- I need to buy:\n  - [ ] bread ${link}\n` &&
+        skipHeldLine(mixedHeld[0]?.id ?? -1).ok
+
+      const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+      const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
+      return (
+        chatOk &&
+        listOk &&
+        decideOk &&
+        heldOk &&
+        mixedOk &&
+        log.includes('split=1 protocol=chat') &&
+        log.includes(' leads=1')
       )
     } finally {
       updateSettings({ notes: before })
