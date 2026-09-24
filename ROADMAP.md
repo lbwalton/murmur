@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (54/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (56/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -56,6 +56,8 @@
 - [x] **US-052** Note recall: optional desktop reminders
 - [x] **US-054** Speak an edit: transform the text you have selected
 - [x] **US-056** One sentence, several tasks: splitting that cannot reword
+- [x] **US-057** Sorting on a decision model, optional
+- [x] **US-058** Low-confidence lines stay in the inbox
 - [x] **US-055** Duplicates and completions: suggestions, never silent edits
 - [x] **US-062** A spoken list files as items under its lead-in
 
@@ -64,8 +66,6 @@
 Automated criteria pass; the remaining step is a human loop noted in prd.json and HANDOFF.md.
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
-- [ ] **US-057** Sorting on a decision model, optional
-- [ ] **US-058** Low-confidence lines stay in the inbox
 
 ## To do
 
