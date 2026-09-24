@@ -48,6 +48,8 @@ export interface TransformDeps {
   transcribe: () => Promise<TranscribeResult>
   /** Test seams: the copy keystroke, the model fetch, the connection. */
   sendCopy?: () => Promise<boolean>
+  /** How long to wait for the copy to land; smoke shortens it. */
+  copyWaitMs?: number
   fetchImpl?: typeof fetch
   connection?: PolishConfig | null
 }
@@ -81,7 +83,10 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   const { waitForModifiersReleased } = await import('../hotkeys')
   if (!(await waitForModifiersReleased())) await log('modifiers still held; copying anyway')
 
-  const selection = await readSelection(deps.sendCopy ? { sendCopy: deps.sendCopy } : {})
+  const selection = await readSelection({
+    ...(deps.sendCopy ? { sendCopy: deps.sendCopy } : {}),
+    ...(deps.copyWaitMs !== undefined ? { waitMs: deps.copyWaitMs } : {})
+  })
   if (!selection.ok) {
     const empty = selection.reason === 'empty'
     await log(`selection unreadable reason=${selection.reason}; nothing sent`)
@@ -263,6 +268,11 @@ export function initTransform(): void {
           return { ok: true, text: 'x' }
         },
         sendCopy: async () => true,
+        // The system clipboard is shared with every app on the machine:
+        // a copy made anywhere during the wait reads as a selection. A
+        // short wait keeps that window small (a real transform waits the
+        // full 1.5s; seen flaking twice on 2026-09-24 at that length).
+        copyWaitMs: 150,
         connection
       })
       const unreadable =
@@ -314,7 +324,13 @@ export function initTransform(): void {
         updateSettings({ transform: { keepOriginals: keep } })
       }
 
-      return success && recovered && keptChatty && unreadable && tooLong && memoryOnly
+      const passed = success && recovered && keptChatty && unreadable && tooLong && memoryOnly
+      if (!passed) {
+        console.error(
+          `smoke transformLoop: ${JSON.stringify({ success, recovered, keptChatty, unreadable, tooLong, memoryOnly, dead, long })}`
+        )
+      }
+      return passed
     } finally {
       setOverlayPhase('idle')
       clipboard.writeText(saved)

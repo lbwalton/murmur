@@ -2,6 +2,17 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.7 (2026-09-24)
+
+- Brain dump: a second hotkey sends what you say to a notes file instead of your cursor. Pick any folder once (an Obsidian vault works as is) and each day's notes land in one inbox file under a time heading, formatted like any dictation. If the folder is ever unreachable, the note saves to murmur's own data folder, so nothing is lost.
+- Your notes sort themselves, if you want: tasks copy to todo.md and ideas to ideas.md, each with a link back to the note, and your words are never reworded. A sentence holding several items files one line per item, and a spoken list lands as a lead line ("I need to buy:") with the items as checkboxes under it. Headings can name what each note was about.
+- Duplicates and finished items wait for you: say something already on your list, or report a task done, and murmur holds it with your earlier line quoted, offering File it anyway, Tick it, or Skip. It never edits your lists on its own.
+- Optional task reminders: desktop notifications at times you choose that say what is still open, with a click to open the list.
+- Sort on a decision model (TypeSafe) if you like: it can only ever pick a label, answers in about a tenth of a second, and a line it is unsure of stays in your inbox. The log shows how sure it was of every line, never your words.
+- Transform: select text in any app, hold the transform hotkey, and say what to do ("turn this into a list with action steps"). The result replaces the selection, the original is one paste-last away, and your clipboard comes back afterward. Text inside the selection is never treated as instructions, and a selection over 8,000 characters is not sent at all while your spoken words are kept.
+- The first press after waking your computer works: if the microphone comes back silent, that press rebuilds capture while you talk and keeps your words.
+- Fixed: a list's heading line is no longer filed as a task of its own, and paste-last notes in the log what it pasted and from where, never the text.
+
 ## 0.1.6 (2026-09-17)
 
 - Smart lists: flip one switch and spoken sequences ("first..., then...") come out as numbered lists, item runs become bullets, and "bullet point" works as a spoken command. Off by default, and off means dictation behaves exactly as before.
