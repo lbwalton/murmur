@@ -174,8 +174,8 @@ export function isMemoryOnly(event: SessionEvent): boolean {
   return memoryOnly !== null && event === memoryOnly
 }
 
-/** The events that measure speech (recap, overlay accent): transforms
- *  excluded. */
+/** The events that measure speech (recap, overlay accent, time back):
+ *  transforms excluded. */
 export function readStatsHistory(): SessionEvent[] {
   return statsEvents()
 }

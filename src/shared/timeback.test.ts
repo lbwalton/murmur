@@ -80,6 +80,12 @@ describe('dayMinutesBack', () => {
     expect(dayMinutesBack([], '2026-09-22', 40)).toBe(0)
   })
 
+  it('never counts a transform: those are recoverability records, not speech', () => {
+    const spoken = take('2026-09-22', 400, 120_000) // 8 back
+    const transform: SessionEvent = { ...take('2026-09-22', 900, 5_000), kind: 'transform' }
+    expect(dayMinutesBack([spoken, transform], '2026-09-22', 40)).toBeCloseTo(8, 6)
+  })
+
   it('stays raw: a day in debt reads below zero here, floored only on display', () => {
     expect(dayMinutesBack([take('2026-09-22', 0, 120_000)], '2026-09-22', 40)).toBeCloseTo(-2, 6)
   })

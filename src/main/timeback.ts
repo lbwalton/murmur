@@ -7,7 +7,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Notification, app } from 'electron'
-import { type SessionEvent, dayKey } from '../shared/history'
+import { type SessionEvent, countsTowardStats, dayKey } from '../shared/history'
 import {
   crossedMilestone,
   dayMinutesBack,
@@ -17,7 +17,7 @@ import {
   shownMinutes,
   trayTooltip
 } from '../shared/timeback'
-import { readHistory } from './history'
+import { readStatsHistory } from './history'
 import { getSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck } from './smoke'
 import { getTray } from './tray'
@@ -128,7 +128,7 @@ function applyTooltip(raw: number): void {
 export function refreshTrayTooltip(): void {
   if (!getTray()) return
   const today = dayKey(Date.now())
-  applyTooltip(dayMinutesBack(readHistory(), today, getSettings().timeBack.typingWpm))
+  applyTooltip(dayMinutesBack(readStatsHistory(), today, getSettings().timeBack.typingWpm))
 }
 
 /** A take just landed in the log: the tooltip restates from the one
@@ -136,9 +136,11 @@ export function refreshTrayTooltip(): void {
  *  checked for a mark. Decided on the minutes the card shows, so the
  *  nod lands on the take where the card first reads the mark. */
 export function sessionLanded(event: SessionEvent): void {
+  // A transform moves no speech total, so it has nothing to announce.
+  if (!countsTowardStats(event)) return
   const typingWpm = getSettings().timeBack.typingWpm
   const today = dayKey(Date.now())
-  const after = dayMinutesBack(readHistory(), today, typingWpm)
+  const after = dayMinutesBack(readStatsHistory(), today, typingWpm)
   const before = after - minutesBack(event.words, event.durationMs, typingWpm)
   applyTooltip(after)
   celebrateMilestone({ before: shownMinutes(before), after: shownMinutes(after) })

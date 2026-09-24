@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
-import { type SessionEvent, groupByDay } from '../../shared/history'
+import { type SessionEvent, countsTowardStats, groupByDay } from '../../shared/history'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { Settings } from '../../shared/settings'
@@ -100,7 +100,7 @@ export function HomeView(props: {
   return (
     <div className="home">
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      {events.length > 0 && summary && (
+      {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>
           <div

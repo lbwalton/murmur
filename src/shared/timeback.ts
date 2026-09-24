@@ -4,7 +4,7 @@
 // is stored per session; the number derives from words and duration at
 // the typing speed in settings, so a speed edit restates every day
 // honestly.
-import { type SessionEvent, eventDay } from './history'
+import { type SessionEvent, countsTowardStats, eventDay } from './history'
 
 export const DEFAULT_TYPING_WPM = 40
 export const MIN_TYPING_WPM = 10
@@ -29,7 +29,8 @@ export function minutesBack(words: number, durationMs: number, typingWpm: number
 
 /** Raw time back over one day's takes: honest per session, unfloored.
  *  Surfaces floor and round it through shownMinutes or the analytics
- *  buckets, never here. */
+ *  buckets, never here. Transforms never count: they are records of a
+ *  selection kept for recovery, not words spoken (US-054). */
 export function dayMinutesBack(
   events: readonly SessionEvent[],
   day: string,
@@ -37,7 +38,9 @@ export function dayMinutesBack(
 ): number {
   let sum = 0
   for (const event of events) {
-    if (eventDay(event) === day) sum += minutesBack(event.words, event.durationMs, typingWpm)
+    if (countsTowardStats(event) && eventDay(event) === day) {
+      sum += minutesBack(event.words, event.durationMs, typingWpm)
+    }
   }
   return sum
 }
