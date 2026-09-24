@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (53/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (54/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -57,6 +57,7 @@
 - [x] **US-054** Speak an edit: transform the text you have selected
 - [x] **US-056** One sentence, several tasks: splitting that cannot reword
 - [x] **US-055** Duplicates and completions: suggestions, never silent edits
+- [x] **US-062** A spoken list files as items under its lead-in
 
 ## Built, awaiting live verification
 
@@ -70,4 +71,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [ ] **US-053** A silent stream heals before the first press
-- [ ] **US-062** A spoken list files as items under its lead-in
