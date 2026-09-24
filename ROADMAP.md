@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (56/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (57/59 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -54,6 +54,7 @@
 - [x] **US-050** Brain dump: speak a note instead of a paste
 - [x] **US-051** Brain dump sorting: thoughts file themselves
 - [x] **US-052** Note recall: optional desktop reminders
+- [x] **US-053** A silent stream heals before the first press
 - [x] **US-054** Speak an edit: transform the text you have selected
 - [x] **US-056** One sentence, several tasks: splitting that cannot reword
 - [x] **US-057** Sorting on a decision model, optional
@@ -70,4 +71,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-053** A silent stream heals before the first press
