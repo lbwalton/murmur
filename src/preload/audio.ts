@@ -25,6 +25,9 @@ const api = {
   onSimulateSilence: (cb: (count: number) => void): void => {
     ipcRenderer.on('audio:simulate-silence', (_e, count: number) => cb(Number(count)))
   },
+  onSimulateHang: (cb: (count: number) => void): void => {
+    ipcRenderer.on('audio:simulate-hang', (_e, count: number) => cb(Number(count)))
+  },
   ready: (): void => {
     ipcRenderer.send('audio:ready')
   },

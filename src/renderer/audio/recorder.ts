@@ -69,25 +69,33 @@ export class Recorder {
   // Bumped to invalidate an arm attempt: whatever a stale attempt
   // acquires after the bump gets released instead of installed.
   private generation = 0
+  // The generation whose graph feeds the buffers: set when a graph is
+  // installed, not when its attempt starts, so a hot swap (a press on a
+  // silent stream) keeps the old graph feeding the take until the new
+  // one is in place.
+  private feedGen = 0
   private watchdog: ReturnType<typeof setInterval> | null = null
   private outageLogged = false
   private silenceLogged = false
   private exhaustedLogged = false
   private failNextArms = 0
   private silentNextArms = 0
+  private hangNextArms = 0
 
   constructor(private readonly opts: RecorderOptions) {
     this.minSignalChunks = opts.minSignalChunks ?? LIVENESS_DEFAULTS.minSignalChunks
   }
 
-  /** (Re)acquire the source and start feeding the pre-roll buffer. */
-  arm(): Promise<void> {
+  /** (Re)acquire the source and start feeding the pre-roll buffer.
+   *  keepCurrent builds the new graph beside the old one and swaps at
+   *  install, so a take in progress loses nothing while it builds. */
+  arm(keepCurrent = false): Promise<void> {
     this.watchdog ??= setInterval(
       () => this.tick(),
       this.opts.watchTickMs ?? LIVENESS_DEFAULTS.watchTickMs
     )
     if (!this.arming) {
-      const attempt = this.doArm().finally(() => {
+      const attempt = this.doArm(keepCurrent).finally(() => {
         // An abandoned attempt must not clear its successor's slot.
         if (this.arming === attempt) {
           this.arming = null
@@ -134,6 +142,17 @@ export class Recorder {
     void this.arm().catch(() => undefined)
   }
 
+  /**
+   * Smoke-only seam: make the next N arm attempts hang forever the way a
+   * waking audio stack's getUserMedia can, so the watchdog has to
+   * abandon them. The installed graph is left alone. No-op outside
+   * synthetic mode.
+   */
+  simulateHang(count: number): void {
+    if (!this.opts.synthetic) return
+    this.hangNextArms = Math.max(0, Math.floor(count))
+  }
+
   private tick(): void {
     const action = livenessAction(
       { now: Date.now(), lastChunkAt: this.lastChunkAt, armingSince: this.armingSince },
@@ -163,7 +182,13 @@ export class Recorder {
       // renderer errors into the rotating log.
       console.error('[murmur] audio capture stalled; re-arming until the mic returns')
     }
-    void this.arm().catch(() => undefined)
+    // An abandoned hot swap (a press on a silent stream whose rebuild
+    // hung) left the old graph installed and feeding the take: the retry
+    // must be a hot swap too, or its teardown would silence the very
+    // take the swap exists to save (review gate 2026-09-24). A stall
+    // means the installed graph delivers nothing, so it rebuilds cold.
+    const keepFeeding = action === 'abandon' && this.active !== null && this.ctx !== null
+    void this.arm(keepFeeding).catch(() => undefined)
   }
 
   /**
@@ -217,10 +242,16 @@ export class Recorder {
     void this.arm().catch(() => undefined)
   }
 
-  private async doArm(): Promise<void> {
+  private async doArm(keepCurrent = false): Promise<void> {
     const gen = ++this.generation
-    await this.teardown()
-    if (gen !== this.generation) return
+    if (!keepCurrent) {
+      await this.teardown()
+      if (gen !== this.generation) return
+    }
+    if (this.opts.synthetic && this.hangNextArms > 0) {
+      this.hangNextArms--
+      await new Promise<void>(() => undefined)
+    }
     if (this.opts.synthetic && this.failNextArms > 0) {
       this.failNextArms--
       throw new Error('simulated arm failure')
@@ -278,9 +309,10 @@ export class Recorder {
 
       const node = new AudioWorkletNode(audioCtx, 'murmur-forward')
       node.port.onmessage = (event) => {
-        // A superseded graph must not feed the shared buffers: its
-        // chunks may carry a different sample rate.
-        if (gen === this.generation) this.onChunk(event.data as Float32Array)
+        // Only the installed graph feeds the shared buffers: a superseded
+        // one's chunks may carry a different sample rate, and a graph
+        // still building must not interleave with the one it replaces.
+        if (gen === this.feedGen) this.onChunk(event.data as Float32Array)
       }
       const mute = audioCtx.createGain()
       mute.gain.value = 0
@@ -298,8 +330,18 @@ export class Recorder {
       throw error
     }
 
+    // A hot swap releases the graph it replaces only now, after the new
+    // one is ready: the take kept recording on it the whole time.
+    const replaced = keepCurrent ? { ctx: this.ctx, stream: this.stream } : null
     this.ctx = ctx
     this.stream = stream
+    this.feedGen = gen
+    if (replaced) {
+      this.preRoll = []
+      this.preRollSamples = 0
+      for (const track of replaced.stream?.getTracks() ?? []) track.stop()
+      if (replaced.ctx) void replaced.ctx.close().catch(() => undefined)
+    }
     this.sampleRate = ctx.sampleRate
     this.maxPreRollSamples = Math.round(((this.opts.preRollMs ?? 300) / 1000) * ctx.sampleRate)
     // A recording that survived the outage continues in a new segment
@@ -350,6 +392,22 @@ export class Recorder {
     this.active = [
       { rate: this.sampleRate ?? TARGET_SAMPLE_RATE, chunks: [...this.preRoll] }
     ]
+    // A press on a graph that has never carried signal (the signal
+    // watchdog gave up on it, or a gated mic has not spoken since it was
+    // installed) rebuilds capture under the take instead of recording
+    // the whole press into it. Live-found 2026-09-24: after a wake or an
+    // idle spell the budget ran out on dead graphs, the first press
+    // recorded silence (peak 0.0002), and only the heal after it brought
+    // the mic back, so the first press was always lost. The old graph
+    // keeps feeding the take until the new one installs, so a gated mic
+    // that was merely quiet loses nothing either.
+    if (this.ctx !== null && !this.arming && this.signalChunks < this.minSignalChunks) {
+      this.silentRearms = 0
+      this.silenceLogged = false
+      this.exhaustedLogged = false
+      console.error('[murmur] press found a silent stream; rebuilding capture under the take')
+      void this.arm(true).catch(() => undefined)
+    }
   }
 
   cancel(): void {
@@ -409,6 +467,9 @@ export class Recorder {
     const stream = this.stream
     this.ctx = null
     this.stream = null
+    // Nothing feeds until the next graph installs: a closing context can
+    // still deliver a chunk or two while close() settles.
+    this.feedGen = -1
     this.preRoll = []
     this.preRollSamples = 0
     for (const track of stream?.getTracks() ?? []) track.stop()
