@@ -323,7 +323,7 @@ export function initOverlay(): void {
     const shown = JSON.parse(await read()) as {
       phase: string
       mode: string
-      hint: string | null
+      hint?: string
       note: boolean
       fits: boolean
     }
@@ -356,8 +356,8 @@ export function initOverlay(): void {
       look: string | undefined
       boxed: boolean
       height: number
-      timer: string | null
-      hint: string | null
+      timer?: string
+      hint?: string
       fits: boolean
     }
     const read = (): Promise<string> => {
@@ -379,22 +379,36 @@ export function initOverlay(): void {
       )
     }
     const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    // Poll the live DOM until it shows what was asked, then hand back
+    // whatever it shows so the assertions below report the real state.
+    // One deadline for the whole check keeps even a badly broken run
+    // inside the harness's ten second cap, so it still logs and its
+    // finally still restores the phase and the look.
+    const deadline = Date.now() + 7_000
+    const until = async (ready: (shape: Shape) => boolean): Promise<Shape> => {
+      let shape = JSON.parse(await read()) as Shape
+      while (!ready(shape) && Date.now() < deadline) {
+        await wait(50)
+        shape = JSON.parse(await read()) as Shape
+      }
+      return shape
+    }
     const original = getSettings().overlay.look
     try {
       for (const look of OVERLAY_LOOKS) {
         updateSettings({ overlay: { look } })
-        // The config resolves the accent from the log before it is sent.
-        await wait(300)
+        // The config resolves the accent from the log before it is
+        // sent, so wait for the renderer to report the look rather than
+        // guess a delay (a busy machine made fixed waits flake).
+        await until((shape) => shape.look === look)
         if (!setOverlayPhase('recording')) return false
-        await wait(150)
-        const recording = JSON.parse(await read()) as Shape
+        const recording = await until((shape) => typeof shape.timer === 'string')
         setOverlayPhase('idle')
-        await wait(80)
+        await until((shape) => shape.timer === undefined)
         if (!showOverlayHint(NOTE_FOLDER_HINT, 'note')) return false
-        await wait(150)
-        const hint = JSON.parse(await read()) as Shape
+        const hint = await until((shape) => shape.hint === NOTE_FOLDER_HINT && shape.height === 56)
         setOverlayPhase('idle')
-        await wait(80)
+        await until((shape) => shape.hint === undefined)
         const flags = !overlayWindow.isFocusable() && overlayWindow.isAlwaysOnTop() && clickThrough
         const ok =
           recording.look === look &&
