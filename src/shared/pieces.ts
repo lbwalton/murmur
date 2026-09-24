@@ -20,6 +20,26 @@ export interface PieceSet {
   lead: LeadIn | null
 }
 
+// One sentence cut into its run, or null when it is not a task or idea
+// with confirmed cuts that yield more than one piece.
+function cutSet(
+  local: number,
+  sentences: readonly string[],
+  labels: readonly SortLabel[],
+  seamsBySentence: readonly Seam[][],
+  votes: SeamVotes,
+  starts: LeadStarts,
+  group: string
+): PieceSet | null {
+  const label = labels[local]
+  const confirmed = votes[local + 1]
+  if ((label !== 'task' && label !== 'idea') || !confirmed || confirmed.length === 0) return null
+  const run = cutRun(sentences[local] ?? '', seamsBySentence[local] ?? [], confirmed, starts[local + 1])
+  if (run.pieces.length < 2) return null
+  const lead = run.lead ? { text: run.lead, group: `${group}-${local + 1}` } : null
+  return { local, label, pieces: run.pieces, lead }
+}
+
 /**
  * Split the related lines into the ones to compare piece by piece (a
  * task or idea with confirmed cuts that yield more than one piece) and
@@ -37,18 +57,35 @@ export function piecesToCompare(
   const cut: PieceSet[] = []
   const whole: RelatedLine[] = []
   for (const line of related) {
-    const label = labels[line.local]
-    const confirmed = votes[line.local + 1]
-    const run =
-      (label === 'task' || label === 'idea') && confirmed && confirmed.length > 0
-        ? cutRun(sentences[line.local] ?? '', seamsBySentence[line.local] ?? [], confirmed, starts[line.local + 1])
-        : { lead: null, pieces: [] }
-    if (run.pieces.length > 1 && (label === 'task' || label === 'idea')) {
-      const lead = run.lead ? { text: run.lead, group: `${group}-${line.local + 1}` } : null
-      cut.push({ local: line.local, label, pieces: run.pieces, lead })
-    } else whole.push(line)
+    const set = cutSet(line.local, sentences, labels, seamsBySentence, votes, starts, group)
+    if (set) cut.push(set)
+    else whole.push(line)
   }
   return { cut, whole }
+}
+
+/**
+ * The kept lines that are runs, cut for the same piece-by-piece look
+ * (US-062, live-found 2026-09-23). The sentence-level vote judges the
+ * sentence as spoken, and a run that mixes one filed item with a new
+ * one reads as new as a whole ("I need to buy apples and bread" when
+ * apples is already on the list), so its pieces are compared anyway.
+ */
+export function runsToCompare(
+  kept: readonly number[],
+  sentences: readonly string[],
+  labels: readonly SortLabel[],
+  seamsBySentence: readonly Seam[][],
+  votes: SeamVotes,
+  starts: LeadStarts = {},
+  group = 'run'
+): PieceSet[] {
+  const out: PieceSet[] = []
+  for (const local of kept) {
+    const set = cutSet(local, sentences, labels, seamsBySentence, votes, starts, group)
+    if (set) out.push(set)
+  }
+  return out
 }
 
 /** The pieces as one numbered list for the second request, each with

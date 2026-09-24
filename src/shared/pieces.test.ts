@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildCompareContext, type RelatedLine } from './compare'
 import { findSeams } from './sorter'
-import { assignPieceVotes, flattenPieces, piecesToCompare } from './pieces'
+import { assignPieceVotes, flattenPieces, piecesToCompare, runsToCompare } from './pieces'
 
 const TASKS = `## 2026-09-20
 - [ ] Call the vet. ([10:32](inbox/2026-09-20.md))
@@ -47,6 +47,18 @@ describe('piecesToCompare with a lead-in (US-062)', () => {
     const { cut } = piecesToCompare(related, [sentence], ['task'], [findSeams(sentence)], { 1: [1, 2] }, { 1: 5 })
     expect(cut).toEqual([
       { local: 0, label: 'task', pieces: ['eggs', 'milk', 'bread'], lead: { text: 'I need to buy', group: 'run-1' } }
+    ])
+  })
+})
+
+describe('runsToCompare (US-062)', () => {
+  it('cuts the kept runs for the piece look and skips everything else', () => {
+    const sentences = ['I need to buy apples, and bread.', 'Call the vet.', 'Maybe a pill, or a tray.', 'Nice day, and warm.']
+    const seams = sentences.map(findSeams)
+    const sets = runsToCompare([0, 1, 2, 3], sentences, ['task', 'task', 'idea', 'note'], seams, { 1: [1], 3: [1], 4: [1] }, { 1: 5 })
+    expect(sets).toEqual([
+      { local: 0, label: 'task', pieces: ['apples', 'bread'], lead: { text: 'I need to buy', group: 'run-1' } },
+      { local: 2, label: 'idea', pieces: ['Maybe a pill', 'or a tray'], lead: null }
     ])
   })
 })
