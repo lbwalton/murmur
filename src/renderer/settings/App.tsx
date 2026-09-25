@@ -972,7 +972,7 @@ export function App(): React.JSX.Element {
 
         <Row
           label="Overlay look"
-          desc="Pill is the classic. Compact is the same pill at two thirds. Bare drops the box: a translucent waveform with the timer beneath it. A hint or an error always gets the pill, since a sentence needs a backing to be read. Preview shows the current look without dictating."
+          desc="Pill is the classic. Compact is the same pill at two thirds. Bare drops the box: just the waveform, edged faintly in ink so it reads on white, with the timer beneath it. A hint or an error always gets the pill, since a sentence needs a backing to be read. Preview shows the current look without dictating."
         >
           <div className="inline">
             <select

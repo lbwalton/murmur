@@ -213,13 +213,13 @@ body {
   font-size: 11px;
 }
 
-/* Bare (US-061): no box and no border. The waveform rides a touch
-   translucent with the timer beneath it in small mono. The amber
-   needle reads on its own over a light app; the cream timer would not,
-   so it carries a tight ink outline (a soft glow smeared, and a shadow
-   on the bars bled across their gaps: design QA shots 2026-09-22).
-   Sized explicitly: with no box a fixed width is invisible, and it
-   keeps the column steady for the canvas styles too. */
+/* Bare (US-061): no box and no border, the waveform with the timer
+   beneath it in small mono. With nothing behind them, marks carry the
+   ink edge below and the timer a tight ink outline (a soft glow
+   smeared it, and an offset shadow on the whole wave fused the bars on
+   white: design QA shots 2026-09-22). Sized explicitly: with no box a
+   fixed width is invisible, and it keeps the column steady for the
+   canvas styles too. */
 .pill.look-bare {
   flex-direction: column;
   gap: 2px;
@@ -245,7 +245,34 @@ body {
   flex: none;
   width: 140px;
   justify-content: center;
-  opacity: 0.85;
+}
+
+/* The ink edge (LaBroi pick 2026-09-25, from a live preview): every mark
+   carries a faint ink shadow that hugs it, so the needle reads over a
+   white page and still reads as light over a dark one. Bars take it in
+   CSS; the canvas styles draw it themselves (overlay/bare.ts). */
+.look-bare .bar {
+  box-shadow: 0 0 2px var(--ink-edge);
+}
+
+.look-bare .dot {
+  box-shadow: 0 0 2px 0.5px var(--ink-edge);
+}
+
+.look-bare .dot-live {
+  box-shadow:
+    0 0 2px 0.5px var(--ink-edge),
+    0 0 8px var(--red-glow);
+}
+
+/* The canvas styles overhang their slot on every side and fade to
+   nothing before their own edge, so rings and dust never meet a line.
+   The 20px and 12px here must match OVERHANG in overlay/bare.ts. */
+.look-bare .speckle {
+  width: calc(100% + 40px);
+  height: calc(100% + 24px);
+  margin: -12px -20px;
+  flex: none;
 }
 
 .look-bare .status-slot {

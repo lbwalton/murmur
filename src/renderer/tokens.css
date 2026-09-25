@@ -58,6 +58,12 @@
     'Segoe UI',
     sans-serif;
   --font-mono: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+
+  /* The bare overlay's ink edge (US-061): the ink at about half strength,
+     hugging each mark so it reads over a white page without drawing an
+     outline. LaBroi picked this over a hard outline and a smoke cloud
+     from a live preview, 2026-09-25. */
+  --ink-edge: rgba(15, 14, 17, 0.55);
 }
 
 /* Unlockable theme: morning mist. Cooler ground, same signals. */

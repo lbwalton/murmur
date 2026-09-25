@@ -92,7 +92,7 @@ Settings, dictation, Overlay look. Three looks:
 
 - **Pill** is the classic: the dot, the waveform, and the timer in a rounded box.
 - **Compact** is the same pill at about two thirds, for when the box covers what you are reading.
-- **Bare** drops the box and the border entirely: a slightly translucent waveform with the timer in small type beneath it, each with a faint shadow so they read over a light app. It just appears, more instrument than window.
+- **Bare** drops the box and the border entirely: just the waveform, with the timer in small type beneath it. Every bar, dot, and ring carries a faint ink edge that hugs it, so the waveform reads over a white page as well as a dark app, and the speckle and pulse fields fade out toward their edges instead of stopping at a line. It just appears, more instrument than window.
 
 One rule holds in every look: text that has to be read (a hint such as "set a notes folder in settings", an error, no speech) always comes in the full pill, because a sentence with no backing is unreadable over a busy window. In bare, a note or a spoken edit shows its small mode tag but not the gold edge the pill wears, since there is no edge to color. Preview shows the current look without dictating. The overlay never takes focus and clicks pass straight through it in every look, so it can never steal a keystroke from the app you are dictating into.
 

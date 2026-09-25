@@ -87,6 +87,9 @@ export function App(): React.JSX.Element {
   // phases, so a hint, an error, or no speech reads the same anywhere.
   const bareNow = look === 'bare' && !TEXT_PHASES.has(state.phase)
   const compactNow = look === 'compact' && !TEXT_PHASES.has(state.phase)
+  // The look actually drawn this phase: an error in bare borrows the
+  // pill, and its canvas must remount at that size and back.
+  const drawnAs = bareNow ? 'bare' : compactNow ? 'compact' : 'pill'
   const barBase = compactNow ? 4 : 6
   const barSpan = compactNow ? 20 : 30
   const classes = [
@@ -107,21 +110,23 @@ export function App(): React.JSX.Element {
           aria-hidden="true"
           style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
         >
-          {/* The canvases size their bitmap once on mount, so a look
-              change (a different box) must remount them: keyed by look. */}
+          {/* The canvases size their bitmap once on mount, so a change in
+              the look being drawn must remount them. */}
           {style === 'pulse' ? (
             <PulseWave
-              key={look}
+              key={drawnAs}
               levelRef={levelRef}
               muted={state.phase !== 'recording'}
               accent={accent ?? 'rgb(240, 164, 75)'}
+              bare={bareNow}
             />
           ) : style === 'speckle' ? (
             <SpeckleWave
-              key={look}
+              key={drawnAs}
               levelRef={levelRef}
               muted={state.phase !== 'recording'}
               accent={accent}
+              bare={bareNow}
             />
           ) : (
             levels.map((level, i) => (
