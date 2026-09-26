@@ -20,12 +20,18 @@
     "check:design": "node scripts/check-design.js",
     "check:headers": "node scripts/check-headers.js",
     "notices": "node scripts/gen-notices.js",
-    "release:stable": "node scripts/stable-assets.js"
+    "release:stable": "node scripts/stable-assets.js",
+    "site": "node site/build.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",
     "productName": "murmur",
     "npmRebuild": false,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false
+    },
     "files": [
       "out/**/*",
       "package.json"

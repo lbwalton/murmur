@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (59/66 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (59/67 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -70,11 +70,12 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
 - [ ] **US-060** Time back arrives: the recap says it, and every 30 minutes gets a nod
+- [ ] **US-063** Download links that never go stale
+- [ ] **US-065** One Mac download for every Mac, Intel included
+- [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
 
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-063** Download links that never go stale
 - [ ] **US-064** Windows installer signed as Eze Media LLC (on hold until sales)
-- [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-066** A one-page home for murmur with a single download button

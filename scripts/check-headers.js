@@ -7,14 +7,15 @@ const { join, relative } = require('node:path')
 
 const root = join(__dirname, '..')
 const SPDX = 'SPDX-License-Identifier: GPL-3.0-only'
-const ROOTS = ['src', 'scripts']
+const ROOTS = ['src', 'scripts', 'site']
 const EXTENSIONS = /\.(ts|tsx|js|css)$/
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (EXTENSIONS.test(entry)) out.push(full)
+    if (statSync(full).isDirectory()) {
+      if (entry !== 'dist' && entry !== 'node_modules') walk(full, out)
+    } else if (EXTENSIONS.test(entry)) out.push(full)
   }
   return out
 }
