@@ -19,7 +19,8 @@
     "dist:win": "electron-vite build && electron-builder --win",
     "check:design": "node scripts/check-design.js",
     "check:headers": "node scripts/check-headers.js",
-    "notices": "node scripts/gen-notices.js"
+    "notices": "node scripts/gen-notices.js",
+    "release:stable": "node scripts/stable-assets.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",

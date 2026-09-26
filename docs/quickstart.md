@@ -2,7 +2,7 @@
 
 Install to first dictation in about five minutes.
 
-1. **Install and launch murmur.** It lives in your tray (macOS: menu bar). The window opens with a guided wizard.
+1. **Install and launch murmur.** [Download it for Mac or Windows](./download.md). It lives in your tray (macOS: menu bar). The window opens with a guided wizard.
 2. **Get a key.** Visit [console.groq.com/keys](https://console.groq.com/keys), create a free account, copy a key.
 3. **Paste the key** into the wizard and hit Save and test. Wait for the green `connected`.
 4. **Grant permissions** (macOS): the wizard deep-links each one. After granting Input Monitoring, quit murmur from the tray and reopen it.

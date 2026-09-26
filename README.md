@@ -14,7 +14,7 @@ The name is always lowercase: murmur.
 
 ## Getting started
 
-1. Install murmur: grab the notarized dmg (macOS, Apple Silicon) or the Windows installer from [Releases](https://github.com/lbwalton/murmur/releases), or build from source below. Installed builds keep themselves current automatically.
+1. Download murmur: **[Download for Mac](https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg)** (Apple silicon) or **[Download for Windows](https://github.com/lbwalton/murmur/releases/latest/download/murmur-windows.exe)**. Both links always serve the newest release. On Windows, a blue Windows protected your PC screen is expected while the installer is unsigned: click More info, then Run anyway ([why, and what else to know](docs/download.md)). Every version is also on [Releases](https://github.com/lbwalton/murmur/releases), or build from source below. Installed builds keep themselves current automatically.
 2. Launch it: a guided wizard walks you through the rest
 3. Get a free key at [console.groq.com/keys](https://console.groq.com/keys) and paste it in
 4. Grant the OS permissions the wizard asks for (macOS: microphone, accessibility, input monitoring)
@@ -26,6 +26,7 @@ The name is always lowercase: murmur.
 - [Notes and brain dumps](docs/notes.md): speak a thought into your Obsidian vault or any folder, with your own file layout
 - [Transform](docs/transform.md): select text anywhere, speak an edit, and the result replaces it, with the original one paste-last away
 - [Connecting a provider](docs/providers.md): Groq (default), OpenAI, local servers, any OpenAI-compatible endpoint, and troubleshooting
+- [Downloading and installing](docs/download.md): the two download links, the Windows protection screen, and which Macs are supported
 - [Coworker quickstart](docs/quickstart.md): install to first dictation in five minutes
 - [The journey](docs/journey.md): belts, achievements, and unlocks, BJJ style
 - [Troubleshooting](docs/troubleshooting.md): sleep and wake, microphone recovery
