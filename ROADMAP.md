@@ -75,6 +75,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [ ] **US-063** Download links that never go stale
-- [ ] **US-064** Windows installer signed as Eze Media LLC
+- [ ] **US-064** Windows installer signed as Eze Media LLC (on hold until sales)
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-066** A one-page home for murmur with a single download button
