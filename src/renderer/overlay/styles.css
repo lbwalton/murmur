@@ -179,3 +179,108 @@ body {
   white-space: nowrap;
   text-align: left;
 }
+
+/* The needle is the dot and the wave together. In the boxed looks it
+   dissolves into the pill's own row; bare stacks it over the timer. */
+.needle {
+  display: contents;
+}
+
+/* Compact (US-061): the same pill at about two thirds. */
+.pill.look-compact {
+  height: 38px;
+  padding: 0 12px;
+  gap: 7px;
+}
+
+.look-compact .dot {
+  width: 6px;
+  height: 6px;
+}
+
+.look-compact .wave {
+  height: 26px;
+  gap: 2px;
+}
+
+.look-compact .bar {
+  width: 2px;
+  min-height: 4px;
+}
+
+.look-compact .status-slot {
+  min-width: 26px;
+  font-size: 11px;
+}
+
+/* Bare (US-061): no box and no border, the waveform with the timer
+   beneath it in small mono. With nothing behind them, marks carry the
+   ink edge below and the timer a tight ink outline (a soft glow
+   smeared it, and an offset shadow on the whole wave fused the bars on
+   white: design QA shots 2026-09-22). Sized explicitly: with no box a
+   fixed width is invisible, and it keeps the column steady for the
+   canvas styles too. */
+.pill.look-bare {
+  flex-direction: column;
+  gap: 2px;
+  height: auto;
+  width: 240px;
+  padding: 0 8px 2px;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* The needle centers as one unit over the timer, so the dot sits
+   beside the bars instead of at the far edge of the column; the wave
+   takes a fixed width the bars and the canvases both fill. */
+.look-bare .needle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.look-bare .wave {
+  flex: none;
+  width: 140px;
+  justify-content: center;
+}
+
+/* The ink edge (LaBroi pick 2026-09-25, from a live preview): every mark
+   carries a faint ink shadow that hugs it, so the needle reads over a
+   white page and still reads as light over a dark one. Bars take it in
+   CSS; the canvas styles draw it themselves (overlay/bare.ts). */
+.look-bare .bar {
+  box-shadow: 0 0 2px var(--ink-edge);
+}
+
+.look-bare .dot {
+  box-shadow: 0 0 2px 0.5px var(--ink-edge);
+}
+
+.look-bare .dot-live {
+  box-shadow:
+    0 0 2px 0.5px var(--ink-edge),
+    0 0 8px var(--red-glow);
+}
+
+/* The canvas styles overhang their slot on every side and fade to
+   nothing before their own edge, so rings and dust never meet a line.
+   The 20px and 12px here must match OVERHANG in overlay/bare.ts. */
+.look-bare .speckle {
+  width: calc(100% + 40px);
+  height: calc(100% + 24px);
+  margin: -12px -20px;
+  flex: none;
+}
+
+.look-bare .status-slot {
+  min-width: 0;
+  text-align: center;
+  font-size: 11px;
+  text-shadow:
+    0 0 1px var(--ink),
+    0 0 2px var(--ink),
+    0 1px 2px var(--ink);
+}

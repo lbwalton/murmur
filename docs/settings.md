@@ -4,7 +4,7 @@ Everything the settings window can do, in the order it appears. For provider set
 
 ## What is the home view?
 
-The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. A red ✗ next to the settings tab means setup needs attention.
+The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A red ✗ next to the settings tab means setup needs attention.
 
 ## How long is my history kept, and where?
 
@@ -72,7 +72,7 @@ Lists use plain text markers ("- " and "1. "), so they paste correctly everywher
 
 ## What does the analytics tab show, and how is the cost estimated?
 
-The analytics tab shows your dictation in numbers: minutes, words, sessions, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
+The analytics tab shows your dictation in numbers: minutes, words, sessions, time back, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. Time back is the minutes you did not spend typing, computed as described under "How does murmur calculate time earned back?" below. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
 
 ## How does the custom dictionary work?
 
@@ -84,11 +84,37 @@ An expansion turns a spoken trigger phrase into a saved snippet: say "insert my 
 
 ## What are the waveform styles?
 
-How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview overlay** shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
+How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview**, beside Overlay look, shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
+
+## How do I make the overlay smaller or less intrusive?
+
+Settings, dictation, Overlay look. Three looks:
+
+- **Pill** is the classic: the dot, the waveform, and the timer in a rounded box.
+- **Compact** is the same pill at about two thirds, for when the box covers what you are reading.
+- **Bare** drops the box and the border entirely: just the waveform, with the timer in small type beneath it. Every bar, dot, and ring carries a faint ink edge that hugs it, so the waveform reads over a white page as well as a dark app, and the speckle and pulse fields fade out toward their edges instead of stopping at a line. It just appears, more instrument than window.
+
+One rule holds in every look: text that has to be read (a hint such as "set a notes folder in settings", an error, no speech) always comes in the full pill, because a sentence with no backing is unreadable over a busy window. In bare, a note or a spoken edit shows its small mode tag but not the gold edge the pill wears, since there is no edge to color. Preview shows the current look without dictating. The overlay never takes focus and clicks pass straight through it in every look, so it can never steal a keystroke from the app you are dictating into.
 
 ## How do recaps and the wrap-up work?
 
-Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers. Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, an estimate of the typing time you saved, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers, ending with your time back once the day has at least a minute of it: "4 sessions, 12 minutes, 1,240 words today. 19 minutes back." Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, your time back at your own typing speed, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+
+## What is the time back milestone notification, and how do I turn it off?
+
+Each time today's time back crosses a 30-minute mark (30 minutes, 1 hour, 1 hour 30 minutes, and so on) murmur shows one notification titled time back, reading for example "30 minutes earned back today." Clicking it opens the wrap-up. It is on by default, like belt promotions and achievement unlocks; unlike those it has a switch: Settings, recap, Milestone alerts.
+
+The nod is decided on the same whole minutes the home card shows, so it arrives on the take where the card first reads 30 min, never a take later. Each mark is celebrated once per day. A take that jumps two marks at once gets one notification for the higher mark, a slow take that pulls the total back under a mark does not earn the mark again on the way back up, and changing your typing speed never re-fires a mark already shown. If a speed edit itself lifts the total past a mark, that mark is not celebrated that day: the nod is for takes, not edits. A new day starts clean. The number is also in the tray: hover the murmur icon and the tooltip reads "murmur · 42 min back today" once the day has any, plain murmur before that.
+
+## How does murmur calculate time earned back?
+
+Time back is the time you did not spend typing. For every dictation, murmur takes the words that landed, works out how long typing them would have taken at your typing speed, and subtracts the time you actually held the key. Those per-take numbers add up into today, this month, and lifetime, shown on the home card, the analytics tab, and the wrap-up.
+
+The formula for one take is `words / typing speed - minutes spoken`. At the default 40 words per minute, a 400-word dictation spoken in two minutes is ten minutes of typing minus two of speaking: eight minutes back.
+
+The typing speed is yours to set: Settings, recap, Typing speed, anywhere from 10 to 200 words per minute. 40 is a fair average for a working typist; if you know you type at 70, say so and the number gets honest. Nothing is stored per take, so changing the speed restates every day you have on record, past ones included.
+
+Two rules keep the number truthful. A take where you held the key while thinking and said little counts against the day, because murmur cost that time; but a day never shows below zero. Notes dictated with the note chord count exactly like any other dictation. Spoken edits (the transform chord) never count: the original selection murmur keeps for recovery is a safety copy, not words you spoke, so it stays out of every number murmur keeps.
 
 ## Which macOS permissions does murmur need, and why?
 

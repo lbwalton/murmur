@@ -135,6 +135,29 @@ body {
   padding-bottom: 12px;
 }
 
+/* The time back card: the day's number in the stat voice, larger, with
+   the longer spans beneath in mono so the card stays one glance. */
+.timeback-value {
+  font-size: 34px;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.timeback-spans {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-top: 8px;
+  padding-bottom: 12px;
+}
+
+.number-field {
+  /* .field carries a 130px min-width for text; a number wants less. */
+  min-width: 0;
+  width: 88px;
+}
+
 .chart {
   display: flex;
   align-items: flex-end;

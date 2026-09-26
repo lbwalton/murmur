@@ -1,9 +1,38 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import { dayKey } from './history'
-import { fireTimeFor, parseRecapTime, shouldFire } from './recap'
+import { fireTimeFor, parseRecapTime, recapBody, shouldFire } from './recap'
 
 const at = (h: number, m: number) => new Date(2026, 8, 5, h, m).getTime()
+
+describe('recapBody', () => {
+  it('keeps the quiet-day sentence when nothing was dictated', () => {
+    expect(recapBody({ sessions: 0, words: 0, minutes: 0, minutesBack: 0 })).toBe(
+      'A quiet day: no dictations. Your hotkey misses you.'
+    )
+  })
+
+  it('reads the day in numbers and stays unchanged with no time back', () => {
+    expect(recapBody({ sessions: 1, words: 12, minutes: 0.5, minutesBack: 0 })).toBe(
+      '1 session, 0.5 minutes, 12 words today.'
+    )
+    expect(recapBody({ sessions: 2, words: 40, minutes: 1.1, minutesBack: 0.4 })).toBe(
+      '2 sessions, 1.1 minutes, 40 words today.'
+    )
+  })
+
+  it('adds the time back clause once the day has at least a minute', () => {
+    expect(recapBody({ sessions: 1, words: 60, minutes: 0.5, minutesBack: 1 })).toBe(
+      '1 session, 0.5 minutes, 60 words today. 1 minute back.'
+    )
+    expect(recapBody({ sessions: 4, words: 1240, minutes: 12, minutesBack: 19 })).toBe(
+      '4 sessions, 12 minutes, 1,240 words today. 19 minutes back.'
+    )
+    expect(recapBody({ sessions: 9, words: 4000, minutes: 40, minutesBack: 65.2 })).toBe(
+      '9 sessions, 40 minutes, 4,000 words today. 1 hour 5 minutes back.'
+    )
+  })
+})
 
 describe('parseRecapTime', () => {
   it('parses 24-hour times and rejects garbage', () => {

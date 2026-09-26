@@ -49,6 +49,49 @@ export function TextSetting(props: {
   )
 }
 
+/**
+ * Whole-number field that commits on blur or Enter. A draft outside
+ * min..max snaps to the nearest bound instead of being refused, and an
+ * unparseable draft reverts, so what reaches settings is always usable.
+ */
+export function NumberSetting(props: {
+  value: number
+  min: number
+  max: number
+  suffix?: string
+  onCommit: (value: number) => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(String(props.value))
+  useEffect(() => setDraft(String(props.value)), [props.value])
+  const commit = (): void => {
+    const parsed = Number(draft.trim())
+    if (draft.trim() === '' || !Number.isFinite(parsed)) {
+      setDraft(String(props.value))
+      return
+    }
+    const next = Math.min(props.max, Math.max(props.min, Math.round(parsed)))
+    if (next !== props.value) props.onCommit(next)
+    else setDraft(String(props.value))
+  }
+  return (
+    <span className="inline">
+      <input
+        type="number"
+        className="field number-field"
+        min={props.min}
+        max={props.max}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+      />
+      {props.suffix && <span className="mono-inline dim">{props.suffix}</span>}
+    </span>
+  )
+}
+
 export function Row(props: {
   label: string
   desc?: string

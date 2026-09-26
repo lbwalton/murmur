@@ -246,12 +246,11 @@ app.whenReady().then(async () => {
   initProfiles()
   initTranscribe()
   initFormatter()
-  initRecap({
-    openWrapup: () => {
-      showSettingsWindow()
-      settingsWindow?.webContents.send('nav:goto', 'wrapup')
-    }
-  })
+  const openWrapup = (): void => {
+    showSettingsWindow()
+    settingsWindow?.webContents.send('nav:goto', 'wrapup')
+  }
+  initRecap({ openWrapup })
   initInsertion()
   initDictation()
   initNotes(() => settingsWindow)
@@ -368,6 +367,9 @@ app.whenReady().then(async () => {
   // The inbox item exists only while there is a folder to open.
   setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
   onSettingsChanged((s) => setTrayInboxVisible(s.notes.folder.trim() !== ''))
+  // Time back rides the tray tooltip, so it comes up after the tray.
+  const { initTimeBack } = await import('./timeback')
+  initTimeBack({ openWrapup })
 
   settingsWindow = createSettingsWindow()
   const settingsLoaded = whenLoaded(settingsWindow)

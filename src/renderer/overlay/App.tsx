@@ -2,7 +2,12 @@
 // The waveform pill. Everything else in the app stays quiet; this is the
 // one loud element. Amber only while live, red only for errors.
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayState } from '../../shared/overlay-state'
+import {
+  type OverlayLook,
+  type OverlayPhase,
+  type OverlayState,
+  normalizeOverlayLook
+} from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
 import type { OverlayApi } from '../../preload/overlay'
 import { PulseWave } from './PulseWave'
@@ -15,6 +20,9 @@ declare global {
 }
 
 const BAR_COUNT = 21
+/** Phases whose whole point is a sentence to read: they always get
+ *  the full pill, whatever the look. */
+const TEXT_PHASES: ReadonlySet<OverlayPhase> = new Set(['hint', 'error', 'nospeech'])
 
 export function App(): React.JSX.Element {
   const [state, setState] = useState<OverlayState>({
@@ -26,6 +34,7 @@ export function App(): React.JSX.Element {
   })
   const [levels, setLevels] = useState<number[]>(() => new Array<number>(BAR_COUNT).fill(0))
   const [style, setStyle] = useState<string>('bars')
+  const [look, setLook] = useState<OverlayLook>('pill')
   const [accent, setAccent] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const levelRef = useRef(0)
@@ -46,9 +55,14 @@ export function App(): React.JSX.Element {
     })
     window.murmurOverlay.onConfig((config) => {
       setStyle(config.style)
+      setLook(normalizeOverlayLook(config.look))
       setAccent(config.accent ?? null)
     })
   }, [])
+
+  useEffect(() => {
+    document.body.dataset.look = look
+  }, [look])
 
   useEffect(() => {
     document.body.dataset.phase = state.phase
@@ -68,29 +82,62 @@ export function App(): React.JSX.Element {
   }, [state])
 
   const live = state.phase === 'recording'
+  // Bare sheds its box while the needle is the message and puts it
+  // back for text; compact grows back to full size for the same
+  // phases, so a hint, an error, or no speech reads the same anywhere.
+  const bareNow = look === 'bare' && !TEXT_PHASES.has(state.phase)
+  const compactNow = look === 'compact' && !TEXT_PHASES.has(state.phase)
+  // The look actually drawn this phase: an error in bare borrows the
+  // pill, and its canvas must remount at that size and back.
+  const drawnAs = bareNow ? 'bare' : compactNow ? 'compact' : 'pill'
+  const barBase = compactNow ? 4 : 6
+  const barSpan = compactNow ? 20 : 30
+  const classes = [
+    'pill',
+    `pill-${state.phase}`,
+    state.mode === 'note' ? 'pill-note' : '',
+    state.mode === 'transform' ? 'pill-transform' : '',
+    state.phase === 'error' && state.hint ? 'pill-says' : '',
+    bareNow ? 'look-bare' : '',
+    compactNow ? 'look-compact' : ''
+  ]
   return (
-    <div
-      className={`pill pill-${state.phase}${state.mode === 'note' ? ' pill-note' : ''}${state.mode === 'transform' ? ' pill-transform' : ''}${state.phase === 'error' && state.hint ? ' pill-says' : ''}`}
-    >
-      <span className={`dot ${live ? 'dot-live' : ''}`} />
-      <div
-        className="wave"
-        aria-hidden="true"
-        style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
-      >
-        {style === 'pulse' ? (
-          <PulseWave
-            levelRef={levelRef}
-            muted={state.phase !== 'recording'}
-            accent={accent ?? 'rgb(240, 164, 75)'}
-          />
-        ) : style === 'speckle' ? (
-          <SpeckleWave levelRef={levelRef} muted={state.phase !== 'recording'} accent={accent} />
-        ) : (
-          levels.map((level, i) => (
-            <span key={i} className="bar" style={{ height: `${Math.round(6 + level * 30)}px` }} />
-          ))
-        )}
+    <div className={classes.filter(Boolean).join(' ')}>
+      <div className="needle">
+        <span className={`dot ${live ? 'dot-live' : ''}`} />
+        <div
+          className="wave"
+          aria-hidden="true"
+          style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
+        >
+          {/* The canvases size their bitmap once on mount, so a change in
+              the look being drawn must remount them. */}
+          {style === 'pulse' ? (
+            <PulseWave
+              key={drawnAs}
+              levelRef={levelRef}
+              muted={state.phase !== 'recording'}
+              accent={accent ?? 'rgb(240, 164, 75)'}
+              bare={bareNow}
+            />
+          ) : style === 'speckle' ? (
+            <SpeckleWave
+              key={drawnAs}
+              levelRef={levelRef}
+              muted={state.phase !== 'recording'}
+              accent={accent}
+              bare={bareNow}
+            />
+          ) : (
+            levels.map((level, i) => (
+              <span
+                key={i}
+                className="bar"
+                style={{ height: `${Math.round(barBase + level * barSpan)}px` }}
+              />
+            ))
+          )}
+        </div>
       </div>
       <span className="status-slot">
         {(state.phase === 'recording' || state.phase === 'processing') && (

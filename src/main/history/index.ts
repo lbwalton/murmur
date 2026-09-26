@@ -59,7 +59,21 @@ export function recordSession(input: {
   if (win && !win.isDestroyed()) win.webContents.send('history:appended', event)
   void notifyNewAchievements()
   void notifyNewPromotions()
+  void notifyTimeBack(event)
   return event
+}
+
+// Time back arrives after every take (US-060): the tray tooltip
+// restates, and a 30-minute mark crossed by this take gets its nod.
+// Lazily imported like the other announcers so a failure here can
+// never cost the dictation that was just recorded.
+async function notifyTimeBack(event: SessionEvent): Promise<void> {
+  try {
+    const { sessionLanded } = await import('../timeback')
+    sessionLanded(event)
+  } catch (error) {
+    console.error('[murmur] time back notify failed:', error)
+  }
 }
 
 // Achievement truth derives from the log; this state file only tracks
@@ -160,8 +174,8 @@ export function isMemoryOnly(event: SessionEvent): boolean {
   return memoryOnly !== null && event === memoryOnly
 }
 
-/** The events that measure speech (recap, overlay accent): transforms
- *  excluded. */
+/** The events that measure speech (recap, overlay accent, time back):
+ *  transforms excluded. */
 export function readStatsHistory(): SessionEvent[] {
   return statsEvents()
 }
@@ -281,7 +295,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       sttModel: settings.provider.sttModel,
       // Priced with the same rule the pipeline routes with: an active
       // separate cleanup connection is what these sessions actually ran.
-      llmModel: effectiveLlmModel(settings)
+      llmModel: effectiveLlmModel(settings),
+      typingWpm: settings.timeBack.typingWpm
     })
   })
 
@@ -319,11 +334,21 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       llmModel: 'llama-3.3-70b-versatile'
     })
     const wall = heatmap(events)
+    // Time back rides the same summary: a known take (100 words in a
+    // minute at 40 wpm is 1.5 back) plus the live log never below zero.
+    const known = aggregate(
+      [{ at: Date.now(), durationMs: 60_000, rawText: 'r', finalText: 'f', words: 100, wpm: 100 }],
+      ratesFromCatalog(catalog),
+      { typingWpm: 40 }
+    )
     // The history smoke probe has already appended at least one event.
     return (
       summary.lifetime.sessions >= 1 &&
       summary.lifetime.estCostUsd > 0 &&
       summary.days.length === 14 &&
+      summary.lifetime.minutesBack >= 0 &&
+      summary.days.every((d) => d.minutesBack >= 0) &&
+      known.lifetime.minutesBack === 1.5 &&
       wall.days.length >= 365 &&
       wall.totalWords >= 1 &&
       wall.years.length >= 1

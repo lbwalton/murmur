@@ -13,6 +13,8 @@ import type {
 import proConfig from '../../../shared/pro.json'
 import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { normalizeOverlayLook } from '../../shared/overlay-state'
+import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
 import { HomeView } from './HomeView'
 import { JourneyView } from './JourneyView'
@@ -21,7 +23,7 @@ import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
-import { ModelPicker, Row, TextSetting, TimeInput } from './controls'
+import { ModelPicker, NumberSetting, Row, TextSetting, TimeInput } from './controls'
 
 declare global {
   interface Window {
@@ -489,7 +491,7 @@ export function App(): React.JSX.Element {
 
       {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
       {page === 'analytics' && <AnalyticsView />}
-      {page === 'wrapup' && <WrapUpView />}
+      {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
       {page === 'journey' && <JourneyView />}
 
       <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
@@ -958,9 +960,7 @@ export function App(): React.JSX.Element {
           <select
             className="field"
             value={settings.overlay.style}
-            onChange={(e) =>
-              void update({ overlay: { style: e.target.value } as Settings['overlay'] })
-            }
+            onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
           >
             {(cosmetics?.overlayStyles ?? []).map((item) => (
               <option key={item.id} value={item.id} disabled={!item.unlocked}>
@@ -968,6 +968,28 @@ export function App(): React.JSX.Element {
               </option>
             ))}
           </select>
+        </Row>
+
+        <Row
+          label="Overlay look"
+          desc="Pill is the classic. Compact is the same pill at two thirds. Bare drops the box: just the waveform, edged faintly in ink so it reads on white, with the timer beneath it. A hint or an error always gets the pill, since a sentence needs a backing to be read. Preview shows the current look without dictating."
+        >
+          <div className="inline">
+            <select
+              className="field"
+              value={settings.overlay.look}
+              onChange={(e) =>
+                void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(e.target.value) } })
+              }
+            >
+              <option value="pill">pill</option>
+              <option value="compact">compact</option>
+              <option value="bare">bare</option>
+            </select>
+            <button className="btn" onClick={() => void bridge().previewOverlay()}>
+              Preview
+            </button>
+          </div>
         </Row>
 
         <Row
@@ -1027,12 +1049,6 @@ export function App(): React.JSX.Element {
               ) : null
             })()}
           </div>
-        </Row>
-
-        <Row label="Overlay" desc="See the pill without dictating.">
-          <button className="btn" onClick={() => void bridge().previewOverlay()}>
-            Preview overlay
-          </button>
         </Row>
 
         <Row label="Setup wizard" desc="Walk the guided setup again anytime.">
@@ -1195,6 +1211,33 @@ export function App(): React.JSX.Element {
           Electron while running from source (the installed app shows as murmur) and pick
           the Banners style.
         </p>
+        <Row
+          label="Typing speed"
+          desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average; make it yours and every day restates."
+        >
+          <NumberSetting
+            value={settings.timeBack.typingWpm}
+            min={MIN_TYPING_WPM}
+            max={MAX_TYPING_WPM}
+            suffix="wpm"
+            onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
+          />
+        </Row>
+        <Row
+          label="Milestone alerts"
+          desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
+        >
+          <select
+            className="field"
+            value={settings.timeBack.milestones ? 'on' : 'off'}
+            onChange={(e) =>
+              void update({ timeBack: { ...settings.timeBack, milestones: e.target.value === 'on' } })
+            }
+          >
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
+        </Row>
       </section>
 
       {isMac && (

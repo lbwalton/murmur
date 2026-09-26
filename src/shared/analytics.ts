@@ -4,6 +4,7 @@
 // derive from shared/provider-catalog.json (see shared/catalog.ts) and
 // costs are estimates at today's rates.
 import { type SessionEvent, dayKey, eventDay } from './history'
+import { DEFAULT_TYPING_WPM, minutesBack as sessionMinutesBack } from './timeback'
 
 export interface RatesSpec {
   stt: {
@@ -26,6 +27,9 @@ export interface UsageTotals {
   estCostUsd: number
   /** Words per spoken minute across the whole span. */
   avgWpm: number
+  /** Minutes not spent typing at the configured speed (shared/timeback).
+   *  Summed honestly per session, floored at zero for display. */
+  minutesBack: number
 }
 
 export interface DayUsage {
@@ -33,6 +37,7 @@ export interface DayUsage {
   sessions: number
   words: number
   minutes: number
+  minutesBack: number
 }
 
 export interface AnalyticsSummary {
@@ -66,14 +71,20 @@ export function sessionCostUsd(
 }
 
 function emptyTotals(): UsageTotals {
-  return { sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0 }
+  return { sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0, minutesBack: 0 }
 }
 
-function add(totals: UsageTotals, event: SessionEvent, cost: number): void {
+function add(totals: UsageTotals, event: SessionEvent, cost: number, back: number): void {
   totals.sessions += 1
   totals.words += event.words
   totals.minutes += event.durationMs / 60_000
   totals.estCostUsd += cost
+  totals.minutesBack += back
+}
+
+/** Display rounding for time back: a total never reads below zero. */
+function roundBack(minutes: number): number {
+  return Math.round(Math.max(0, minutes) * 10) / 10
 }
 
 function round(totals: UsageTotals): UsageTotals {
@@ -82,7 +93,8 @@ function round(totals: UsageTotals): UsageTotals {
     words: totals.words,
     minutes: Math.round(totals.minutes * 10) / 10,
     estCostUsd: Math.round(totals.estCostUsd * 10_000) / 10_000,
-    avgWpm: totals.minutes > 0 ? Math.round(totals.words / totals.minutes) : 0
+    avgWpm: totals.minutes > 0 ? Math.round(totals.words / totals.minutes) : 0,
+    minutesBack: roundBack(totals.minutesBack)
   }
 }
 
@@ -95,9 +107,17 @@ export function aggregate(
     sttModel?: string
     llmModel?: string
     dayCount?: number
+    /** Typing speed time back is measured against; defaults to 40 wpm. */
+    typingWpm?: number
   } = {}
 ): AnalyticsSummary {
-  const { now = () => Date.now(), sttModel = '', llmModel = '', dayCount = 14 } = options
+  const {
+    now = () => Date.now(),
+    sttModel = '',
+    llmModel = '',
+    dayCount = 14,
+    typingWpm = DEFAULT_TYPING_WPM
+  } = options
   const nowDate = new Date(now())
   const todayKey = dayKey(now())
   const monthPrefix = todayKey.slice(0, 7)
@@ -112,17 +132,18 @@ export function aggregate(
   for (let i = dayCount - 1; i >= 0; i--) {
     const d = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - i)
     const key = dayKey(d.getTime())
-    const usage: DayUsage = { day: key, sessions: 0, words: 0, minutes: 0 }
+    const usage: DayUsage = { day: key, sessions: 0, words: 0, minutes: 0, minutesBack: 0 }
     days.push(usage)
     dayIndex.set(key, usage)
   }
 
   for (const event of events) {
     const cost = sessionCostUsd(event, rates, sttModel, llmModel)
-    add(lifetime, event, cost)
+    const back = sessionMinutesBack(event.words, event.durationMs, typingWpm)
+    add(lifetime, event, cost, back)
     const key = eventDay(event)
-    if (key.startsWith(monthPrefix)) add(month, event, cost)
-    if (key === todayKey) add(today, event, cost)
+    if (key.startsWith(monthPrefix)) add(month, event, cost, back)
+    if (key === todayKey) add(today, event, cost, back)
     const bucket = dayIndex.get(key)
     if (bucket) {
       bucket.sessions += 1
@@ -130,9 +151,13 @@ export function aggregate(
       // Raw accumulation; rounding happens once after the loop so
       // per-event rounding error can never compound.
       bucket.minutes += event.durationMs / 60_000
+      bucket.minutesBack += back
     }
   }
-  for (const bucket of days) bucket.minutes = Math.round(bucket.minutes * 10) / 10
+  for (const bucket of days) {
+    bucket.minutes = Math.round(bucket.minutes * 10) / 10
+    bucket.minutesBack = roundBack(bucket.minutesBack)
+  }
 
   return { lifetime: round(lifetime), month: round(month), today: round(today), days }
 }

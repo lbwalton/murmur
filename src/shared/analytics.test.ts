@@ -38,7 +38,7 @@ describe('sessionCostUsd', () => {
 describe('aggregate', () => {
   it('returns zeroed totals and a full zero-filled series for an empty log', () => {
     const summary = aggregate([], RATES, { now: () => NOW })
-    expect(summary.lifetime).toEqual({ sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0 })
+    expect(summary.lifetime).toEqual({ sessions: 0, words: 0, minutes: 0, estCostUsd: 0, avgWpm: 0, minutesBack: 0 })
     expect(summary.days.length).toBe(14)
     expect(summary.days.at(-1)?.day).toBe('2026-09-05')
     expect(summary.days.every((d) => d.sessions === 0)).toBe(true)
@@ -80,6 +80,46 @@ describe('aggregate', () => {
     const summary = aggregate([event(NOW - 1000, 100, 90_000)], RATES, { now: () => NOW })
     expect(summary.lifetime.minutes).toBe(1.5)
     expect(Number.isInteger(summary.lifetime.sessions)).toBe(true)
+  })
+
+  it('reports minutes back at the configured typing speed in every bucket', () => {
+    // 100 words in a minute: 2.5 minutes of typing at 40 wpm, so 1.5 back.
+    const summary = aggregate([event(NOW - 1000)], RATES, { now: () => NOW, typingWpm: 40 })
+    expect(summary.today.minutesBack).toBe(1.5)
+    expect(summary.month.minutesBack).toBe(1.5)
+    expect(summary.lifetime.minutesBack).toBe(1.5)
+    expect(summary.days.at(-1)?.minutesBack).toBe(1.5)
+  })
+
+  it('restates minutes back when the typing speed changes', () => {
+    // The same take at 100 wpm is one minute of typing, spoken in one.
+    const summary = aggregate([event(NOW - 1000)], RATES, { now: () => NOW, typingWpm: 100 })
+    expect(summary.today.minutesBack).toBe(0)
+  })
+
+  it('assumes 40 wpm when no typing speed is given', () => {
+    const summary = aggregate([event(NOW - 1000)], RATES, { now: () => NOW })
+    expect(summary.lifetime.minutesBack).toBe(1.5)
+  })
+
+  it('never shows a day or a total below zero', () => {
+    // Five words over five minutes: the key was held far longer than
+    // typing would take. Honest per session, floored on display.
+    const slow = event(NOW - 1000, 5, 300_000)
+    const summary = aggregate([slow], RATES, { now: () => NOW })
+    expect(summary.today.minutesBack).toBe(0)
+    expect(summary.month.minutesBack).toBe(0)
+    expect(summary.lifetime.minutesBack).toBe(0)
+    expect(summary.days.at(-1)?.minutesBack).toBe(0)
+  })
+
+  it('lets a slow session count against a fast one inside the same day', () => {
+    const fast = event(NOW - 2000, 400, 120_000) // 10 typed minus 2 spoken: 8
+    const slow = event(NOW - 1000, 5, 300_000) // 0.125 typed minus 5 spoken: -4.875
+    const summary = aggregate([fast, slow], RATES, { now: () => NOW })
+    // 3.125, rounded to a tenth once after the sum.
+    expect(summary.today.minutesBack).toBe(3.1)
+    expect(summary.days.at(-1)?.minutesBack).toBe(3.1)
   })
 })
 

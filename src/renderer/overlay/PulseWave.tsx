@@ -3,6 +3,7 @@
 // the pill, born on voice energy, fading as they travel. Canvas 2D,
 // accent-colored, an unlockable.
 import { useEffect, useRef } from 'react'
+import { OVERHANG, applyInkEdge, fadeToEdges, inkEdge } from './bare'
 
 interface Ring {
   born: number
@@ -13,6 +14,9 @@ export function PulseWave(props: {
   levelRef: React.MutableRefObject<number>
   muted: boolean
   accent: string
+  /** The bare look: an ink edge under every ring and a field that
+   *  overhangs its slot and fades out before the canvas ends. */
+  bare?: boolean
 }): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mutedRef = useRef(props.muted)
@@ -33,6 +37,12 @@ export function PulseWave(props: {
     ctx.scale(dpr, dpr)
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const bare = props.bare === true
+    const edge = bare ? inkEdge() : ''
+    // In bare the canvas overhangs its slot; rings still start beside
+    // the dot and travel as far as they do in the pill.
+    const originX = bare ? OVERHANG.x + 6 : 6
+    const reach = bare ? width - 2 * OVERHANG.x : width
     const rings: Ring[] = []
     let lastBirth = 0
     let raf = 0
@@ -48,8 +58,9 @@ export function PulseWave(props: {
       }
 
       ctx.clearRect(0, 0, width, height)
+      if (bare) applyInkEdge(ctx, edge, dpr)
       const cy = height / 2
-      const maxRadius = width * 0.92
+      const maxRadius = reach * 0.92
       for (let i = rings.length - 1; i >= 0; i--) {
         const ring = rings[i]
         const age = (t - ring.born) / 1400
@@ -58,24 +69,27 @@ export function PulseWave(props: {
           continue
         }
         const radius = 4 + age * maxRadius
-        ctx.globalAlpha = (1 - age) * 0.55 * (0.4 + ring.strength * 0.6)
+        const base = (1 - age) * 0.55 * (0.4 + ring.strength * 0.6)
+        // With no pill behind it a ring needs more body to read.
+        ctx.globalAlpha = bare ? Math.min(1, base * 1.5) : base
         ctx.strokeStyle = accentRef.current
         ctx.lineWidth = 1.5 + ring.strength * 1.5
         ctx.beginPath()
-        ctx.arc(6, cy, radius, -Math.PI / 2.6, Math.PI / 2.6)
+        ctx.arc(originX, cy, radius, -Math.PI / 2.6, Math.PI / 2.6)
         ctx.stroke()
       }
       // A steady heart at the origin so the quiet state is not empty.
       ctx.globalAlpha = 0.5 + energy * 0.5
       ctx.fillStyle = accentRef.current
       ctx.beginPath()
-      ctx.arc(6, cy, 2.5 + energy * 2, 0, Math.PI * 2)
+      ctx.arc(originX, cy, 2.5 + energy * 2, 0, Math.PI * 2)
       ctx.fill()
+      if (bare) fadeToEdges(ctx, width, height)
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
-  }, [props.levelRef])
+  }, [props.levelRef, props.bare])
 
   return <canvas ref={canvasRef} className="speckle" aria-hidden="true" />
 }

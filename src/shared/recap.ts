@@ -3,10 +3,28 @@
 // fire now?" once a minute. A machine asleep at recap time still gets
 // its recap once, late, on the next check after waking.
 import { dayKey } from './history'
+import { formatMinutesBackWords } from './timeback'
 
 export interface RecapTime {
   hour: number
   minute: number
+}
+
+export interface RecapSummary {
+  sessions: number
+  words: number
+  minutes: number
+  /** Today's time back (shared/timeback), already floored for display. */
+  minutesBack: number
+}
+
+/** The recap notification body. The time back clause joins once the
+ *  day has at least a minute back, so a quiet day keeps its sentence. */
+export function recapBody(summary: RecapSummary): string {
+  const { sessions, words, minutes, minutesBack } = summary
+  if (sessions === 0) return 'A quiet day: no dictations. Your hotkey misses you.'
+  const base = `${sessions} ${sessions === 1 ? 'session' : 'sessions'}, ${minutes} minutes, ${words.toLocaleString()} words today.`
+  return minutesBack >= 1 ? `${base} ${formatMinutesBackWords(minutesBack)} back.` : base
 }
 
 /** Parse "HH:MM" 24-hour local time. Null when malformed. */

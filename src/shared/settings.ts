@@ -7,7 +7,9 @@ import {
   DEFAULT_NOTE_PATH_TEMPLATE,
   DEFAULT_TASKS_TEMPLATE
 } from './notes'
+import { type OverlayLook, normalizeOverlayLook } from './overlay-state'
 import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
+import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 
 export interface Settings {
   hotkey: {
@@ -54,6 +56,8 @@ export interface Settings {
   }
   overlay: {
     style: string
+    /** How the pill is drawn (US-061): pill, compact, or bare. */
+    look: OverlayLook
   }
   cosmetics: {
     accent: string
@@ -78,6 +82,17 @@ export interface Settings {
   recap: {
     enabled: boolean
     time: string
+  }
+  /** Time back (US-059): the typing speed every "minutes you did not
+   *  spend typing" number is measured against. Clamped on load and
+   *  again in the pure math, so a corrupt value can never divide by
+   *  zero or invent hours. */
+  timeBack: {
+    typingWpm: number
+    /** The 30-minute nod (US-060): a notification each time today's
+     *  time back crosses a mark. On by default, a celebration like
+     *  promotions and unlocks, with a switch those two lack. */
+    milestones: boolean
   }
   /** Brain dump: a second chord dictates into a markdown file instead
    *  of the cursor. The folder is any folder (an Obsidian vault is one);
@@ -195,7 +210,8 @@ export const DEFAULT_SETTINGS: Settings = {
     mode: 'paste'
   },
   overlay: {
-    style: 'bars'
+    style: 'bars',
+    look: 'pill'
   },
   cosmetics: {
     accent: 'amber',
@@ -215,6 +231,10 @@ export const DEFAULT_SETTINGS: Settings = {
   recap: {
     enabled: false,
     time: '17:30'
+  },
+  timeBack: {
+    typingWpm: DEFAULT_TYPING_WPM,
+    milestones: true
   },
   notes: {
     binding: '',
@@ -318,6 +338,13 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
     const t = connection.threshold
     connection.threshold = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0.5
   }
+  // A typing speed outside the honest band would make time back read
+  // as hours per take or as nothing at all; the same clamp the math uses.
+  const timeBack = out.timeBack as Record<string, unknown> | undefined
+  if (timeBack) timeBack.typingWpm = clampTypingWpm(timeBack.typingWpm)
+  // A look outside the three would leave the pill undrawn.
+  const overlay = out.overlay as Record<string, unknown> | undefined
+  if (overlay) overlay.look = normalizeOverlayLook(overlay.look)
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {
     provider.profiles = provider.profiles.filter(

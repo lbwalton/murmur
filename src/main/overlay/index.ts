@@ -7,14 +7,17 @@ import { BrowserWindow, app, ipcMain, screen } from 'electron'
 import { watchWindow } from '../window-watch'
 import { IpcChannels } from '../../shared/ipc'
 import {
+  OVERLAY_LOOKS,
+  type OverlayLook,
   OverlayMachine,
   type OverlayMode,
   type OverlayPhase,
   type OverlayState,
-  type TransitionExtras
+  type TransitionExtras,
+  normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { NOTE_FOLDER_HINT } from '../../shared/notes'
-import { getSettings, onSettingsChanged } from '../settings'
+import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
 const WIDTH = 340
@@ -177,11 +180,22 @@ async function resolveAccent(): Promise<string> {
   }
 }
 
+/** The look in force: a design QA override, else the setting. The
+ *  window itself stays one size in every look: it is transparent and
+ *  click-through, so its bounds are invisible, and the pill inside it
+ *  shrinks or sheds its box instead. */
+function currentLook(): OverlayLook {
+  // Smoke walks every look through the setting, so the QA override
+  // must not be able to pin it there.
+  const override = isSmoke ? undefined : process.env.MURMUR_OVERLAY_LOOK
+  return normalizeOverlayLook(override ?? getSettings().overlay.look)
+}
+
 function sendOverlayConfig(): void {
   void (async () => {
     const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
     const accent = await resolveAccent()
-    aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent })
+    aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent, look: currentLook() })
   })()
 }
 
@@ -199,7 +213,7 @@ export function initOverlay(): void {
   // finding: every settings save was re-reading the entire log).
   let lastConfigKey = ''
   onSettingsChanged((settings) => {
-    const key = `${settings.overlay.style}|${settings.cosmetics.accent}`
+    const key = `${settings.overlay.style}|${settings.overlay.look}|${settings.cosmetics.accent}`
     if (key === lastConfigKey) return
     lastConfigKey = key
     sendOverlayConfig()
@@ -221,7 +235,8 @@ export function initOverlay(): void {
 
   // Design QA hook: MURMUR_OVERLAY_PREVIEW=1 shows the pill recording
   // with synthetic levels, no mic or hotkey needed; MURMUR_OVERLAY_MODE
-  // =note shows the note state instead.
+  // =note shows the note state instead; MURMUR_OVERLAY_LOOK=compact or
+  // bare draws that look.
   if (process.env.MURMUR_OVERLAY_PREVIEW === '1') {
     overlayWindow.webContents.once('did-finish-load', () => {
       const kickoff = setTimeout(() => {
@@ -308,7 +323,7 @@ export function initOverlay(): void {
     const shown = JSON.parse(await read()) as {
       phase: string
       mode: string
-      hint: string | null
+      hint?: string
       note: boolean
       fits: boolean
     }
@@ -328,6 +343,96 @@ export function initOverlay(): void {
       !idle.note &&
       refused
     )
+  })
+
+  registerSmokeCheck('overlayLooks', async () => {
+    // Every look, live in the DOM (US-061): the pill keeps its box at
+    // 56px, compact is the same box at 38px, bare paints no box and no
+    // border while recording, and all three give a hint the full pill
+    // that fits; the timer reads in each; focus and click-through hold
+    // throughout. The setting is restored afterwards.
+    if (!overlayWindow) return false
+    interface Shape {
+      look: string | undefined
+      boxed: boolean
+      height: number
+      timer?: string
+      hint?: string
+      fits: boolean
+    }
+    const read = (): Promise<string> => {
+      return overlayWindow!.webContents.executeJavaScript(
+        `(() => {
+          const pill = document.querySelector('.pill')
+          const cs = pill ? getComputedStyle(pill) : null
+          const box = pill ? pill.getBoundingClientRect() : null
+          const clear = 'rgba(0, 0, 0, 0)'
+          return JSON.stringify({
+            look: document.body.dataset.look,
+            boxed: cs !== null && cs.backgroundColor !== clear && cs.borderTopColor !== clear,
+            height: box ? Math.round(box.height) : 0,
+            timer: (document.querySelector('[data-timer]') || {}).textContent,
+            hint: (document.querySelector('[data-hint]') || {}).textContent,
+            fits: box !== null && box.left >= 0 && box.right <= window.innerWidth
+          })
+        })()`
+      )
+    }
+    const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    // Poll the live DOM until it shows what was asked, then hand back
+    // whatever it shows so the assertions below report the real state.
+    // One deadline for the whole check keeps even a badly broken run
+    // inside the harness's ten second cap, so it still logs and its
+    // finally still restores the phase and the look.
+    const deadline = Date.now() + 7_000
+    const until = async (ready: (shape: Shape) => boolean): Promise<Shape> => {
+      let shape = JSON.parse(await read()) as Shape
+      while (!ready(shape) && Date.now() < deadline) {
+        await wait(50)
+        shape = JSON.parse(await read()) as Shape
+      }
+      return shape
+    }
+    const original = getSettings().overlay.look
+    try {
+      for (const look of OVERLAY_LOOKS) {
+        updateSettings({ overlay: { look } })
+        // The config resolves the accent from the log before it is
+        // sent, so wait for the renderer to report the look rather than
+        // guess a delay (a busy machine made fixed waits flake).
+        await until((shape) => shape.look === look)
+        if (!setOverlayPhase('recording')) return false
+        const recording = await until((shape) => typeof shape.timer === 'string')
+        setOverlayPhase('idle')
+        await until((shape) => shape.timer === undefined)
+        if (!showOverlayHint(NOTE_FOLDER_HINT, 'note')) return false
+        const hint = await until((shape) => shape.hint === NOTE_FOLDER_HINT && shape.height === 56)
+        setOverlayPhase('idle')
+        await until((shape) => shape.hint === undefined)
+        const flags = !overlayWindow.isFocusable() && overlayWindow.isAlwaysOnTop() && clickThrough
+        const ok =
+          recording.look === look &&
+          recording.boxed === (look !== 'bare') &&
+          typeof recording.timer === 'string' &&
+          (look === 'bare' || recording.height === (look === 'compact' ? 38 : 56)) &&
+          hint.boxed &&
+          hint.height === 56 &&
+          hint.fits &&
+          hint.hint === NOTE_FOLDER_HINT &&
+          flags
+        if (!ok) {
+          console.log('[murmur] overlayLooks failed for', look, JSON.stringify({ recording, hint, flags }))
+          return false
+        }
+      }
+      return true
+    } finally {
+      // Whatever failed, the next check must find the machine at rest
+      // and the user's look back in place.
+      setOverlayPhase('idle')
+      updateSettings({ overlay: { look: original } })
+      await wait(100)
+    }
   })
 
   registerSmokeCheck('overlayStatesAndTimer', async () => {

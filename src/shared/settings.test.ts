@@ -58,6 +58,32 @@ describe('mergeSettings', () => {
     expect(at(0.7)).toBe(0.7)
   })
 
+  it('ships the overlay as the classic pill and repairs an unknown look', () => {
+    expect(DEFAULT_SETTINGS.overlay).toEqual({ style: 'bars', look: 'pill' })
+    const at = (look: unknown): string => mergeSettings(DEFAULT_SETTINGS, { overlay: { look } }).overlay.look
+    expect(at('compact')).toBe('compact')
+    expect(at('bare')).toBe('bare')
+    expect(at('huge')).toBe('pill')
+    expect(at(7)).toBe('pill')
+    // A style-only save (the waveform picker) leaves the look alone.
+    const merged = mergeSettings({ ...DEFAULT_SETTINGS, overlay: { style: 'bars', look: 'bare' } }, { overlay: { style: 'pulse' } })
+    expect(merged.overlay).toEqual({ style: 'pulse', look: 'bare' })
+  })
+
+  it('ships time back at 40 wpm and repairs a typing speed that cannot be used', () => {
+    expect(DEFAULT_SETTINGS.timeBack).toEqual({ typingWpm: 40, milestones: true })
+    const at = (typingWpm: unknown): number =>
+      mergeSettings(DEFAULT_SETTINGS, { timeBack: { typingWpm } }).timeBack.typingWpm
+    expect(at(65)).toBe(65)
+    expect(at('fast')).toBe(40)
+    expect(at(Number.NaN)).toBe(40)
+    expect(at(0)).toBe(10)
+    expect(at(9000)).toBe(200)
+    // The switch takes only a boolean; a foreign value keeps the default.
+    expect(mergeSettings(DEFAULT_SETTINGS, { timeBack: { milestones: 'yes' } }).timeBack.milestones).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { timeBack: { milestones: false } }).timeBack.milestones).toBe(false)
+  })
+
   it('preserves unknown keys from newer builds', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, { futureFeature: { on: true } })
     expect((merged as unknown as Record<string, unknown>).futureFeature).toEqual({ on: true })

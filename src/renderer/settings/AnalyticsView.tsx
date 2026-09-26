@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import type { AnalyticsSummary, HeatDay, HeatmapData } from '../../shared/analytics'
 import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { Settings } from '../../shared/settings'
+import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 
 const bridge = (): SettingsApi => window.murmur
@@ -84,6 +85,7 @@ export function AnalyticsView(): React.JSX.Element {
           <Stat label="minutes dictated" value={String(summary.month.minutes)} />
           <Stat label="words" value={summary.month.words.toLocaleString()} />
           <Stat label="sessions" value={String(summary.month.sessions)} />
+          <Stat label="time back" value={formatMinutesBack(summary.month.minutesBack)} />
           <Stat label="est. cost" value={money(summary.month.estCostUsd)} />
         </div>
         <p className="row-desc rates-note">
@@ -125,6 +127,7 @@ export function AnalyticsView(): React.JSX.Element {
           <Stat label="words" value={summary.lifetime.words.toLocaleString()} />
           <Stat label="sessions" value={String(summary.lifetime.sessions)} />
           <Stat label="avg wpm" value={String(summary.lifetime.avgWpm)} />
+          <Stat label="time back" value={formatMinutesBack(summary.lifetime.minutesBack)} />
           <Stat label="est. cost" value={money(summary.lifetime.estCostUsd)} />
         </div>
       </section>
