@@ -17,7 +17,9 @@ Open `murmur-mac.dmg`, drag murmur into Applications, then open murmur from Appl
 
 ## Which Macs does murmur run on?
 
-Macs with Apple silicon (M1 and later). The current download does not open on Intel Macs; a single download that runs on both is planned.
+Any Mac running macOS 13 Ventura or later, with Apple silicon (M1 and later) or an Intel chip. There is one download for both: the app carries a version for each chip and runs the right one by itself, so you never need to know which chip your Mac has. Carrying both is why the download is larger than a single-chip app would be.
+
+The macOS 13 minimum comes from Electron, the framework murmur is built on (verified 2026-09-26 against Electron's [breaking changes](https://www.electronjs.org/docs/latest/breaking-changes)). To check your version, open the Apple menu and choose About This Mac.
 
 ## How do I install murmur on Windows?
 

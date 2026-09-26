@@ -14,7 +14,7 @@ The name is always lowercase: murmur.
 
 ## Getting started
 
-1. Download murmur: **[Download for Mac](https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg)** (Apple silicon) or **[Download for Windows](https://github.com/lbwalton/murmur/releases/latest/download/murmur-windows.exe)**. Both links always serve the newest release. On Windows, a blue Windows protected your PC screen is expected while the installer is unsigned: click More info, then Run anyway ([why, and what else to know](docs/download.md)). Every version is also on [Releases](https://github.com/lbwalton/murmur/releases), or build from source below. Installed builds keep themselves current automatically.
+1. Download murmur: **[Download for Mac](https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg)** (Apple silicon and Intel, macOS 13 or later) or **[Download for Windows](https://github.com/lbwalton/murmur/releases/latest/download/murmur-windows.exe)**. Both links always serve the newest release. On Windows, a blue Windows protected your PC screen is expected while the installer is unsigned: click More info, then Run anyway ([why, and what else to know](docs/download.md)). Every version is also on [Releases](https://github.com/lbwalton/murmur/releases), or build from source below. Installed builds keep themselves current automatically.
 2. Launch it: a guided wizard walks you through the rest
 3. Get a free key at [console.groq.com/keys](https://console.groq.com/keys) and paste it in
 4. Grant the OS permissions the wizard asks for (macOS: microphone, accessibility, input monitoring)
