@@ -48,5 +48,9 @@ export const IpcChannels = {
   apiKeyStatusFor: 'apikey:statusFor',
   apiKeyClearFor: 'apikey:clearFor',
   providerTestFor: 'provider:testFor',
-  providerTestDecideFor: 'provider:testDecideFor'
+  providerTestDecideFor: 'provider:testDecideFor',
+  recoveryList: 'recovery:list',
+  recoveryRetry: 'recovery:retry',
+  recoveryDiscard: 'recovery:discard',
+  recoveryChanged: 'recovery:changed'
 } as const

@@ -31,9 +31,13 @@ export function recordSession(input: {
   /** False keeps the event in memory only: never on disk, never sent
    *  to a window. Defaults to true. */
   persist?: boolean
+  /** A retried take (US-068) is logged at the time it was spoken, so it
+   *  lands on its own day; everything else is logged now. */
+  at?: number
+  retried?: boolean
 }): SessionEvent | null {
   if (!log) return null
-  const now = Date.now()
+  const now = input.at ?? Date.now()
   const words = countWords(input.finalText)
   const event: SessionEvent = {
     at: now,
@@ -45,7 +49,8 @@ export function recordSession(input: {
     day: dayKey(now),
     hour: new Date(now).getHours(),
     ...(input.kind ? { kind: input.kind } : {}),
-    ...(input.unsent ? { unsent: true } : {})
+    ...(input.unsent ? { unsent: true } : {}),
+    ...(input.retried ? { retried: true } : {})
   }
   if (input.persist === false) {
     memoryOnly = event

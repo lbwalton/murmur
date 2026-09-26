@@ -111,6 +111,43 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* Takes waiting to retry (US-068): the log's own rows, with the reason
+   underneath in place of words. Quiet, like the rest of the log. */
+.waiting-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.waiting-intro,
+.waiting-message {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.waiting-message {
+  color: var(--text);
+}
+
+.waiting-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.waiting-head .btn,
+.waiting-actions .btn {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.waiting-reason {
+  margin: 0;
+  font-size: 12px;
+}
+
 .stat-row {
   display: flex;
   gap: 28px;

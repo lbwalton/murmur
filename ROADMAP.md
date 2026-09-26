@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (59/62 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (59/63 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -70,6 +70,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 - [ ] **US-041** murmur Pro: offline license keys and the unlock flow
 - [ ] **US-060** Time back arrives: the recap says it, and every 30 minutes gets a nod
+- [ ] **US-068** A failed dictation waits on the home tab with a Retry button
 
 ## To do
 

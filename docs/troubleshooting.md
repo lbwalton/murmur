@@ -6,6 +6,22 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, setup, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## What happens when a dictation fails, and how do I retry it?
+
+murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your API key in the setup box on the settings tab), then click **retry** beside the take, or **retry all** when several are waiting.
+
+A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
+
+What a retry does: it sends the saved audio to your provider with your current settings and runs the same cleanup as a live dictation. Where the words go depends on what you were doing when you spoke:
+
+- **A dictation** lands in your log at the time you spoke it, marked retried, and on your clipboard. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (settings tab, dictation, Paste last dictation), or paste normally.
+- **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
+- **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
+
+If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?) and then deletes it. A retried dictation counts toward your stats on the day you spoke it.
+
+The audio never leaves your computer except to your own provider when you retry, exactly as for a live dictation. It lives in the recovery folder inside murmur's data folder, and murmur keeps the 20 most recent takes.
+
 ## Why did murmur hear nothing even though my mic works everywhere else?
 
 Audio software that manages your microphone (Wave Link, Loopback, VoiceMeeter and friends) can reconfigure the device underneath murmur's always-warm capture stream without any signal the OS passes along, leaving murmur receiving pure digital silence while every meter elsewhere moves. murmur catches this in two places. A dictation that measures dead-zero input (a `nospeech` log line with a peak near 0.000) triggers an immediate capture rebuild, so your very next press records normally. And every freshly built capture stream, that rebuild included, has to prove itself: if it flows for a few seconds without ever carrying sound (a quiet room's noise floor counts), it is rebuilt again on its own, up to five times, so a device that hands back a dead stream more than once is still fixed before you press again. No relaunch needed either way.

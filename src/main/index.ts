@@ -253,6 +253,8 @@ app.whenReady().then(async () => {
   initRecap({ openWrapup })
   initInsertion()
   initDictation()
+  const { initRetry } = await import('./retry')
+  initRetry(() => settingsWindow)
   initNotes(() => settingsWindow)
   initTransform()
   const { initDiagnostics } = await import('./diagnostics')
