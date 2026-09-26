@@ -809,7 +809,12 @@ export function App(): React.JSX.Element {
           </p>
         )}
 
-        <ProfilesRow settings={settings} onSettings={setSettings} pro={license === null ? null : license.pro} />
+        <ProfilesRow
+          settings={settings}
+          onSettings={setSettings}
+          onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
+          pro={license === null ? null : license.pro}
+        />
 
         <Row
           label="Price refresh"
@@ -1437,6 +1442,8 @@ function formatCostParts(parts: Array<{ amount: number; currency: string }>): st
 function ProfilesRow(props: {
   settings: Settings
   onSettings: (s: Settings) => void
+  /** Re-read the key ring's status after a profile action. */
+  onKeysChanged: () => void
   /** Shared app-level license truth; null while it loads. */
   pro: boolean | null
 }): React.JSX.Element {
@@ -1464,7 +1471,13 @@ function ProfilesRow(props: {
   }
 
   const handle = (result: import('../../main/profiles').ProfileResult): void => {
-    if (result.ok) props.onSettings(result.settings)
+    if (!result.ok) return
+    props.onSettings(result.settings)
+    // Applying can fold a profile's saved key into the ring without the
+    // base URL changing (live-found 2026-09-26: Groq to Groq restored the
+    // key, but the setup box still said no key and Test stayed disabled),
+    // so the key status is re-read after every successful profile action.
+    props.onKeysChanged()
   }
 
   return (
