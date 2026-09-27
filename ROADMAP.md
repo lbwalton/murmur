@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (60/64 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (61/64 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -64,6 +64,7 @@
 - [x] **US-059** Time back: the minutes you did not spend typing
 - [x] **US-061** Overlay look: pill, compact, or bare
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
+- [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
 
 ## Built, awaiting live verification
 
@@ -75,4 +76,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 ## To do
 
 - [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
-- [ ] **US-069** Settings rail: a sidebar, search, and setup that folds away
