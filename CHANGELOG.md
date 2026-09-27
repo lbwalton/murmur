@@ -2,6 +2,18 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.8 (2026-09-27)
+
+- Time back: the home tab shows how many minutes dictating saved you today compared with typing, with this month and lifetime beneath, and the wrap-up and analytics carry the same number. It uses your typing speed, 40 words a minute unless you set your own in the recap settings.
+- A nod as the minutes add up: a notification each time today's time back passes another half hour (Milestone alerts turns it off), the daily recap adds your number, and the menu bar icon's tooltip shows it.
+- Overlay look: keep the full pill, pick a compact one, or go bare with just the waveform floating over your work.
+- A dictation that fails to transcribe now waits on the home tab with a retry button instead of sitting in a folder. Fix the cause (a missing key, a dropped connection), click retry, and the words land in your log and on your clipboard, ready for paste-last. A note files into your notes folder at the time you spoke it.
+- Settings, reorganized: a sidebar of sections with a search box, one list for all your API keys, and the setup checklist folds away once everything works.
+- One Mac download for every Mac: murmur now runs on Intel Macs as well as Apple silicon, from the same download, on macOS 13 or later.
+- Safer by design: other programs can no longer start murmur in developer modes that would borrow its microphone, accessibility, and input permissions.
+- Download links that never go stale: murmur-mac.dmg and murmur-windows.exe on the latest release always serve the newest version.
+- Fixed: applying a provider profile that brings back a saved key shows the key right away.
+
 ## 0.1.7 (2026-09-24)
 
 - Brain dump: a second hotkey sends what you say to a notes file instead of your cursor. Pick any folder once (an Obsidian vault works as is) and each day's notes land in one inbox file under a time heading, formatted like any dictation. If the folder is ever unreachable, the note saves to murmur's own data folder, so nothing is lost.
