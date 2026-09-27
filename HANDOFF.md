@@ -17,6 +17,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [x] US-068 retry a failed dictation, live-verified 2026-09-26/27 (your real 68 s take retried and pasted; a fresh wrong-model failure arrived with its reason and retried cleanly). Merged to main 2026-09-27.
+
 The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 2026-09-22; every story on it is now verified (US-057 and US-058 closed 2026-09-24). US-053 is main-branch work and stays open below.
 
 - [x] US-062 list lead-ins, live-verified 2026-09-24 on the decision model: spoken lists file under a plain lead line with the items nested as checkboxes, a clause comma before the list no longer confuses it, and a duplicate inside a mixed list is held while its new siblings file.

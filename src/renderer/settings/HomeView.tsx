@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The home view: today's time back, then your transcription log,
-// grouped by day, newest first, updating live as dictations land.
+// The home view: takes waiting to retry, today's time back, then your
+// transcription log, grouped by day, newest first, updating live as
+// dictations land.
 import { useEffect, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import type { AnalyticsSummary } from '../../shared/analytics'
@@ -8,6 +9,7 @@ import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, countsTowardStats, groupByDay } from '../../shared/history'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
+import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
 
 const bridge = (): SettingsApi => window.murmur
@@ -61,6 +63,136 @@ function dayLabel(day: string): string {
   return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
+/** Why a take is waiting, in plain words (US-068). */
+function reasonText(take: WaitingTake): string {
+  const f = take.failure
+  if (!f) return 'saved before murmur kept reasons'
+  if (f.kind === 'auth') {
+    return f.detail === 'no API key configured' ? 'no API key was saved' : 'the provider did not accept the key'
+  }
+  if (f.kind === 'network') return 'murmur could not reach the provider'
+  if (f.kind === 'timeout') return 'the provider did not answer in time'
+  if (f.kind === 'server') return 'the provider had a problem on its end'
+  if (f.kind === 'badrequest') return 'the provider refused the audio or the model name'
+  if (f.kind === 'nospeech') return 'no speech was heard in it'
+  return 'something went wrong'
+}
+
+function whenOf(at: number): string {
+  const date = new Date(at)
+  if (date.toDateString() === new Date().toDateString()) return `today ${timeOf(at)}`
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${timeOf(at)}`
+}
+
+function lengthOf(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000))
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
+/**
+ * Takes that were recorded but not transcribed (US-068). Retry runs the
+ * saved audio through the normal pipeline with today's settings; the
+ * words land in the log, and a dictation also on the clipboard, where
+ * paste-last finds it. Discard asks once, then deletes the audio.
+ */
+function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | null {
+  const [takes, setTakes] = useState<WaitingTake[]>([])
+  const [busy, setBusy] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = (): void => {
+      void bridge().listWaitingTakes().then(setTakes)
+    }
+    load()
+    return bridge().onWaitingTakesChanged(load)
+  }, [])
+
+  const retry = async (ids: string[]): Promise<void> => {
+    setMessage(null)
+    setConfirming(null)
+    const done: Array<{ kind: WaitingTake['kind']; location: string }> = []
+    let failed = 0
+    for (const id of ids) {
+      setBusy(id)
+      const result = await bridge().retryTake(id)
+      if (result.ok) done.push({ kind: result.kind, location: result.location })
+      else failed += 1
+    }
+    setBusy(null)
+    const paste = props.pasteLastBinding
+      ? ` Press ${props.pasteLastBinding} in any app to paste it there.`
+      : ' Paste it wherever it belongs.'
+    if (done.length === 1 && failed === 0) {
+      const { kind, location } = done[0]
+      setMessage(
+        kind === 'note'
+          ? location === 'history'
+            ? 'Transcribed, but the note could not be written to your notes folder or murmur\'s data folder. The words are safe in your log.'
+            : 'Done: the note is filed under the time you spoke it, and it is in your log.'
+          : kind === 'transform'
+            ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
+            : `Done: the words are in your log and on your clipboard.${paste}`
+      )
+    } else if (done.length > 0) {
+      setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
+    } else {
+      setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it.')
+    }
+  }
+
+  const discard = async (id: string): Promise<void> => {
+    if (confirming !== id) {
+      setConfirming(id)
+      return
+    }
+    setConfirming(null)
+    setTakes(await bridge().discardTake(id))
+  }
+
+  if (takes.length === 0 && !message) return null
+
+  return (
+    <section className="panel waiting">
+      <div className="waiting-head">
+        <p className="micro-label">waiting to retry</p>
+        {takes.length > 1 && (
+          <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
+            retry all
+          </button>
+        )}
+      </div>
+      {takes.length > 0 && (
+        <p className="dim waiting-intro">
+          Recorded but not transcribed. The audio stays on this computer until you retry or discard it.
+        </p>
+      )}
+      {message && <p className="waiting-message">{message}</p>}
+      <div className="log-list">
+        {takes.map((take) => (
+          <div className="log-entry" key={take.id}>
+            <div className="log-meta">
+              <span className="mono-inline dim">{whenOf(take.savedAt)}</span>
+              <span className="mono-inline note-tag">{take.kind}</span>
+              <span className="mono-inline dim">{lengthOf(take.audioMs)}</span>
+              <span className="waiting-actions">
+                <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry([take.id])}>
+                  {busy === take.id ? 'retrying' : 'retry'}
+                </button>
+                <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void discard(take.id)}>
+                  {confirming === take.id ? 'delete audio?' : 'discard'}
+                </button>
+              </span>
+            </div>
+            <p className="waiting-reason dim">not transcribed: {reasonText(take)}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export function HomeView(props: {
   settings: Settings
   onUpdateSettings: (partial: Partial<Settings>) => Promise<void>
@@ -100,6 +232,7 @@ export function HomeView(props: {
   return (
     <div className="home">
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
+      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>
@@ -140,6 +273,7 @@ export function HomeView(props: {
                   {event.kind !== 'transform' && (
                     <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                   )}
+                  {event.retried && <span className="mono-inline dim">retried</span>}
                   <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
                     {copiedAt === event.at ? 'copied' : 'copy'}
                   </button>
@@ -148,7 +282,11 @@ export function HomeView(props: {
                   <p className="log-instruction dim">you said: {event.rawText}</p>
                 )}
                 {event.kind === 'transform' && event.unsent && (
-                  <p className="log-instruction dim">the selection was too long to send; your words are kept below</p>
+                  <p className="log-instruction dim">
+                    {event.retried
+                      ? 'retried after the text it was for was gone; your instruction is kept below'
+                      : 'the selection was too long to send; your words are kept below'}
+                  </p>
                 )}
                 {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
                 <p className="log-text">{event.finalText}</p>

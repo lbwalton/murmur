@@ -19,7 +19,7 @@ import { NOTE_FOLDER_HINT } from '../shared/notes'
 import { resolveTransformConnection } from './formatter'
 import { getSettings } from './settings'
 import { insertText } from './insertion'
-import { notesConfigured, saveNote } from './notes'
+import { type NoteSaveResult, notesConfigured, saveNote } from './notes'
 import { rememberForSort, sortNote } from './notes/sorter'
 import {
   getOverlayPhase,
@@ -146,7 +146,11 @@ export async function dictationStop(kind: DictationKind = 'dictation'): Promise<
     // The selection is read before the instruction is transcribed, so
     // an unreadable selection sends nothing at all.
     try {
-      await performTransform({ startedAt: sessionStartedAt, transcribe: () => transcribeWav(upload) })
+      const startedAt = sessionStartedAt
+      await performTransform({
+        startedAt,
+        transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt })
+      })
     } catch (error) {
       console.error('[murmur] transform threw:', error)
       setOverlayPhase('error')
@@ -155,7 +159,7 @@ export async function dictationStop(kind: DictationKind = 'dictation'): Promise<
     return
   }
 
-  const result = await transcribeWav(upload)
+  const result = await transcribeWav(upload, { kind, startedAt: sessionStartedAt })
   if (!result.ok) {
     // The overlay can only say error; the log must say why. An auth
     // failure after a provider switch was undiagnosable without this
@@ -179,45 +183,14 @@ export async function dictationStop(kind: DictationKind = 'dictation'): Promise<
     playCue('error')
     return
   }
-  // Guard two: empty or hallucinated transcripts never insert, and a
-  // hallucinated tail appended to real speech is cut before formatting.
-  if (isHallucination(result.text, hallucinations.phrases)) {
+  // Guard two lives in finishTranscript: empty or hallucinated
+  // transcripts never insert. History records the transcript as heard.
+  const heardText = result.text
+  const finalText = await finishTranscript(heardText)
+  if (finalText === null) {
     setOverlayPhase('nospeech')
     playCue('nospeech')
     return
-  }
-  // Trailing artifact strip uses ONLY the never-genuinely-spoken subset
-  // (review gate: a real spoken thank-you sign-off must survive), and
-  // history records the transcript as heard, before any stripping.
-  const heardText = result.text
-  const cleanedText = stripTrailingHallucinations(heardText, hallucinations.artifactTails)
-
-  // Dictionary first (raw text, so capitalization comes after), then
-  // deterministic formatting, then the LLM pass at Full level, then the
-  // dictionary's exact casing re-asserted over everything. The whole
-  // stage fails open to the raw transcript: a broken settings entry or
-  // formatter bug must never lose a dictation or wedge the overlay in
-  // processing (review gate finding, 2026-09-05).
-  let finalText = cleanedText
-  try {
-    const { getSettings } = await import('./settings')
-    const { applyDictionary, enforceDictionaryCasing } = await import('../shared/dictionary')
-    const settings = getSettings()
-    const corrected = applyDictionary(cleanedText, settings.dictionary)
-    const formatting = settings.formatting
-    const formatted = formatTranscript(
-      corrected,
-      { level: formatting.level, numbers: formatting.numbers, smartLists: formatting.smartLists },
-      formatSpec as unknown as FormatSpec
-    )
-    const { maybePolish } = await import('./formatter')
-    const { applyExpansions } = await import('../shared/expansions')
-    const polished = await maybePolish(formatted)
-    const cased = enforceDictionaryCasing(polished, settings.dictionary)
-    finalText = applyExpansions(cased, settings.expansions)
-  } catch (error) {
-    console.error('[murmur] formatting stage failed open to raw transcript:', error)
-    finalText = cleanedText
   }
 
   if (kind === 'note') {
@@ -252,42 +225,140 @@ export async function dictationStop(kind: DictationKind = 'dictation'): Promise<
 }
 
 /**
- * A note's delivery: the file first (the notes folder, then murmur's
- * own data folder), history second, the overlay last. History keeps
- * the words even if both writes fail, so nothing is ever lost and the
- * pill can say error honestly.
+ * What a transcript becomes, shared by live takes and retries (US-068).
+ * Null when it is empty or a known hallucination. Otherwise a
+ * hallucinated tail appended to real speech is cut, using ONLY the
+ * never-genuinely-spoken subset (review gate: a real spoken thank-you
+ * sign-off must survive), then the dictionary first (raw text, so
+ * capitalization comes after), deterministic formatting, the LLM pass
+ * at Full level, the dictionary's exact casing re-asserted over
+ * everything, and expansions. The whole stage fails open to the cleaned
+ * transcript: a broken settings entry or formatter bug must never lose
+ * a dictation or wedge the overlay in processing (review gate finding,
+ * 2026-09-05).
  */
-async function deliverNote(heardText: string, finalText: string, peak: number): Promise<void> {
-  let saved: ReturnType<typeof saveNote> | null = null
+export async function finishTranscript(heardText: string): Promise<string | null> {
+  if (isHallucination(heardText, hallucinations.phrases)) return null
+  const cleanedText = stripTrailingHallucinations(heardText, hallucinations.artifactTails)
   try {
-    saved = saveNote(finalText)
+    const { applyDictionary, enforceDictionaryCasing } = await import('../shared/dictionary')
+    const settings = getSettings()
+    const corrected = applyDictionary(cleanedText, settings.dictionary)
+    const formatting = settings.formatting
+    const formatted = formatTranscript(
+      corrected,
+      { level: formatting.level, numbers: formatting.numbers, smartLists: formatting.smartLists },
+      formatSpec as unknown as FormatSpec
+    )
+    const { maybePolish } = await import('./formatter')
+    const { applyExpansions } = await import('../shared/expansions')
+    const polished = await maybePolish(formatted)
+    const cased = enforceDictionaryCasing(polished, settings.dictionary)
+    return applyExpansions(cased, settings.expansions)
+  } catch (error) {
+    console.error('[murmur] formatting stage failed open to raw transcript:', error)
+    return cleanedText
+  }
+}
+
+/**
+ * File a note and record it: the file first (the notes folder, then
+ * murmur's own data folder), history second. History keeps the words
+ * even if both writes fail, so nothing is ever lost. The caller speaks
+ * for the outcome: the live pill, or a retry's result.
+ */
+async function fileNote(
+  heardText: string,
+  finalText: string,
+  timing: { startedAt: number; at?: number; retried?: boolean }
+): Promise<{ saved: NoteSaveResult | null; words: number; wpm: number | null }> {
+  let saved: NoteSaveResult | null = null
+  try {
+    // A retried note files under the day and time it was spoken.
+    saved = saveNote(finalText, timing.at === undefined ? undefined : new Date(timing.at))
   } catch (error) {
     console.error('[murmur] note save threw:', error)
   }
   const { recordSession } = await import('./history')
-  const event = recordSession({
-    startedAt: sessionStartedAt,
-    rawText: heardText,
-    finalText,
-    kind: 'note'
-  })
+  const event = recordSession({ ...timing, rawText: heardText, finalText, kind: 'note' })
+  return { saved, words: event?.words ?? 0, wpm: event?.wpm ?? null }
+}
+
+/** The sorter runs after the words are safe; it decides for itself
+ *  whether sorting is on. Nothing here waits. */
+function startSort(finalText: string, saved: NoteSaveResult): void {
+  const forSort = { text: finalText, base: saved.base, inboxRelative: saved.relative, when: saved.when }
+  rememberForSort(forSort)
+  void sortNote(forSort).catch((error) => console.error('[murmur] sort threw:', error))
+}
+
+/** A live note's delivery: filed and recorded, then the overlay, then
+ *  the sorter once the pill has spoken. */
+async function deliverNote(heardText: string, finalText: string, peak: number): Promise<void> {
+  const { saved, words, wpm } = await fileNote(heardText, finalText, { startedAt: sessionStartedAt })
   if (!saved?.ok) {
-    void logDictation(`note-failed words=${event?.words ?? 0} peak=${peak.toFixed(4)}`)
+    void logDictation(`note-failed words=${words} peak=${peak.toFixed(4)}`)
     setOverlayPhase('error')
     playCue('error')
     return
   }
-  void logDictation(
-    `delivered kind=note location=${saved.location} words=${event?.words ?? 0} peak=${peak.toFixed(4)}`
-  )
-  setOverlayPhase('inserted', event?.wpm ?? null)
+  void logDictation(`delivered kind=note location=${saved.location} words=${words} peak=${peak.toFixed(4)}`)
+  setOverlayPhase('inserted', wpm)
   playCue('noted')
   refreshOverlayConfig()
-  // The sorter runs after the words are safe and the pill has spoken;
-  // it decides for itself whether sorting is on. Nothing here waits.
-  const forSort = { text: finalText, base: saved.base, inboxRelative: saved.relative, when: saved.when }
-  rememberForSort(forSort)
-  void sortNote(forSort).catch((error) => console.error('[murmur] sort threw:', error))
+  startSort(finalText, saved)
+}
+
+export type RetriedDelivery =
+  | { ok: true; words: number; location: 'log' | 'folder' | 'fallback' | 'history' }
+  | { ok: false; failure: { kind: string; detail: string } }
+
+/**
+ * Deliver a saved take's transcript (US-068). The app the take was
+ * spoken into no longer has the cursor, so nothing is pasted and no
+ * pill or cue plays: a dictation goes to the log at its original time
+ * and to the clipboard, where paste-last finds it next; a note files
+ * like a live note under the day and time it was spoken; a transform's
+ * instruction is kept unsent, since the selection it was for is gone.
+ */
+export async function deliverRetried(
+  take: { kind: DictationKind; startedAt: number; savedAt: number },
+  heardText: string
+): Promise<RetriedDelivery> {
+  const timing = { startedAt: take.startedAt, at: take.savedAt, retried: true }
+  const nothing = { ok: false as const, failure: { kind: 'nospeech', detail: 'no speech in the audio' } }
+  const { recordSession } = await import('./history')
+
+  if (take.kind === 'transform') {
+    if (isHallucination(heardText, hallucinations.phrases)) return nothing
+    const { applyDictionary } = await import('../shared/dictionary')
+    const spoken = stripTrailingHallucinations(heardText, hallucinations.artifactTails)
+    const instruction = applyDictionary(spoken, getSettings().dictionary).trim()
+    if (instruction.length === 0) return nothing
+    const event = recordSession({ ...timing, rawText: heardText, finalText: instruction, kind: 'transform', unsent: true })
+    return { ok: true, words: event?.words ?? 0, location: 'log' }
+  }
+
+  const finalText = await finishTranscript(heardText)
+  if (finalText === null || finalText.trim().length === 0) return nothing
+
+  if (take.kind === 'note') {
+    const { saved, words } = await fileNote(heardText, finalText, timing)
+    if (!saved?.ok) return { ok: true, words, location: 'history' }
+    startSort(finalText, saved)
+    return { ok: true, words, location: saved.location }
+  }
+
+  const event = recordSession({ ...timing, rawText: heardText, finalText })
+  try {
+    await clipboard.writeText(finalText)
+  } catch (error) {
+    // The words are already safe in the log; a clipboard hiccup must not
+    // fail the retry and keep the audio for a duplicate delivery.
+    console.error('[murmur] retry clipboard write failed:', error)
+  }
+  refreshOverlayConfig()
+  return { ok: true, words: event?.words ?? 0, location: 'log' }
 }
 
 export function dictationCancel(): void {

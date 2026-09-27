@@ -136,6 +136,18 @@ const api = {
     // unsubscribe so listeners never pile up across switches.
     return () => ipcRenderer.removeListener('history:appended', handler)
   },
+  listWaitingTakes: (): Promise<import('../main/transcribe/recovery').WaitingTake[]> => {
+    return ipcRenderer.invoke('recovery:list')
+  },
+  retryTake: (id: string): Promise<import('../main/retry').RetryResult> => ipcRenderer.invoke('recovery:retry', id),
+  discardTake: (id: string): Promise<import('../main/transcribe/recovery').WaitingTake[]> => {
+    return ipcRenderer.invoke('recovery:discard', id)
+  },
+  onWaitingTakesChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('recovery:changed', handler)
+    return () => ipcRenderer.removeListener('recovery:changed', handler)
+  },
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')

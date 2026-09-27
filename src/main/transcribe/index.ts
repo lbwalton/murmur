@@ -7,7 +7,7 @@ import { app } from 'electron'
 import { getApiKey, getSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { type TranscribeResult, transcribe } from './provider'
-import { saveRecovery } from './recovery'
+import { type TakeKind, saveRecovery } from './recovery'
 
 export const SMOKE_TRANSCRIPT = 'smoke transcript from the mock provider'
 
@@ -15,17 +15,41 @@ export function recoveryDir(): string {
   return join(app.getPath('userData'), 'recovery')
 }
 
+/** Called after a failed take is saved, so the home tab's waiting list
+ *  can refresh (set by the retry subsystem; a hook, not an import, to
+ *  keep this module free of cycles). */
+let onRecoverySaved: () => void = () => undefined
+export function setRecoveryListener(listener: () => void): void {
+  onRecoverySaved = listener
+}
+
 /**
- * Transcribe a finished recording. On failure the WAV is saved for
- * recovery and the failure is returned, never thrown.
+ * Transcribe a finished recording. On failure a live take's WAV is
+ * saved for recovery with what it was and why it failed (US-068), and
+ * the failure is returned, never thrown. A retry passes recover: false:
+ * its audio is already saved.
  */
-export async function transcribeWav(wav: Uint8Array): Promise<TranscribeResult> {
+export async function transcribeWav(
+  wav: Uint8Array,
+  recover: { kind: TakeKind; startedAt: number } | false
+): Promise<TranscribeResult> {
   if (isSmoke) return { ok: true, text: SMOKE_TRANSCRIPT }
+
+  const save = (failure: { kind: string; detail: string }): void => {
+    if (recover === false) return
+    try {
+      saveRecovery(wav, recoveryDir(), { take: { ...recover, failure } })
+      onRecoverySaved()
+    } catch (error) {
+      console.error('[murmur] recovery save failed:', error)
+    }
+  }
 
   const key = getApiKey()
   if (!key) {
-    saveRecovery(wav, recoveryDir())
-    return { ok: false, kind: 'auth', detail: 'no API key configured' }
+    const failure = { kind: 'auth' as const, detail: 'no API key configured' }
+    save(failure)
+    return { ok: false, ...failure }
   }
 
   const settings = getSettings()
@@ -34,7 +58,7 @@ export async function transcribeWav(wav: Uint8Array): Promise<TranscribeResult> 
     model: settings.provider.sttModel,
     apiKey: key
   })
-  if (!result.ok) saveRecovery(wav, recoveryDir())
+  if (!result.ok) save({ kind: result.kind, detail: result.detail })
   return result
 }
 

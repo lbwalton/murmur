@@ -27,6 +27,9 @@ export interface SessionEvent {
    *  entry keeps the spoken instruction as finalText so the thought is
    *  one paste-last away. */
   unsent?: boolean
+  /** Delivered by a retry from the home tab (US-068), after the live
+   *  transcription failed; logged at the time it was spoken. */
+  retried?: boolean
 }
 
 /** Whether an event counts toward words, belts, achievements, recaps,

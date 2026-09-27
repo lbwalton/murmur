@@ -28,11 +28,11 @@ The name is always lowercase: murmur.
 - [Connecting a provider](docs/providers.md): Groq (default), OpenAI, local servers, any OpenAI-compatible endpoint, and troubleshooting
 - [Coworker quickstart](docs/quickstart.md): install to first dictation in five minutes
 - [The journey](docs/journey.md): belts, achievements, and unlocks, BJJ style
-- [Troubleshooting](docs/troubleshooting.md): sleep and wake, microphone recovery
+- [Troubleshooting](docs/troubleshooting.md): retrying a failed dictation, sleep and wake, microphone recovery
 
 ## Privacy
 
-Audio is recorded only while your hotkey is held, silence is trimmed locally, and recordings go only to the provider you configured. Silent takes never leave your machine at all. Failed uploads are kept locally in `recovery/` so nothing you said disappears. Transcripts and usage numbers stay local.
+Audio is recorded only while your hotkey is held, silence is trimmed locally, and recordings go only to the provider you configured. Silent takes never leave your machine at all. A dictation that fails to transcribe waits on the home tab with a retry button, its audio kept on your computer until you retry or discard it, so nothing you said disappears. Transcripts and usage numbers stay local.
 
 ## Build from source
 
