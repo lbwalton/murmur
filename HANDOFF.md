@@ -17,7 +17,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
-- [ ] US-068 retry a failed dictation (built 2026-09-26 on feature/retry; retry of your real 68 s take live-verified 2026-09-26, works perfect). One check left, no unplugging: (1) On the settings tab, in the provider section, click the Speech model box and type whisper-nope in place of whisper-large-v3-turbo. (2) Dictate a short sentence anywhere: the pill should show an error. (3) Open the home tab: the new take should be at the top of waiting to retry, marked today with the reason the provider refused the audio or the model name. (4) Put the Speech model back to whisper-large-v3-turbo, then click retry on that take: the sentence should land in your log and on your clipboard.
+- [x] US-068 retry a failed dictation, live-verified 2026-09-26/27 (your real 68 s take retried and pasted; a fresh wrong-model failure arrived with its reason and retried cleanly). Merged to main 2026-09-27.
 
 The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 2026-09-22; every story on it is now verified (US-057 and US-058 closed 2026-09-24). US-053 is main-branch work and stays open below.
 
