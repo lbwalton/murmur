@@ -29,6 +29,7 @@ The name is always lowercase: murmur.
 - [Downloading and installing](docs/download.md): the two download links, the Windows protection screen, and which Macs are supported
 - [Coworker quickstart](docs/quickstart.md): install to first dictation in five minutes
 - [The journey](docs/journey.md): belts, achievements, and unlocks, BJJ style
+- [murmur Pro](docs/pro.md): what Pro adds, license keys, deactivating and reactivating, and a lost key
 - [Troubleshooting](docs/troubleshooting.md): retrying a failed dictation, sleep and wake, microphone recovery
 
 ## Privacy
