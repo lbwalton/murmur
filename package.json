@@ -19,12 +19,19 @@
     "dist:win": "electron-vite build && electron-builder --win",
     "check:design": "node scripts/check-design.js",
     "check:headers": "node scripts/check-headers.js",
-    "notices": "node scripts/gen-notices.js"
+    "notices": "node scripts/gen-notices.js",
+    "release:stable": "node scripts/stable-assets.js",
+    "site": "node site/build.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",
     "productName": "murmur",
     "npmRebuild": false,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false
+    },
     "files": [
       "out/**/*",
       "package.json"
@@ -43,9 +50,20 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
+      "x64ArchFiles": "Contents/Resources/app.asar.unpacked/node_modules/uiohook-napi/prebuilds/darwin-*/uiohook-napi.node",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",

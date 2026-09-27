@@ -1,0 +1,385 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* The murmur site: night studio, copied from the app's tokens.css at
+   build time. The waveform pill is the one loud element; amber appears
+   only in it (a live state), the download button wears the brand gold,
+   and everything else stays quiet. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--ink);
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.top,
+main,
+.bottom {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* ---------------------------------------------------------- header --- */
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.top nav,
+.bottom nav {
+  display: flex;
+  gap: 20px;
+}
+
+.top nav a,
+.bottom nav a {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.top nav a:hover,
+.bottom nav a:hover {
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------ hero --- */
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  color: var(--brand);
+}
+
+.hero {
+  padding-top: 56px;
+  padding-bottom: 72px;
+  text-align: center;
+}
+
+h1 {
+  margin: 18px auto 0;
+  max-width: 15em;
+  font-size: clamp(2.1rem, 6.2vw, 3.3rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  margin: 20px auto 0;
+  max-width: 34em;
+  font-size: 1.12rem;
+  color: var(--text-dim);
+}
+
+/* The signature: the same pill the app floats over your work. */
+.stage {
+  display: flex;
+  justify-content: center;
+  margin: 64px 0 56px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 84px;
+  padding: 0 30px;
+  border-radius: 999px;
+  background: var(--panel-glass);
+  border: 1px solid var(--panel-edge);
+  box-shadow: 0 30px 70px -30px var(--ink-edge);
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red-glow);
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 56px;
+}
+
+.bar {
+  width: 4px;
+  height: 56px;
+  border-radius: 2px;
+  background: var(--amber);
+  transform: scaleY(var(--rest));
+  animation: speak var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+
+@keyframes speak {
+  from {
+    transform: scaleY(var(--rest));
+  }
+  to {
+    transform: scaleY(var(--peak));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+    transform: scaleY(var(--peak));
+  }
+}
+
+/* -------------------------------------------------------- download --- */
+
+.download {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dl-intro {
+  margin-bottom: 18px;
+  color: var(--text-dim);
+}
+
+.dl-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 28px;
+}
+
+.dl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 15px 30px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: filter 120ms ease;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.meta {
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.note a {
+  color: var(--text);
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 3px;
+}
+
+.also {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.also a {
+  display: none;
+  color: var(--text-dim);
+  text-underline-offset: 3px;
+}
+
+.also a:hover {
+  color: var(--text);
+}
+
+.fine {
+  margin-top: 28px;
+  max-width: 30em;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+/* app.js names the visitor's computer on the root element before first
+   paint. Without it both downloads stay side by side. */
+:root[data-os='mac'] .dl-windows,
+:root[data-os='windows'] .dl-mac,
+:root[data-os='mac'] .dl-intro,
+:root[data-os='windows'] .dl-intro {
+  display: none;
+}
+
+:root[data-os='mac'] .also-windows,
+:root[data-os='windows'] .also-mac {
+  display: inline;
+}
+
+/* ------------------------------------------------------------- faq --- */
+
+.faq {
+  padding-top: 8px;
+  padding-bottom: 64px;
+  border-top: 1px solid var(--cream-06);
+}
+
+.faq .label {
+  margin: 40px 0 8px;
+}
+
+.qa {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--cream-06);
+}
+
+.qa h3 {
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.qa p {
+  margin-top: 8px;
+  color: var(--text-dim);
+  line-height: 1.62;
+}
+
+.qa a {
+  color: var(--text);
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 3px;
+}
+
+.qa a:hover {
+  text-decoration-color: var(--brand);
+}
+
+/* ---------------------------------------------------------- footer --- */
+
+.bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 8px;
+  padding-bottom: 48px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+@media (max-width: 560px) {
+  .top,
+  main,
+  .bottom {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hero {
+    padding-top: 28px;
+    padding-bottom: 56px;
+  }
+
+  .stage {
+    margin: 44px 0 40px;
+  }
+
+  .pill {
+    height: 60px;
+    padding: 0 18px;
+    gap: 10px;
+  }
+
+  .wave {
+    gap: 3px;
+    height: 40px;
+  }
+
+  .bar {
+    width: 3px;
+    height: 40px;
+  }
+
+  .dl-row {
+    width: 100%;
+  }
+
+  .dl {
+    width: 100%;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

@@ -33,36 +33,37 @@ import { createTray, getTray, setTrayInboxVisible } from './tray'
 // logs never collide with an installed murmur (or the legacy app still
 // running on this machine during the transition). Smoke is hermetic: a
 // wiped temp dir per boot, so no stale state and no lock contention with
-// a running dev instance.
-if (!app.isPackaged) {
-  const isolatedRun =
-    isSmoke ||
-    process.env.MURMUR_SETTINGS_CAPTURE ||
-    process.env.MURMUR_OVERLAY_CAPTURE ||
-    process.env.MURMUR_QUIT_TEST ||
-    process.env.MURMUR_CRASH_TEST
-  if (isolatedRun) {
-    // A relaunched isolated instance inherits its predecessor's profile
-    // (so the crash log it just wrote survives) and skips the sweep.
-    const carried = process.argv.find((a) => a.startsWith('--murmur-userdata='))
-    if (carried) {
-      app.setPath('userData', carried.slice('--murmur-userdata='.length))
-    } else {
-      // Sweep profiles left by earlier isolated runs (SIGKILL skips cleanup).
-      try {
-        for (const entry of readdirSync(tmpdir())) {
-          if (entry.startsWith('murmur-smoke-')) {
-            rmSync(join(tmpdir(), entry), { recursive: true, force: true })
-          }
-        }
-      } catch {
-        // A locked entry never blocks boot.
-      }
-      app.setPath('userData', join(tmpdir(), `murmur-smoke-${process.pid}`))
-    }
+// a running dev instance. That holds in packaged builds too (checking a
+// universal build's two halves runs smoke on the packaged app): smoke
+// checks write throwaway keys over the primary provider's and file test
+// notes, so an isolated run must never see a real profile.
+const isolatedRun =
+  isSmoke ||
+  process.env.MURMUR_SETTINGS_CAPTURE ||
+  process.env.MURMUR_OVERLAY_CAPTURE ||
+  process.env.MURMUR_QUIT_TEST ||
+  process.env.MURMUR_CRASH_TEST
+if (isolatedRun) {
+  // A relaunched isolated instance inherits its predecessor's profile
+  // (so the crash log it just wrote survives) and skips the sweep.
+  const carried = process.argv.find((a) => a.startsWith('--murmur-userdata='))
+  if (carried) {
+    app.setPath('userData', carried.slice('--murmur-userdata='.length))
   } else {
-    app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
+    // Sweep profiles left by earlier isolated runs (SIGKILL skips cleanup).
+    try {
+      for (const entry of readdirSync(tmpdir())) {
+        if (entry.startsWith('murmur-smoke-')) {
+          rmSync(join(tmpdir(), entry), { recursive: true, force: true })
+        }
+      }
+    } catch {
+      // A locked entry never blocks boot.
+    }
+    app.setPath('userData', join(tmpdir(), `murmur-smoke-${process.pid}`))
   }
+} else if (!app.isPackaged) {
+  app.setPath('userData', join(app.getPath('appData'), 'murmur-dev'))
 }
 
 // Windows GPU drivers (11th-gen Intel Iris Xe among them, issue 1)
