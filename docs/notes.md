@@ -4,7 +4,7 @@ murmur can send a dictation to a markdown file instead of your cursor. Hold a se
 
 ## How do I speak a note instead of pasting it?
 
-Set two things under Settings, notes: a note chord (click the field, press a combo) and a notes folder (Choose folder). Then, from any app, hold the chord and speak. The pill shows a gold edge and a small "note" tag while you talk, says "noted" when the file is written, and your cursor never moves. The chord follows the same trigger mode as your main hotkey: hold to talk, or tap to start and stop.
+Set two things under Settings, Notes: a note chord (click the field, press a combo) and a notes folder (type a path, or Choose… to pick one). Then, from any app, hold the chord and speak. The pill shows a gold edge and a small "note" tag while you talk, says "noted" when the file is written, and your cursor never moves. The chord follows the same trigger mode as your main hotkey: hold to talk, or tap to start and stop.
 
 The chord follows the paste-last chord's rules. It needs a regular key (a modifier plus an F-key, like Ctrl+F11, is the safest shape), it cannot contain your dictation hotkey, and it cannot be the same combo as another chord. murmur refuses those at capture and says why.
 
@@ -32,7 +32,7 @@ The date and time are your local time, so a note at 11 pm lands in today's file,
 
 ## Can I change the file name, the folder layout, or how each note looks?
 
-Yes. Under Settings, notes, File layout, two templates control everything, and a preview line shows today's resolved path as you type.
+Yes. Under Settings, Notes, File layout (the fold at the bottom of the section), two templates control everything, and a preview line shows today's resolved path as you type.
 
 **File path** is relative to your notes folder. The default is `murmur/inbox/{date}.md`. To append to an Obsidian daily note you already keep, set it to your daily note's path, for example `Daily/{date}.md`. To keep one file per month, `murmur/{year}-{month}.md`.
 
@@ -48,7 +48,7 @@ Tokens, all rendered in your local time:
 | `{year}` `{month}` `{day}` | `2026` `09` `18` | zero-padded |
 | `{text}` | what you said | entry template only; inside a path it stays literal |
 
-Reset to default puts both templates back.
+Reset, on the Defaults row, puts both templates back.
 
 ## What happens if my template is wrong?
 
@@ -74,7 +74,7 @@ Yes. A note is a dictation: it appears on the home tab with a small "note" mark,
 
 ## Can murmur sort my notes into tasks and ideas?
 
-Yes, when you turn it on. Under Settings, notes, set Sort into tasks and ideas to On. From then on, after a note lands in the inbox and the pill has said noted, murmur runs a background pass that labels each sentence of the note as a task, an idea, or a note, and copies the tasks and ideas into two more files in your notes folder:
+Yes, when you turn it on. Under Settings, Notes, turn on Sort into tasks and ideas. From then on, after a note lands in the inbox and the pill has said noted, murmur runs a background pass that labels each sentence of the note as a task, an idea, or a note, and copies the tasks and ideas into two more files in your notes folder:
 
 - `murmur/todo.md` gets each task as a checkbox line: `- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))`
 - `murmur/ideas.md` gets each idea as a dash line: `- The wizard could ask for the vault on first run. ([10:32](inbox/2026-09-20.md))`
@@ -114,7 +114,7 @@ It is off by default, because it sends nothing you did not already send and cost
 
 The inbox note keeps a time heading rather than a topic. Your words are written to disk before any model runs, which is what makes them impossible to lose, and the topic does not exist yet at that moment.
 
-The link in each line points back to the inbox note it came from, relative to the file, so it works in Obsidian and in any markdown reader. The inbox entry itself is never changed: it is your log, exactly as you said it, and todo.md is your working list. A task therefore appears in both places, on purpose. Both file paths can be changed under File layout, under the same rules as the inbox path, and Reset to default restores them.
+The link in each line points back to the inbox note it came from, relative to the file, so it works in Obsidian and in any markdown reader. The inbox entry itself is never changed: it is your log, exactly as you said it, and todo.md is your working list. A task therefore appears in both places, on purpose. Both file paths can be changed under File layout, under the same rules as the inbox path, and Reset on the Defaults row restores them.
 
 Sorting is off by default. With it off, murmur writes the inbox and nothing else.
 
@@ -158,11 +158,11 @@ Nothing is written until the whole labeling has passed, and both files are opene
 
 ## Which model does the sorting, and can I change it?
 
-By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Choose Separate provider under Sort connection to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
+By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Choose Separate under Sort runs on to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
 
 ## Can I sort with a decision model instead of a chat model?
 
-Yes. Under Sort connection choose Separate provider and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state (with the list of items already filed beside them, when there are any), one typed question per sentence over the three labels, one yes/no question per cut, and, when there are filed items, a relation question and an item-number question per sentence, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
+Yes. Under Sort runs on choose Separate and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state (with the list of items already filed beside them, when there are any), one typed question per sentence over the three labels, one yes/no question per cut, and, when there are filed items, a relation question and an item-number question per sentence, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
 
 The one thing it gives up is naming: Name each note needs a model that can write, so on a decision connection the heading carries the date alone, and the panel says so. If the decision model does not answer, whether a rate limit, a network fault, or a missing answer, murmur falls back to your cleanup connection's chat model for that note and logs `[sort] decision failed reason=...; falling back to the chat sorter`. The filed log line names which protocol answered.
 
@@ -174,7 +174,7 @@ Sort again then sends only the unsure lines back for another look, never the one
 
 A chat model has no honest confidence to report and asserts a label either way, so the threshold never applies on a chat connection: there, a sort is all or nothing, as before.
 
-To see why a line landed or stayed, open murmur's log (Settings, setup, Diagnostics, or `logs/murmur.log` in murmur's data folder). Every sort on a decision connection writes one line with each sentence's number, label, and confidence, for example `[sort] confidence 1=task:0.93 2=idea:0.62 3=task:0.88 threshold=0.7 model=jev-1.13.0`: sentence 2 was 62% sure, below Strict, so it was held as unsure. Only numbers, labels, and the model name are written, never your words. The numbers count the sentences sent in that round: a fresh note numbers all of them from 1, and Sort again numbers only the lines it resends, again from 1, so after a retry sentence 1 is the first held line, not the first sentence of the note. The filed line after it says how the held lines split: `unsure=` counts lines held for low confidence, `related=` counts lines held as a repeat or a completion of something already on your list.
+To see why a line landed or stayed, open murmur's log (Settings, System, Diagnostics, or `logs/murmur.log` in murmur's data folder). Every sort on a decision connection writes one line with each sentence's number, label, and confidence, for example `[sort] confidence 1=task:0.93 2=idea:0.62 3=task:0.88 threshold=0.7 model=jev-1.13.0`: sentence 2 was 62% sure, below Strict, so it was held as unsure. Only numbers, labels, and the model name are written, never your words. The numbers count the sentences sent in that round: a fresh note numbers all of them from 1, and Sort again numbers only the lines it resends, again from 1, so after a retry sentence 1 is the first held line, not the first sentence of the note. The filed line after it says how the held lines split: `unsure=` counts lines held for low confidence, `related=` counts lines held as a repeat or a completion of something already on your list.
 
 ## What happens when I say something that is already on my list?
 
@@ -198,7 +198,7 @@ Yes, and it starts off. With Sort into tasks and ideas off, murmur writes each n
 
 ## Can murmur remind me what is still open?
 
-Yes, with Task reminders. The row appears once a notes folder is set. Set it to On and pick up to three times of day; clearing a time switches that one off, so one reminder a day is as valid as three. At each time murmur reads your tasks file as it stands at that moment and shows a notification with the open count and as many of the items as fit: "2 open tasks: Call the dentist about Thursday.; Renew the domain." Clicking it opens the list.
+Yes, with Task reminders. The row appears once a notes folder is set. Switch it on and pick up to three times of day; clearing a time switches that one off, so one reminder a day is as valid as three. At each time murmur reads your tasks file as it stands at that moment and shows a notification with the open count and as many of the items as fit: "2 open tasks: Call the dentist about Thursday.; Renew the domain." Clicking it opens the list.
 
 It is off by default and it stays quiet rather than nagging. A file where everything is ticked fires nothing. A tasks file that does not exist yet fires nothing and says why. Turning reminders on part way through a day does not deliver that morning's reminder retroactively, and neither does editing a time to one that has already passed. A time you set for later today does arrive, even in a slot that already ran this morning. A machine that was off all day comes back to one readout rather than three notifications a minute apart.
 

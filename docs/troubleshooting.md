@@ -4,11 +4,11 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 ## How do I send diagnostics when something goes wrong?
 
-Settings, setup, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
+Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
 ## What happens when a dictation fails, and how do I retry it?
 
-murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your API key in the setup box on the settings tab), then click **retry** beside the take, or **retry all** when several are waiting.
+murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the API keys list under Settings, Provider and keys), then click **retry** beside the take, or **retry all** when several are waiting.
 
 A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
 

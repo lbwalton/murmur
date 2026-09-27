@@ -1,12 +1,12 @@
 # Connecting murmur to a provider
 
-murmur is bring-your-own-key. It talks to any service that speaks the OpenAI-compatible API: one endpoint for speech to text (`/audio/transcriptions`) and one for the cleanup pass (`/chat/completions`). You configure three things in Settings under **provider**:
+murmur is bring-your-own-key. It talks to any service that speaks the OpenAI-compatible API: one endpoint for speech to text (`/audio/transcriptions`) and one for the cleanup pass (`/chat/completions`). You configure three things in Settings under **Provider and keys**:
 
-- **Base URL**: where your provider's API lives (the Provider preset dropdown fills it for you)
+- **Base URL**: where your provider's API lives (the Provider preset fills it for you; the field itself sits under Advanced)
 - **Speech model**: the model that transcribes your voice
 - **Cleanup model**: the model that polishes the transcript
 
-After any change, click **Test connection** in the setup panel. Green means your base URL and key work together.
+After any change, press **Test** on the Connection row under Provider and keys. Green means your base URL and key work together.
 
 Provider facts below were verified on 2026-09-13 unless a section carries its own date. Model names drift; when in doubt, your provider's models page is the truth.
 
@@ -22,24 +22,24 @@ murmur has three connections. Speech and cleanup both speak the OpenAI-compatibl
 
 TypeSafe's Jev is a decision model, not a chat model: you send a state and typed questions, and it returns typed answers with probabilities. For sorting that means a label outside task, idea, and note is not something it declines to emit, it is something it cannot emit, and a reply arrives in well under a second. Verified against docs.typesafe.ai on 2026-09-21: the endpoint is `POST https://api.typesafe.ai/v1/systemone` with a Bearer key, the model alias `jev-latest` resolves to `jev-1.13.0`, and pricing is $0.042 per million input tokens with output tokens free. Access is waitlisted early access; a key comes from the console at console.typesafe.ai once your account is let in.
 
-To use it: under Settings, notes, set Sort connection to Separate provider, set Sort protocol to Decision model, pick the TypeSafe preset (it fills the base URL and `jev-latest`), save your key, and press Test. The test sends the smallest real request the endpoint accepts, so a good key reports connected and a wrong one reports rejected.
+To use it: under Settings, Notes, set Sort runs on to Separate, set Sort protocol to Decision model, pick the TypeSafe preset (it fills the base URL and `jev-latest`), save your key, and press Test. The test sends the smallest real request the endpoint accepts, so a good key reports connected and a wrong one reports rejected.
 
 One feature does not cross to this connection. Name each note asks the model to write a short name, and a decision model cannot write, so headings carry the date alone while a decision connection is in use; the panel says so where the protocol is chosen. If the decision model does not answer for any reason, a rate limit included, the sort falls back to your cleanup connection's chat model and the diagnostics log says so; choosing the decision model can never be the reason a sort fails.
 
 ## Can I use one provider for speech and a different one for cleanup?
 
-Yes. Set **Cleanup connection** to **Separate provider** in Settings. The cleanup slot gets its own base URL, model, and its own encrypted key, so Groq can transcribe while DeepSeek, Cerebras, OpenRouter, or a local model does the cleanup. The separate connection only takes over once it is fully set up (enabled, base URL, model, and a saved key); anything less and cleanup quietly keeps using your speech provider, so a half-finished setup never costs you the cleanup pass. Speech itself always uses the main provider block.
+Yes. Set **Cleanup runs on** to **Separate** under Settings, Provider and keys. The cleanup slot gets its own base URL, model, and its own encrypted key, so Groq can transcribe while DeepSeek, Cerebras, OpenRouter, or a local model does the cleanup. The separate connection only takes over once it is fully set up (enabled, base URL, model, and a saved key); anything less and cleanup quietly keeps using your speech provider, so a half-finished setup never costs you the cleanup pass. Speech itself always uses the main provider block.
 
 ## What do murmur's cost estimates mean, and where do the rates come from?
 
-The settings panel shows an estimated cost per 1,000 dictated words, computed on your machine from your own average speaking pace (from your history; a typical pace is used before any history exists) and the published rates in murmur's provider catalog. Every rate in the catalog carries the date it was verified against the vendor's own pricing page, and a weekly automated check opens a change for review whenever a vendor's number drifts. With **Price refresh** on (the default), murmur also fetches the newest catalog from the murmur repo at launch: a read-only file download from the same GitHub host updates come from, with nothing about you attached. These are estimates only; your provider bills you directly and murmur never sees it.
+Provider and keys shows an estimated cost per 1,000 dictated words, computed on your machine from your own average speaking pace (from your history; a typical pace is used before any history exists) and the published rates in murmur's provider catalog. Every rate in the catalog carries the date it was verified against the vendor's own pricing page, and a weekly automated check opens a change for review whenever a vendor's number drifts. With **Price refresh** on (the default, under Advanced), murmur also fetches the newest catalog from the murmur repo at launch: a read-only file download from the same GitHub host updates come from, with nothing about you attached. These are estimates only; your provider bills you directly and murmur never sees it.
 
 ## How do I use Groq with murmur? (default)
 
 Groq is murmur's default because Whisper on Groq is extremely fast and inexpensive, which suits dictation.
 
 1. Create a free key at [console.groq.com/keys](https://console.groq.com/keys)
-2. Paste it into Settings, setup, **Groq API key**, and Save
+2. Paste it into Settings, Provider and keys, **API keys**, on the Groq line, and Save
 3. Leave the provider fields at their defaults:
 
 | Field | Value |
@@ -55,7 +55,7 @@ Current model list: [console.groq.com/docs/models](https://console.groq.com/docs
 ## How do I use OpenAI with murmur?
 
 1. Create a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Save it as your API key in murmur's setup panel
+2. Save it in the **API keys** list under Provider and keys
 3. Set the provider fields:
 
 | Field | Value |
@@ -69,7 +69,7 @@ Current model list: [console.groq.com/docs/models](https://console.groq.com/docs
 Mistral runs a real `/v1/audio/transcriptions` endpoint with its Voxtral speech models, making it the strongest accuracy-per-dollar alternative to Groq for speech (Voxtral Mini Transcribe: 0.003 dollars per audio minute, roughly 4 percent word error rate, verified 2026-09-13 at [mistral.ai/pricing/api](https://mistral.ai/pricing/api/)).
 
 1. Create a key at [console.mistral.ai](https://console.mistral.ai)
-2. Save it as your API key in murmur's setup panel
+2. Save it in the **API keys** list under Provider and keys
 3. Set the provider fields (or pick the Mistral preset):
 
 | Field | Value |
@@ -80,7 +80,7 @@ Mistral runs a real `/v1/audio/transcriptions` endpoint with its Voxtral speech 
 
 ## Which providers work for the cleanup connection only?
 
-These speak OpenAI-compatible chat but host no Whisper-style speech endpoint, so they fit the separate **Cleanup connection** slot (all verified 2026-09-13):
+These speak OpenAI-compatible chat but host no Whisper-style speech endpoint, so they fit a separate cleanup connection (**Cleanup runs on**, Separate) (all verified 2026-09-13):
 
 - **DeepSeek**: base URL `https://api.deepseek.com`, model `deepseek-flash`. Billed from a prepaid balance; rates halve during Beijing-time off-peak hours ([pricing](https://api-docs.deepseek.com/quick_start/pricing)).
 - **Cerebras**: base URL `https://api.cerebras.ai/v1`. Extremely fast inference; the model lineup moves quickly, so copy a current model id from Cerebras's docs.
@@ -109,13 +109,13 @@ If the provider advertises an OpenAI-compatible API and hosts a Whisper-class sp
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Test connection says `key rejected (http 401)` | Wrong key, or a key from a different provider than the base URL | Regenerate the key at the provider that matches your base URL |
-| Test connection says `key rejected (http 403)` | The provider blocked the request: an account restriction, region rule, or network in between | Check your provider account status and try without a VPN |
-| Test connection says `network error` or `timed out` | Typo in the base URL, or a local server that is not running | Check the URL ends with the provider's version path (usually `/v1`) |
+| The connection test says `key rejected (http 401)` | Wrong key, or a key from a different provider than the base URL | Regenerate the key at the provider that matches your base URL |
+| The connection test says `key rejected (http 403)` | The provider blocked the request: an account restriction, region rule, or network in between | Check your provider account status and try without a VPN |
+| The connection test says `network error` or `timed out` | Typo in the base URL, or a local server that is not running | Check the URL ends with the provider's version path (usually `/v1`) |
 | Dictation shows the red error state | The speech model id is not valid at your provider | Copy the exact id from the provider's models page |
 | Transcripts appear but cleanup never changes anything | The cleanup model id is invalid, so murmur fails open to its built-in formatting | Fix the cleanup model id; murmur never blocks your dictation on it |
 | Everything worked yesterday, fails today | Provider outage or a retired model id | Check the provider's status page, then their models page |
-| Dictation errors right after switching providers | Your saved key belongs to the previous provider; every provider needs its own key | Paste the new provider's key in setup (the key field names the active provider), then Test connection |
+| Dictation errors right after switching providers | Your saved key belongs to the previous provider; every provider needs its own key | Paste the new provider's key in the API keys list (its first line names the active provider), then Test |
 | Any error you cannot place | The diagnostics log names every transcription failure | Open `logs/murmur.log` in murmur's data folder: the `[transcribe]` line carries the status, model, and base URL |
 
 A failed transcription never loses your audio: murmur saves the recording under its data folder in `recovery/` so nothing you said disappears.

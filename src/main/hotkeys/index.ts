@@ -142,7 +142,7 @@ function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
   if (transformMachine?.isActive()) callbacks.transform?.stop()
   const parsed = parseBinding(settings.hotkey.binding, keyMap)
   // Unsafe bindings (a bare letter would fire on every keystroke) are
-  // treated as invalid: the checklist surfaces it, dictation stays off.
+  // treated as invalid: the Finish setup card surfaces it, dictation stays off.
   binding = parsed && isSafeBinding(parsed) ? parsed : null
   machine =
     settings.hotkey.mode === 'hold' ? new HoldMachine(callbacks) : new ToggleMachine(callbacks)

@@ -7,7 +7,7 @@ import type { HotkeysStatus, KeyStatus, SettingsApi } from '../../preload/settin
 import type { ProviderCatalog } from '../../shared/catalog'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Row } from './controls'
+import { Row, Section, Switch } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -17,6 +17,8 @@ export function TransformPanel(props: {
   hotkeys: HotkeysStatus | null
   onUpdate: (partial: Partial<Settings>) => Promise<void>
   onRefresh: () => Promise<unknown>
+  /** A key saved or removed here also lists under API keys. */
+  onKeysChanged: () => void
 }): React.JSX.Element {
   const transform = props.settings.transform
   const [keyStatus, setKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
@@ -56,29 +58,30 @@ export function TransformPanel(props: {
     transform.binding !== '' && props.hotkeys !== null && !props.hotkeys.transformBindingValid
 
   return (
-    <section className="panel">
-      <p className="micro-label">transform</p>
+    <Section id="transform" title="Transform" sub="Select text, hold the chord, and say how to change it.">
 
       <Row
         label="Transform chord"
         anchor="row-transform-chord"
+        keywords="rewrite edit selection chord hotkey"
         desc={
           captureNote ??
           (disarmed
-            ? 'This chord is currently disarmed: it clashes with your dictation hotkey or another chord, or no longer parses. Capture a new one.'
-            : 'Select text in any app, hold it, and say what to do ("turn this into a list with action steps"). The result replaces the selection. Off until you set one. A modifier plus an F-key is safest.')
+            ? 'This chord is disarmed: it clashes with your dictation hotkey or another chord, or no longer parses. Capture a new one.'
+            : 'Select text in any app, hold it, and say what to do ("turn this into a list with action steps"). The result replaces the selection. Off until you set one; a modifier plus an F-key is safest.')
         }
       >
         <div className="inline">
           <button
             className={`field capture ${capturing ? 'capture-live' : ''}`}
+            aria-label="Transform chord. Click to change."
             onClick={() => void startCapture()}
           >
             {capturing ? 'press keys…' : transform.binding === '' ? 'not set' : transform.binding}
           </button>
           {transform.binding !== '' && (
             <button
-              className="btn quiet-btn"
+              className="btn btn-remove"
               onClick={() => {
                 setCaptureNote(null)
                 void update({ binding: '' })
@@ -93,32 +96,33 @@ export function TransformPanel(props: {
       <Row
         label="Keep originals in history"
         anchor="row-transform-keep"
+        keywords="undo history original"
         desc={
           transform.keepOriginals
             ? 'Each original selection is saved to history before the model sees it, so paste-last or the home tab always brings it back.'
-            : 'Originals are held in memory only, and nothing is written to disk. Paste-last still brings back the latest one until your next dictation or transform, or until murmur quits.'
+            : 'Originals stay in memory only, never on disk. Paste-last still brings back the latest one until your next dictation or transform, or until murmur quits.'
         }
       >
-        <select
-          className="field"
-          value={transform.keepOriginals ? 'on' : 'off'}
-          onChange={(e) => void update({ keepOriginals: e.target.value === 'on' })}
-        >
-          <option value="on">On</option>
-          <option value="off">Off</option>
-        </select>
+        <Switch
+          checked={transform.keepOriginals}
+          label="Keep originals in history"
+          onChange={(keepOriginals) => void update({ keepOriginals })}
+        />
       </Row>
 
       <ConnectionRows
         value={transform.connection}
         catalog={props.catalog}
         keyStatus={keyStatus}
-        onKeyStatus={setKeyStatus}
+        onKeyStatus={(status) => {
+          setKeyStatus(status)
+          props.onKeysChanged()
+        }}
         onChange={(connection) => update({ connection: { ...transform.connection, ...connection } })}
         labels={{
-          connection: 'Transform connection',
+          connection: 'Transform runs on',
           connectionDesc:
-            'Same runs transforms on your cleanup connection, which is your speech provider unless you set cleanup apart. Separate lets them run on a stronger model with its own key.',
+            'Same uses your cleanup connection. Separate lets transforms run on a stronger model with its own key.',
           sameOption: 'Same as cleanup',
           provider: 'Transform provider',
           baseUrl: 'Transform base URL',
@@ -127,7 +131,7 @@ export function TransformPanel(props: {
           keyDesc:
             'This connection has its own key, stored encrypted like the others. Until one is saved, transforms keep riding your cleanup connection.',
           sharedDesc:
-            'Shares a key with your speech or cleanup connection: one provider, one key. Manage it in the setup panel.'
+            'Shares a key with your speech or cleanup connection: one provider, one key. It is in the API keys list under Provider and keys.'
         }}
         sharedWith={[
           props.settings.provider.baseUrl,
@@ -141,6 +145,6 @@ export function TransformPanel(props: {
           test: () => bridge().testConnectionFor(transform.connection.baseUrl)
         }}
       />
-    </section>
+    </Section>
   )
 }

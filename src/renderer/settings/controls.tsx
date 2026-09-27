@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings building blocks shared by the page and its panels: the
-// label-plus-control row and the commit-on-blur text field.
+// section and its rows, the Advanced fold, the switch and segmented
+// choice, the commit-on-blur fields, and the jump that walks the eye
+// to a row.
 import { useEffect, useState } from 'react'
 import { parseRecapTime } from '../../shared/recap'
 
@@ -92,20 +94,29 @@ export function NumberSetting(props: {
   )
 }
 
+/** A row id from its label, so search can land on rows that carry no
+ *  explicit anchor. */
+function rowId(label: string): string {
+  return `row-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+}
+
 export function Row(props: {
   label: string
-  desc?: string
+  desc?: React.ReactNode
   anchor?: string
-  highlight?: boolean
-  /** flash is the red fix-this pulse; glow is the amber go-here-next
-   *  nudge. Guidance and alarm must not share a color. */
-  highlightStyle?: 'flash' | 'glow'
+  /** Stacks the control under the text at full width: lists, wide
+   *  fields, and rows with more controls than fit beside a label. */
+  block?: boolean
+  /** Extra words the settings search should match (synonyms a user
+   *  might type that the label and description never say). */
+  keywords?: string
   children: React.ReactNode
 }): React.JSX.Element {
   return (
     <div
-      className={`row ${props.highlight ? (props.highlightStyle === 'glow' ? 'row-glow' : 'row-flash') : ''}`}
-      id={props.anchor}
+      className={`row ${props.block ? 'row-block' : ''}`}
+      id={props.anchor ?? rowId(props.label)}
+      data-keywords={props.keywords}
     >
       <div className="row-text">
         <div className="row-label">{props.label}</div>
@@ -116,10 +127,158 @@ export function Row(props: {
   )
 }
 
+/**
+ * One settings section: a heading in the column and its rows on a
+ * panel. The id is what the rail scrolls to and tracks.
+ */
+export function Section(props: {
+  id: string
+  title: string
+  sub?: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <section className="sec" id={`sec-${props.id}`} data-sec={props.id} aria-labelledby={`sec-${props.id}-title`}>
+      {/* Focusable by script only: the rail moves keyboard focus here
+          when it scrolls to the section. */}
+      <h2 className="sec-title" id={`sec-${props.id}-title`} tabIndex={-1}>
+        {props.title}
+      </h2>
+      {props.sub && <p className="sec-sub">{props.sub}</p>}
+      <div className="panel">{props.children}</div>
+    </section>
+  )
+}
+
+/**
+ * The fold for settings most people never touch. A native details
+ * element, so it is keyboard reachable for free and a jump can open it
+ * by walking up from the row it lands on.
+ */
+export function Advanced(props: {
+  label?: string
+  /** What is inside, so the fold says what it holds while closed. */
+  hint: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <details className="adv">
+      <summary className="adv-summary">
+        <span>{props.label ?? 'Advanced'}</span>
+        <span className="adv-hint">{props.hint}</span>
+      </summary>
+      <div className="adv-body">{props.children}</div>
+    </details>
+  )
+}
+
+/** On/off as a switch. On reads cream: signal amber stays reserved for
+ *  live states. */
+export function Switch(props: {
+  checked: boolean
+  label: string
+  disabled?: boolean
+  onChange: (next: boolean) => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="switch"
+      className="switch"
+      aria-checked={props.checked}
+      aria-label={props.label}
+      disabled={props.disabled}
+      onClick={() => props.onChange(!props.checked)}
+    >
+      <span className="switch-knob" />
+    </button>
+  )
+}
+
+/**
+ * A short choice shown whole: every option visible, one click to pick.
+ * A radiogroup with a roving tab stop; arrow keys move the choice.
+ */
+export function Segmented<T extends string>(props: {
+  value: T
+  options: ReadonlyArray<{ value: T; label: string }>
+  label: string
+  disabled?: boolean
+  onChange: (next: T) => void
+}): React.JSX.Element {
+  const index = props.options.findIndex((o) => o.value === props.value)
+  const move = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+    if (step === 0) return
+    e.preventDefault()
+    const n = props.options.length
+    const next = props.options[(Math.max(index, 0) + step + n) % n]
+    props.onChange(next.value)
+    const buttons = e.currentTarget.querySelectorAll('button')
+    buttons[(Math.max(index, 0) + step + n) % n]?.focus()
+  }
+  return (
+    <div className="seg" role="radiogroup" aria-label={props.label} onKeyDown={move}>
+      {props.options.map((o, i) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === props.value}
+          tabIndex={o.value === props.value || (index === -1 && i === 0) ? 0 : -1}
+          disabled={props.disabled}
+          onClick={() => props.onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Walks the eye to a row: opens any fold holding it, scrolls it to the
+ * middle, and pulses it. flash is the red fix-this pulse; glow is the
+ * amber go-here-next nudge; guidance and alarm never share a color.
+ * focus puts the caret in the row's first field (a key to paste);
+ * focusControl moves keyboard focus to the row's first control, so a
+ * search hit lands the keyboard where the eye went.
+ */
+export function jumpToRow(
+  anchor: string,
+  options: { tone?: 'flash' | 'glow'; focus?: boolean; focusControl?: boolean } = {}
+): void {
+  const el = document.getElementById(anchor)
+  if (!el) return
+  const fold = el.closest('details')
+  if (fold && !fold.open) fold.open = true
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
+  const cls = options.tone === 'glow' ? 'row-glow' : 'row-flash'
+  el.classList.remove('row-glow', 'row-flash')
+  // Restart the animation when the same row is pulsed twice in a row.
+  void el.offsetWidth
+  el.classList.add(cls)
+  window.setTimeout(() => el.classList.remove(cls), 2600)
+  if (options.focus) {
+    const field = el.querySelector<HTMLElement>('input:not([type="range"]), textarea')
+    field?.focus({ preventScroll: true })
+  } else if (options.focusControl) {
+    // A field first (a list's add line, a select), else the first button
+    // in tab order, which for a segmented choice is its checked option.
+    const control =
+      el.querySelector<HTMLElement>('.row-control :is(input, select, textarea):not(:disabled)') ??
+      el.querySelector<HTMLElement>('.row-control button:not(:disabled):not([tabindex="-1"])')
+    control?.focus({ preventScroll: true })
+  }
+}
+
 export function ModelPicker(props: {
   value: string
   options: string[]
   placeholder?: string
+  /** The accessible name for the select. */
+  label?: string
   onCommit: (value: string) => void
 }): React.JSX.Element {
   // A real select instead of a datalist: datalists filter suggestions
@@ -140,6 +299,7 @@ export function ModelPicker(props: {
     <div className="inline">
       <select
         className="field"
+        aria-label={props.label}
         value={!typing && known ? effective : 'custom'}
         onChange={(e) => {
           if (e.target.value === 'custom') {
@@ -183,6 +343,8 @@ export function TimeInput(props: {
   value: string
   disabled: boolean
   allowEmpty?: boolean
+  /** The accessible name for the field. */
+  label?: string
   onCommit: (time: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
@@ -191,6 +353,7 @@ export function TimeInput(props: {
     <input
       type="time"
       className="field"
+      aria-label={props.label}
       value={draft}
       disabled={props.disabled}
       onChange={(e) => {

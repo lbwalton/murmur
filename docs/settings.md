@@ -1,10 +1,18 @@
 # murmur settings, explained
 
-Everything the settings window can do, in the order it appears. For provider setup (base URL, keys, model ids per provider) see [providers.md](./providers.md).
+Everything the settings window can do. For provider setup (base URL, keys, model ids per provider) see [providers.md](./providers.md).
 
 ## What is the home view?
 
 The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A red ✗ next to the settings tab means setup needs attention.
+
+## How is the settings tab organized, and how do I find a setting?
+
+A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Dictionary. Features: Notes, Transform, Time back and recap. App: Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
+
+The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening an Advanced fold if the setting lives inside one. Esc clears the search.
+
+Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (base URL, profiles, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Toggle show every option as a button in a row.
 
 ## How long is my history kept, and where?
 
@@ -12,15 +20,19 @@ History lives only on your machine, in murmur's local data folder. The retention
 
 ## What happens on first launch?
 
-A guided wizard walks the whole setup: welcome, provider key with a live connection test, macOS permissions with deep links and live status, hotkey capture, and a test dictation. Each step gates on actually being done, so finishing the wizard means murmur genuinely works. Skip anytime; the setup checklist keeps tracking anything unfinished, and Run wizard in settings starts it over whenever you like.
+A guided wizard walks the whole setup: welcome, provider key with a live connection test, macOS permissions with deep links and live status, hotkey capture, and a test dictation. Each step gates on actually being done, so finishing the wizard means murmur genuinely works. Skip anytime; the settings tab keeps tracking anything unfinished, and Run wizard under Settings, System starts it over whenever you like.
 
-## What does the setup checklist mean?
+## What do "all set" and the Finish setup card mean?
 
-The chips at the top of the setup panel track everything murmur needs to work: API key saved, provider connected, microphone, accessibility, input monitoring, and a valid hotkey. Green check means done. A red ✗ means click the chip: murmur scrolls to the exact field and highlights what to fix. The panel badge reads "all set" only when every step is green.
+murmur checks everything it needs to work: your API key saved, the provider connected, the microphone, accessibility, input monitoring (the last three on macOS), and a valid hotkey. When every check passes, setup folds away into a single **all set** badge at the top of the rail. Click the badge to see the checks listed.
+
+When any check fails, a **Finish setup** card opens at the top of the settings column. It lists only what is missing, each with the button that fixes it right beside it: Add key walks you to the key field, Test runs the connection check, Open settings opens the matching macOS permission pane, and Set hotkey walks you to the hotkey. A row of small lamps and a count ("4 of 6 ready") show how far along you are, and a Ready line names what already works. A check that waits on another says so (the connection test runs by itself once a key is saved). Right after launch, while the first connection test is still running, the badge reads checking and the card stays closed. Once the last item passes, the card folds back into the all set badge.
 
 ## How do I set my API key?
 
-Paste your provider key into **Groq API key** and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to the provider you configured. Only a masked form (like `gsk_…OC9g`) is ever displayed. Remove deletes it. Then press **Test connection**: green `connected` proves the key and base URL work together.
+Under Settings, Provider and keys, paste your key into the **API keys** list on your provider's line and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to that provider. Only a masked form (like `gsk_…OC9g`) is ever displayed, marked **in use**. Replace swaps in a new key; Remove deletes it. The Connection row right below tests it on its own after a save, and its Test button runs the check again: green `connected` proves the key and base URL work together.
+
+Each provider keeps its own key, so the list also shows keys you saved for providers you are not using right now, one per line, each with its own Remove. Switching the Provider preset brings that provider's saved key back into use.
 
 ## How do I change the hotkey?
 
@@ -33,17 +45,17 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 ## How do I paste my last dictation again?
 
-Set a chord under Settings, dictation, Paste last dictation. Pressing it pastes your newest history entry wherever your cursor is, through the same insertion pipeline as a live dictation: handy when a busy app missed the original paste, or you want the same text somewhere else. The feature is off until you capture a chord, and Clear disarms it again.
+Set a chord under Settings, Dictation, Paste last dictation. Pressing it pastes your newest history entry wherever your cursor is, through the same insertion pipeline as a live dictation: handy when a busy app missed the original paste, or you want the same text somewhere else. The feature is off until you capture a chord, and Clear disarms it again.
 
 Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fire by accident), and it must not contain your dictation hotkey's modifiers (holding Ctrl+Alt+V with a Ctrl+Alt dictation hotkey would start a recording before the V lands), so murmur refuses those at capture and says why. murmur listens globally without swallowing keys, so pick a combo your apps ignore: a modifier plus an F-key (Ctrl+F12) is the safest shape. Holding the chord pastes once, and it does nothing while a recording or transcription is in flight. With empty history it plays the soft no-speech cue and touches nothing.
 
 ## How do I speak a note instead of pasting it?
 
-Set a note chord and a notes folder under Settings, notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes.md](./notes.md).
+Set a note chord and a notes folder under Settings, Notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes.md](./notes.md).
 
 ## How do I rewrite selected text by speaking?
 
-Set a transform chord under Settings, transform. Select text in any app, hold the chord, and say what to do ("tighten this paragraph"); the result replaces the selection, and paste-last brings the original back. What gets sent, the 8,000 character limit, the separate connection, and the Keep originals in history switch are on their own page: [transform.md](./transform.md).
+Set a transform chord under Settings, Transform. Select text in any app, hold the chord, and say what to do ("tighten this paragraph"); the result replaces the selection, and paste-last brings the original back. What gets sent, the 8,000 character limit, the separate connection, and the Keep originals in history switch are on their own page: [transform.md](./transform.md).
 
 ## What is the difference between hold to talk and toggle?
 
@@ -63,7 +75,7 @@ The cleanup pass fails open: if the model is slow, wrong, or chatty, murmur inse
 
 ## What is Smart lists, and how do I dictate a list?
 
-Smart lists turns spoken structure into real structure. It is off by default (dictation behaves exactly as it always has) and lives in Settings, dictation, Smart lists. With it on and formatting at Full, murmur formats lists two ways:
+Smart lists turns spoken structure into real structure. It is off by default (dictation behaves exactly as it always has) and lives in Settings, Dictation, Smart lists. With it on and formatting at Full, murmur formats lists two ways:
 
 - **Automatically.** Speak a sequence ("first I want to email the team, then update the deck, then send it to the client") and it becomes a numbered list, one step per line. Run through items ("I need to pack socks, shirts, shoes, pants") and it becomes a bulleted list, one item per line. Ordinary prose stays prose; the cleanup model is instructed never to force a list onto normal sentences.
 - **By command.** Say "bullet point", "next item", or "next bullet" to start a dash line yourself, the same way "period" and "new line" work today. Commands are deterministic: they work even when the cleanup model is unreachable.
@@ -76,11 +88,11 @@ The analytics tab shows your dictation in numbers: minutes, words, sessions, tim
 
 ## How does the custom dictionary work?
 
-The dictionary fixes words the speech model keeps mishearing, names especially. Add a pair in Settings, dictionary: what it is heard as, and what it should be written as. Matching is whole-word and case-insensitive; output uses exactly the casing you typed, even at the start of a sentence, and even after the AI cleanup pass. Multi-word phrases work, and longer phrases win over shorter ones. The dictionary can only ever change words that were actually spoken: an unrelated dictation is never touched, and dictionary content can never leak into your text on its own.
+The dictionary fixes words the speech model keeps mishearing, names especially. Add a pair in Settings, Dictionary, Custom words: what it is heard as, and what it should be written as. Matching is whole-word and case-insensitive; output uses exactly the casing you typed, even at the start of a sentence, and even after the AI cleanup pass. Multi-word phrases work, and longer phrases win over shorter ones. The dictionary can only ever change words that were actually spoken: an unrelated dictation is never touched, and dictionary content can never leak into your text on its own.
 
 ## How do text expansions work?
 
-An expansion turns a spoken trigger phrase into a saved snippet: say "insert my email" and your address appears; say "sign off" and your closing lines appear. Add pairs in Settings, dictionary, Expansions. Triggers match after formatting, so they work naturally mid-sentence and next to punctuation. Snippets insert exactly as written, line breaks and casing included, and a snippet's own content never triggers another expansion. When two triggers could match at the same spot, the longer one wins.
+An expansion turns a spoken trigger phrase into a saved snippet: say "insert my email" and your address appears; say "sign off" and your closing lines appear. Add pairs in Settings, Dictionary, Expansions. Triggers match after formatting, so they work naturally mid-sentence and next to punctuation. Snippets insert exactly as written, line breaks and casing included, and a snippet's own content never triggers another expansion. When two triggers could match at the same spot, the longer one wins.
 
 ## What are the waveform styles?
 
@@ -88,7 +100,7 @@ How the overlay pill visualizes your voice while recording. **Bars** is the clas
 
 ## How do I make the overlay smaller or less intrusive?
 
-Settings, dictation, Overlay look. Three looks:
+Settings, Look, Overlay look. Three looks:
 
 - **Pill** is the classic: the dot, the waveform, and the timer in a rounded box.
 - **Compact** is the same pill at about two thirds, for when the box covers what you are reading.
@@ -98,11 +110,11 @@ One rule holds in every look: text that has to be read (a hint such as "set a no
 
 ## How do recaps and the wrap-up work?
 
-Turn on the daily recap in Settings and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers, ending with your time back once the day has at least a minute of it: "4 sessions, 12 minutes, 1,240 words today. 19 minutes back." Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, your time back at your own typing speed, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
+Turn on Daily recap under Settings, Time back and recap, and pick a time. At that moment (or on the next wake if the machine was asleep, once per day) murmur sends a notification with your day's numbers, ending with your time back once the day has at least a minute of it: "4 sessions, 12 minutes, 1,240 words today. 19 minutes back." Clicking it opens the wrap-up tab: sessions, minutes spoken, words, best words-per-minute, your time back at your own typing speed, and every take from the day. The Test button fires a preview notification immediately without using up the day's recap.
 
 ## What is the time back milestone notification, and how do I turn it off?
 
-Each time today's time back crosses a 30-minute mark (30 minutes, 1 hour, 1 hour 30 minutes, and so on) murmur shows one notification titled time back, reading for example "30 minutes earned back today." Clicking it opens the wrap-up. It is on by default, like belt promotions and achievement unlocks; unlike those it has a switch: Settings, recap, Milestone alerts.
+Each time today's time back crosses a 30-minute mark (30 minutes, 1 hour, 1 hour 30 minutes, and so on) murmur shows one notification titled time back, reading for example "30 minutes earned back today." Clicking it opens the wrap-up. It is on by default, like belt promotions and achievement unlocks; unlike those it has a switch: Settings, Time back and recap, Milestone alerts.
 
 The nod is decided on the same whole minutes the home card shows, so it arrives on the take where the card first reads 30 min, never a take later. Each mark is celebrated once per day. A take that jumps two marks at once gets one notification for the higher mark, a slow take that pulls the total back under a mark does not earn the mark again on the way back up, and changing your typing speed never re-fires a mark already shown. If a speed edit itself lifts the total past a mark, that mark is not celebrated that day: the nod is for takes, not edits. A new day starts clean. The number is also in the tray: hover the murmur icon and the tooltip reads "murmur · 42 min back today" once the day has any, plain murmur before that.
 
@@ -112,7 +124,7 @@ Time back is the time you did not spend typing. For every dictation, murmur take
 
 The formula for one take is `words / typing speed - minutes spoken`. At the default 40 words per minute, a 400-word dictation spoken in two minutes is ten minutes of typing minus two of speaking: eight minutes back.
 
-The typing speed is yours to set: Settings, recap, Typing speed, anywhere from 10 to 200 words per minute. 40 is a fair average for a working typist; if you know you type at 70, say so and the number gets honest. Nothing is stored per take, so changing the speed restates every day you have on record, past ones included.
+The typing speed is yours to set: Settings, Time back and recap, Typing speed, anywhere from 10 to 200 words per minute. 40 is a fair average for a working typist; if you know you type at 70, say so and the number gets honest. Nothing is stored per take, so changing the speed restates every day you have on record, past ones included.
 
 Two rules keep the number truthful. A take where you held the key while thinking and said little counts against the day, because murmur cost that time; but a day never shows below zero. Notes dictated with the note chord count exactly like any other dictation. Spoken edits (the transform chord) never count: the original selection murmur keeps for recovery is a safety copy, not words you spoke, so it stays out of every number murmur keeps.
 
@@ -124,15 +136,15 @@ Two rules keep the number truthful. A take where you held the key while thinking
 | Accessibility | Pressing Cmd+V for you, so text lands at your cursor |
 | Input monitoring | Hearing the hotkey while other apps are focused. After granting, quit and reopen murmur |
 
-The permissions panel shows live status and deep-links each one into System Settings. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
+The macOS permissions list under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
 
 ## What do the sound cues mean?
 
-Quiet blips confirm what murmur is doing without you looking: a rising two-tone when recording starts, falling when it stops, a soft ding when text lands, a low note for no speech, and a buzz for errors. All synthesized live, no sound files anywhere. The system panel has the on/off switch and a volume slider.
+Quiet blips confirm what murmur is doing without you looking: a rising two-tone when recording starts, falling when it stops, a soft ding when text lands, a low note for no speech, and a buzz for errors. All synthesized live, no sound files anywhere. Settings, System, Sounds has the switch and a volume slider.
 
 ## Does murmur start automatically at login?
 
-Turn on Start at login in the system panel and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
+Turn on Start at login under Settings, System, and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
 
 ## What happens if murmur crashes?
 
@@ -156,11 +168,11 @@ The color picker chooses the fill: vibrant orange (the default), your belt color
 
 ## Can my accent color change the rest of the app?
 
-Yes. The accent you pick in settings (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the 14-day chart bars and the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look in charts.
+Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the 14-day chart bars and the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look in charts.
 
 ## Why don't I see murmur notifications on my Mac?
 
-Almost always a macOS permission. The Test button in the recap section fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
+Almost always a macOS permission. The Test button on the Daily recap row (Settings, Time back and recap) fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
 
 ## Where do I see what changed in an update?
 
@@ -168,12 +180,12 @@ The home tab keeps a quiet what's new line; a small amber dot appears when the r
 
 ## What is the Price refresh setting?
 
-murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. With Price refresh on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
+murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Advanced. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
 
 ## What is the cleanup connection?
 
-By default one provider handles both transcription and the cleanup pass. Setting Cleanup connection to Separate provider gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, DeepSeek cleanup). Details and per-provider setup live in the [providers guide](providers.md).
+By default one provider handles both transcription and the cleanup pass. Setting Cleanup runs on to Separate (under Provider and keys) gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, DeepSeek cleanup). Details and per-provider setup live in the [providers guide](providers.md).
 
 ## What are provider profiles?
 
-A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from the provider section. Profiles carry the endpoint and models; keys stay in the per-provider key ring, so applying a profile automatically uses that provider's saved key. The free single provider setup is unchanged, profiles are additive.
+A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from Provider and keys, Advanced, Profiles. Profiles carry the endpoint and models; keys stay in the per-provider key ring, so applying a profile automatically uses that provider's saved key. The free single provider setup is unchanged, profiles are additive.

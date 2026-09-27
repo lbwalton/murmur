@@ -435,6 +435,44 @@ app.whenReady().then(async () => {
     return false
   })
 
+  registerSmokeCheck('settingsRail', async () => {
+    // The settings tab (US-069) mounts its rail and every section, a
+    // fresh profile's missing key opens the Finish setup card, and the
+    // rail search finds a setting by a word its label never says.
+    // Registered after the wizard check: it skips the wizard to reach
+    // the tab.
+    if (!settingsWindow) return false
+    const probe = (await settingsWindow.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const skip = [...document.querySelectorAll('.wizard-footer button')].find((b) => b.textContent === 'Skip for now')
+      if (skip) {
+        skip.click()
+        await wait(400)
+      }
+      const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === 'settings')
+      if (!nav) return null
+      nav.click()
+      await wait(200)
+      const field = document.querySelector('.rail-search')
+      if (!field) return null
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setValue.call(field, 'shortcut')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+      await wait(200)
+      const first = document.querySelector('.rail-match .rail-match-label')?.textContent ?? null
+      setValue.call(field, '')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+      return {
+        items: document.querySelectorAll('.rail .rail-item').length,
+        sections: document.querySelectorAll('.settings-content .sec[data-sec]').length,
+        finish: document.getElementById('finish-setup') !== null,
+        first
+      }
+    })()`)) as { items: number; sections: number; finish: boolean; first: string | null } | null
+    if (!probe) return false
+    return probe.items === 9 && probe.sections === 9 && probe.finish && probe.first === 'Hotkey'
+  })
+
   registerSmokeCheck('widgetLifecycle', async () => {
     // Closing the window must hide it and keep the process alive.
     if (!settingsWindow) return false
@@ -457,7 +495,10 @@ app.whenReady().then(async () => {
     // row to the top, and unfolds any disclosure in its panel, so any
     // row can be shot, not just the home tab.
     const anchor = process.env.MURMUR_SETTINGS_ANCHOR
-    if (anchor) {
+    // MURMUR_SETTINGS_SEARCH=words types into the settings search, so a
+    // shot shows what the rail finds for them.
+    const search = process.env.MURMUR_SETTINGS_SEARCH
+    if (anchor || search) {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
           const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === 'settings')
@@ -466,6 +507,21 @@ app.whenReady().then(async () => {
         })()`
       )
       await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    if (search) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const field = document.querySelector('.rail-search')
+          if (!field) return false
+          const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+          setValue.call(field, ${JSON.stringify(search)})
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+          return true
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    if (anchor) {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
           const row = document.getElementById(${JSON.stringify(anchor)})

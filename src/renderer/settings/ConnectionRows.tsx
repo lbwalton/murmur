@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
 import { type CatalogKind, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
-import { ModelPicker, Row, TextSetting } from './controls'
+import { ModelPicker, Row, Segmented, TextSetting } from './controls'
 
 export interface ConnectionValue {
   enabled: boolean
@@ -124,19 +124,21 @@ export function ConnectionRows(props: {
   return (
     <>
       <Row label={labels.connection} desc={labels.connectionDesc} anchor={props.anchor}>
-        <select
-          className="field"
+        <Segmented
+          label={labels.connection}
           value={value.enabled ? 'separate' : 'same'}
-          onChange={(e) => void props.onChange({ ...value, enabled: e.target.value === 'separate' })}
-        >
-          <option value="same">{labels.sameOption}</option>
-          <option value="separate">Separate provider</option>
-        </select>
+          options={[
+            { value: 'same', label: labels.sameOption },
+            { value: 'separate', label: 'Separate' }
+          ]}
+          onChange={(next) => void props.onChange({ ...value, enabled: next === 'separate' })}
+        />
       </Row>
       {value.enabled && props.protocol && (
         <Row label={props.protocol.label} desc={props.protocol.desc}>
           <select
             className="field"
+            aria-label={props.protocol.label}
             value={props.protocol.value}
             onChange={(e) => void props.protocol?.onChange(e.target.value === 'decide' ? 'decide' : 'chat')}
           >
@@ -157,6 +159,7 @@ export function ConnectionRows(props: {
           >
             <select
               className="field"
+              aria-label={labels.provider}
               value={matchedKind ? (matched?.id ?? 'custom') : 'custom'}
               onChange={(e) => {
                 const preset = llmProviders.find((p) => p.id === e.target.value)
@@ -190,6 +193,7 @@ export function ConnectionRows(props: {
           <Row label={labels.model} desc="Pick a suggestion or type any model id this provider offers.">
             {matched && matched.llmModels.length > 0 ? (
               <ModelPicker
+                label={labels.model}
                 value={value.llmModel}
                 options={matched.llmModels.map((m) => m.id)}
                 placeholder={placeholders.model}
@@ -210,6 +214,7 @@ export function ConnectionRows(props: {
           ) : (
             <Row
               label={labels.key}
+              block
               desc={
                 props.keyStatus.present
                   ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
@@ -223,18 +228,19 @@ export function ConnectionRows(props: {
                   type="password"
                   className="field"
                   placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
+                  aria-label={labels.key}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void save()
                   }}
                 />
-                <button className="btn" onClick={() => void save()} disabled={draft.trim() === ''}>
+                <button className="btn btn-primary" onClick={() => void save()} disabled={draft.trim() === ''}>
                   Save
                 </button>
                 {props.keyStatus.present && (
                   <button
-                    className="btn quiet-btn"
+                    className="btn btn-remove"
                     onClick={() => {
                       void props.api.clearKey().then(props.onKeyStatus)
                       setTest(null)
@@ -248,12 +254,16 @@ export function ConnectionRows(props: {
                   onClick={() => void run()}
                   disabled={!props.keyStatus.present || testing}
                 >
-                  {testing ? 'Testing…' : 'Test'}
+                  Test
                 </button>
-                {test && (
-                  <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                    {test.ok ? 'connected' : test.detail}
-                  </span>
+                {testing ? (
+                  <span className="status-dim">testing…</span>
+                ) : (
+                  test && (
+                    <span className={test.ok ? 'status-ok' : 'status-bad'}>
+                      {test.ok ? 'connected' : test.detail}
+                    </span>
+                  )
                 )}
               </div>
             </Row>

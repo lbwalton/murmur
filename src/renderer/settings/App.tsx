@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The settings surface. Quiet night-studio panels; the overlay pill
-// stays the only loud element in the product.
+// stays the only loud element in the product. The settings tab is a
+// rail of sections beside one scrolling column (US-069).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   HotkeysStatus,
@@ -13,9 +14,10 @@ import type {
 import proConfig from '../../../shared/pro.json'
 import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../shared/catalog'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import { normalizeOverlayLook } from '../../shared/overlay-state'
+import { type OverlayLook, normalizeOverlayLook } from '../../shared/overlay-state'
 import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
+import { ApiKeys } from './ApiKeys'
 import { HomeView } from './HomeView'
 import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
@@ -23,7 +25,20 @@ import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
-import { ModelPicker, NumberSetting, Row, TextSetting, TimeInput } from './controls'
+import { type RailSection, SettingsRail } from './SettingsRail'
+import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
+import {
+  Advanced,
+  ModelPicker,
+  NumberSetting,
+  Row,
+  Section,
+  Segmented,
+  Switch,
+  TextSetting,
+  TimeInput,
+  jumpToRow
+} from './controls'
 
 declare global {
   interface Window {
@@ -33,12 +48,16 @@ declare global {
 
 const bridge = (): SettingsApi => window.murmur
 
-interface SetupStep {
-  id: string
-  label: string
-  ok: boolean
-  /** Row anchor to scroll to and highlight when the step needs fixing. */
-  anchor: string
+const RAIL_GROUPS = [
+  { id: 'essentials', label: 'essentials' },
+  { id: 'features', label: 'features' },
+  { id: 'app', label: 'app' }
+] as const
+
+const FORMAT_DESC: Record<Settings['formatting']['level'], string> = {
+  off: 'Raw transcript, exactly as heard.',
+  light: 'Removes fillers and fixes capitals.',
+  full: 'Punctuation commands plus the cleanup model.'
 }
 
 /**
@@ -63,6 +82,7 @@ function VolumeSlider(props: {
       max={100}
       value={draft}
       disabled={props.disabled}
+      aria-label="Sound volume"
       onChange={(e) => setDraft(Number(e.target.value))}
       onPointerUp={commit}
       onBlur={commit}
@@ -71,17 +91,10 @@ function VolumeSlider(props: {
 }
 
 /**
- * Recap time field. A native time input reports empty string during
- * incomplete edits; persisting that would silently kill the recap
- * schedule forever. Only valid times ever reach the store, and blurring
- * an incomplete edit snaps back to the saved value.
- */
-
-/**
- * Inline add form for a pair of values. multilineRight turns the second
- * field into a textarea (snippets need line breaks for sign-offs):
- * Enter makes a new line there, Cmd or Ctrl+Enter and the Add button
- * submit.
+ * Inline add line for a pair of values, the last line of a list well.
+ * multilineRight turns the second field into a textarea (snippets need
+ * line breaks for sign-offs): Enter makes a new line there, Cmd or
+ * Ctrl+Enter and the Add button submit.
  */
 function PairAdd(props: {
   placeholderLeft: string
@@ -99,19 +112,21 @@ function PairAdd(props: {
     setRight('')
   }
   return (
-    <div className="dict-row">
+    <div className="well-add">
       <input
-        className="field mono-field dict-field"
+        className="field mono-field"
         placeholder={props.placeholderLeft}
+        aria-label={props.placeholderLeft}
         value={left}
         onChange={(e) => setLeft(e.target.value)}
       />
-      <span className="dim">→</span>
+      <span className="well-arrow">→</span>
       {props.multilineRight ? (
         <textarea
-          className="field mono-field dict-field dict-multiline"
+          className="field mono-field well-multiline"
           placeholder={props.placeholderRight}
-          rows={2}
+          aria-label={props.placeholderRight}
+          rows={1}
           value={right}
           onChange={(e) => setRight(e.target.value)}
           onKeyDown={(e) => {
@@ -120,8 +135,9 @@ function PairAdd(props: {
         />
       ) : (
         <input
-          className="field mono-field dict-field"
+          className="field mono-field"
           placeholder={props.placeholderRight}
+          aria-label={props.placeholderRight}
           value={right}
           onChange={(e) => setRight(e.target.value)}
           onKeyDown={(e) => {
@@ -136,6 +152,36 @@ function PairAdd(props: {
   )
 }
 
+/** One macOS permission on its own line of the permissions list. */
+function PermissionLine(props: {
+  anchor: string
+  name: string
+  ok: boolean | null
+  okText: string
+  badText: string
+  onOpen: () => void
+}): React.JSX.Element {
+  return (
+    <div className="well-item" id={props.anchor}>
+      <span className="well-name">{props.name}</span>
+      {props.ok === null ? (
+        <span className="well-meta">…</span>
+      ) : props.ok ? (
+        <span className="badge-ok">{props.okText}</span>
+      ) : (
+        <span className="well-meta well-meta-bad">{props.badText}</span>
+      )}
+      <div className="well-actions">
+        {props.ok === false && (
+          <button className="btn" aria-label={`Open ${props.name} settings`} onClick={props.onOpen}>
+            Open settings
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function App(): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [keyStatus, setKeyStatus] = useState<RingStatus>({
@@ -143,9 +189,11 @@ export function App(): React.JSX.Element {
     list: [],
     legacy: { present: false, masked: null }
   })
-  const [keyDraft, setKeyDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
-  const [testing, setTesting] = useState(false)
+  // Starts true: until the first verdict is in (or there is no key to
+  // test), the connection reads as checking, never as failing, so the
+  // Finish setup card does not flash open on every launch.
+  const [testing, setTesting] = useState(true)
   const [catalog, setCatalog] = useState<ProviderCatalog | null>(null)
   const [avgWpm, setAvgWpm] = useState(0)
   const [polishKeyStatus, setPolishKeyStatus] = useState<KeyStatus>({ present: false, masked: null })
@@ -162,10 +210,6 @@ export function App(): React.JSX.Element {
   const [captureNote, setCaptureNote] = useState<string | null>(null)
   const [pasteCapturing, setPasteCapturing] = useState(false)
   const [pasteCaptureNote, setPasteCaptureNote] = useState<string | null>(null)
-  const [highlighted, setHighlighted] = useState<string | null>(null)
-  // Red flash means fix this, amber glow means go here next; jumps
-  // carry the tone so one anchor can serve both meanings.
-  const [highlightTone, setHighlightTone] = useState<'flash' | 'glow'>('flash')
   const [version, setVersion] = useState('')
   const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
   const [insignia, setInsignia] = useState<{ color: string; stripes: number; founder: boolean } | null>(null)
@@ -188,6 +232,36 @@ export function App(): React.JSX.Element {
     setHotkeys(h)
     return k
   }, [])
+
+  // Each test carries a number, and a base URL change bumps it too, so
+  // a verdict that lands late (an overlapping test, or one earned
+  // against the provider just switched away from) is dropped instead of
+  // vouching for the wrong key.
+  const testSeq = useRef(0)
+  const runTest = useCallback(async (): Promise<void> => {
+    const seq = ++testSeq.current
+    setTesting(true)
+    try {
+      const result = await bridge().testProvider()
+      if (seq === testSeq.current) setTest(result)
+    } finally {
+      if (seq === testSeq.current) setTesting(false)
+    }
+  }, [])
+
+  /** Re-read the key ring, then give setup a verdict for the active key
+   *  (or stop waiting on one when there is none). */
+  const recheckKey = useCallback(async (): Promise<void> => {
+    const seq = ++testSeq.current
+    setTest(null)
+    setTesting(true)
+    const k = await bridge().getApiKeyStatus()
+    // A save or another recheck that started meanwhile owns the verdict.
+    if (seq !== testSeq.current) return
+    setKeyStatus(k)
+    if (k.active.present) await runTest()
+    else setTesting(false)
+  }, [runTest])
 
   useEffect(() => {
     // The recap notification lands on the wrap-up page.
@@ -215,10 +289,13 @@ export function App(): React.JSX.Element {
     const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
-      // a key is already saved.
-      if (k.active.present && !autoTested.current) {
+      // a key is already saved. With no key there is nothing to wait on.
+      // (A second mount in development leaves the first test running.)
+      if (!k.active.present) {
+        setTesting(false)
+      } else if (!autoTested.current) {
         autoTested.current = true
-        void bridge().testProvider().then(setTest)
+        void runTest()
       }
       // Fresh profiles get the guided path once, automatically.
       if (!offeredWizard.current) {
@@ -239,7 +316,7 @@ export function App(): React.JSX.Element {
       unNav()
       unCosmetics()
     }
-  }, [refresh])
+  }, [refresh, runTest])
 
   const update = async (partial: Partial<Settings>): Promise<void> => {
     setSettings(await bridge().updateSettings(partial))
@@ -261,36 +338,37 @@ export function App(): React.JSX.Element {
     const current = settings?.provider.baseUrl ?? null
     if (prevBaseUrl.current !== null && current !== null && current !== prevBaseUrl.current) {
       setCustomPreset(false)
-      setTest(null)
       // The ring speaks per provider: a switch changes whose key the
       // active slot describes, so stale status must never linger
       // (live-found 2026-09-17: a Groq mask under a Mistral label with
-      // a green Mistral key saved chip).
-      void bridge().getApiKeyStatus().then(setKeyStatus)
+      // a green Mistral key saved chip). The new provider's own saved
+      // key is then tested, so a healthy switch folds setup away again.
+      void recheckKey()
     }
     prevBaseUrl.current = current
-  }, [settings?.provider.baseUrl])
+  }, [settings?.provider.baseUrl, recheckKey])
 
-  const saveKey = async (): Promise<void> => {
-    if (keyDraft.trim().length === 0) return
-    setKeyStatus(await bridge().setApiKey(keyDraft.trim()))
-    setKeyDraft('')
+  // A new tab starts at its top, where the Finish setup card lives.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [page])
+
+  // Resolves once the key is stored, so the field clears at once; the
+  // connection test runs on behind it.
+  const saveKey = async (key: string): Promise<void> => {
+    if (key.trim().length === 0) return
+    testSeq.current++
     setTest(null)
     setTesting(true)
     try {
-      setTest(await bridge().testProvider())
-    } finally {
-      setTesting(false)
+      setKeyStatus(await bridge().setApiKey(key.trim()))
+    } catch (error) {
+      // The store refused (encryption unavailable): nothing was saved,
+      // so setup must say so rather than read checking forever.
+      void recheckKey()
+      throw error
     }
-  }
-
-  const runTest = async (): Promise<void> => {
-    setTesting(true)
-    try {
-      setTest(await bridge().testProvider())
-    } finally {
-      setTesting(false)
-    }
+    void runTest()
   }
 
   const startCapture = async (): Promise<void> => {
@@ -331,13 +409,6 @@ export function App(): React.JSX.Element {
     }
   }
 
-  const jumpTo = (anchor: string, tone: 'flash' | 'glow' = 'flash'): void => {
-    document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setHighlightTone(tone)
-    setHighlighted(anchor)
-    setTimeout(() => setHighlighted((h) => (h === anchor ? null : h)), 2600)
-  }
-
   if (!settings) return <main className="shell" />
 
   // Catalog-derived view of the active connections: which preset the
@@ -365,57 +436,130 @@ export function App(): React.JSX.Element {
     return (
       <main className="shell">
         <header className="masthead">
-          <p className="micro-label">murmur</p>
+          <p className="micro-label wordmark">murmur</p>
         </header>
-        <WizardView
-          settings={settings}
-          onSettings={setSettings}
-          onFinish={() => {
-            setWizardOpen(false)
-            void update({ onboarding: { completed: true } })
-            void refresh()
-          }}
-        />
+        <div className="page">
+          <WizardView
+            settings={settings}
+            onSettings={setSettings}
+            onFinish={() => {
+              // The wizard tested its own connection; the settings badge
+              // needs a verdict of its own. The window leaves the wizard
+              // only once the key status is fresh, so setup never reads
+              // the stale no-key state for a frame.
+              setTesting(true)
+              void update({ onboarding: { completed: true } })
+                .then(() => refresh())
+                .then(
+                  (k) => {
+                    if (k.active.present) void runTest()
+                    else setTesting(false)
+                  },
+                  () => void recheckKey()
+                )
+                .finally(() => setWizardOpen(false))
+            }}
+          />
+        </div>
       </main>
     )
   }
 
   const isMac = navigator.platform.toLowerCase().includes('mac')
   const micOk = perms?.microphone === 'granted'
+  const keyOk = keyStatus.active.present
+  const providerName = sttProvider?.name ?? 'your provider'
+  const keyName = sttProvider?.name ?? 'API'
+  const openPane = (pane: 'microphone' | 'accessibility' | 'input') => (): void =>
+    void bridge().openPermissionPane(pane)
 
-  const steps: SetupStep[] = [
+  const checks: SetupCheck[] = [
     {
       id: 'key',
-      label: `${sttProvider?.name ?? 'API'} key saved`,
-      ok: keyStatus.active.present,
-      anchor: 'row-key'
+      readyLabel: `${keyName} key saved`,
+      state: keyOk ? 'ok' : 'bad',
+      title: `Add your ${keyName} key`,
+      desc: 'murmur needs it to turn speech into text.',
+      action: { label: 'Add key', primary: true, onClick: () => jumpToRow('row-key', { focus: true }) }
     },
     {
       id: 'conn',
-      label: 'Provider connected',
-      ok: test?.ok === true,
-      anchor: 'row-conn'
+      readyLabel: 'Provider connected',
+      state: !keyOk ? 'waiting' : testing ? 'pending' : test?.ok ? 'ok' : 'bad',
+      title: !keyOk
+        ? 'Check the connection'
+        : testing
+          ? 'Checking the connection'
+          : test
+            ? 'The connection failed'
+            : 'Test the connection',
+      desc: !keyOk
+        ? 'Runs by itself once the key is saved.'
+        : testing
+          ? `Asking ${providerName} whether the key works.`
+          : test
+            ? test.detail
+            : `Checks the key in use against ${providerName}.`,
+      action: keyOk && !testing ? { label: 'Test', onClick: () => void runTest() } : undefined
     },
     ...(isMac
       ? [
-          { id: 'mic', label: 'Microphone', ok: micOk, anchor: 'row-mic' },
+          {
+            id: 'mic',
+            readyLabel: 'Microphone',
+            state: perms === null ? 'pending' : micOk ? 'ok' : 'bad',
+            title: 'Allow the microphone',
+            desc:
+              perms?.microphone === 'not-determined'
+                ? 'murmur asks the first time you dictate. Try it once to answer.'
+                : 'Allow murmur under Microphone in System Settings.',
+            action:
+              perms?.microphone === 'not-determined'
+                ? { label: 'Try it', onClick: () => jumpToRow('row-try-it', { focus: true }) }
+                : { label: 'Open settings', ariaLabel: 'Open Microphone settings', onClick: openPane('microphone') }
+          } satisfies SetupCheck,
           {
             id: 'axs',
-            label: 'Accessibility',
-            ok: perms?.accessibility === true,
-            anchor: 'row-axs'
-          },
+            readyLabel: 'Accessibility',
+            state: perms === null ? 'pending' : perms.accessibility ? 'ok' : 'bad',
+            title: 'Allow Accessibility',
+            desc: 'Lets murmur press Cmd+V to put text at your cursor.',
+            action: { label: 'Open settings', ariaLabel: 'Open Accessibility settings', onClick: openPane('accessibility') }
+          } satisfies SetupCheck,
           {
             id: 'input',
-            label: 'Input monitoring',
-            ok: perms?.inputMonitoring === true,
-            anchor: 'row-input'
-          }
+            readyLabel: 'Input monitoring',
+            state: perms === null ? 'pending' : perms.inputMonitoring ? 'ok' : 'bad',
+            title: 'Allow Input monitoring',
+            desc: 'Lets your hotkey work in every app. Quit and reopen murmur after allowing it.',
+            action: { label: 'Open settings', ariaLabel: 'Open Input monitoring settings', onClick: openPane('input') }
+          } satisfies SetupCheck
         ]
       : []),
-    { id: 'hotkey', label: 'Hotkey ready', ok: hotkeys?.bindingValid === true, anchor: 'row-hotkey' }
+    {
+      id: 'hotkey',
+      readyLabel: 'Hotkey ready',
+      state: hotkeys === null ? 'pending' : hotkeys.bindingValid ? 'ok' : 'bad',
+      title: 'Set a working hotkey',
+      desc: 'The current combo cannot be armed. Capture a new one.',
+      action: { label: 'Set hotkey', onClick: () => jumpToRow('row-hotkey') }
+    }
   ]
-  const allOk = steps.every((s) => s.ok)
+  const status = setupStatus(checks)
+  const failing = (...ids: string[]): boolean =>
+    checks.some((c) => ids.includes(c.id) && c.state === 'bad')
+
+  const railSections: RailSection[] = [
+    { id: 'provider', title: 'Provider and keys', group: 'essentials', alert: failing('key', 'conn') },
+    { id: 'dictation', title: 'Dictation', group: 'essentials', alert: failing('hotkey') },
+    { id: 'dictionary', title: 'Dictionary', group: 'essentials' },
+    { id: 'notes', title: 'Notes', group: 'features' },
+    { id: 'transform', title: 'Transform', group: 'features' },
+    { id: 'timeback', title: 'Time back and recap', group: 'features' },
+    { id: 'look', title: 'Look', group: 'app' },
+    { id: 'system', title: 'System', group: 'app', alert: failing('mic', 'axs', 'input') },
+    { id: 'pro', title: 'murmur Pro', group: 'app' }
+  ]
 
   // The chosen accent recolors data emphasis across the GUI (chart
   // bars, gate fills) via one CSS variable. Amber stays reserved for
@@ -430,899 +574,798 @@ export function App(): React.JSX.Element {
     return item.color
   })()
 
+  const otherKeys = keyStatus.list
+    .filter((entry) => normalizeUrl(entry.baseUrl) !== normalizeUrl(settings.provider.baseUrl))
+    .map((entry) => {
+      const owner = catalog ? providerForBaseUrl(catalog, entry.baseUrl) : null
+      return { baseUrl: entry.baseUrl, name: owner?.name ?? entry.baseUrl, masked: entry.masked }
+    })
+  const providerDiffers =
+    settings.provider.baseUrl !== DEFAULT_SETTINGS.provider.baseUrl ||
+    settings.provider.sttModel !== DEFAULT_SETTINGS.provider.sttModel ||
+    settings.provider.llmModel !== DEFAULT_SETTINGS.provider.llmModel
+
+  const navButton = (id: typeof page, label: string): React.JSX.Element => (
+    <button className={`nav-btn ${page === id ? 'nav-active' : ''}`} onClick={() => setPage(id)}>
+      {label}
+    </button>
+  )
+
   return (
     <main
       className="shell"
       style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
     >
       <header className="masthead">
-        <div className="mast-top">
-          <p className="micro-label">
-            murmur
-            {insignia && (
-              <span className="insignia" style={{ background: insignia.color }} title="your belt">
-                {Array.from({ length: Math.min(insignia.stripes, 4) }, (_, i) => (
-                  <span className="insignia-stripe" key={i} />
-                ))}
-                {insignia.founder && <span className="insignia-crown">♛</span>}
-              </span>
-            )}
-          </p>
-          <nav className="nav">
-            <button
-              className={`nav-btn ${page === 'home' ? 'nav-active' : ''}`}
-              onClick={() => setPage('home')}
-            >
-              home
-            </button>
-            <button
-              className={`nav-btn ${page === 'analytics' ? 'nav-active' : ''}`}
-              onClick={() => setPage('analytics')}
-            >
-              analytics
-            </button>
-            <button
-              className={`nav-btn ${page === 'wrapup' ? 'nav-active' : ''}`}
-              onClick={() => setPage('wrapup')}
-            >
-              wrap-up
-            </button>
-            <button
-              className={`nav-btn ${page === 'journey' ? 'nav-active' : ''}`}
-              onClick={() => setPage('journey')}
-            >
-              journey
-            </button>
-            <button
-              className={`nav-btn ${page === 'setup' ? 'nav-active' : ''}`}
-              onClick={() => setPage('setup')}
-            >
-              settings
-            </button>
-            {!allOk && page !== 'setup' && <span className="nav-alert">✗</span>}
-          </nav>
-        </div>
-        <h1>Push-to-talk dictation.</h1>
-        <p className="dim">
-          Hold <span className="kbd">{settings.hotkey.binding}</span>, speak, release. Text lands at
-          your cursor.
+        <p className="micro-label wordmark">
+          murmur
+          {insignia && (
+            <span className="insignia" style={{ background: insignia.color }} title="your belt">
+              {Array.from({ length: Math.min(insignia.stripes, 4) }, (_, i) => (
+                <span className="insignia-stripe" key={i} />
+              ))}
+              {insignia.founder && <span className="insignia-crown">♛</span>}
+            </span>
+          )}
         </p>
+        <nav className="nav" aria-label="Pages">
+          {navButton('home', 'home')}
+          {navButton('analytics', 'analytics')}
+          {navButton('wrapup', 'wrap-up')}
+          {navButton('journey', 'journey')}
+          {navButton('setup', 'settings')}
+          {status === 'bad' && page !== 'setup' && <span className="nav-alert">✗</span>}
+        </nav>
       </header>
 
-      {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
-      {page === 'analytics' && <AnalyticsView />}
-      {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
-      {page === 'journey' && <JourneyView />}
-
-      <div style={{ display: page === 'setup' ? 'contents' : 'none' }}>
-      <section className="panel">
-        <div className="panel-head">
-          <p className="micro-label">setup</p>
-          <span className={`health ${allOk ? 'health-ok' : 'health-bad'}`}>
-            {allOk ? '✓ all set' : '✗ needs attention'}
-          </span>
+      {page !== 'setup' && (
+        <div className="page">
+          <div className="hero">
+            <h1>Push-to-talk dictation.</h1>
+            <p className="dim">
+              Hold <span className="kbd">{settings.hotkey.binding}</span>, speak, release. Text lands at
+              your cursor.
+            </p>
+          </div>
+          {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
+          {page === 'analytics' && <AnalyticsView />}
+          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
+          {page === 'journey' && <JourneyView />}
         </div>
-
-        <div className="checklist">
-          {steps.map((step) => (
-            <button
-              key={step.id}
-              className={`check ${step.ok ? 'check-ok' : 'check-bad'}`}
-              onClick={() => !step.ok && jumpTo(step.anchor)}
-              disabled={step.ok}
-            >
-              <span className="check-mark">{step.ok ? '✓' : '✗'}</span>
-              {step.label}
-            </button>
-          ))}
-        </div>
-
-        <Row
-          label={sttProvider ? `${sttProvider.name} API key` : 'API key'}
-          anchor="row-key"
-          highlight={highlighted === 'row-key'}
-          highlightStyle={highlightTone}
-          desc={
-            keyStatus.active.present
-              ? `Saved and encrypted (${keyStatus.active.masked ?? ''})`
-              : `No ${sttProvider?.name ?? ''} key yet. Paste one from ${sttProvider?.keyUrl?.replace('https://', '') ?? 'your provider'}; it stays encrypted here and goes only to this provider. Each provider keeps its own key.`
-          }
-        >
-          <div className="inline">
-            <input
-              type="password"
-              className="field"
-              placeholder={
-                keyStatus.active.present
-                  ? 'replace key'
-                  : sttProvider?.id === 'groq'
-                    ? 'gsk_…'
-                    : `paste a ${sttProvider?.name ?? ''} key`
-              }
-              value={keyDraft}
-              onChange={(e) => setKeyDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void saveKey()
-              }}
-            />
-            <button className="btn" onClick={() => void saveKey()} disabled={keyDraft.trim() === ''}>
-              Save
-            </button>
-            {keyStatus.active.present && (
-              <button
-                className="btn quiet-btn"
-                onClick={() => {
-                  void bridge().clearApiKey().then(setKeyStatus)
-                  setTest(null)
-                }}
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </Row>
-
-        {(() => {
-          const others = keyStatus.list.filter(
-            (entry) => normalizeUrl(entry.baseUrl) !== normalizeUrl(settings.provider.baseUrl)
-          )
-          if (others.length === 0 && !keyStatus.legacy.present) return null
-          return (
-          <div className="key-ring">
-            <p className="key-ring-label">other saved keys</p>
-            {others.map((entry) => {
-              const owner = catalog ? providerForBaseUrl(catalog, entry.baseUrl) : null
-              return (
-                <div key={entry.baseUrl} className="key-ring-item">
-                  <span className="dim">
-                    {owner?.name ?? entry.baseUrl} · {entry.masked}
-                  </span>
-                  <button
-                    className="btn quiet-btn"
-                    onClick={() => void bridge().removeKeyFor(entry.baseUrl).then(setKeyStatus)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )
-            })}
-            {keyStatus.legacy.present && (
-              <div className="key-ring-item">
-                <span className="dim">
-                  Unassigned ({keyStatus.legacy.masked ?? ''}), saved before keys tracked providers
-                </span>
-                {!keyStatus.active.present && (
-                  <button
-                    className="btn"
-                    onClick={() => void bridge().assignLegacyKey().then(setKeyStatus)}
-                  >
-                    Assign to {sttProvider?.name ?? 'current provider'}
-                  </button>
-                )}
-                <button
-                  className="btn quiet-btn"
-                  onClick={() => void bridge().removeLegacyKey().then(setKeyStatus)}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-          )
-        })()}
-
-        <Row
-          label="Diagnostics"
-          desc="A dictation trail lives in a local log with no transcript text or keys, ever. Save report writes one file you can read and choose to share; nothing sends on its own."
-        >
-          <div className="inline">
-            <button className="btn quiet-btn" onClick={() => void bridge().saveDiagnostics()}>
-              Save report…
-            </button>
-            <button className="btn quiet-btn" onClick={() => void bridge().openLogFolder()}>
-              Open log folder
-            </button>
-          </div>
-        </Row>
-
-        <Row
-          label="Connection"
-          anchor="row-conn"
-          highlight={highlighted === 'row-conn'}
-          desc="Checks your key against the provider."
-        >
-          <div className="inline">
-            <button
-              className="btn"
-              onClick={() => void runTest()}
-              disabled={!keyStatus.active.present || testing}
-            >
-              {testing ? 'Testing…' : 'Test connection'}
-            </button>
-            {test && (
-              <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                {test.ok ? 'connected' : test.detail}
-              </span>
-            )}
-          </div>
-        </Row>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <p className="micro-label">provider</p>
-          {(settings.provider.baseUrl !== DEFAULT_SETTINGS.provider.baseUrl ||
-            settings.provider.sttModel !== DEFAULT_SETTINGS.provider.sttModel ||
-            settings.provider.llmModel !== DEFAULT_SETTINGS.provider.llmModel) && (
-            <button
-              className="btn quiet-btn"
-              onClick={() => void update({ provider: { ...DEFAULT_SETTINGS.provider } })}
-            >
-              Reset to Groq defaults
-            </button>
-          )}
-        </div>
-
-        <Row
-          label="Provider"
-          desc="A preset fills the base URL and model suggestions. Custom keeps whatever you type in the fields below; edit them freely."
-        >
-          <select
-            className="field"
-            value={customPreset ? 'custom' : (sttProvider?.id ?? 'custom')}
-            onChange={(e) => {
-              if (e.target.value === 'custom') {
-                setCustomPreset(true)
-                // Custom means the fields below are yours: say so by
-                // walking the eye to the first one to edit.
-                jumpTo('row-base-url', 'glow')
-                return
-              }
-              const preset = catalog?.providers.find(
-                (p) => p.id === e.target.value && p.kinds.includes('stt')
-              )
-              if (!preset) return
-              setCustomPreset(false)
-              void update({
-                provider: {
-                  baseUrl: preset.baseUrl,
-                  sttModel: preset.sttModels[0]?.id ?? settings.provider.sttModel,
-                  llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
-                } as Settings['provider']
-              })
-              // Walk the user straight to the key field when the ring
-              // holds no key for the provider they just chose.
-              const hasKeyFor = keyStatus.list.some(
-                (entry) => normalizeUrl(entry.baseUrl) === normalizeUrl(preset.baseUrl)
-              )
-              if (!hasKeyFor) {
-                jumpTo('row-key', 'glow')
-              }
-            }}
-          >
-            <option value="custom">Custom</option>
-            {(catalog?.providers.filter((p) => p.kinds.includes('stt')) ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </Row>
-
-        <Row
-          label="Base URL"
-          anchor="row-base-url"
-          highlight={highlighted === 'row-base-url'}
-          highlightStyle="glow"
-          desc="Any OpenAI-compatible endpoint. Groq by default; point it at OpenAI, a proxy, or a local server. Run Test connection after changing."
-        >
-          <TextSetting
-            wide
-            value={settings.provider.baseUrl}
-            placeholder="https://api.groq.com/openai/v1"
-            onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
-          />
-        </Row>
-
-        <Row
-          label="Speech model"
-          desc="Transcribes your voice. Pick a suggestion or type any model id your provider offers."
-        >
-          {sttProvider && sttProvider.sttModels.length > 0 ? (
-            <ModelPicker
-              value={settings.provider.sttModel}
-              options={sttProvider.sttModels.map((m) => m.id)}
-              onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
-            />
-          ) : (
-            <TextSetting
-              value={settings.provider.sttModel}
-              listId="stt-models"
-              options={['whisper-large-v3-turbo', 'whisper-large-v3']}
-              onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
-            />
-          )}
-        </Row>
-
-        <Row
-          label="Cleanup model"
-          desc="Polishes transcripts at Full formatting. If it misbehaves, murmur falls back to built-in cleanup."
-        >
-          {sttProvider && sttProvider.llmModels.length > 0 ? (
-            <ModelPicker
-              value={settings.provider.llmModel}
-              options={sttProvider.llmModels.map((m) => m.id)}
-              onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
-            />
-          ) : (
-            <TextSetting
-              value={settings.provider.llmModel}
-              listId="llm-models"
-              options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
-              onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
-            />
-          )}
-        </Row>
-
-        <ConnectionRows
-          value={settings.polish}
-          catalog={catalog}
-          keyStatus={polishKeyStatus}
-          onKeyStatus={setPolishKeyStatus}
-          onChange={(polish) => update({ polish })}
-          labels={{
-            connection: 'Cleanup connection',
-            connectionDesc:
-              'Same runs cleanup on your speech provider. Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example.',
-            sameOption: 'Same as speech',
-            provider: 'Cleanup provider',
-            baseUrl: 'Cleanup base URL',
-            model: 'Cleanup model id',
-            key: 'Cleanup key',
-            keyDesc:
-              'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.',
-            sharedDesc: "Shares the speech connection's key: one provider, one key. Manage it in the setup panel above."
-          }}
-          sharedWith={[settings.provider.baseUrl]}
-          anchor="row-cleanup-connection"
-          api={{
-            setKey: (key) => bridge().setPolishKey(key),
-            clearKey: () => bridge().clearPolishKey(),
-            status: () => bridge().getPolishKeyStatus(),
-            test: () => bridge().testPolishProvider()
-          }}
-        />
-
-        {catalog && (
-          <p className="row-desc rates-note">
-            {sttProvider?.free
-              ? 'Free: this preset runs on your machine, nothing is billed.'
-              : costParts
-                ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
-                    avgWpm > 0 ? `your pace (${avgWpm} wpm)` : `a typical pace (${catalog.estimate.fallbackWpm} wpm)`
-                  }. `
-                : 'No published rates for this setup; check your provider. '}
-            {(sttProvider ? [sttProvider, ...(llmProvider && llmProvider !== sttProvider ? [llmProvider] : [])] : [])
-              .flatMap((p) => p.nuances)
-              .join(' ')}
-            {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
-          </p>
-        )}
-
-        <ProfilesRow
-          settings={settings}
-          onSettings={setSettings}
-          onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
-          pro={license === null ? null : license.pro}
-        />
-
-        <Row
-          label="Price refresh"
-          desc="At launch, murmur fetches the newest provider rate sheet from the murmur repo: a read-only file download from the same place updates come from, with nothing about you attached. Off uses the rates this version shipped with."
-        >
-          <select
-            className="field"
-            value={settings.catalogRefresh ? 'on' : 'off'}
-            onChange={(e) => void update({ catalogRefresh: e.target.value === 'on' })}
-          >
-            <option value="on">On</option>
-            <option value="off">Off</option>
-          </select>
-        </Row>
-      </section>
-
-      <section className="panel">
-        <p className="micro-label">dictation</p>
-
-        <Row label="Trigger" desc="Hold to talk, or tap to start and stop.">
-          <select
-            className="field"
-            value={settings.hotkey.mode}
-            onChange={(e) => void update({ hotkey: { mode: e.target.value } as Settings['hotkey'] })}
-          >
-            <option value="hold">Hold to talk</option>
-            <option value="toggle">Toggle</option>
-          </select>
-        </Row>
-
-        <Row
-          label="Hotkey"
-          anchor="row-hotkey"
-          highlight={highlighted === 'row-hotkey'}
-          desc={
-            captureNote ??
-            'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'
-          }
-        >
-          <div className="inline">
-            <button
-              className={`field capture ${capturing ? 'capture-live' : ''}`}
-              onClick={() => void startCapture()}
-            >
-              {capturing ? 'press keys…' : settings.hotkey.binding}
-            </button>
-            {settings.hotkey.binding !== DEFAULT_SETTINGS.hotkey.binding && (
-              <button
-                className="btn quiet-btn"
-                onClick={() => {
-                  setCaptureNote(null)
-                  void update({
-                    hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey']
-                  })
-                }}
-              >
-                Reset
-              </button>
-            )}
-          </div>
-        </Row>
-
-        <Row
-          label="Paste last dictation"
-          desc={
-            pasteCaptureNote ??
-            (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
-              ? 'This chord is currently disarmed: it clashes with your dictation hotkey or the note chord, or no longer parses. Capture a new one.'
-              : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one. Pick a combo your apps ignore; a modifier plus an F-key is safest.')
-          }
-        >
-          <div className="inline">
-            <button
-              className={`field capture ${pasteCapturing ? 'capture-live' : ''}`}
-              onClick={() => void startPasteCapture()}
-            >
-              {pasteCapturing
-                ? 'press keys…'
-                : settings.hotkey.pasteLastBinding === ''
-                  ? 'not set'
-                  : settings.hotkey.pasteLastBinding}
-            </button>
-            {settings.hotkey.pasteLastBinding !== '' && (
-              <button
-                className="btn quiet-btn"
-                onClick={() => {
-                  setPasteCaptureNote(null)
-                  void update({ hotkey: { pasteLastBinding: '' } as Settings['hotkey'] })
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </Row>
-
-        <Row label="Insert by" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
-          <select
-            className="field"
-            value={settings.insertion.mode}
-            onChange={(e) =>
-              void update({ insertion: { mode: e.target.value } as Settings['insertion'] })
-            }
-          >
-            <option value="paste">Paste at cursor</option>
-            <option value="copy">Copy only</option>
-          </select>
-        </Row>
-
-        <Row label="Formatting" desc="Cleanup applied to what you say.">
-          <select
-            className="field"
-            value={settings.formatting.level}
-            onChange={(e) =>
-              void update({
-                formatting: { ...settings.formatting, level: e.target.value } as Settings['formatting']
-              })
-            }
-          >
-            <option value="off">Off (raw transcript)</option>
-            <option value="light">Light (fillers, capitals)</option>
-            <option value="full">Full (punctuation commands, cleanup)</option>
-          </select>
-        </Row>
-
-        <Row
-          label="Smart lists"
-          desc="At Full formatting, spoken sequences (first, then, then) become numbered lists, item run-ons become bullets, and saying bullet point or next item starts a dash line. Off keeps dictation exactly as it is today."
-        >
-          <select
-            className="field"
-            value={settings.formatting.smartLists ? 'on' : 'off'}
-            onChange={(e) =>
-              void update({
-                formatting: {
-                  ...settings.formatting,
-                  smartLists: e.target.value === 'on'
-                } as Settings['formatting']
-              })
-            }
-          >
-            <option value="off">Off</option>
-            <option value="on">On</option>
-          </select>
-        </Row>
-
-        <Row label="Waveform" desc="How the pill visualizes your voice. Locked styles show how to earn them.">
-          <select
-            className="field"
-            value={settings.overlay.style}
-            onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
-          >
-            {(cosmetics?.overlayStyles ?? []).map((item) => (
-              <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                {item.unlocked ? `${item.name} (${item.hint})` : `${item.name} (locked: ${item.hint})`}
-              </option>
-            ))}
-          </select>
-        </Row>
-
-        <Row
-          label="Overlay look"
-          desc="Pill is the classic. Compact is the same pill at two thirds. Bare drops the box: just the waveform, edged faintly in ink so it reads on white, with the timer beneath it. A hint or an error always gets the pill, since a sentence needs a backing to be read. Preview shows the current look without dictating."
-        >
-          <div className="inline">
-            <select
-              className="field"
-              value={settings.overlay.look}
-              onChange={(e) =>
-                void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(e.target.value) } })
-              }
-            >
-              <option value="pill">pill</option>
-              <option value="compact">compact</option>
-              <option value="bare">bare</option>
-            </select>
-            <button className="btn" onClick={() => void bridge().previewOverlay()}>
-              Preview
-            </button>
-          </div>
-        </Row>
-
-        <Row
-          label="Accent"
-          desc="Your default accent everywhere it earns attention: the waveform, chart bars, and progress fills. The activity wall in analytics keeps its own picker. Earned, never bought."
-        >
-          <div className="inline">
-            <select
-              className="field"
-              value={settings.cosmetics.accent}
-              onChange={(e) =>
-                void update({
-                  cosmetics: { ...settings.cosmetics, accent: e.target.value }
-                })
-              }
-            >
-              {(cosmetics?.accents ?? []).map((item) => (
-                <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                  {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-                </option>
-              ))}
-            </select>
-            {(() => {
-              const chosen = cosmetics?.accents.find((a) => a.id === settings.cosmetics.accent)
-              const color = chosen ? (chosen.color ?? cosmetics?.beltColor) : null
-              return color ? <span className="swatch" style={{ background: color }} title={chosen?.name} /> : null
-            })()}
-          </div>
-        </Row>
-
-        <Row label="Theme" desc="The window itself. More arrive with rank.">
-          <div className="inline">
-            <select
-              className="field"
-              value={settings.cosmetics.uiTheme}
-              onChange={(e) =>
-                void update({
-                  cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
-                })
-              }
-            >
-              {(cosmetics?.uiThemes ?? []).map((item) => (
-                <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                  {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-                </option>
-              ))}
-            </select>
-            {(() => {
-              const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
-              const p = chosen?.preview
-              return p && p.length >= 2 ? (
-                <span
-                  className="swatch"
-                  style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
-                  title={chosen?.name}
-                />
-              ) : null
-            })()}
-          </div>
-        </Row>
-
-        <Row label="Setup wizard" desc="Walk the guided setup again anytime.">
-          <button className="btn" onClick={() => setWizardOpen(true)}>
-            Run wizard
-          </button>
-        </Row>
-      </section>
-
-      <NotesPanel
-        settings={settings}
-        catalog={catalog}
-        hotkeys={hotkeys}
-        onUpdate={update}
-        onRefresh={refresh}
-      />
-
-      <TransformPanel
-        settings={settings}
-        catalog={catalog}
-        hotkeys={hotkeys}
-        onUpdate={update}
-        onRefresh={refresh}
-      />
-
-      <section className="panel">
-        <p className="micro-label">dictionary</p>
-        <Row
-          label="Custom words"
-          desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
-        >
-          <div className="dict-editor">
-            {settings.dictionary.map((entry, i) => (
-              <div className="dict-row" key={i}>
-                <span className="dict-pair mono-inline">
-                  {String(entry.from ?? '')} → {String(entry.to ?? '')}
-                </span>
-                <button
-                  className="btn quiet-btn"
-                  onClick={() =>
-                    void update({ dictionary: settings.dictionary.filter((_, j) => j !== i) })
-                  }
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <PairAdd
-              placeholderLeft="heard as…"
-              placeholderRight="written as…"
-              onAdd={(from, to) =>
-                void update({ dictionary: [...settings.dictionary, { from, to }] })
-              }
-            />
-          </div>
-        </Row>
-
-        <Row
-          label="Expansions"
-          desc="Say a trigger phrase, get a snippet: an email address, a sign-off, an intro. Inserted exactly as written."
-        >
-          <div className="dict-editor">
-            {settings.expansions.map((entry, i) => (
-              <div className="dict-row" key={i}>
-                <span className="dict-pair mono-inline">
-                  {String(entry.trigger ?? '')} →{' '}
-                  {String(entry.text ?? '').length > 24
-                    ? `${String(entry.text ?? '').slice(0, 24)}…`
-                    : String(entry.text ?? '')}
-                </span>
-                <button
-                  className="btn quiet-btn"
-                  onClick={() =>
-                    void update({ expansions: settings.expansions.filter((_, j) => j !== i) })
-                  }
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <PairAdd
-              placeholderLeft="when I say…"
-              placeholderRight="insert… (Enter for a new line)"
-              multilineRight
-              onAdd={(trigger, text) =>
-                void update({ expansions: [...settings.expansions, { trigger, text }] })
-              }
-            />
-          </div>
-        </Row>
-      </section>
-
-      <section className="panel">
-        <p className="micro-label">system</p>
-
-        <Row label="Sounds" desc="Quiet cues for start, stop, insert, and errors.">
-          <div className="inline">
-            <select
-              className="field"
-              value={settings.sounds.enabled ? 'on' : 'off'}
-              onChange={(e) =>
-                void update({ sounds: { ...settings.sounds, enabled: e.target.value === 'on' } })
-              }
-            >
-              <option value="off">Off</option>
-              <option value="on">On</option>
-            </select>
-            <VolumeSlider
-              value={settings.sounds.volume}
-              disabled={!settings.sounds.enabled}
-              onCommit={(volume) => void update({ sounds: { ...settings.sounds, volume } })}
-            />
-          </div>
-        </Row>
-
-        <Row
-          label="Start at login"
-          desc="Opens murmur in the tray when you log in. Applies to installed builds."
-        >
-          <select
-            className="field"
-            value={settings.autostart ? 'on' : 'off'}
-            onChange={(e) => void update({ autostart: e.target.value === 'on' })}
-          >
-            <option value="off">Off</option>
-            <option value="on">On</option>
-          </select>
-        </Row>
-      </section>
-
-      <section className="panel">
-        <p className="micro-label">recap</p>
-        <Row label="Daily recap" desc="A notification with your day's numbers; click it to open the wrap-up.">
-          <div className="inline">
-            <select
-              className="field"
-              value={settings.recap.enabled ? 'on' : 'off'}
-              onChange={(e) =>
-                void update({
-                  recap: { ...settings.recap, enabled: e.target.value === 'on' }
-                })
-              }
-            >
-              <option value="off">Off</option>
-              <option value="on">On</option>
-            </select>
-            <TimeInput
-              value={settings.recap.time}
-              disabled={!settings.recap.enabled}
-              onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
-            />
-            <button className="btn" onClick={() => void bridge().testRecap()}>
-              Test
-            </button>
-          </div>
-        </Row>
-        <p className="row-desc rates-note">
-          Test fires a real notification through the same pipe as belt promotions and
-          achievements. Nothing appearing on a Mac? System Settings, Notifications: allow
-          Electron while running from source (the installed app shows as murmur) and pick
-          the Banners style.
-        </p>
-        <Row
-          label="Typing speed"
-          desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average; make it yours and every day restates."
-        >
-          <NumberSetting
-            value={settings.timeBack.typingWpm}
-            min={MIN_TYPING_WPM}
-            max={MAX_TYPING_WPM}
-            suffix="wpm"
-            onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
-          />
-        </Row>
-        <Row
-          label="Milestone alerts"
-          desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
-        >
-          <select
-            className="field"
-            value={settings.timeBack.milestones ? 'on' : 'off'}
-            onChange={(e) =>
-              void update({ timeBack: { ...settings.timeBack, milestones: e.target.value === 'on' } })
-            }
-          >
-            <option value="off">Off</option>
-            <option value="on">On</option>
-          </select>
-        </Row>
-      </section>
-
-      {isMac && (
-        <section className="panel">
-          <p className="micro-label">macos permissions</p>
-
-          <Row
-            label="Microphone"
-            anchor="row-mic"
-            highlight={highlighted === 'row-mic'}
-            desc="Asked automatically on your first dictation."
-          >
-            <div className="inline">
-              <span className={micOk ? 'status-ok' : 'status-bad'}>
-                {perms?.microphone ?? '…'}
-              </span>
-              {!micOk && (
-                <button className="btn" onClick={() => void bridge().openPermissionPane('microphone')}>
-                  Open settings
-                </button>
-              )}
-            </div>
-          </Row>
-
-          <Row
-            label="Accessibility"
-            anchor="row-axs"
-            highlight={highlighted === 'row-axs'}
-            desc="Lets murmur press Cmd+V to insert text."
-          >
-            <div className="inline">
-              <span className={perms?.accessibility ? 'status-ok' : 'status-bad'}>
-                {perms?.accessibility ? 'granted' : 'not granted'}
-              </span>
-              {!perms?.accessibility && (
-                <button
-                  className="btn"
-                  onClick={() => void bridge().openPermissionPane('accessibility')}
-                >
-                  Open settings
-                </button>
-              )}
-            </div>
-          </Row>
-
-          <Row
-            label="Input monitoring"
-            anchor="row-input"
-            highlight={highlighted === 'row-input'}
-            desc="Lets the hotkey work everywhere. After granting, quit and reopen murmur."
-          >
-            <div className="inline">
-              <span className={perms?.inputMonitoring ? 'status-ok' : 'status-bad'}>
-                {perms?.inputMonitoring ? 'active' : 'not active'}
-              </span>
-              {!perms?.inputMonitoring && (
-                <button className="btn" onClick={() => void bridge().openPermissionPane('input')}>
-                  Open settings
-                </button>
-              )}
-            </div>
-          </Row>
-        </section>
       )}
 
-      <section className="panel">
-        <p className="micro-label">murmur pro</p>
-        <ProSection status={license} onStatus={setLicense} />
-      </section>
+      {/* Settings stay mounted while hidden, so half-typed drafts and
+          capture notes survive a trip to another tab. */}
+      <div className="settings-layout" style={{ display: page === 'setup' ? undefined : 'none' }}>
+        <SettingsRail
+          sections={railSections}
+          groups={RAIL_GROUPS}
+          checks={checks}
+          status={status}
+          visible={page === 'setup'}
+        />
 
-      <section className="panel">
-        <p className="micro-label">try it</p>
-        <Row
-          label="Test dictation"
-          desc={`Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
-        >
-          <textarea className="field trybox" placeholder="dictate here…" rows={3} />
-        </Row>
-      </section>
+        <div className="settings-content">
+          {status === 'bad' && <FinishSetup checks={checks} />}
 
+          <Section
+            id="provider"
+            title="Provider and keys"
+            sub="Where your voice is transcribed, and the keys murmur uses to get there."
+          >
+            <Row
+              label="Provider"
+              keywords="groq openai mistral deepseek endpoint service preset custom"
+              desc={
+                customPreset || !sttProvider
+                  ? 'Custom: set the address and models yourself. The base URL is under Advanced below.'
+                  : 'A preset fills in the address and models.'
+              }
+            >
+              <select
+                className="field"
+                aria-label="Provider"
+                value={customPreset ? 'custom' : (sttProvider?.id ?? 'custom')}
+                onChange={(e) => {
+                  if (e.target.value === 'custom') {
+                    setCustomPreset(true)
+                    // Custom means the fields are yours: say so by
+                    // walking the eye to the first one to edit.
+                    jumpToRow('row-base-url', { tone: 'glow' })
+                    return
+                  }
+                  const preset = catalog?.providers.find(
+                    (p) => p.id === e.target.value && p.kinds.includes('stt')
+                  )
+                  if (!preset) return
+                  setCustomPreset(false)
+                  void update({
+                    provider: {
+                      baseUrl: preset.baseUrl,
+                      sttModel: preset.sttModels[0]?.id ?? settings.provider.sttModel,
+                      llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
+                    } as Settings['provider']
+                  })
+                  // Walk the user straight to the key field when the ring
+                  // holds no key for the provider they just chose.
+                  const hasKeyFor = keyStatus.list.some(
+                    (entry) => normalizeUrl(entry.baseUrl) === normalizeUrl(preset.baseUrl)
+                  )
+                  if (!hasKeyFor) jumpToRow('row-key', { tone: 'glow' })
+                }}
+              >
+                <option value="custom">Custom</option>
+                {(catalog?.providers.filter((p) => p.kinds.includes('stt')) ?? []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Row>
+
+            <Row
+              label="API keys"
+              anchor="row-key"
+              block
+              keywords="api key token secret password"
+              desc="Encrypted on this computer. Each provider keeps its own key; murmur uses the one marked in use."
+            >
+              <ApiKeys
+                providerName={sttProvider?.name ?? 'Custom'}
+                keyUrl={sttProvider?.keyUrl?.replace('https://', '') ?? null}
+                placeholder={sttProvider?.id === 'groq' ? 'gsk_…' : `paste a ${sttProvider?.name ?? ''} key`}
+                active={keyStatus.active}
+                others={otherKeys}
+                legacy={keyStatus.legacy}
+                onSave={saveKey}
+                onRemoveActive={() => void bridge().clearApiKey().then(() => recheckKey())}
+                onRemoveOther={(baseUrl) => void bridge().removeKeyFor(baseUrl).then(setKeyStatus)}
+                onAssignLegacy={() => void bridge().assignLegacyKey().then(() => recheckKey())}
+                onRemoveLegacy={() => void bridge().removeLegacyKey().then(setKeyStatus)}
+              />
+            </Row>
+
+            <Row
+              label="Connection"
+              anchor="row-conn"
+              keywords="test verify check"
+              desc={
+                test && !test.ok && !testing ? test.detail : `Checks the key in use against ${providerName}.`
+              }
+            >
+              <div className="inline">
+                {testing && keyOk ? (
+                  <span className="status-dim">testing…</span>
+                ) : (
+                  test && (
+                    <span className={test.ok ? 'status-ok' : 'status-bad'}>
+                      {test.ok ? 'connected' : 'failed'}
+                    </span>
+                  )
+                )}
+                <button className="btn" onClick={() => void runTest()} disabled={!keyOk || testing}>
+                  Test
+                </button>
+              </div>
+            </Row>
+
+            <Row label="Speech model" desc="Turns your voice into text. Pick one or type any model id your provider offers.">
+              {sttProvider && sttProvider.sttModels.length > 0 ? (
+                <ModelPicker
+                  label="Speech model"
+                  value={settings.provider.sttModel}
+                  options={sttProvider.sttModels.map((m) => m.id)}
+                  onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+                />
+              ) : (
+                <TextSetting
+                  value={settings.provider.sttModel}
+                  listId="stt-models"
+                  options={['whisper-large-v3-turbo', 'whisper-large-v3']}
+                  onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+                />
+              )}
+            </Row>
+
+            <Row
+              label="Cleanup model"
+              keywords="llm polish formatting"
+              desc="Polishes text at Full formatting. If it misbehaves, murmur falls back to built-in cleanup."
+            >
+              {sttProvider && sttProvider.llmModels.length > 0 ? (
+                <ModelPicker
+                  label="Cleanup model"
+                  value={settings.provider.llmModel}
+                  options={sttProvider.llmModels.map((m) => m.id)}
+                  onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+                />
+              ) : (
+                <TextSetting
+                  value={settings.provider.llmModel}
+                  listId="llm-models"
+                  options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
+                  onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+                />
+              )}
+            </Row>
+
+            <ConnectionRows
+              value={settings.polish}
+              catalog={catalog}
+              keyStatus={polishKeyStatus}
+              onKeyStatus={(status) => {
+                setPolishKeyStatus(status)
+                void bridge().getApiKeyStatus().then(setKeyStatus)
+              }}
+              onChange={(polish) => update({ polish })}
+              labels={{
+                connection: 'Cleanup runs on',
+                connectionDesc:
+                  'Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example.',
+                sameOption: 'Same as speech',
+                provider: 'Cleanup provider',
+                baseUrl: 'Cleanup base URL',
+                model: 'Cleanup model id',
+                key: 'Cleanup key',
+                keyDesc:
+                  'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.',
+                sharedDesc: "Shares the speech connection's key: one provider, one key. It is in the API keys list above."
+              }}
+              sharedWith={[settings.provider.baseUrl]}
+              anchor="row-cleanup-connection"
+              api={{
+                setKey: (key) => bridge().setPolishKey(key),
+                clearKey: () => bridge().clearPolishKey(),
+                status: () => bridge().getPolishKeyStatus(),
+                test: () => bridge().testPolishProvider()
+              }}
+            />
+
+            {catalog && (
+              <p className="row-note">
+                {sttProvider?.free
+                  ? 'Free: this preset runs on your machine, nothing is billed.'
+                  : costParts
+                    ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
+                        avgWpm > 0 ? `your pace (${avgWpm} wpm)` : `a typical pace (${catalog.estimate.fallbackWpm} wpm)`
+                      }. `
+                    : 'No published rates for this setup; check your provider. '}
+                {(sttProvider ? [sttProvider, ...(llmProvider && llmProvider !== sttProvider ? [llmProvider] : [])] : [])
+                  .flatMap((p) => p.nuances)
+                  .join(' ')}
+                {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
+              </p>
+            )}
+
+            <Advanced hint="base URL, profiles, price refresh, defaults">
+              <Row
+                label="Base URL"
+                anchor="row-base-url"
+                keywords="endpoint address proxy local server"
+                desc="Any OpenAI-compatible endpoint: OpenAI, a proxy, or a local server. Test the connection after changing it."
+              >
+                <TextSetting
+                  wide
+                  value={settings.provider.baseUrl}
+                  placeholder="https://api.groq.com/openai/v1"
+                  onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
+                />
+              </Row>
+
+              <ProfilesRow
+                settings={settings}
+                onSettings={setSettings}
+                onKeysChanged={() =>
+                  // Only a profile that brings back a missing key needs a
+                  // verdict; a base URL change rechecks on its own.
+                  void bridge()
+                    .getApiKeyStatus()
+                    .then((k) => {
+                      setKeyStatus(k)
+                      if (k.active.present && !keyOk) void runTest()
+                    })
+                }
+                pro={license === null ? null : license.pro}
+              />
+
+              <Row
+                label="Price refresh"
+                keywords="rates cost catalog"
+                desc="At launch, fetch the newest provider rate sheet from the murmur repo, with nothing about you attached. Off uses the rates this version shipped with."
+              >
+                <Switch
+                  checked={settings.catalogRefresh}
+                  label="Price refresh"
+                  onChange={(catalogRefresh) => void update({ catalogRefresh })}
+                />
+              </Row>
+
+              {providerDiffers && (
+                <Row label="Groq defaults" desc="Put the provider, base URL, and models back to the Groq preset.">
+                  <button
+                    className="btn"
+                    onClick={() => void update({ provider: { ...DEFAULT_SETTINGS.provider } })}
+                  >
+                    Reset
+                  </button>
+                </Row>
+              )}
+            </Advanced>
+          </Section>
+
+          <Section id="dictation" title="Dictation" sub="How you start talking and where the words land.">
+            <Row
+              label="Hotkey"
+              anchor="row-hotkey"
+              keywords="shortcut keyboard combo push to talk"
+              desc={captureNote ?? 'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'}
+            >
+              <div className="inline">
+                <button
+                  className={`field capture ${capturing ? 'capture-live' : ''}`}
+                  aria-label={`Dictation hotkey, ${settings.hotkey.binding}. Click to change.`}
+                  onClick={() => void startCapture()}
+                >
+                  {capturing ? 'press keys…' : settings.hotkey.binding}
+                </button>
+                {settings.hotkey.binding !== DEFAULT_SETTINGS.hotkey.binding && (
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      setCaptureNote(null)
+                      void update({
+                        hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey']
+                      })
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </Row>
+
+            <Row label="Trigger" keywords="hold toggle mode" desc="Hold while you speak, or tap to start and tap again to stop.">
+              <Segmented
+                label="Trigger"
+                value={settings.hotkey.mode}
+                options={[
+                  { value: 'hold', label: 'Hold to talk' },
+                  { value: 'toggle', label: 'Toggle' }
+                ]}
+                onChange={(mode) => void update({ hotkey: { mode } as Settings['hotkey'] })}
+              />
+            </Row>
+
+            <Row label="Insert by" keywords="paste clipboard copy" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
+              <Segmented
+                label="Insert by"
+                value={settings.insertion.mode}
+                options={[
+                  { value: 'paste', label: 'Paste at cursor' },
+                  { value: 'copy', label: 'Copy only' }
+                ]}
+                onChange={(mode) => void update({ insertion: { mode } as Settings['insertion'] })}
+              />
+            </Row>
+
+            <Row label="Formatting" keywords="punctuation cleanup polish fillers" desc={FORMAT_DESC[settings.formatting.level]}>
+              <Segmented
+                label="Formatting"
+                value={settings.formatting.level}
+                options={[
+                  { value: 'off', label: 'Off' },
+                  { value: 'light', label: 'Light' },
+                  { value: 'full', label: 'Full' }
+                ]}
+                onChange={(level) => void update({ formatting: { ...settings.formatting, level } })}
+              />
+            </Row>
+
+            <Row
+              label="Smart lists"
+              keywords="bullets numbered"
+              desc="At Full formatting, spoken sequences (first, then, then) become numbered lists, and saying bullet point or next item starts a dash line."
+            >
+              <Switch
+                checked={settings.formatting.smartLists}
+                label="Smart lists"
+                onChange={(smartLists) => void update({ formatting: { ...settings.formatting, smartLists } })}
+              />
+            </Row>
+
+            <Row
+              label="Paste last dictation"
+              keywords="repeat again chord"
+              desc={
+                pasteCaptureNote ??
+                (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
+                  ? 'This chord is disarmed: it clashes with your dictation hotkey or the note chord, or no longer parses. Capture a new one.'
+                  : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one; a modifier plus an F-key is safest.')
+              }
+            >
+              <div className="inline">
+                <button
+                  className={`field capture ${pasteCapturing ? 'capture-live' : ''}`}
+                  aria-label="Paste last dictation chord. Click to change."
+                  onClick={() => void startPasteCapture()}
+                >
+                  {pasteCapturing
+                    ? 'press keys…'
+                    : settings.hotkey.pasteLastBinding === ''
+                      ? 'not set'
+                      : settings.hotkey.pasteLastBinding}
+                </button>
+                {settings.hotkey.pasteLastBinding !== '' && (
+                  <button
+                    className="btn btn-remove"
+                    onClick={() => {
+                      setPasteCaptureNote(null)
+                      void update({ hotkey: { pasteLastBinding: '' } as Settings['hotkey'] })
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </Row>
+
+            <Row
+              label="Try it"
+              anchor="row-try-it"
+              block
+              keywords="test dictation practice"
+              desc={`Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
+            >
+              <textarea className="field trybox" placeholder="dictate here…" rows={2} aria-label="Test dictation" />
+            </Row>
+          </Section>
+
+          <Section id="dictionary" title="Dictionary" sub="Words murmur should spell your way, and phrases that expand.">
+            <Row
+              label="Custom words"
+              block
+              keywords="vocabulary spelling names replacements"
+              desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
+            >
+              <div className="well">
+                {settings.dictionary.map((entry, i) => (
+                  <div className="well-item" key={i}>
+                    <span className="well-pair">
+                      {String(entry.from ?? '')}
+                      <span className="well-arrow">→</span>
+                      {String(entry.to ?? '')}
+                    </span>
+                    <div className="well-actions">
+                      <button
+                        className="btn btn-remove"
+                        aria-label={`Remove ${String(entry.from ?? '')}`}
+                        onClick={() =>
+                          void update({ dictionary: settings.dictionary.filter((_, j) => j !== i) })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <PairAdd
+                  placeholderLeft="heard as…"
+                  placeholderRight="written as…"
+                  onAdd={(from, to) => void update({ dictionary: [...settings.dictionary, { from, to }] })}
+                />
+              </div>
+            </Row>
+
+            <Row
+              label="Expansions"
+              block
+              keywords="snippets shortcuts text replacement"
+              desc="Say a trigger phrase, get a snippet: an email address, a sign-off, an intro. Inserted exactly as written; Enter starts a new line in the snippet box."
+            >
+              <div className="well">
+                {settings.expansions.map((entry, i) => {
+                  const text = String(entry.text ?? '')
+                  const firstLine = text.split('\n')[0]
+                  return (
+                    <div className="well-item" key={i}>
+                      <span className="well-pair" title={text}>
+                        {String(entry.trigger ?? '')}
+                        <span className="well-arrow">→</span>
+                        {firstLine}
+                        {firstLine !== text ? ' …' : ''}
+                      </span>
+                      <div className="well-actions">
+                        <button
+                          className="btn btn-remove"
+                          aria-label={`Remove ${String(entry.trigger ?? '')}`}
+                          onClick={() =>
+                            void update({ expansions: settings.expansions.filter((_, j) => j !== i) })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                <PairAdd
+                  placeholderLeft="when I say…"
+                  placeholderRight="insert…"
+                  multilineRight
+                  onAdd={(trigger, text) => void update({ expansions: [...settings.expansions, { trigger, text }] })}
+                />
+              </div>
+            </Row>
+          </Section>
+
+          <NotesPanel
+            settings={settings}
+            catalog={catalog}
+            hotkeys={hotkeys}
+            onUpdate={update}
+            onRefresh={refresh}
+            onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
+          />
+
+          <TransformPanel
+            settings={settings}
+            catalog={catalog}
+            hotkeys={hotkeys}
+            onUpdate={update}
+            onRefresh={refresh}
+            onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
+          />
+
+          <Section id="timeback" title="Time back and recap" sub="Your daily numbers and how time saved is counted.">
+            <Row
+              label="Daily recap"
+              keywords="notification summary evening"
+              desc="A notification with your day's numbers; click it to open the wrap-up. Test sends a real one now."
+            >
+              <div className="inline">
+                <Switch
+                  checked={settings.recap.enabled}
+                  label="Daily recap"
+                  onChange={(enabled) => void update({ recap: { ...settings.recap, enabled } })}
+                />
+                <TimeInput
+                  label="Recap time"
+                  value={settings.recap.time}
+                  disabled={!settings.recap.enabled}
+                  onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
+                />
+                <button className="btn" onClick={() => void bridge().testRecap()}>
+                  Test
+                </button>
+              </div>
+            </Row>
+            <Row
+              label="Typing speed"
+              keywords="wpm words per minute"
+              desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average."
+            >
+              <NumberSetting
+                value={settings.timeBack.typingWpm}
+                min={MIN_TYPING_WPM}
+                max={MAX_TYPING_WPM}
+                suffix="wpm"
+                onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
+              />
+            </Row>
+            <Row
+              label="Milestone alerts"
+              keywords="notification"
+              desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
+            >
+              <Switch
+                checked={settings.timeBack.milestones}
+                label="Milestone alerts"
+                onChange={(milestones) => void update({ timeBack: { ...settings.timeBack, milestones } })}
+              />
+            </Row>
+            <p className="row-note">
+              Nothing appearing on a Mac? In System Settings, Notifications, allow murmur and pick the Banners style.
+            </p>
+          </Section>
+
+          <Section id="look" title="Look" sub="The waveform pill and the window around it.">
+            <Row
+              label="Waveform"
+              keywords="overlay style visualizer"
+              desc="How the pill draws your voice. Locked styles show how to earn them."
+            >
+              <select
+                className="field"
+                aria-label="Waveform"
+                value={settings.overlay.style}
+                onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
+              >
+                {(cosmetics?.overlayStyles ?? []).map((item) => (
+                  <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                    {item.unlocked ? `${item.name} (${item.hint})` : `${item.name} (locked: ${item.hint})`}
+                  </option>
+                ))}
+              </select>
+            </Row>
+
+            <Row
+              label="Overlay look"
+              keywords="pill compact bare size preview"
+              desc="Pill is the classic; compact is the same pill at two thirds; bare drops the box and keeps the waveform. Hints and errors always use the pill."
+            >
+              <div className="inline">
+                <Segmented<OverlayLook>
+                  label="Overlay look"
+                  value={settings.overlay.look}
+                  options={[
+                    { value: 'pill', label: 'Pill' },
+                    { value: 'compact', label: 'Compact' },
+                    { value: 'bare', label: 'Bare' }
+                  ]}
+                  onChange={(look) =>
+                    void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(look) } })
+                  }
+                />
+                <button className="btn" onClick={() => void bridge().previewOverlay()}>
+                  Preview
+                </button>
+              </div>
+            </Row>
+
+            <Row
+              label="Accent"
+              keywords="color colour"
+              desc="Colors the waveform, chart bars, and progress fills. The activity wall keeps its own picker. Earned, never bought."
+            >
+              <div className="inline">
+                {(() => {
+                  const chosen = cosmetics?.accents.find((a) => a.id === settings.cosmetics.accent)
+                  const color = chosen ? (chosen.color ?? cosmetics?.beltColor) : null
+                  return color ? <span className="swatch" style={{ background: color }} title={chosen?.name} /> : null
+                })()}
+                <select
+                  className="field"
+                  aria-label="Accent"
+                  value={settings.cosmetics.accent}
+                  onChange={(e) =>
+                    void update({
+                      cosmetics: { ...settings.cosmetics, accent: e.target.value }
+                    })
+                  }
+                >
+                  {(cosmetics?.accents ?? []).map((item) => (
+                    <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                      {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Row>
+
+            <Row label="Theme" keywords="dark colors window" desc="The window itself. More arrive with rank.">
+              <div className="inline">
+                {(() => {
+                  const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
+                  const p = chosen?.preview
+                  return p && p.length >= 2 ? (
+                    <span
+                      className="swatch"
+                      style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
+                      title={chosen?.name}
+                    />
+                  ) : null
+                })()}
+                <select
+                  className="field"
+                  aria-label="Theme"
+                  value={settings.cosmetics.uiTheme}
+                  onChange={(e) =>
+                    void update({
+                      cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
+                    })
+                  }
+                >
+                  {(cosmetics?.uiThemes ?? []).map((item) => (
+                    <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                      {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Row>
+          </Section>
+
+          <Section id="system" title="System" sub="Sounds, startup, permissions, and diagnostics.">
+            <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
+              <div className="inline">
+                <VolumeSlider
+                  value={settings.sounds.volume}
+                  disabled={!settings.sounds.enabled}
+                  onCommit={(volume) => void update({ sounds: { ...settings.sounds, volume } })}
+                />
+                <Switch
+                  checked={settings.sounds.enabled}
+                  label="Sounds"
+                  onChange={(enabled) => void update({ sounds: { ...settings.sounds, enabled } })}
+                />
+              </div>
+            </Row>
+
+            <Row
+              label="Start at login"
+              keywords="autostart startup launch boot"
+              desc="Opens murmur in the tray when you log in. Applies to installed builds."
+            >
+              <Switch
+                checked={settings.autostart}
+                label="Start at login"
+                onChange={(autostart) => void update({ autostart })}
+              />
+            </Row>
+
+            {isMac && (
+              <Row
+                label="macOS permissions"
+                anchor="row-perms"
+                block
+                keywords="microphone accessibility input monitoring privacy security"
+                desc="The microphone is asked for on your first dictation. After allowing Input monitoring, quit and reopen murmur."
+              >
+                <div className="well">
+                  <PermissionLine
+                    anchor="row-mic"
+                    name="Microphone"
+                    ok={perms === null ? null : micOk}
+                    okText="granted"
+                    badText={perms?.microphone ?? '…'}
+                    onOpen={openPane('microphone')}
+                  />
+                  <PermissionLine
+                    anchor="row-axs"
+                    name="Accessibility"
+                    ok={perms === null ? null : perms.accessibility}
+                    okText="granted"
+                    badText="not granted"
+                    onOpen={openPane('accessibility')}
+                  />
+                  <PermissionLine
+                    anchor="row-input"
+                    name="Input monitoring"
+                    ok={perms === null ? null : perms.inputMonitoring}
+                    okText="active"
+                    badText="not active"
+                    onOpen={openPane('input')}
+                  />
+                </div>
+              </Row>
+            )}
+
+            <Row
+              label="Diagnostics"
+              keywords="log logs bug report support troubleshoot"
+              desc="A local log of each dictation with no transcript text or keys, ever. Save report writes one file you can read before sharing; nothing sends on its own."
+            >
+              <div className="inline">
+                <button className="btn" onClick={() => void bridge().saveDiagnostics()}>
+                  Save report…
+                </button>
+                <button className="btn" onClick={() => void bridge().openLogFolder()}>
+                  Open log folder
+                </button>
+              </div>
+            </Row>
+
+            <Row label="Setup wizard" keywords="onboarding guide" desc="Walk the guided setup again anytime.">
+              <button className="btn" onClick={() => setWizardOpen(true)}>
+                Run wizard
+              </button>
+            </Row>
+          </Section>
+
+          <Section id="pro" title="murmur Pro" sub="Your license, verified offline.">
+            <ProSection status={license} onStatus={setLicense} />
+          </Section>
+        </div>
       </div>
 
       <footer className="foot dim">
@@ -1347,27 +1390,21 @@ function ProSection(props: {
   if (!status) return <div />
   if (status.pro) {
     return (
-      <>
-        <p className="row-desc">
-          {status.founder
-            ? 'Founding member. A permanent ten percent discount on every future paid product is yours, cloud included. '
-            : 'Pro is active. '}
-          Thank you for supporting free software; your belts stay earned, never bought, and every
-          Pro convenience lands here first. Supporter since{' '}
-          {new Date(status.since).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.
-        </p>
-        <Row
-          label="Pro state"
-          desc="Deactivate to preview the free experience. Your key stays saved on this machine, one click from coming back."
-        >
-          <button
-            className="btn quiet-btn"
-            onClick={() => void bridge().deactivateLicense().then(setStatus)}
-          >
-            Deactivate
-          </button>
-        </Row>
-      </>
+      <Row
+        label={status.founder ? 'Founding member' : 'Pro is active'}
+        keywords="license key deactivate"
+        desc={`${
+          status.founder
+            ? 'A permanent ten percent discount on every future paid product is yours, cloud included. '
+            : ''
+        }Thank you for supporting free software; belts stay earned, never bought. Supporter since ${new Date(
+          status.since
+        ).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Deactivate previews the free experience; your key stays saved here.`}
+      >
+        <button className="btn" onClick={() => void bridge().deactivateLicense().then(setStatus)}>
+          Deactivate
+        </button>
+      </Row>
     )
   }
 
@@ -1375,13 +1412,14 @@ function ProSection(props: {
     return (
       <Row
         label="License key"
+        keywords="pro reactivate"
         desc="Pro is deactivated, but your key is still saved on this machine. Forget key deletes it; you would need the original key to activate again."
       >
         <div className="inline">
-          <button className="btn" onClick={() => void bridge().reactivateLicense().then(setStatus)}>
-            Reactivate Pro
+          <button className="btn btn-primary" onClick={() => void bridge().reactivateLicense().then(setStatus)}>
+            Reactivate
           </button>
-          <button className="btn quiet-btn" onClick={() => void bridge().removeLicense().then(setStatus)}>
+          <button className="btn btn-remove" onClick={() => void bridge().removeLicense().then(setStatus)}>
             Forget key
           </button>
         </div>
@@ -1398,6 +1436,7 @@ function ProSection(props: {
   return (
     <Row
       label="License key"
+      keywords="pro buy activate purchase"
       desc={
         rejected
           ? 'That key did not verify. Check for missing characters and try again.'
@@ -1408,17 +1447,18 @@ function ProSection(props: {
         <input
           className="field"
           placeholder="MURMUR-…"
+          aria-label="License key"
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value)
             setRejected(false)
           }}
         />
-        <button className="btn" onClick={() => void activate()} disabled={draft.trim().length === 0}>
+        <button className="btn btn-primary" onClick={() => void activate()} disabled={draft.trim().length === 0}>
           Activate
         </button>
         {proConfig.buyUrl && (
-          <button className="btn quiet-btn" onClick={() => void bridge().openBuyPage()}>
+          <button className="btn" onClick={() => void bridge().openBuyPage()}>
             Get Pro
           </button>
         )}
@@ -1460,7 +1500,7 @@ function ProfilesRow(props: {
         desc="murmur Pro: save this setup (endpoint and models) under a name and switch providers in one click; each provider's saved key comes along from the key ring."
       >
         {proConfig.buyUrl ? (
-          <button className="btn quiet-btn" onClick={() => void bridge().openBuyPage()}>
+          <button className="btn" onClick={() => void bridge().openBuyPage()}>
             Get Pro
           </button>
         ) : (
@@ -1475,7 +1515,7 @@ function ProfilesRow(props: {
     props.onSettings(result.settings)
     // Applying can fold a profile's saved key into the ring without the
     // base URL changing (live-found 2026-09-26: Groq to Groq restored the
-    // key, but the setup box still said no key and Test stayed disabled),
+    // key, but the key list still said no key and Test stayed disabled),
     // so the key status is re-read after every successful profile action.
     props.onKeysChanged()
   }
@@ -1488,7 +1528,7 @@ function ProfilesRow(props: {
       <div className="inline profiles-stack">
         {profiles.length > 0 && (
           <div className="inline">
-            <select className="field" value={chosen} onChange={(e) => setChosen(e.target.value)}>
+            <select className="field" aria-label="Profile" value={chosen} onChange={(e) => setChosen(e.target.value)}>
               <option value="">choose a profile…</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -1504,7 +1544,7 @@ function ProfilesRow(props: {
               Apply
             </button>
             <button
-              className="btn quiet-btn"
+              className="btn btn-remove"
               disabled={!chosen}
               onClick={() => {
                 void bridge().deleteProviderProfile(chosen).then(handle)
@@ -1519,6 +1559,7 @@ function ProfilesRow(props: {
           <input
             className="field"
             placeholder="name this setup…"
+            aria-label="Profile name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />

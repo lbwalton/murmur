@@ -4,7 +4,7 @@ murmur can rewrite text you have selected, in any app, from a sentence you speak
 
 ## How do I transform selected text?
 
-Set a transform chord under Settings, transform: click the field and press a combo (a modifier plus an F-key, like Ctrl+F10, is the safest shape). Then, in any app:
+Set a transform chord under Settings, Transform: click the field and press a combo (a modifier plus an F-key, like Ctrl+F10, is the safest shape). Then, in any app:
 
 1. Select the text you want changed.
 2. Hold the transform chord and say the instruction.
@@ -53,7 +53,7 @@ Yes. Reading a selection means pressing copy, so murmur first takes a snapshot o
 
 ## Can transforms use a different model than cleanup?
 
-Yes. Under Settings, transform, set Transform connection to Separate, pick a provider (or type a base URL and model id), save its key, and press Test. Rewriting is harder work than cleanup, so a stronger model here often pays off. The key is stored encrypted like your other keys, and a provider you already use shares its key automatically. Until the separate connection is complete, with a saved key, transforms run on your cleanup connection.
+Yes. Under Settings, Transform, set Transform runs on to Separate, pick a provider (or type a base URL and model id), save its key, and press Test. Rewriting is harder work than cleanup, so a stronger model here often pays off. The key is stored encrypted like your other keys, and a provider you already use shares its key automatically. Until the separate connection is complete, with a saved key, transforms run on your cleanup connection.
 
 Unlike cleanup, transforms do not depend on your formatting level: they run at Off and Light too.
 

@@ -17,7 +17,7 @@ import {
 import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Row, TextSetting, TimeInput } from './controls'
+import { Advanced, Row, Section, Switch, TextSetting, TimeInput } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -103,6 +103,8 @@ export function NotesPanel(props: {
   hotkeys: HotkeysStatus | null
   onUpdate: (partial: Partial<Settings>) => Promise<void>
   onRefresh: () => Promise<unknown>
+  /** A key saved or removed here also lists under API keys. */
+  onKeysChanged: () => void
 }): React.JSX.Element {
   const notes = props.settings.notes
   const [status, setStatus] = useState<NotesStatus | null>(null)
@@ -278,29 +280,30 @@ export function NotesPanel(props: {
   const lastSave = status?.lastSave ?? null
 
   return (
-    <section className="panel">
-      <p className="micro-label">notes</p>
+    <Section id="notes" title="Notes" sub="Speak a note into a folder instead of at your cursor.">
 
       <Row
         label="Note chord"
         anchor="row-note-chord"
+        keywords="brain dump chord hotkey inbox"
         desc={
           captureNote ??
           (disarmed
-            ? 'This chord is currently disarmed: it clashes with your dictation hotkey or the paste chord, or no longer parses. Capture a new one.'
-            : 'Hold it and speak: the words go to a file in your notes folder instead of your cursor, formatted like any dictation. Off until you set one. A modifier plus an F-key is safest.')
+            ? 'This chord is disarmed: it clashes with your dictation hotkey or the paste chord, or no longer parses. Capture a new one.'
+            : 'Hold it and speak: the words go to a file in your notes folder instead of your cursor. Off until you set one; a modifier plus an F-key is safest.')
         }
       >
         <div className="inline">
           <button
             className={`field capture ${capturing ? 'capture-live' : ''}`}
+            aria-label="Note chord. Click to change."
             onClick={() => void startCapture()}
           >
             {capturing ? 'press keys…' : notes.binding === '' ? 'not set' : notes.binding}
           </button>
           {notes.binding !== '' && (
             <button
-              className="btn quiet-btn"
+              className="btn btn-remove"
               onClick={() => {
                 setCaptureNote(null)
                 void update({ binding: '' })
@@ -315,20 +318,20 @@ export function NotesPanel(props: {
       <Row
         label="Notes folder"
         anchor="row-notes-folder"
+        block
+        keywords="obsidian logseq vault directory"
         desc={
           folderMissing
             ? "That folder is not there right now. Notes go to murmur's own data folder until it is back, and nothing is lost."
-            : 'Any folder: an Obsidian vault, a Logseq graph, a synced drive. Notes append as markdown files, and the app that reads them need not be running. Empty keeps note mode off.'
+            : 'Any folder: an Obsidian vault, a Logseq graph, a synced drive. Notes append as markdown files. Empty keeps note mode off.'
         }
       >
         <div className="inline">
-          <button className="btn" onClick={() => void chooseFolder()}>
-            Choose folder
-          </button>
           <input
-            className="field mono-field wide-field"
+            className="field mono-field grow-field"
             value={folderDraft}
             placeholder="no folder set"
+            aria-label="Notes folder"
             spellCheck={false}
             onChange={(e) => setFolderDraft(e.target.value)}
             onBlur={commitFolder}
@@ -336,8 +339,11 @@ export function NotesPanel(props: {
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
             }}
           />
+          <button className="btn" onClick={() => void chooseFolder()}>
+            Choose…
+          </button>
           {notes.folder !== '' && (
-            <button className="btn quiet-btn" onClick={() => void update({ folder: '' })}>
+            <button className="btn btn-remove" onClick={() => void update({ folder: '' })}>
               Clear
             </button>
           )}
@@ -370,11 +376,11 @@ export function NotesPanel(props: {
               </span>
             )}
             {notes.sort && status?.canSortAgain && (
-              <button className="btn quiet-btn" onClick={() => void sortAgain()} disabled={sorting}>
+              <button className="btn" onClick={() => void sortAgain()} disabled={sorting}>
                 {sorting ? 'Sorting…' : 'Sort again'}
               </button>
             )}
-            <button className="btn quiet-btn" onClick={() => void openToday()}>
+            <button className="btn" onClick={() => void openToday()}>
               Open today&apos;s inbox
             </button>
           </div>
@@ -389,6 +395,8 @@ export function NotesPanel(props: {
           {status.heldLines.map((line) => (
             <Row
               key={line.id}
+              anchor={`row-held-${line.id}`}
+              block
               label={`Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`}
               desc={`${withStop(heldPhrase(line))} It stays in the inbox as you said it.${
                 line.label === 'note'
@@ -414,7 +422,7 @@ export function NotesPanel(props: {
                 )}
                 {line.label !== 'note' && (
                   <button
-                    className="btn quiet-btn"
+                    className="btn"
                     onClick={() => void heldAction(line.id, 'file')}
                     disabled={acting !== null}
                   >
@@ -422,7 +430,7 @@ export function NotesPanel(props: {
                   </button>
                 )}
                 <button
-                  className="btn quiet-btn"
+                  className="btn"
                   onClick={() => void heldAction(line.id, 'skip')}
                   disabled={acting !== null}
                 >
@@ -437,16 +445,10 @@ export function NotesPanel(props: {
       <Row
         label="Sort into tasks and ideas"
         anchor="row-notes-sort"
-        desc="After a note lands, a model labels each sentence a task, an idea, or a note, and murmur copies tasks to todo.md and ideas to ideas.md with links back. Nothing is reworded and the inbox stays as you said it. Off writes the inbox only, for people who feed raw notes to their own tools."
+        keywords="todo tasks ideas classify file"
+        desc="After a note lands, a model labels each sentence a task, an idea, or a note, and murmur copies tasks to todo.md and ideas to ideas.md with links back. Nothing is reworded. Off writes the inbox only."
       >
-        <select
-          className="field"
-          value={notes.sort ? 'on' : 'off'}
-          onChange={(e) => void update({ sort: e.target.value === 'on' })}
-        >
-          <option value="off">Off</option>
-          <option value="on">On</option>
-        </select>
+        <Switch checked={notes.sort} label="Sort into tasks and ideas" onChange={(sort) => void update({ sort })} />
       </Row>
 
       {notes.sort && (
@@ -454,12 +456,15 @@ export function NotesPanel(props: {
           value={notes.connection}
           catalog={props.catalog}
           keyStatus={sortKeyStatus}
-          onKeyStatus={setSortKeyStatus}
+          onKeyStatus={(status) => {
+            setSortKeyStatus(status)
+            props.onKeysChanged()
+          }}
           onChange={(connection) => update({ connection: { ...notes.connection, ...connection } })}
           labels={{
-            connection: 'Sort connection',
+            connection: 'Sort runs on',
             connectionDesc:
-              'Same runs the sort on your cleanup connection, which is your speech provider unless you set cleanup apart. Separate lets sorting run elsewhere with its own key.',
+              'Same uses your cleanup connection. Separate lets sorting run elsewhere with its own key.',
             sameOption: 'Same as cleanup',
             provider: 'Sort provider',
             baseUrl: 'Sort base URL',
@@ -468,7 +473,7 @@ export function NotesPanel(props: {
             keyDesc:
               'This connection has its own key, stored encrypted like the others. Until one is saved, sorting keeps riding your cleanup connection.',
             sharedDesc:
-              'Shares a key with your speech or cleanup connection: one provider, one key. Manage it in the setup panel.'
+              'Shares a key with your speech or cleanup connection: one provider, one key. It is in the API keys list under Provider and keys.'
           }}
           sharedWith={[
             props.settings.provider.baseUrl,
@@ -500,25 +505,23 @@ export function NotesPanel(props: {
         <Row
           label="Task reminders"
           anchor="row-notes-reminders"
+          block
+          keywords="notification todo nudge"
           desc={
             reminderTest ??
-            'Desktop notifications that read your tasks file as it stands and say what is still open. Clicking one opens the list. Off by default, a file with nothing open stays quiet, and clearing a time switches that one off.'
+            'Notifications that read your tasks file and say what is still open; clicking one opens the list. A file with nothing open stays quiet, and clearing a time switches that one off.'
           }
         >
           <div className="inline">
-            <select
-              className="field"
-              value={reminders.enabled ? 'on' : 'off'}
-              onChange={(e) =>
-                void update({ reminders: { ...reminders, enabled: e.target.value === 'on' } })
-              }
-            >
-              <option value="off">Off</option>
-              <option value="on">On</option>
-            </select>
+            <Switch
+              checked={reminders.enabled}
+              label="Task reminders"
+              onChange={(enabled) => void update({ reminders: { ...reminders, enabled } })}
+            />
             {reminders.times.map((time, index) => (
               <TimeInput
                 key={index}
+                label={`Reminder time ${index + 1}`}
                 value={time}
                 disabled={!reminders.enabled}
                 allowEmpty
@@ -540,6 +543,7 @@ export function NotesPanel(props: {
         >
           <select
             className="field"
+            aria-label="Confidence threshold"
             value={String(notes.connection.threshold)}
             onChange={(e) =>
               void update({ connection: { ...notes.connection, threshold: Number(e.target.value) } })
@@ -554,10 +558,10 @@ export function NotesPanel(props: {
         </Row>
       )}
 
-      <details className="fold">
-        <summary className="fold-summary micro-label">
-          file layout{customized ? ' (customized)' : ''}
-        </summary>
+      <Advanced
+        label="File layout"
+        hint={customized ? 'customized' : 'inbox, tasks, and ideas files, headings, entries'}
+      >
 
         <Row
           label="Inbox file"
@@ -624,15 +628,12 @@ export function NotesPanel(props: {
                     : 'Off means headings carry the date alone. On asks the sort model for a short name for each note, so you can see what a group is about at a glance.'
               }
             >
-              <select
-                className="field"
-                value={notes.topicHeadings ? 'on' : 'off'}
+              <Switch
+                checked={notes.topicHeadings}
+                label="Name each note"
                 disabled={!headingCarriesTopic}
-                onChange={(e) => void update({ topicHeadings: e.target.value === 'on' })}
-              >
-                <option value="off">Off</option>
-                <option value="on">On</option>
-              </select>
+                onChange={(topicHeadings) => void update({ topicHeadings })}
+              />
             </Row>
           </>
         )}
@@ -654,7 +655,7 @@ export function NotesPanel(props: {
         {customized && (
           <Row label="Defaults" desc="Back to the murmur inbox layout: a time heading per note, todo.md and ideas.md beside it.">
             <button
-              className="btn quiet-btn"
+              className="btn"
               onClick={() =>
                 void update({
                   pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
@@ -665,11 +666,11 @@ export function NotesPanel(props: {
                 })
               }
             >
-              Reset to default
+              Reset
             </button>
           </Row>
         )}
-      </details>
-    </section>
+      </Advanced>
+    </Section>
   )
 }
