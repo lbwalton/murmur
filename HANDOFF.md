@@ -91,6 +91,8 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 ## Known follow-ups (not blocking)
 
+- [ ] Windows CI has been red since 2026-09-27 (found 2026-10-01): every main run fails one smoke check on Windows, notesFallback, while the Mac stays green. The check expects Mac-style error codes and forward slashes in the log line, so it is most likely the check, not the notes fallback itself, but nobody has looked at the Windows log yet. Worth a short story before the next release.
+
 - [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows still waits until it can be proven on the PC.
 
 - [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
