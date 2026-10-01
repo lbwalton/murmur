@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import bundled from '../../shared/provider-catalog.json'
-import { costPer1kWords, providerForBaseUrl, providerForKeyMask, ratesFromCatalog, validateCatalog } from './catalog'
+import {
+  type ProviderCatalog,
+  catalogRefusal,
+  costPer1kWords,
+  providerForBaseUrl,
+  providerForKeyMask,
+  ratesFromCatalog,
+  validateCatalog
+} from './catalog'
 
 describe('validateCatalog', () => {
   it('accepts the bundled catalog', () => {
@@ -116,5 +124,89 @@ describe('providerForBaseUrl', () => {
     expect(providerForBaseUrl(catalog, 'https://api.groq.com/openai/v1/')?.id).toBe('groq')
     expect(providerForBaseUrl(catalog, 'http://localhost:11434/v1')?.id).toBe('local')
     expect(providerForBaseUrl(catalog, 'https://example.com/v1')).toBeNull()
+  })
+})
+
+describe('catalogRefusal', () => {
+  const shipped = validateCatalog(bundled) as ProviderCatalog
+  const today = '2026-10-01'
+  const edited = (edit: (c: ProviderCatalog) => void): ProviderCatalog => {
+    const copy = structuredClone(shipped)
+    edit(copy)
+    return copy
+  }
+
+  it('accepts the bundled catalog and a refresh that only moves rates and dates', () => {
+    expect(catalogRefusal(shipped, shipped, today)).toBeNull()
+    const refreshed = edited((c) => {
+      c.verifiedOn = today
+      c.providers[0].verifiedOn = today
+      c.providers[0].sttModels[0].perHourUsd = 0.05
+    })
+    expect(catalogRefusal(refreshed, shipped, today)).toBeNull()
+  })
+
+  it('refuses a refresh that moves where a shipped preset sends keys', () => {
+    const moved = edited((c) => {
+      c.providers[0].baseUrl = 'https://api.groq.com.evil.example/openai/v1'
+    })
+    expect(catalogRefusal(moved, shipped, today)).toBe('groq base URL changed')
+  })
+
+  it('refuses a cleartext remote preset but allows a local server', () => {
+    const added = (baseUrl: string): ProviderCatalog =>
+      edited((c) => {
+        c.providers.push({ ...structuredClone(c.providers[0]), id: 'newcomer', name: 'Newcomer', baseUrl })
+      })
+    expect(catalogRefusal(added('http://api.newcomer.example/v1'), shipped, today)).toBe(
+      'newcomer base URL is not https'
+    )
+    expect(catalogRefusal(added('not a url'), shipped, today)).toBe('newcomer base URL is not https')
+    expect(catalogRefusal(added('https://api.newcomer.example/v1'), shipped, today)).toBeNull()
+    expect(catalogRefusal(added('http://localhost:1234/v1'), shipped, today)).toBeNull()
+    expect(catalogRefusal(added('http://127.0.0.1:1234/v1'), shipped, today)).toBeNull()
+    expect(catalogRefusal(added('http://[::1]:1234/v1'), shipped, today)).toBeNull()
+  })
+
+  it('refuses a future or malformed verified-on date, which would outrank every later fix', () => {
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = '9999-12-31')), shipped, today)).toBe(
+      'verifiedOn malformed or in the future'
+    )
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-01z')), shipped, today)).toBe(
+      'verifiedOn malformed or in the future'
+    )
+    expect(catalogRefusal(edited((c) => (c.providers[1].verifiedOn = '2026-10-05')), shipped, today)).toBe(
+      `${shipped.providers[1].id} verifiedOn malformed or in the future`
+    )
+  })
+
+  it('refuses a refresh that moves or adds a cleanup URL on a shipped preset', () => {
+    const local = shipped.providers.find((p) => p.llmBaseUrl !== undefined) as ProviderCatalog['providers'][number]
+    const moved = edited((c) => {
+      const p = c.providers.find((x) => x.id === local.id)
+      if (p) p.llmBaseUrl = 'https://evil.example/v1'
+    })
+    expect(catalogRefusal(moved, shipped, today)).toBe(`${local.id} cleanup URL changed`)
+    const added = edited((c) => {
+      c.providers[0].llmBaseUrl = 'https://evil.example/v1'
+    })
+    expect(catalogRefusal(added, shipped, today)).toBe(`${shipped.providers[0].id} cleanup URL changed`)
+    const cleartext = edited((c) => {
+      c.providers.push({ ...structuredClone(c.providers[0]), id: 'newcomer', name: 'Newcomer', llmBaseUrl: 'http://evil.example/v1' })
+    })
+    expect(catalogRefusal(cleartext, shipped, today)).toBe('newcomer cleanup URL is not https')
+  })
+
+  it('refuses a refresh that drops a shipped preset or lets another wear its name', () => {
+    expect(catalogRefusal(edited((c) => c.providers.shift()), shipped, today)).toBe(`${shipped.providers[0].id} missing`)
+    const impostor = edited((c) => {
+      c.providers.push({ ...structuredClone(c.providers[0]), id: 'groq2', baseUrl: 'https://evil.example/v1' })
+    })
+    expect(catalogRefusal(impostor, shipped, today)).toBe('two presets share an id or a name')
+  })
+
+  it('allows one day ahead for time zones east of this machine', () => {
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-02')), shipped, today)).toBeNull()
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-03')), shipped, today)).not.toBeNull()
   })
 })

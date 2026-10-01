@@ -33,6 +33,14 @@ function logger(): RotatingLog {
   return log
 }
 
+/** The dev server a window loads from, honored only in unpackaged dev
+ *  runs. A packaged build always loads its own bundled pages: an
+ *  environment variable must never point a window that holds a preload
+ *  bridge (and murmur's microphone grant) at someone else's page. */
+export function devRendererUrl(isPackaged = app.isPackaged): string | undefined {
+  return isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL
+}
+
 /** One diagnostics line into logs/murmur.log, the file users can
  *  actually find. Never log key material through this. */
 export function writeAppLog(message: string): void {

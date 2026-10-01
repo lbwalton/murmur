@@ -8,9 +8,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, ipcMain } from 'electron'
 import bundledJson from '../../shared/provider-catalog.json'
-import { type ProviderCatalog, costPer1kWords, validateCatalog } from '../shared/catalog'
+import { type ProviderCatalog, catalogRefusal, costPer1kWords, validateCatalog } from '../shared/catalog'
 import { getSettings } from './settings'
 import { isSmoke, registerSmokeCheck } from './smoke'
+import { writeAppLog } from './window-watch'
 
 // A read-only file fetch against the same GitHub host the updater
 // already talks to. No user data rides along: no query, no headers
@@ -25,14 +26,23 @@ function cachedPath(): string {
   return join(app.getPath('userData'), 'provider-catalog.json')
 }
 
+/** The refresh rules (see catalogRefusal), with the reason logged. */
+function refusal(candidate: ProviderCatalog, bundled: ProviderCatalog): boolean {
+  const reason = catalogRefusal(candidate, bundled, new Date().toISOString().slice(0, 10))
+  if (reason) writeAppLog(`[catalog] refused reason=${reason}`)
+  return reason !== null
+}
+
 function loadInitial(): ProviderCatalog {
   const bundled = validateCatalog(bundledJson)
   if (!bundled) throw new Error('bundled provider catalog failed validation')
   try {
     const cached = validateCatalog(JSON.parse(readFileSync(cachedPath(), 'utf8')))
     // A cached refresh wins only while it is at least as fresh as what
-    // this build shipped with; ISO dates compare correctly as strings.
-    if (cached && cached.verifiedOn >= bundled.verifiedOn) return cached
+    // this build shipped with (ISO dates compare correctly as strings)
+    // and still passes the refresh rules: a poisoned copy saved by an
+    // older build is dropped here, never trusted (US-072).
+    if (cached && cached.verifiedOn >= bundled.verifiedOn && !refusal(cached, bundled)) return cached
   } catch {
     // No cache yet, or an unreadable one: the bundled copy stands.
   }
@@ -49,6 +59,8 @@ async function refresh(): Promise<void> {
     if (body.length > MAX_CATALOG_BYTES) return
     const fetched = validateCatalog(JSON.parse(body))
     if (!fetched || !current || fetched.verifiedOn < current.verifiedOn) return
+    const bundled = validateCatalog(bundledJson)
+    if (!bundled || refusal(fetched, bundled)) return
     writeFileSync(cachedPath(), body)
     current = fetched
   } catch (error) {

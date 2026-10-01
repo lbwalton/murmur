@@ -123,6 +123,61 @@ export function validateCatalog(data: unknown): ProviderCatalog | null {
   return data as unknown as ProviderCatalog
 }
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+/** A preset base URL a refreshed catalog may carry: https, or plain
+ *  http only to this machine (local servers). */
+function safePresetUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl)
+    if (url.protocol === 'https:') return true
+    return url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Why a catalog that arrived from outside the build (a refresh, or the
+ * cached copy of one) must not replace the bundled one, or null when it
+ * may (US-072). A refresh exists to move rates. It never moves where a
+ * shipped preset sends keys, audio, or text (its base URL or its
+ * cleanup URL), never drops a shipped preset or lets another wear its
+ * name, never names a cleartext remote host, and never claims a future
+ * or malformed verified-on date, which would outrank every later fix.
+ * today is a YYYY-MM-DD date; one day of slack covers time zones ahead
+ * of this machine.
+ */
+export function catalogRefusal(candidate: ProviderCatalog, bundled: ProviderCatalog, today: string): string | null {
+  const latest = new Date(`${today}T00:00:00Z`)
+  latest.setUTCDate(latest.getUTCDate() + 1)
+  const latestDay = latest.toISOString().slice(0, 10)
+  const badDay = (day: string): boolean => !DAY.test(day) || day > latestDay
+  if (badDay(candidate.verifiedOn)) return 'verifiedOn malformed or in the future'
+  const ids = new Set(candidate.providers.map((p) => p.id))
+  const names = new Set(candidate.providers.map((p) => p.name.trim().toLowerCase()))
+  if (ids.size !== candidate.providers.length || names.size !== candidate.providers.length) {
+    return 'two presets share an id or a name'
+  }
+  for (const shipped of bundled.providers) {
+    if (!ids.has(shipped.id)) return `${shipped.id} missing`
+  }
+  for (const provider of candidate.providers) {
+    if (badDay(provider.verifiedOn)) return `${provider.id} verifiedOn malformed or in the future`
+    if (!safePresetUrl(provider.baseUrl)) return `${provider.id} base URL is not https`
+    const llm = provider.llmBaseUrl
+    if (llm !== undefined && (typeof llm !== 'string' || !safePresetUrl(llm))) {
+      return `${provider.id} cleanup URL is not https`
+    }
+    const shipped = bundled.providers.find((p) => p.id === provider.id)
+    if (shipped && shipped.baseUrl !== provider.baseUrl) return `${provider.id} base URL changed`
+    if (shipped && shipped.llmBaseUrl !== llm) return `${provider.id} cleanup URL changed`
+  }
+  return null
+}
+
 /**
  * The analytics RatesSpec, derived from the catalog so pricing has one
  * source. USD models only: analytics totals are a USD figure, and a

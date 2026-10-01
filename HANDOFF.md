@@ -22,6 +22,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-071 the pill and Settings come back by themselves (built 2026-10-01 on feature/hardening; found when another session's cleanup command killed murmur's helpers at 00:53 and the pill stayed gone). Needs the new build on this Mac (a test install or the next release). (1) With murmur running, open Terminal and paste `pkill -f "murmur Helper"`. That closes only murmur's behind-the-scenes helper processes, the same thing that happened that night. (2) Wait about five seconds. (3) Hold your hotkey and say a sentence: the pill should appear as usual and your words should type in. (4) Click the murmur icon in the menu bar and choose Open murmur: Settings should show its normal content, not a blank window. (5) Open Settings first, run the command again, and watch the window: it should blank for a moment and come back on its own, still open.
+
+- [ ] US-072 security pass (built 2026-10-01 on feature/hardening): nothing to click for the fixes themselves; they change how murmur can be started and what its windows may load. After the new build is on the Mac: (1) murmur starts and its what's new line shows the new version. (2) Dictate a sentence: the pill shows and the words type in, which proves the microphone still reaches murmur through the new permission rule. (3) Open Settings and click through a few sections: everything looks normal. The weekly pricing robot is Claude's to check: it runs once from the branch and the result goes in the story notes.
+
 - [x] US-069 settings rail, live-verified 2026-09-27 (all six steps passed: all set badge, rail tracking and jumps, search to Hotkey, the API keys list, the Finish setup card opening and folding away on a provider switch, one button size throughout). Merged to main 2026-09-27.
 
 - [x] US-068 retry a failed dictation, live-verified 2026-09-26/27 (your real 68 s take retried and pasted; a fresh wrong-model failure arrived with its reason and retried cleanly). Merged to main 2026-09-27.
@@ -87,7 +91,11 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 ## Known follow-ups (not blocking)
 
-- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Still open for a later story: asar integrity validation, which also stops code planted inside the app bundle but must be proven on Windows first.
+- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows still waits until it can be proven on the PC.
+
+- [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
+
+- [ ] Seen while testing US-072 (2026-10-01), not new: if a key is pressed at the instant murmur quits, the key hook can abort the quit (logged as FATAL uiohook_to_js_event). It reproduced on the shipped 0.1.8 too. Harmless so far because the app was already quitting; worth stopping the hook earlier in the quit sequence someday.
 
 - [ ] Brain dump recall wiring (pairs with US-050/051 when they ship): add a section to the 7am briefing and 6pm recap scripts that reads murmur/todo.md and the day's murmur/inbox note from the vault: open tasks first, captured ideas after.
 

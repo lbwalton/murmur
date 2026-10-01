@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (61/70 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (61/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -75,6 +75,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
+- [ ] **US-071** The pill and settings rebuild themselves after a renderer dies
 
 ## To do
 
@@ -82,3 +83,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-064** Windows installer signed as Eze Media LLC (on hold until sales)
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business
+- [ ] **US-072** Security pass before go-live: windows load only murmur, the mic stays murmur's, the pricing robot cannot ship
