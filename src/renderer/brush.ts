@@ -440,7 +440,9 @@ function partTimes(it: SceneItem): { strokeEnd: number; splatStart: number; spla
   const dur = it.dur ?? (it.dot && !it.stroke ? SWELL_MS : STROKE_MS)
   const strokeEnd = it.stroke ? start + dur : start
   const splatStart = it.stroke ? start + dur * SPLAT_AT : start
-  const splatEnd = it.splat ? splatStart + (it.splat.flight ?? FLIGHT_MS) : start
+  // Drops never land before the stroke is done, or the last bristles
+  // would paint over them and the mark would change as it settles.
+  const splatEnd = it.splat ? Math.max(splatStart + (it.splat.flight ?? FLIGHT_MS), strokeEnd) : start
   const dotEnd = it.dot ? (it.stroke ? strokeEnd : start + dur) : start
   return { strokeEnd, splatStart, splatEnd, end: Math.max(strokeEnd, splatEnd, dotEnd) }
 }
@@ -592,7 +594,10 @@ export function animateScene(
     }
   }
   frame(step)
+  // A cancelled scene leaves no drops frozen mid-flight; the caller
+  // repaints the canvas it cancelled.
   return () => {
     stopped = true
+    if (fx) clearSurface(fx)
   }
 }

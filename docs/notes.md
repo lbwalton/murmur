@@ -18,6 +18,7 @@ Click the note receipt. After every note, murmur shows a notification named for 
 - **Missed it?** The menu bar icon (the tray icon on Windows) has Open last note, and the home tab shows your last note with open and show in Finder (open folder on Windows) buttons. Both keep working after murmur restarts.
 - **Do Not Disturb and Focus** are respected: the receipt waits quietly in Notification Center instead of popping up. The receipt makes no sound of its own; the pill already plays the noted cue.
 - **Turning it off:** Settings, Notes, Note receipts. Off stops the notification only; Open last note and the home tab row keep working.
+- **Clear all** on the home tab forgets the last note as well: the card and Open last note go away, and on a Mac so does the latest receipt still waiting in Notification Center (on Windows, one from since murmur last started). The note file in your folder is never touched.
 
 The pill itself can never carry the link: it must never take a click or focus, or it would pull your cursor out of the app you were typing in. A notification can be clicked without taking focus, which is why the receipt lives there. murmur only ever opens a real `.md` or `.txt` file this way: if the file was replaced by a link to something else, or by a folder, nothing opens and the diagnostics log says `[receipt] open refused`.
 

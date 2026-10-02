@@ -82,6 +82,10 @@ function setLastNote(note: LastNote): void {
     // The record is a convenience; the note itself is already safe.
     say(`remember failed reason=${errorCode(error)}`)
   }
+  notify(note)
+}
+
+function notify(note: LastNote | null): void {
   for (const listener of listeners) {
     // One listener failing (a window torn down mid-send) must not cost
     // the others, or the receipt itself.
@@ -91,6 +95,26 @@ function setLastNote(note: LastNote): void {
       say(`listener failed reason=${errorCode(error)}`)
     }
   }
+}
+
+/** Forget the last note: the record, its file, and a receipt still
+ *  sitting in Notification Center. Clear all on the home tab calls it;
+ *  the note file itself is never touched. */
+export function forgetLastNote(): void {
+  lastNote = null
+  try {
+    rmSync(storeFile(), { force: true })
+  } catch (error) {
+    say(`forget failed reason=${errorCode(error)}`)
+  }
+  current?.close()
+  current = null
+  // A receipt left from before a restart has no object here; macOS can
+  // still take it out of Notification Center by its id.
+  if (process.platform === 'darwin' && !isSmoke) Notification.remove(RECEIPT_ID)
+  lastShown = null
+  say('forgotten')
+  notify(null)
 }
 
 export function onLastNoteChanged(listener: (note: LastNote | null) => void): () => void {
@@ -195,9 +219,13 @@ function showReceipt(note: LastNote): void {
   // Held here until the next receipt replaces it, even after its banner
   // closes: on Windows a banner that times out waits in Action Center,
   // and a click there needs these handlers alive.
+  // Logged when the system says it showed, so a failure is never
+  // written down as a success.
+  notification.on('show', () => {
+    say(`outcome=shown kind=${kind} location=${note.location} places=${note.sorted.length}`)
+  })
   current = notification
   notification.show()
-  say(`outcome=shown kind=${kind} location=${note.location} places=${note.sorted.length}`)
 }
 
 /**
@@ -290,6 +318,7 @@ async function joinedSortStep(vault: string): Promise<Record<string, boolean>> {
     ownSortFollowed:
       own.outcome === 'filed' &&
       after?.inbox.file === savedB.file &&
+      after.line === 'Maybe a darker pill.' &&
       after.sorted.length === 1 &&
       after.sorted[0].kind === 'ideas' &&
       lastShown?.title === 'Sorted into ideas.md' &&
@@ -392,7 +421,13 @@ export function initReceipts(options: {
       const countOff = shownCount
       const quiet = saveNote('A quiet note.', new Date(2026, 9, 2, 9, 16))
       const quietNote = noteSaved(quiet, 'A quiet note.')
+      const offStaysQuiet = shownCount === countOff && quietNote !== null && getLastNote() === quietNote
       const stored = parseLastNote(JSON.parse(readFileSync(storeFile(), 'utf8')))
+      const joined = await joinedSortStep(vault)
+      forgetLastNote()
+      const forgotten = getLastNote() === null && !existsSync(storeFile()) && !trayMenuLabels().includes('Open last note')
+      lastNote = undefined
+      const staysForgotten = getLastNote() === null
       const conditions = {
         savedOk: saved.ok && saved.location === 'folder',
         savedTitle: savedReceipt?.title === 'Noted to inbox/2026-10-02.md',
@@ -405,9 +440,11 @@ export function initReceipts(options: {
         trayItem: trayLabels.includes('Open last note'),
         openedTarget: openOutcome === 'opened' && opened[0] === tasks,
         refusedNonNotes: refused.every((r) => r === 'refused') && revealRefused && opened.length === 1,
-        offStaysQuiet: shownCount === countOff && quietNote !== null && getLastNote() === quietNote,
+        offStaysQuiet,
         stored: stored?.inbox.file === quiet.file && stored.line === 'A quiet note.' && stored.at === quiet.when.getTime(),
-        ...(await joinedSortStep(vault))
+        ...joined,
+        forgotten,
+        staysForgotten
       }
       const failed = Object.entries(conditions)
         .filter(([, ok]) => !ok)

@@ -85,7 +85,7 @@ One orchestrated moment beats scattered effects: the hero paints in once, a prom
 - `brush(seed, n)` and `cachedBrush(seed, n)` build bristles; keep seeds to a small set so the cache stays small.
 - `stroke(ctx, path, bristles, options)` paints: `width`, `rgb`, `dry` (0 wet, 1 runs dry), `core` (the wet body), `pfn` (custom pressure), `i0`/`i1` (paint part of a path), `sOff` (keep a scrolling stroke's texture).
 - `splat(seed, x, y, options)` and `drawSplat(ctx, splat, rgb, k)` throw and draw splatter, `k` being how far through its flight.
-- `stackOrder(items)` and `paintScene(ctx, items)` give scenes their stacking order.
+- `stackOrder(items)` and `paintScene(ctx, items)` give scenes their stacking order; `animateScene(base, fx, items, options)` paints one over time and stacks exactly as `paintScene` does (the website hero's paint-in, the Journey, the ceremony).
 
 ## The ink waveforms
 

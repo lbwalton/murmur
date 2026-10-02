@@ -128,14 +128,17 @@ describe('an animated scene stacks like the finished one (US-073)', () => {
   const ORDER = stackOrder(items)
   const prefix = (i: number): string => `rgba(${10 + i},${20 + i},${30 + i},`
 
-  function run(): { base: FakeCanvas; layers: Map<string, number>; flat: FakeCanvas | null; done: boolean } {
+  function run(
+    scene: SceneItem[] = items,
+    dpr = 1
+  ): { base: FakeCanvas; layers: Map<string, number>; made: FakeCanvas[]; flat: FakeCanvas | null; done: boolean } {
     let t = 0
     const queue: Array<() => void> = []
     const made: FakeCanvas[] = []
     const base = fakeCanvas('base', 200, 200)
     const fx = fakeCanvas('fx', 200, 200)
     let done = false
-    animateScene({ canvas: base as never, ctx: base.ctx, dpr: 1 }, { canvas: fx as never, ctx: fx.ctx, dpr: 1 }, items, {
+    animateScene({ canvas: base as never, ctx: base.ctx, dpr }, { canvas: fx as never, ctx: fx.ctx, dpr }, scene, {
       createCanvas: (w, h) => {
         const c = fakeCanvas(`c${made.length}`, w, h)
         made.push(c)
@@ -156,15 +159,17 @@ describe('an animated scene stacks like the finished one (US-073)', () => {
     const layers = new Map<string, number>()
     for (const c of made.slice(1)) {
       const first = c.fills[0] ?? ''
-      const at = items.findIndex((_, i) => first.startsWith(prefix(i)))
+      const at = scene.findIndex((_, i) => first.startsWith(prefix(i)))
       if (at >= 0) layers.set(c.id, at)
     }
-    return { base, layers, flat: made[0] ?? null, done }
+    return { base, layers, made, flat: made[0] ?? null, done }
   }
 
   it('draws the wet layers over the flat picture in stacking order on every frame', () => {
-    const { base, layers, done } = run()
+    const { base, layers, made, done } = run()
     expect(done).toBe(true)
+    // Every scratch layer belongs to a mark the test can name.
+    expect(layers.size).toBe(made.length - 1)
     let sawTwoWet = false
     for (const frameImages of base.images) {
       if (frameImages.length === 0) continue
@@ -191,5 +196,80 @@ describe('an animated scene stacks like the finished one (US-073)', () => {
     }
     expect(firsts(flat!.fills)).toEqual(ORDER)
     expect(firsts(still.fills)).toEqual(ORDER)
+  })
+})
+
+describe('animated scene details (US-073 review)', () => {
+  it("lands a long stroke's splat only after the stroke is done", () => {
+    // A 3 s stroke would otherwise land its drops at 0.84 of the way and
+    // paint its last bristles over them.
+    let t = 0
+    const queue: Array<() => void> = []
+    const fx = { width: 100, height: 100, drawn: [] as number[] }
+    const base = { width: 100, height: 100 }
+    const order: string[] = []
+    const ctxFor = (name: string): CanvasRenderingContext2D =>
+      new Proxy({} as Record<string, unknown>, {
+        get: () => () => undefined,
+        set: (_t, key, value) => {
+          if (key === 'fillStyle' && name === 'layer') order.push(String(value).startsWith('rgba(9,9,9,') ? 'splat' : 'stroke')
+          return true
+        }
+      }) as unknown as CanvasRenderingContext2D
+    const item: SceneItem = {
+      start: 0,
+      dur: 3000,
+      stroke: { P: path([[0, 0], [80, 0]], 2), B: brush(1, 4), opts: { width: 6, rgb: [1, 2, 3], core: 0.5 } },
+      splat: { sp: splat(2, 80, 0, { count: 3, mist: 0 }), rgb: [9, 9, 9] }
+    }
+    let n = 0
+    animateScene({ canvas: base as never, ctx: ctxFor('base'), dpr: 1 }, { canvas: fx as never, ctx: ctxFor('fx'), dpr: 1 }, [item], {
+      createCanvas: (w, h) => ({ canvas: { width: w, height: h } as never, ctx: ctxFor(n++ === 0 ? 'flat' : 'layer') }),
+      now: () => t,
+      frame: (cb) => void queue.push(cb)
+    })
+    while (queue.length > 0 && t < 10000) {
+      queue.shift()!()
+      t += 16
+    }
+    // On the wet layer, the drops come after every bristle stroke.
+    const firstSplat = order.indexOf('splat')
+    expect(firstSplat).toBeGreaterThan(0)
+    expect(order.slice(firstSplat).every((x) => x === 'splat')).toBe(true)
+  })
+
+  it('sizes and places layers in device pixels', () => {
+    const sizes: Array<[number, number]> = []
+    const draws: number[][] = []
+    let t = 0
+    const queue: Array<() => void> = []
+    const quiet = (): CanvasRenderingContext2D =>
+      new Proxy({} as Record<string, unknown>, { get: () => () => undefined, set: () => true }) as unknown as CanvasRenderingContext2D
+    const baseCtx = new Proxy({} as Record<string, unknown>, {
+      get: (_t, key) => (key === 'drawImage' ? (...args: unknown[]) => draws.push(args.slice(1) as number[]) : () => undefined),
+      set: () => true
+    }) as unknown as CanvasRenderingContext2D
+    // The quick second dot finishes first and waits on a layer of its
+    // own until the slow first one is done.
+    const dot: SceneItem = { start: 0, dur: 400, dot: { x: 50, y: 40, r: 10, rgb: [1, 1, 1] } }
+    animateScene({ canvas: { width: 400, height: 400 } as never, ctx: baseCtx, dpr: 2 }, null, [dot, { ...dot, start: 50, dur: 100 }], {
+      createCanvas: (w, h) => {
+        sizes.push([w, h])
+        return { canvas: { width: w, height: h } as never, ctx: quiet() }
+      },
+      now: () => t,
+      frame: (cb) => void queue.push(cb)
+    })
+    while (queue.length > 0 && t < 2000) {
+      queue.shift()!()
+      t += 16
+    }
+    // The flat picture is the full canvas; a dot of radius 10 is padded
+    // by 1.6 r + 3 = 19 on each side, so its layer is 38 CSS px square,
+    // 76 device px at dpr 2, placed at 31, 21 in CSS px.
+    expect(sizes[0]).toEqual([400, 400])
+    expect(sizes[1]).toEqual([76, 76])
+    const layerDraw = draws.find((d) => d.length === 4)
+    expect(layerDraw).toEqual([31, 21, 38, 38])
   })
 })
