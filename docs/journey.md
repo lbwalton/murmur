@@ -63,7 +63,7 @@ Named badges for moments belts do not measure: your first dictation, streaks (th
 
 ## What do unlocks actually give me?
 
-Cosmetics only, visible proof of practice: new waveform styles for the pill (pulse arrives with your white belt), accent colors for the waveform (your belt's color always among them once you have a belt; special accents come from specific achievements), and window themes (morning mist arrives at blue belt). Locked items stay visible with exactly how to earn them.
+Cosmetics only, visible proof of practice: new waveform styles for the pill (pulse and ink dabs arrive with your white belt, ink flecks with blue, ink rings with purple, and the ink ribbon with brown), accent colors for the waveform (your belt's color always among them once you have a belt; special accents come from specific achievements), and window themes (morning mist arrives at blue belt). Locked items stay visible with exactly how to earn them.
 
 ## What is the share card?
 

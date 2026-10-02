@@ -22,6 +22,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-074 ink waveforms (built 2026-10-01 on feature/brushwork; reaches you in the next test build). As the founder you have all four unlocked. (1) Open Settings, Look, Waveform, and pick ink dabs. (2) Hold your hotkey and talk for a few seconds: brush dabs should pour in from the right, bright amber at the front and drying to gold as they scroll left; let go and they should cool to gold once, then sink flat as your words land. (3) Do the same with ink flecks (paint flecks that shiver and fling a drop on loud syllables), ink rings (brush arcs rippling out from the dot), and ink ribbon (one stroke, thick when loud, thin when quiet). (4) Under Overlay look, try Compact and Bare with one of them, once over a dark app and once over a white page: in Bare each mark should have a faint dark edge so it reads on white. (5) Tell Claude which, if any, look off.
+
 - [x] US-071 the pill and Settings come back by themselves, live-verified 2026-10-01 on the test build (dictation, Settings, and both pkill checks passed). Merged to main 2026-10-01.
 
 - [ ] US-072 security pass: the test build passed on the Mac 2026-10-01 (it started, dictated with the pill, and Settings worked). Merged to main 2026-10-01. One step left, at the next published release (after the brushwork and design work): (1) let murmur update itself, or quit and reopen it to check sooner; (2) the what's new line on the home tab shows the new version number; (3) dictate one sentence and open Settings once. If all three look normal, tell Claude and the story closes.

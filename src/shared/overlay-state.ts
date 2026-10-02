@@ -30,6 +30,15 @@ export function normalizeOverlayLook(value: unknown): OverlayLook {
   return (OVERLAY_LOOKS as readonly unknown[]).includes(value) ? (value as OverlayLook) : 'pill'
 }
 
+/** The ink waveforms (US-074), drawn with the brush. Each is a
+ *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
+export const INK_STYLES = ['dabs', 'flecks', 'rings', 'ribbon'] as const
+export type InkStyle = (typeof INK_STYLES)[number]
+
+export function isInkStyle(value: unknown): value is InkStyle {
+  return (INK_STYLES as readonly unknown[]).includes(value)
+}
+
 export interface OverlayState {
   phase: OverlayPhase
   /** Epoch ms when recording began; drives the live timer. */

@@ -6,10 +6,12 @@ import {
   type OverlayLook,
   type OverlayPhase,
   type OverlayState,
+  isInkStyle,
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
 import type { OverlayApi } from '../../preload/overlay'
+import { InkWave } from './InkWave'
 import { PulseWave } from './PulseWave'
 import { SpeckleWave } from './SpeckleWave'
 
@@ -112,7 +114,16 @@ export function App(): React.JSX.Element {
         >
           {/* The canvases size their bitmap once on mount, so a change in
               the look being drawn must remount them. */}
-          {style === 'pulse' ? (
+          {isInkStyle(style) ? (
+            <InkWave
+              key={`${drawnAs}-${style}`}
+              kind={style}
+              levelRef={levelRef}
+              phase={state.phase}
+              accent={accent}
+              bare={bareNow}
+            />
+          ) : style === 'pulse' ? (
             <PulseWave
               key={drawnAs}
               levelRef={levelRef}

@@ -4,6 +4,7 @@ import cosmetics from '../../shared/cosmetics.json'
 import ranks from '../../shared/ranks.json'
 import type { SessionEvent } from './history'
 import { type CosmeticsFile, computeCosmetics, resolveAccentColor } from './cosmetics'
+import { INK_STYLES } from './overlay-state'
 import { type RanksFile, computeProgress } from './ranks'
 
 const SPEC = cosmetics as unknown as CosmeticsFile
@@ -21,6 +22,28 @@ function sessions(days: number, wordsPerDay: number): SessionEvent[] {
     wpm: 100
   }))
 }
+
+describe('ink overlay styles (US-074)', () => {
+  const inkUnlocked = (days: number, words: number): string[] => {
+    const report = computeCosmetics(SPEC, computeProgress(sessions(days, words), LADDER), [])
+    return report.overlayStyles.filter((s) => (INK_STYLES as readonly string[]).includes(s.id) && s.unlocked).map((s) => s.id)
+  }
+
+  it('every ink style is a cosmetic with a belt unlock', () => {
+    for (const id of INK_STYLES) {
+      const item = SPEC.overlayStyles.find((s) => s.id === id)
+      expect(item?.unlock?.rank, id).toBeTruthy()
+    }
+  })
+
+  it('unlock one per belt: dabs white, flecks blue, rings purple, ribbon brown', () => {
+    expect(inkUnlocked(0, 0)).toEqual([])
+    expect(inkUnlocked(1, 200)).toEqual(['dabs'])
+    expect(inkUnlocked(14, 2000)).toEqual(['dabs', 'flecks'])
+    expect(inkUnlocked(45, 2000)).toEqual(['dabs', 'flecks', 'rings'])
+    expect(inkUnlocked(90, 2000)).toEqual(['dabs', 'flecks', 'rings', 'ribbon'])
+  })
+})
 
 describe('cosmetic unlocks', () => {
   it('a fresh user has only the defaults', () => {

@@ -8,6 +8,7 @@ import { devRendererUrl, watchWindow } from '../window-watch'
 import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import {
+  INK_STYLES,
   OVERLAY_LOOKS,
   type OverlayLook,
   OverlayMachine,
@@ -194,7 +195,9 @@ function currentLook(): OverlayLook {
 
 function sendOverlayConfig(): void {
   void (async () => {
-    const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
+    // Smoke walks the ink styles through the setting, so the QA override
+    // must not pin the style there either.
+    const style = (isSmoke ? undefined : process.env.MURMUR_OVERLAY_STYLE) ?? getSettings().overlay.style
     const accent = await resolveAccent()
     aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent, look: currentLook() })
   })()
@@ -486,6 +489,126 @@ export function initOverlay(): void {
       await wait(100)
     }
   })
+
+  registerSmokeCheck('overlayInkStyles', async () => {
+    // Every ink style (US-074) in every look, live in the DOM: its canvas
+    // mounts, actually holds paint while recording, and the window keeps
+    // its flags. The user's style and look are restored afterwards.
+    if (!overlayWindow) return false
+    interface Ink {
+      look: string | undefined
+      phase: string | undefined
+      ink: string | null
+      painted: number
+      print: number
+    }
+    // painted counts marked pixels; print is a cheap fingerprint of the
+    // whole canvas, so two reads apart in time prove it is animating.
+    const read = async (): Promise<Ink> =>
+      JSON.parse(
+        await overlayWindow!.webContents.executeJavaScript(
+          `(() => {
+            const c = document.querySelector('canvas[data-ink]')
+            let painted = 0, print = 0
+            if (c && c.width > 0 && c.height > 0) {
+              const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+              for (let i = 3; i < d.length; i += 4) {
+                if (d[i] > 8) painted++
+                print = (print * 31 + d[i] + d[i - 1]) % 1000000007
+              }
+            }
+            return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, painted, print })
+          })()`
+        )
+      ) as Ink
+    const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    const deadline = Date.now() + 9_000
+    const until = async (ready: (ink: Ink) => boolean, voice = false): Promise<Ink> => {
+      let ink = await read()
+      while (!ready(ink) && Date.now() < deadline) {
+        // A synthetic voice, so dabs and ribbon have height to paint.
+        if (voice) aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, 0.22)
+        await wait(40)
+        ink = await read()
+      }
+      return ink
+    }
+    const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+    try {
+      for (const style of INK_STYLES) {
+        for (const look of OVERLAY_LOOKS) {
+          updateSettings({ overlay: { style, look } })
+          await until((ink) => ink.look === look && ink.ink === style)
+          if (!setOverlayPhase('recording')) return false
+          const live = await until((ink) => ink.phase === 'recording' && ink.painted > 40, true)
+          // The same canvas a moment later must look different: the loop runs.
+          const later = await until((ink) => ink.print !== live.print, true)
+          setOverlayPhase('idle')
+          await until((ink) => ink.phase === 'idle')
+          const flags = !overlayWindow.isFocusable() && overlayWindow.isAlwaysOnTop() && clickThrough
+          const animating = later.print !== live.print
+          if (!(live.ink === style && live.look === look && live.painted > 40 && animating && flags)) {
+            console.log('[murmur] overlayInkStyles failed for', style, look, JSON.stringify({ live, later, flags }))
+            return false
+          }
+        }
+      }
+      return true
+    } finally {
+      setOverlayPhase('idle')
+      updateSettings({ overlay: original })
+      await wait(100)
+    }
+  })
+
+  // Design QA for the ink styles: MURMUR_INK_SHOTS=<dir> with npm run
+  // smoke saves each style in each look after a second and a half of a
+  // synthetic voice, plus the drying state in the pill. Smoke's
+  // throwaway profile and mocks mean no hotkey, mic, or real settings.
+  const shotsDir = process.env.MURMUR_INK_SHOTS
+  if (isSmoke && shotsDir) {
+    for (const look of OVERLAY_LOOKS) {
+      registerSmokeCheck(`overlayInkShots-${look}`, async () => {
+        const win = aliveOverlay()
+        if (!win) return false
+        const { writeFile } = await import('node:fs/promises')
+        const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+        const voice = async (ms: number): Promise<void> => {
+          for (let t = 0; t < ms; t += 33) {
+            const level = 0.04 + 0.2 * Math.abs(Math.sin(t / 110)) * (0.5 + 0.5 * Math.abs(Math.sin(t / 430)))
+            win.webContents.send(IpcChannels.overlayLevel, level)
+            await wait(33)
+          }
+        }
+        const shoot = async (name: string): Promise<void> => {
+          const image = await win.webContents.capturePage()
+          await writeFile(join(shotsDir, `${name}.png`), image.toPNG())
+        }
+        const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+        try {
+          for (const style of INK_STYLES) {
+            updateSettings({ overlay: { style, look } })
+            await wait(250)
+            if (!setOverlayPhase('recording')) return false
+            await voice(1500)
+            await shoot(`${style}-${look}`)
+            if (look === 'pill') {
+              setOverlayPhase('processing')
+              await wait(320)
+              await shoot(`${style}-${look}-drying`)
+            }
+            setOverlayPhase('idle')
+            await wait(150)
+          }
+          return true
+        } finally {
+          setOverlayPhase('idle')
+          updateSettings({ overlay: original })
+          await wait(100)
+        }
+      })
+    }
+  }
 
   registerSmokeCheck('overlayStatesAndTimer', async () => {
     if (!overlayWindow) return false

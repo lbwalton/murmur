@@ -96,7 +96,20 @@ An expansion turns a spoken trigger phrase into a saved snippet: say "insert my 
 
 ## What are the waveform styles?
 
-How the overlay pill visualizes your voice while recording. **Bars** is the classic equalizer. **Speckle** is a dust field that drifts when quiet and vibrates with your speech. **Preview**, beside Overlay look, shows the pill anytime without dictating. More styles arrive as unlockables with the rank system.
+How the overlay pill visualizes your voice while recording. Pick one in Settings, Look, Waveform.
+
+- **Bars** is the classic equalizer.
+- **Speckle** is a dust field that drifts when quiet and vibrates with your speech.
+- **Pulse** sends rings out from the dot as you speak. It arrives with your white belt.
+
+Four more are painted with a brush, and each arrives with a belt:
+
+- **Ink dabs** (white belt) are brush dabs at your voice level. Fresh paint is wet and bright, and it dries to gold as it scrolls away.
+- **Ink flecks** (blue belt) are paint flecks that shiver with your voice and fling a drop on a loud syllable.
+- **Ink rings** (purple belt) are dry-brush arcs that ripple out from the dot and break up as they travel.
+- **Ink ribbon** (brown belt) is one continuous stroke your voice paints, thick when you are loud and thin when you are quiet.
+
+Every ink style follows the same rules: wet paint while you speak, a single sheen as it dries while murmur processes, flat once your words are inserted, a dry grey scrape when no speech was heard, and plain red with no brushwork for an error. With a custom accent color, the paint is your accent and it dries to a darker shade of it. Ink styles work in every overlay look, pill, compact, and bare. **Preview**, beside Overlay look, shows the pill anytime without dictating.
 
 ## How do I make the overlay smaller or less intrusive?
 
@@ -104,7 +117,7 @@ Settings, Look, Overlay look. Three looks:
 
 - **Pill** is the classic: the dot, the waveform, and the timer in a rounded box.
 - **Compact** is the same pill at about two thirds, for when the box covers what you are reading.
-- **Bare** drops the box and the border entirely: just the waveform, with the timer in small type beneath it. Every bar, dot, and ring carries a faint ink edge that hugs it, so the waveform reads over a white page as well as a dark app, and the speckle and pulse fields fade out toward their edges instead of stopping at a line. It just appears, more instrument than window.
+- **Bare** drops the box and the border entirely: just the waveform, with the timer in small type beneath it. Every bar, dot, and ring carries a faint ink edge that hugs it, so the waveform reads over a white page as well as a dark app, and the speckle, pulse, and ink styles fade out toward their edges instead of stopping at a line. It just appears, more instrument than window.
 
 One rule holds in every look: text that has to be read (a hint such as "set a notes folder in settings", an error, no speech) always comes in the full pill, because a sentence with no backing is unreadable over a busy window. In bare, a note or a spoken edit shows its small mode tag but not the gold edge the pill wears, since there is no edge to color. Preview shows the current look without dictating. The overlay never takes focus and clicks pass straight through it in every look, so it can never steal a keystroke from the app you are dictating into.
 
