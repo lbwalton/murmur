@@ -91,7 +91,7 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 ## Known follow-ups (not blocking)
 
-- [ ] Windows CI red since 2026-09-22 (the brain dump merge), found 2026-10-01: every main run failed one smoke check on Windows, notesFallback. Cause found on the Windows runner: the check demanded the Mac's error wording for a folder under a file (Windows says not found); the notes fallback itself works on Windows. Fixed by US-081 (checking off once CI is green on both platforms).
+- [x] Windows CI red since 2026-09-22 (the brain dump merge), found 2026-10-01: every main run failed one smoke check on Windows, notesFallback. Cause found on the Windows runner: the check demanded the Mac's error wording for a folder under a file (Windows says not found); the notes fallback itself works on Windows. Fixed by US-081; CI green on both platforms 2026-10-01 (run 36959520101).
 
 - [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows still waits until it can be proven on the PC.
 
