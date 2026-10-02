@@ -1221,10 +1221,12 @@
     {
       "id": "US-079",
       "title": "Website hero in brushwork",
-      "description": "From the approved preview: the site hero holds a live pill visitors can try (hold a button or the space bar, words land in a message with a flick of paint), painted brushwork around it that paints in once on load and then holds still, and the Bricolage Grotesque headline. Paint level: brushwork.",
+      "description": "From the approved preview: the site hero holds a live pill visitors can try (hold a button or the space bar, words land in a message with a flick of paint), painted brushwork around it that paints in once on load and then holds still, and the Bricolage Grotesque headline. Paint level: brushwork. Added by LaBroi 2026-10-01: once the paint-in finishes, it is the visitor's turn. Their cursor becomes a brush that paints behind the page (thin and dry when fast, a splatter on a quick flick), they can pick a color and clear their strokes, and they can save a poster of their painting with the murmur mark to post anywhere.",
       "acceptance": [
         "The hero demo works with a pointer, a touch, and the space bar, and never asks for the microphone",
         "The brushwork paints in once, then holds; marks keep their stacking order; reduced motion shows the finished painting",
+        "After the paint-in, the visitor paints behind the page: by moving the cursor on a desktop, or by tapping Paint and dragging on a phone so scrolling still works; strokes never land on the headline or the controls; a color row, Clear my strokes, and a pause toggle are keyboard reachable",
+        "Make my poster saves a 4:5 PNG of the painting with the ensō pill lockup and the date, downloads it on a desktop and opens the share sheet on a phone; no data leaves the browser",
         "Bricolage Grotesque loads only on the site with a system fallback",
         "The SEO, AEO, and security header checks still pass; the page stays light enough to load fast on a phone",
         "Live: LaBroi approves the hero on the deployed site"
@@ -1245,7 +1247,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-10-01 by a build agent in ~/Projects/murmur-film (outside the repo), from the approved animatic. out/ holds the 1920x1080 60 fps master (15.000 s), the recomposed 1080x1920 vertical cut (15.000 s), the 6 s bumper, a poster PNG, and a contact sheet. Verified from frames pulled from the rendered MP4s: scene timings match the animatic, the stroke-to-R, splatter-to-ball, and ball-to-dot handoffs read as one object, the last 0.65 s is still, the lockup is centered. Sound is generated in code (scripts/sound.cjs), master at -18.4 LUFS. Remaining: LaBroi watches and approves; the audio has not been listened to yet."
     }
   ]
 }
