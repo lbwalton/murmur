@@ -297,6 +297,12 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
     const before = getSettings().notes
     const blocker = join(app.getPath('userData'), 'smoke-blocker')
     const missing = join(app.getPath('userData'), 'smoke-missing-vault')
+    const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+    const logStart = existsSync(logFile) ? readFileSync(logFile, 'utf8').length : 0
+    // A folder under a regular file is "not a directory" on macOS and
+    // Linux but "not found" on Windows (US-081: the hard-coded ENOTDIR
+    // kept Windows CI red from 2026-09-22). Each OS's own code is right.
+    const blockedReason = process.platform === 'win32' ? 'ENOENT' : 'ENOTDIR'
     try {
       writeFileSync(blocker, 'a regular file where a folder is expected\n')
       updateSettings({ notes: { folder: join(blocker, 'vault'), ...defaults } })
@@ -305,21 +311,30 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
       const gone = saveNote('Notes missing probe.', probeMoment)
       const file = join(fallbackDir(), 'murmur', 'inbox', '2026-09-18.md')
       const content = existsSync(file) ? readFileSync(file, 'utf8') : ''
-      const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
-      const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
-      return (
-        blocked.ok &&
-        blocked.location === 'fallback' &&
-        gone.ok &&
-        gone.location === 'fallback' &&
-        content.includes('## 10:32\n\nNotes fallback probe.\n') &&
-        content.includes('## 10:32\n\nNotes missing probe.\n') &&
-        !existsSync(missing) &&
-        log.includes('[notes] notes folder unreachable reason=ENOTDIR') &&
-        log.includes('[notes] notes folder unreachable reason=ENOENT') &&
-        log.includes('[notes] saved location=fallback file=murmur/inbox/2026-09-18.md') &&
-        getNotesStatus().lastSave?.location === 'fallback'
-      )
+      // Only the lines this check wrote, in order: the blocked folder's
+      // redirect, then the missing folder's.
+      // A log that rotated mid-check starts fresh, so read all of it.
+      const all = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
+      const log = all.length >= logStart ? all.slice(logStart) : all
+      const reasons = log
+        .split('\n')
+        .map((line) => /\[notes\] notes folder unreachable reason=(\w+)/.exec(line)?.[1])
+        .filter((reason): reason is string => reason !== undefined)
+      const conditions = {
+        blockedFellBack: blocked.ok && blocked.location === 'fallback',
+        goneFellBack: gone.ok && gone.location === 'fallback',
+        blockedSaved: content.includes('## 10:32\n\nNotes fallback probe.\n'),
+        goneSaved: content.includes('## 10:32\n\nNotes missing probe.\n'),
+        noGhostFolder: !existsSync(missing),
+        loggedBothRedirects: reasons.length === 2 && reasons[0] === blockedReason && reasons[1] === 'ENOENT',
+        loggedSave: log.includes('[notes] saved location=fallback file=murmur/inbox/2026-09-18.md'),
+        statusFallback: getNotesStatus().lastSave?.location === 'fallback'
+      }
+      const failed = Object.entries(conditions).filter(([, ok]) => !ok).map(([name]) => name)
+      if (failed.length > 0) {
+        console.error(`smoke notesFallback: failed=${failed.join(',')} reasons=${reasons.join(',')} expected=${blockedReason},ENOENT`)
+      }
+      return failed.length === 0
     } finally {
       updateSettings({ notes: before })
     }

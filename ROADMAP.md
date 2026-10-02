@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (62/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (62/73 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -84,3 +84,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business
 - [ ] **US-072** Security pass before go-live: windows load only murmur, the mic stays murmur's, the pricing robot cannot ship
+- [ ] **US-081** Windows CI green again: the notes fallback check, and failures that explain themselves
