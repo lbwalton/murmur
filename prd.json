@@ -1176,7 +1176,7 @@
     {
       "id": "US-076",
       "title": "The Journey, painted: belt, road, gates, and ink stamps",
-      "description": "From the preview LaBroi approved 2026-10-01. The belt is painted fabric with crisp tape stripes, the way stripes go on in a gym. The ladder becomes a road painted in each belt's color up to where you are. The two promotion gates become a stroke for words and tally marks for days on the mat. Achievements become ink stamps, earned ones pressed in ember.",
+      "description": "From the preview LaBroi approved 2026-10-01. The belt is painted fabric with crisp tape stripes, the way stripes go on in a gym. The ladder becomes a road painted in each belt's color up to where you are. The two promotion gates become a stroke for words and tally marks for days on the mat. Achievements become ink stamps, earned ones pressed in ember. LaBroi confirmed it again in the app refresh preview on 2026-10-02: build as shown.",
       "acceptance": [
         "The belt paints in the current belt's fabric color with the rank bar and tape stripes; coral and red belts paint correctly; the founder crown still shows",
         "The road shows every rank, painted to your position, with the next rank marked",
@@ -1267,7 +1267,7 @@
     {
       "id": "US-082",
       "title": "The note receipt: open a note where it landed",
-      "description": "Asked for by LaBroi 2026-10-01: after holding the note chord, he wants a pop-up with a link that opens the note where it was saved. The pill cannot carry a link (it must stay click-through and never take focus), so the receipt is a system notification that can be clicked without taking focus, waits in Notification Center, and follows Do Not Disturb, backed by an Open last note menu item and a last note row on Home. Designed in the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM); which surfaces ship follows LaBroi's pick there.",
+      "description": "Asked for by LaBroi 2026-10-01: after holding the note chord, he wants a pop-up with a link that opens the note where it was saved. The pill cannot carry a link (it must stay click-through and never take focus), so the receipt is a system notification that can be clicked without taking focus, waits in Notification Center, and follows Do Not Disturb, backed by an Open last note menu item and a last note row on Home. Designed in the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM). LaBroi picked all three surfaces on 2026-10-02: the notification, the menu item, and the Home row.",
       "acceptance": [
         "After a note is safely written, a notification names where it landed and shows the note's first line, cut at about 80 characters; clicking it opens that exact file in the default app through the existing safe note opener",
         "macOS offers Show in Finder; Windows offers Open folder",
@@ -1280,6 +1280,128 @@
         "The pill names the file in words on a saved note and stays click-through and unfocusable",
         "A smoke check proves a saved note produces a receipt pointing at the right file and that the opener refuses anything that is not a note",
         "Live: LaBroi dictates a note, clicks the receipt, and lands in the note"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-083",
+      "title": "Look: pick a waveform by watching it",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. The waveform setting is a dropdown of names today, and with seven styles a name like ink flecks means nothing until you see it move. It becomes a grid of live mini pills, one per style, each drawn by the same code as the overlay. Locked styles stay visible, dimmed, with the belt that unlocks them, so the grid also shows the path through the Journey.",
+      "acceptance": [
+        "Settings, Look, Waveform shows one tile per style (bars, speckle, pulse, ink dabs, ink flecks, ink rings, ink ribbon), each a live mini pill drawn by the overlay's own renderers and driven by a made-up voice; the microphone is never touched",
+        "The style in use is marked; clicking an unlocked tile picks it and the next dictation uses it",
+        "Locked tiles are dimmed, name the belt that unlocks them, and cannot be picked",
+        "Keyboard: the grid is one tab stop, arrow keys move between tiles, Enter or Space picks; a screen reader hears each name, whether it is in use, and whether it is locked",
+        "Tiles animate only while they are on screen and the window is open; reduced motion shows a still frame of each",
+        "Settings search still finds Waveform; npm run typecheck, npm run test, and npm run smoke stay green",
+        "Live: LaBroi picks a style from the tiles and dictates with it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-084",
+      "title": "Home: today as one stroke",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Home opens on today. The back today number gets one gold brush stroke under it, as long as today is compared with your typical day, so the day reads at a glance. It is the only painted mark on the page. The last note row under it ships with the note receipt (US-082).",
+      "acceptance": [
+        "Home's back today card draws one gold brush stroke under the number, its length today's time back over a typical day, with a dotted pencil line for the rest of the typical day; a day over typical fills the width",
+        "A typical day is the median time back across active days in the last 28, not counting today; the line under the stroke says it in words, for example 78% of your typical day, 18 min",
+        "With fewer than three active days to compare, the line says the comparison starts after a few days and no stroke is drawn",
+        "The stroke is seeded by the date, so it keeps its shape across opens and re-renders",
+        "Unit tests cover the typical day: the median, too little history, and a day over typical",
+        "Live: LaBroi reads his day from Home"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-085",
+      "title": "Every tab gets its own title",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Every tab opens with the same Push-to-talk dictation block today: it teaches once, then takes about 70 pixels of every page forever. Each tab gets a real title instead, and the how-to stays on Home only until you have dictated a few times.",
+      "acceptance": [
+        "Each tab opens with its own title and one quiet line: Home is Today with the date, Analytics is Your numbers, Wrap-up is Today, wrapped, Journey is your rank with its title, and Settings is Settings",
+        "The shared how-to block is gone from every tab except Home, where it shows with the real hotkey until five dictations exist and then goes for good",
+        "The first-run wizard is unchanged",
+        "npm run typecheck, npm run test, and npm run smoke stay green; the settings capture of each tab shows its title",
+        "Live: LaBroi clicks through the tabs and each one says where he is"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-086",
+      "title": "Analytics in ink",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. The last fourteen days become brush dabs, the same mark as the ink dabs waveform, so the same stroke means the same thing everywhere, with today in gold. The activity wall keeps its colors, painted as small blots instead of flat squares. Every number stays exactly as it is.",
+      "acceptance": [
+        "The fourteen-day chart draws each day as a brush dab exactly as tall as its bar would be, today in brand gold and other days in rice, with the same day labels",
+        "The activity wall keeps its layout and color scale, each active day painted as a small blot and each empty day a faint dot",
+        "Marks are seeded by date, so the same history paints the same chart on every open",
+        "Both charts keep a text label a screen reader can read; the numbers on the page do not change",
+        "Live: LaBroi opens Analytics on his real history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-087",
+      "title": "Wrap-up: the day as a small painting",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Today, wrapped becomes a card painted from the day itself: one stroke per dictation, longer for more words, the day's biggest take in ember. Copy the summary or save the card. It is the daily cousin of the share card (US-078) and shares its painter.",
+      "acceptance": [
+        "The wrap-up card paints one stroke per dictation today, longer for more words, the biggest take in ember, through the brush engine's paintScene so marks stack in start order",
+        "The same day paints the same card; a different day paints a different one",
+        "The summary over the painting (dictations, words, time back, longest take, best pace) stays legible",
+        "Copy summary copies the same text as today; Save card saves a PNG of the card through a save dialog and sends nothing anywhere",
+        "Live: LaBroi saves a card from a real day"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-088",
+      "title": "Empty states that say what to do",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. An empty day reads A quiet day so far today. An empty screen should invite the first action instead: one dry brush mark, the same dry grey scrape the pill shows for no speech, and a sentence that says how to make the first stroke with your real hotkey.",
+      "acceptance": [
+        "Home, Wrap-up, Analytics, and Journey each show, when they have nothing yet, one dry grey brush mark and a sentence naming the real hotkey from settings, for example Hold Alt+Space anywhere and speak. Your first one lands here.",
+        "The empty mark is the pill's dry scrape: never red, never splatter",
+        "Changing the hotkey changes the sentence",
+        "The settings capture with an empty history shows each empty state",
+        "Live: LaBroi sees an empty state on a fresh profile or a quiet morning"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-089",
+      "title": "A painted insignia and tab marker",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02: the tiny belt beside the wordmark is painted like the Journey belt, and the tab you are on gets a short gold brush stroke under it instead of a pill. The smallest change, and the most visible.",
+      "acceptance": [
+        "The insignia beside the wordmark paints the current belt's fabric with its rank bar and tape stripes using the Journey's belt painter; the founder crown still shows",
+        "The current tab gets a short brand gold brush stroke under its label in place of the pill highlight; each tab has its own seed, so a stroke never changes shape when you come back",
+        "The current tab is still announced to screen readers and keyboard focus still shows",
+        "Live: LaBroi sees the insignia and the marker on every tab"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-090",
+      "title": "A long wait still reads as working",
+      "description": "Decided by LaBroi on 2026-10-02: while processing runs long, the drying sheen repeats every 2 seconds. Today the ink pill dries with one sheen and then holds still until the words land, so a long take or a slow provider looks frozen. After the first sheen, a softer one crosses the dried paint every 2 seconds until the words arrive.",
+      "acceptance": [
+        "In processing, the first sheen plays as today; then a softer sheen crosses the dried paint every 2 seconds until the phase changes, on all four ink styles and in the pill, compact, and bare looks",
+        "Reduced motion shows no sheen, as today",
+        "The bars, speckle, and pulse styles are unchanged",
+        "A unit test proves the sheen timing (first sheen, then one every 2 seconds, none after processing ends); the smoke ink shots still save",
+        "Live: LaBroi sees the repeat on a long take"
       ],
       "passes": false,
       "needs_human": true,

@@ -35,7 +35,7 @@ Where paint goes:
 | Journey, promotions, share card | Full. |
 | The pill | The ink waveform styles, earned one per belt. |
 | Launch film | Full. |
-| Settings | None. The app refresh preview proposes a few small touches where something happened; none apply until LaBroi picks them. |
+| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean. |
 | Errors | None. Clean red, never splatter. |
 | Tray icon | None. |
 
@@ -47,6 +47,23 @@ Rules that never bend:
 - Reduced motion shows a still, finished painting, never a blank space.
 - Paint never covers words or controls a person is reading or using.
 
+## Paint in the window
+
+The settings window is where people work, so paint appears only where something happened. LaBroi's picks from the app refresh preview, 2026-10-02:
+
+| Where | The touch | Story |
+| --- | --- | --- |
+| Look | Waveform tiles: each style as a live mini pill; locked ones dimmed with the belt that unlocks them. | US-083 |
+| Home | One gold stroke under back today, today against a typical day; the last note row. | US-084, US-082 |
+| Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-085 |
+| Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-086 |
+| Wrap-up | The day as a small painting, one stroke per dictation, with Save card. | US-087 |
+| Empty states | One dry grey scrape and a sentence with the real hotkey. | US-088 |
+| Header | A painted belt insignia and a short gold stroke under the current tab. | US-089 |
+| Journey | Painted belt, road, gates, and ink stamps. | US-076 |
+
+Paint in the window is static unless the moment moves (a promotion, a live preview tile), seeded by something stable like the date, so a mark keeps its shape across opens.
+
 ## Motion
 
 Four verbs, used everywhere paint moves:
@@ -56,7 +73,7 @@ Four verbs, used everywhere paint moves:
 | Load | The key goes down and the brush gathers paint. | 120 ms, ease in. |
 | Stroke | Bristles drag at your voice's pressure. | Follows the voice; 80 ms attack. |
 | Flick | Paint flies to where it lands. | 280 to 420 ms, cubic-bezier(.16, 1, .3, 1). |
-| Dry | Wet amber cools to gold and goes still. | 600 ms ease out, one sheen. |
+| Dry | Wet amber cools to gold and goes still. | 600 ms ease out, one sheen; while processing runs long, a softer sheen every 2 s. |
 
 One orchestrated moment beats scattered effects: the hero paints in once, a promotion has one ceremony, the pill dries once.
 
@@ -78,7 +95,7 @@ One orchestrated moment beats scattered effects: the hero paints in once, a prom
 | --- | --- |
 | idle | Small, dry, no color, still. Amber never shows at rest. |
 | recording | Wet accent at the voice level, cooling as it ages. |
-| processing | Cools to dry color with one sheen, then holds. |
+| processing | Cools to dry color with one sheen, then a softer sheen every 2 seconds until the words land. |
 | inserted | Sinks flat. |
 | no speech | A dry grey scrape. |
 | error | Plain red, no bristles. |
@@ -89,5 +106,5 @@ The default accent is signal amber drying to brand gold; a custom accent dries t
 
 - `MURMUR_INK_SHOTS=<dir> npm run smoke` saves every ink style in every look, plus drying and error, from the hermetic smoke run.
 - Settings shots: run `npx electron-vite build`, then `MURMUR_SETTINGS_CAPTURE=<file.png> node_modules/.bin/electron . --murmur-userdata=<scratch dir>`. It saves a shot of the settings window and exits. Add `MURMUR_SETTINGS_PAGE` (home, analytics, wrap-up, or journey; anything else fails the run), `MURMUR_SETTINGS_ANCHOR`, or `MURMUR_SETTINGS_SEARCH` to choose what shows. Seed the scratch dir with a `settings.json` holding `{"onboarding": {"completed": true}}` (without it the setup wizard covers everything) and a `history.jsonl` of made-up sessions so the screens look real. The path is used exactly as given, so never pass the real profile, and the run starts the keyboard hook for a few seconds.
-- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LaBroi 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), proposed with his picks pending. Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
+- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LaBroi 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), picked by LaBroi 2026-10-02 (all yes; the stories are US-082 to US-090). Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
 - The launch film lives outside the repo in `~/Projects/murmur-film` (HyperFrames; `scripts/build.sh` re-renders).

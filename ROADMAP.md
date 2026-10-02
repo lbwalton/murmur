@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (64/82 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (64/90 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -94,3 +94,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
 - [ ] **US-082** The note receipt: open a note where it landed
+- [ ] **US-083** Look: pick a waveform by watching it
+- [ ] **US-084** Home: today as one stroke
+- [ ] **US-085** Every tab gets its own title
+- [ ] **US-086** Analytics in ink
+- [ ] **US-087** Wrap-up: the day as a small painting
+- [ ] **US-088** Empty states that say what to do
+- [ ] **US-089** A painted insignia and tab marker
+- [ ] **US-090** A long wait still reads as working
