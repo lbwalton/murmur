@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (63/80 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (63/81 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -92,3 +92,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-078** A share card painted from your month
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
+- [ ] **US-081** The note receipt: open a note where it landed

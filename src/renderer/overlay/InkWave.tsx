@@ -298,7 +298,11 @@ export function InkWave(props: {
         } else if (mode === 'nospeech') {
           col = C.dim
           a *= 0.6
-        } else a *= 0.5
+        } else {
+          // At rest every fleck is plain: amber is for live paint only.
+          col = C.text
+          a *= 0.5
+        }
         if (reduced) jit = 0
         const a1 = (now / 190) * d.sp + d.ph
         const a2 = (now / 160) * d.sp + d.ph * 1.7

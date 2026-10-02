@@ -527,6 +527,26 @@ app.whenReady().then(async () => {
   if (settingsCapture && settingsWindow) {
     await settingsLoaded.catch(() => undefined)
     await new Promise((resolve) => setTimeout(resolve, 900))
+    // MURMUR_SETTINGS_PAGE=home, analytics, wrap-up, or journey opens
+    // that tab first, so every page can be shot (brushwork design QA).
+    const page = process.env.MURMUR_SETTINGS_PAGE
+    if (page) {
+      const found = await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === ${JSON.stringify(page)})
+          if (nav) nav.click()
+          return Boolean(nav)
+        })()`
+      )
+      // A misspelled page, or the setup wizard covering the tabs, must
+      // fail loudly rather than quietly shoot the wrong screen.
+      if (!found) {
+        console.error(`[murmur] MURMUR_SETTINGS_PAGE: no tab named ${JSON.stringify(page)}`)
+        app.exit(1)
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600))
+    }
     // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
     // row to the top, and unfolds any disclosure in its panel, so any
     // row can be shot, not just the home tab.

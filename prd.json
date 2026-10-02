@@ -1156,7 +1156,7 @@
       ],
       "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-10-01 on feature/brushwork; automated criteria verified, the live check is in HANDOFF. overlay/InkWave.tsx draws dabs, flecks, rings, and ribbon; INK_STYLES lives in shared/overlay-state.ts; cosmetics.json unlocks them at white, blue, purple, brown. Verified: cosmetics.test.ts covers the unlock ladder (fresh user none, white dabs, blue adds flecks, purple adds rings, brown adds ribbon) and that every ink style has a belt unlock. Smoke checks overlayInk-dabs, -flecks, -rings, -ribbon (one per style, own deadline) walk all three looks: the canvas reports a recording frame with paint on it, then changes across two reads at least 100 ms apart, and the window stays unfocusable, on top, and click-through; the user's style and look are restored. A sabotage run (the loop stopped after one frame) failed every ink check, so the checks can fail. Review gate fixes 2026-10-01: the default accent arrives from main as signal amber, so amber now counts as the default and dries to brand gold (it was drying to a muddy amber); errors are clean red with no bristles in every style (plain bars, plain dots, the heart dot, one plain line) and rings and flung drops clear on error and no speech; reduced motion holds flecks still; the scroll offset freezes on release so nothing jumps; every style gets the one drying sheen; the ribbon skips a per-frame smoothing pass; a throw in a frame no longer freezes the loop. Design QA: MURMUR_INK_SHOTS=<dir> node scripts/smoke.js saves each style in each look plus drying and error in the pill (Claude reviewed them 2026-10-01: pill, compact, bare over dark and white, drying gold, clean red errors). docs/settings.md and docs/journey.md updated. MURMUR_OVERLAY_STYLE is ignored under smoke, like MURMUR_OVERLAY_LOOK. Full smoke run takes 35 s of the harness's 60 s. Live-verified 2026-10-01 by LaBroi on the signed test build (installed by direct swap, asar probe confirmed the ink code): every style, look, and state worked as it should."
+      "notes": "Built 2026-10-01 on feature/brushwork; automated criteria verified, the live check is in HANDOFF. overlay/InkWave.tsx draws dabs, flecks, rings, and ribbon; INK_STYLES lives in shared/overlay-state.ts; cosmetics.json unlocks them at white, blue, purple, brown. Verified: cosmetics.test.ts covers the unlock ladder (fresh user none, white dabs, blue adds flecks, purple adds rings, brown adds ribbon) and that every ink style has a belt unlock. Smoke checks overlayInk-dabs, -flecks, -rings, -ribbon (one per style, own deadline) walk all three looks: the canvas reports a recording frame with paint on it, then changes across two reads at least 100 ms apart, and the window stays unfocusable, on top, and click-through; the user's style and look are restored. A sabotage run (the loop stopped after one frame) failed every ink check, so the checks can fail. Review gate fixes 2026-10-01: the default accent arrives from main as signal amber, so amber now counts as the default and dries to brand gold (it was drying to a muddy amber); errors are clean red with no bristles in every style (plain bars, plain dots, the heart dot, one plain line) and rings and flung drops clear on error and no speech; reduced motion holds flecks still; the scroll offset freezes on release so nothing jumps; every style gets the one drying sheen; the ribbon skips a per-frame smoothing pass; a throw in a frame no longer freezes the loop. Design QA: MURMUR_INK_SHOTS=<dir> node scripts/smoke.js saves each style in each look plus drying and error in the pill (Claude reviewed them 2026-10-01: pill, compact, bare over dark and white, drying gold, clean red errors). docs/settings.md and docs/journey.md updated. MURMUR_OVERLAY_STYLE is ignored under smoke, like MURMUR_OVERLAY_LOOK. Full smoke run takes 35 s of the harness's 60 s. Live-verified 2026-10-01 by LaBroi on the signed test build (installed by direct swap, asar probe confirmed the ink code): every style, look, and state worked as it should. Review gate 2026-10-01 (second pass): ink flecks no longer keep a hint of amber at rest; idle is plain for every style."
     },
     {
       "id": "US-075",
@@ -1248,6 +1248,27 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-10-01 by a build agent in ~/Projects/murmur-film (outside the repo), from the approved animatic. out/ holds the 1920x1080 60 fps master (15.000 s), the recomposed 1080x1920 vertical cut (15.000 s), the 6 s bumper, a poster PNG, and a contact sheet. Verified from frames pulled from the rendered MP4s: scene timings match the animatic, the stroke-to-R, splatter-to-ball, and ball-to-dot handoffs read as one object, the last 0.65 s is still, the lockup is centered. Sound is generated in code (scripts/sound.cjs), master at -18.4 LUFS. Remaining: LaBroi watches and approves; the audio has not been listened to yet."
+    },
+    {
+      "id": "US-081",
+      "title": "The note receipt: open a note where it landed",
+      "description": "Asked for by LaBroi 2026-10-01: after holding the note chord, he wants a pop-up with a link that opens the note where it was saved. The pill cannot carry a link (it must stay click-through and never take focus), so the receipt is a system notification that can be clicked without taking focus, waits in Notification Center, and follows Do Not Disturb, backed by an Open last note menu item and a last note row on Home. Designed in the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM); which surfaces ship follows LaBroi's pick there.",
+      "acceptance": [
+        "After a note is safely written, a notification names where it landed and shows the note's first line, cut at about 80 characters; clicking it opens that exact file in the default app through the existing safe note opener",
+        "macOS offers Show in Finder; Windows offers Open folder",
+        "When sorting moves the note, the receipt is replaced by one naming the destination, with and N more for a brain dump that lands in several places, and clicking opens the first",
+        "When the notes folder was unreachable, the receipt names murmur's data folder and offers Choose folder",
+        "Only one note receipt shows at a time; a new one replaces the last",
+        "The tray menu (the menu bar icon on macOS) gains Open last note; Home shows the last note with Open and Show in Finder (Open folder on Windows)",
+        "Clicking a receipt opens the note and never brings up murmur's own window",
+        "Settings, Notes, has a Note receipts switch, on by default; docs/notes.md describes the receipt and the switch",
+        "The pill names the file in words on a saved note and stays click-through and unfocusable",
+        "A smoke check proves a saved note produces a receipt pointing at the right file and that the opener refuses anything that is not a note",
+        "Live: LaBroi dictates a note, clicks the receipt, and lands in the note"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
     }
   ]
 }
