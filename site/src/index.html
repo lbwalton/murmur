@@ -24,54 +24,89 @@
     <meta name="twitter:title" content="{{TITLE}}" />
     <meta name="twitter:description" content="{{DESCRIPTION}}" />
     <meta name="twitter:image" content="{{SITE_URL}}/og.png" />
+    {{FONT_PRELOAD}}
     <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="paint.css" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="pill.css" />
     <script src="app.js"></script>
+    <script type="module" src="hero.js"></script>
     <script type="application/ld+json">{{JSON_LD}}</script>
   </head>
   <body>
     <header class="top">
-      <a class="wordmark" href="./" aria-label="murmur home">murmur</a>
+      <a class="wordmark" href="./" aria-label="murmur home"><canvas class="mark" id="mark" width="30" height="30" aria-hidden="true"></canvas><span>murmur</span></a>
       <nav aria-label="Project">
+        {{FILM_NAV}}
         <a href="{{DOCS_URL}}" target="_blank" rel="noopener noreferrer">docs</a>
         <a href="{{REPO_URL}}" target="_blank" rel="noopener noreferrer">github</a>
       </nav>
     </header>
 
     <main>
-      <section class="hero" aria-label="What murmur is">
-        <p class="label">push-to-talk dictation</p>
-        <h1>Hold a key, speak, and your words land at your cursor.</h1>
-        <p class="lede">murmur is dictation for Mac and Windows. Release the key and clean text appears in whatever app you are typing in.</p>
+      <section class="hero" id="hero" aria-label="What murmur is">
+        <canvas class="layer" id="heroPaint" aria-hidden="true"></canvas>
+        <canvas class="layer" id="heroUser" aria-hidden="true"></canvas>
+        <canvas class="layer" id="heroFx" aria-hidden="true"></canvas>
+        <div class="hero-grid">
+          <div class="hero-copy" id="heroCopy">
+            <p class="label">push-to-talk dictation</p>
+            <h1>Hold a key, speak, and your words land at your cursor.</h1>
+            <p class="lede">murmur is dictation for Mac and Windows. Release the key and clean text appears in whatever app you are typing in.</p>
 
-        <div class="stage">
-          <div class="pill" role="img" aria-label="murmur's waveform pill, live while the hotkey is held">
-            <span class="dot" aria-hidden="true"></span>
-            <span class="wave" aria-hidden="true">{{PILL_BARS}}</span>
+            <div class="download" id="download">
+              <p class="dl-intro">murmur runs on Mac and Windows.</p>
+              <div class="dl-row">
+                <div class="dl dl-mac">
+                  <a class="btn" href="{{MAC_URL}}">Download for Mac</a>
+                  <p class="meta">{{MACOS}} · Apple silicon and Intel</p>
+                </div>
+                <div class="dl dl-windows">
+                  <a class="btn" href="{{WINDOWS_URL}}">Download for Windows</a>
+                  <p class="meta">{{WINDOWS}} · standard and ARM PCs</p>
+                  <p class="note">Windows may show a blue Windows protected your PC screen, because the installer is not signed yet. Click More info, then Run anyway. <a href="{{WINDOWS_SCREEN_URL}}" target="_blank" rel="noopener noreferrer">Why</a></p>
+                </div>
+              </div>
+              <p class="also">
+                <a class="also-windows" href="#download" data-switch="windows">Also for Windows</a>
+                <a class="also-mac" href="#download" data-switch="mac">Also for Mac</a>
+              </p>
+              <p class="fine">Free and open source. Bring your own key; your audio goes only to the provider you choose.</p>
+            </div>
+          </div>
+
+          <div class="stage" id="stage">
+            <div class="win" id="win" aria-label="A message being written with murmur">
+              <div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Message</span></div>
+              <p class="win-to">To: Sam</p>
+              <p class="win-body" id="winBody"><span id="seedText">Saw the draft. Two notes before we send it.</span><span id="landed"></span><i class="caret" id="caret" aria-hidden="true"></i></p>
+            </div>
+            <div class="pill" id="heroPill" data-phase="idle">
+              <span class="dot" aria-hidden="true"></span>
+              <canvas class="wave" id="heroWave" aria-hidden="true"></canvas>
+              <span class="wave wave-still" aria-hidden="true">{{PILL_BARS}}</span>
+              <span class="status" id="heroStatus" aria-live="polite"></span>
+            </div>
+            <button type="button" class="hold" id="holdBtn" aria-pressed="false" hidden>Hold to speak</button>
+            <p class="hint" id="holdHint" hidden>or hold the space bar. Nothing records: this demo never uses your microphone.</p>
+            <canvas class="stage-fx" id="stageFx" aria-hidden="true"></canvas>
           </div>
         </div>
 
-        <div class="download" id="download">
-          <p class="dl-intro">murmur runs on Mac and Windows.</p>
-          <div class="dl-row">
-            <div class="dl dl-mac">
-              <a class="btn" href="{{MAC_URL}}">Download for Mac</a>
-              <p class="meta">{{MACOS}} · Apple silicon and Intel</p>
-            </div>
-            <div class="dl dl-windows">
-              <a class="btn" href="{{WINDOWS_URL}}">Download for Windows</a>
-              <p class="meta">{{WINDOWS}} · standard and ARM PCs</p>
-              <p class="note">Windows may show a blue Windows protected your PC screen, because the installer is not signed yet. Click More info, then Run anyway. <a href="{{WINDOWS_SCREEN_URL}}" target="_blank" rel="noopener noreferrer">Why</a></p>
+        <div class="yourturn-row">
+          <div class="yourturn" id="yourTurn" role="group" aria-label="Paint the background" hidden>
+            <p class="yt-label" id="ytLabel">Your turn. Move your cursor to paint.</p>
+            <div class="yt-colors" id="ytColors" role="radiogroup" aria-label="Paint color"></div>
+            <div class="yt-actions">
+              <button type="button" class="chip-btn" id="ytToggle" aria-pressed="true">Pause painting</button>
+              <button type="button" class="chip-btn" id="ytClear">Clear my strokes</button>
+              <button type="button" class="chip-btn chip-primary" id="ytPoster">Make my poster</button>
             </div>
           </div>
-          <p class="also">
-            <a class="also-windows" href="#download" data-switch="windows">Also for Windows</a>
-            <a class="also-mac" href="#download" data-switch="mac">Also for Mac</a>
-          </p>
-          <p class="fine">Free and open source. Bring your own key; your audio goes only to the provider you choose.</p>
         </div>
       </section>
+
+      {{FILM}}
 
       <section class="faq" aria-label="Questions">
         <h2 class="label">questions</h2>
@@ -80,12 +115,24 @@
     </main>
 
     <footer class="bottom">
-      <p>murmur · version {{VERSION}} · GPL-3.0 · © 2026 Eze Media LLC</p>
+      <p>murmur · version {{VERSION}} · GPL-3.0 · © 2026 Eze Media LLC{{SUPPORT}}</p>
       <nav aria-label="More">
         <a href="{{RELEASES_URL}}" target="_blank" rel="noopener noreferrer">releases</a>
         <a href="{{DOCS_URL}}" target="_blank" rel="noopener noreferrer">docs</a>
         <a href="{{REPO_URL}}" target="_blank" rel="noopener noreferrer">source</a>
       </nav>
     </footer>
+
+    <div class="poster-modal" id="posterModal" role="dialog" aria-modal="true" aria-labelledby="posterTitle" hidden>
+      <div class="pm-card">
+        <h2 id="posterTitle">Your poster</h2>
+        <img id="posterImg" alt="Your painting with the murmur mark and today's date, sized for a post" width="1080" height="1350" />
+        <p class="pm-note">Made in your browser. Nothing you painted leaves this page unless you save or share it.</p>
+        <div class="pm-actions">
+          <button type="button" class="chip-btn chip-primary" id="posterSave">Save poster</button>
+          <button type="button" class="chip-btn" id="posterClose">Close</button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
