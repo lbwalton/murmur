@@ -11,6 +11,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [x] Old iOS App Store listing renamed to Undertone Voice Dictation (2026-09-07). Its bundle id and SKU are frozen by Apple and invisible to users; murmur iOS gets a fresh app record later (US-034).
 - [x] The undertone repo's 5 Dependabot alerts: patched by an agent 2026-09-07, awaiting GitHub's rescan to confirm they close.
 - [x] US-040 done 2026-09-08: history rewritten and rescanned clean, repo recreated fresh and flipped PUBLIC, v0.1.0 released. If any other machine has an old clone of murmur, re-clone it; the archive lives private at lbwalton/murmur-prerewrite-archive and can be deleted once you are comfortable.
+- [ ] US-083 Windows asar fuses (built 2026-10-02 on feature/win-fuses, proven on the PC with test builds; ships in the next release). After that release is out, on the PC: (1) install it (or let murmur update itself), then dictate once with the pill showing and open Settings. (2) When the release after that comes out, confirm murmur updates itself and still starts. Tell Claude how each went. If murmur ever refuses to start on Windows after an update, reinstall from the download link and tell Claude.
 
 ## Shipped
 
@@ -93,7 +94,7 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 - [x] Windows CI red since 2026-09-22 (the brain dump merge), found 2026-10-01: every main run failed one smoke check on Windows, notesFallback. Cause found on the Windows runner: the check demanded the Mac's error wording for a folder under a file (Windows says not found); the notes fallback itself works on Windows. Fixed by US-081; CI green on both platforms 2026-10-01 (run 36959520101).
 
-- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows still waits until it can be proven on the PC.
+- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows gets them in US-083 (built and proven on the PC 2026-10-02).
 
 - [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
 
