@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (61/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (62/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -65,6 +65,7 @@
 - [x] **US-061** Overlay look: pill, compact, or bare
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
+- [x] **US-071** The pill and settings rebuild themselves after a renderer dies
 
 ## Built, awaiting live verification
 
@@ -75,7 +76,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
-- [ ] **US-071** The pill and settings rebuild themselves after a renderer dies
 
 ## To do
 
