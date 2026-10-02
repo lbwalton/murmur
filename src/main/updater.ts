@@ -29,7 +29,7 @@ export function initUpdater(): void {
       const autoUpdater = await loadAutoUpdater()
       return typeof autoUpdater?.checkForUpdates === 'function'
     } catch (error) {
-      console.error('[murmur] updater smoke:', error)
+      console.error(`smoke updater: ${error instanceof Error ? error.message : String(error)}`)
       return false
     }
   })

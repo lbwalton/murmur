@@ -34,8 +34,10 @@ export async function runSmokeAndExit(): Promise<void> {
   for (const [name, fn] of registry) {
     try {
       checks[name] = await withTimeout(fn)
-    } catch {
+    } catch (error) {
       checks[name] = false
+      // A check that throws explains itself like one that returns false.
+      console.error(`smoke ${name}: threw ${error instanceof Error ? error.message : String(error)}`)
     }
     // Progress to stderr so a hung run shows exactly where it stopped.
     console.error(`smoke: ${name}=${checks[name]}`)

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (62/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (63/73 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -66,6 +66,7 @@
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
 - [x] **US-071** The pill and settings rebuild themselves after a renderer dies
+- [x] **US-081** Windows CI green again: the notes fallback check, and failures that explain themselves
 
 ## Built, awaiting live verification
 
