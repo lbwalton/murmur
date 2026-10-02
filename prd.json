@@ -1125,6 +1125,127 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-10-01 on feature/hardening; automated and packaged criteria verified, live step in HANDOFF. Code: window-watch devRendererUrl (dev server only when unpackaged); hardening-rules.ts (refusedSwitch, permissionAllowed, navigationAllowed, unit tested) and hardening.ts (web-contents-created lock on will-navigate, will-redirect, window.open, webviews; permission request and check handlers; smoke checks navigationLock and permissionLock, both proven able to fail by a sabotage run); index.ts exits a packaged build carrying remote-debugging-port or -pipe; audio marks itself the microphone window; scripts/after-pack.js adds the Mac-only fuses; shared/catalog.ts catalogRefusal applied to refreshed and cached catalogs; notes/safe-fs.ts (replaceViaTemp with an exclusive temp file, openableNote) used by ticking, the inbox open, and reminder clicks; CSPs gained object-src, base-uri, form-action none; perms:open checks own keys; Electron 44.5.1 (newest 44.x on npm 2026-10-01; 44.3 to 44.5 carry Chromium and V8 security backports per releases.electronjs.org, checked 2026-10-01); npm audit 0 for runtime and dev. Packaged checks 2026-10-01 on a signed, unnotarized universal build (electron-builder --mac --universal --dir), every launch an isolated smoke run, the real profile's settings and key files untouched: fuses read RunAsNode, NodeOptions, NodeCliInspect Disabled and EmbeddedAsarIntegrityValidation, OnlyLoadAppFromAsar Enabled, codesign verifies; smoke ok under arm64 and under Rosetta (a first Rosetta run failed four checks at load average near 60; rerun at normal load passed, as did 0.1.8 under Rosetta as a control); ELECTRON_RENDERER_URL pointed at a local server drew 0 requests from the packaged app and 3 from the dev build (control); --remote-debugging-port and --remote-debugging-pipe each exit 1 with no DevTools endpoint, while the dev build printed one (control); the same one-letter edit inside out/main/index.js in app.asar ran fine in a copy of the shipped 0.1.8 and stopped the new build with ASAR Integrity Violation. Not proven: an app folder planted beside or instead of app.asar never executed even on 0.1.8 in this test, so the claim rests on the asar edit; only-load-from-asar is on regardless. pricing-watch: it had never run (every run 2026-09-14 to 2026-09-28 failed asking for an OIDC token), so the vendor-page path was never live. Now: job permissions read-only for the agent, github_token passed, pages fetched by scripts/pricing-watch.js before the agent, the agent limited to Read, Grep, Glob and Edit on the catalog and pricing-sources/notes.json (Bash, WebFetch, WebSearch, Write denied), checker and starting catalog set aside in RUNNER_TEMP before the agent and the job's .git deleted right after it, so no git (checkout's post-job cleanup included) reads anything the agent touched (review gate findings: a git filter written into .git/config would otherwise run), change list re-checked and applied to main by the push job with a PR body built from ids and source URLs only; actions pinned to v4.4.0, v4.6.2, v4.3.0, v1.0.238. Unit tests in scripts/lib/pricing-watch.test.js; check and apply exercised end to end locally; fetch tried locally (13 of 13 sources). The tool fence checked locally 2026-10-01: claude -p with the workflow's exact allowed and denied tools edited the catalog and notes files and was refused on another file and on .git/config. Workflow run from the branch 2026-10-01 (run 36851610029, the first successful run ever): all 13 sources fetched, the agent finished in 21 turns with 0 permission denials, the check found 0 changes and kept 3 notes (openai gpt-5.6-luna and whisper-1, mistral mistral-small-latest, each ambiguous), and the push job applied nothing and skipped the PR as designed. CI on draft PR 5: macOS green; Windows red only on notesFallback, which has failed the same way on every main run since 2026-09-27 (pre-existing, logged in HANDOFF). Review gate 2026-10-01 findings fixed: cleanup URL (llmBaseUrl) unchecked by the catalog rule (blocker), id swap past the shipped-preset rule, git after the agent, three smoke assertions that could not fail, an overclaiming comment, malformed dates, a silent refused reminder open. Deferred, with reasons: Windows asar fuses and update signing (US-064, Windows unprovable here); transient clipboard markers (Electron cannot write marker types beside text without a native module); a word-overlap check so cleanup cannot answer a spoken request (quality more than security; the speaker's words would be typed anyway); the unassigned legacy key following a base URL the user picks (low, user-chosen); http base URLs typed for remote hosts; IPC sender checks; note appends that follow a planted link (corruption of a user-owned file, not code execution); MURMUR_DEBUG still opening devtools in packaged builds (support tool; needs hands on the keyboard; LaBroi's call); PowerShell by absolute path; redirect error mode; recovery audio pruned by count rather than retention days; the allow-unsigned-executable-memory entitlement. Seen while testing, not caused here: a keystroke arriving while a smoke run exits can abort uiohook (FATAL uiohook_to_js_event), reproduced on a copy of the shipped 0.1.8 too. Live on the test build 2026-10-01 (LaBroi: all set): murmur started, dictated with the pill, and Settings worked, so the microphone rule and the window locks hold on the real profile. Open: the update half of the live criterion, which needs the next published release (LaBroi: after the brushwork and design work lands). Merged to main 2026-10-01."
+    },
+    {
+      "id": "US-073",
+      "title": "The brush: a seeded paint engine and the paint colors",
+      "description": "Asked for by LaBroi 2026-10-01 (brushwork art direction, see CLAUDE.md). Every painted mark in murmur comes from one engine: a bristle brush that drags along a path with pressure, dry-brush streaks that break up as the paint runs out, and splatter. It is seeded, so the same seed always paints the same mark, which keeps icons deterministic and needs no image files. Marks stack in the order they start painting, the same while animating and after, so nothing jumps layers when an animation settles (LaBroi's round-2 note on the preview). The paint colors smoke, rice paper, and ember join the night studio tokens.",
+      "acceptance": [
+        "One brush module serves every renderer: seeded bristles, pressure along the stroke, dry-brush breakup toward the tail, splatter, and a texture offset so a scrolling stroke keeps its pattern",
+        "Deterministic: the same seed and path give the same bristles, the same resampled path, and the same splatter, proven by unit tests",
+        "Stacking: marks are drawn in the order they start, animated or static, proven by a unit test on the ordering",
+        "tokens.css gains smoke, rice paper, and ember with their roles (ember is splatter and celebration only, never an error); the design lint stays clean",
+        "npm run typecheck, npm run test, and npm run smoke stay green; no new runtime dependencies"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Built 2026-10-01 on feature/brushwork. src/renderer/brush.ts is the one engine (seeded bristles, pressure, dry-brush streaks, splatter, sOff texture offset, stackOrder and paintScene for scenes); any renderer imports it, the overlay first (US-074). Verified: brush.test.ts proves the same seed gives the same random sequence, bristles, and splatter, a different seed differs, bristles span the full width, paths resample evenly with normals and keep raw corners, and stackOrder orders marks by start time with ties in list order. tokens.css gained smoke, rice, and ember with their roles; npm run test (design lint included) clean. npm run typecheck, npm run test, and npm run smoke (67 checks) green."
+    },
+    {
+      "id": "US-074",
+      "title": "Ink overlay styles: dabs, flecks, rings, and ribbon, one per belt",
+      "description": "LaBroi picked all four ink styles from the preview on 2026-10-01, unlocking one per belt: dabs (ink bars) at white, flecks (ink speckle) at blue, rings (ink pulse) at purple, and ribbon (new: one continuous stroke the voice paints) at brown. Every ink style follows the same rules: wet paint in the accent while live, drying to brand gold (or a darker shade of a custom accent) when the brush lifts, a single sheen while processing, flat when inserted, a dry grey scrape for no speech, and clean red with no bristles for an error. They work in all three looks: the pill, compact, and bare with its ink edge and soft fade, which LaBroi asked to have built in without a separate preview.",
+      "acceptance": [
+        "cosmetics.json lists dabs, flecks, rings, and ribbon with unlocks white, blue, purple, and brown; a locked style shows how to earn it and cannot be picked; unit tests cover the unlock mapping",
+        "Each ink style draws in the pill, compact, and bare looks; in bare it carries the ink edge and fades out before the canvas edge; hints, errors, and no speech still get the full pill",
+        "Phase behavior matches the rules above for idle, recording, processing, inserted, no speech, and error; the default accent dries from amber to brand gold; a custom accent dries to a darker shade of itself",
+        "Reduced motion: no jitter, no flung drops, no ring births; the level still reads",
+        "A smoke check paints every ink style in every look while recording and proves each canvas drew, the window stayed unfocusable and click-through, and the user's style and look were restored",
+        "docs/settings.md and docs/journey.md describe the ink styles and when each unlocks",
+        "Live: each ink style looks right on LaBroi's Mac in each look with a real voice"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-01 on feature/brushwork: overlay/InkWave.tsx draws dabs, flecks, rings, and ribbon; INK_STYLES lives in shared/overlay-state.ts; cosmetics.json unlocks them at white, blue, purple, brown. Verified: cosmetics.test.ts covers the unlock ladder (fresh user none, white dabs, blue adds flecks, purple adds rings, brown adds ribbon) and that every ink style has a belt unlock. Smoke check overlayInkStyles paints every style in every look while recording, proves the canvas holds paint and changes between two reads (the loop runs inside Electron), and that the window stays unfocusable, on top, and click-through, restoring the user's style and look. Design QA: MURMUR_INK_SHOTS=<dir> npm run smoke saves each style in each look after 1.5 s of a synthetic voice, plus the drying state; LaBroi's picks look right in pill, compact, bare over dark and over white, and drying (reviewed by Claude 2026-10-01). Reduced motion turns off jitter, flung drops, ring births, and the drying sheen. docs/settings.md and docs/journey.md updated. MURMUR_OVERLAY_STYLE is now ignored under smoke, like MURMUR_OVERLAY_LOOK. Remaining: the live check in HANDOFF."
+    },
+    {
+      "id": "US-075",
+      "title": "The ensō pill mark: app icon, tray, and favicon",
+      "description": "LaBroi picked the ensō pill on 2026-10-01: the pill drawn as one open loop of the brush with the amber live dot inside, so the logo and the app's signature are the same shape. gen-icons.js paints it with the brush engine at 64 pixels and up and draws a clean version for the tray and anything 32 pixels or smaller, where brushwork turns to mud.",
+      "acceptance": [
+        "App icons (png, icns, ico) show the brushed ensō pill on ink; the same seed gives the same bytes on every run",
+        "Tray icons and every size at or under 32 pixels use the clean drawn ensō pill; macOS template images still recolor with the system",
+        "The website favicon and social card use the mark",
+        "No binary is tracked in the repo; icons still generate on postinstall",
+        "Live: the dock, taskbar, and tray icons read clearly on LaBroi's Mac"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-076",
+      "title": "The Journey, painted: belt, road, gates, and ink stamps",
+      "description": "From the preview LaBroi approved 2026-10-01. The belt is painted fabric with crisp tape stripes, the way stripes go on in a gym. The ladder becomes a road painted in each belt's color up to where you are. The two promotion gates become a stroke for words and tally marks for days on the mat. Achievements become ink stamps, earned ones pressed in ember.",
+      "acceptance": [
+        "The belt paints in the current belt's fabric color with the rank bar and tape stripes; coral and red belts paint correctly; the founder crown still shows",
+        "The road shows every rank, painted to your position, with the next rank marked",
+        "The words gate is a stroke filling toward the next rank; the days gate is tally marks, painted for days you have and pencil for days you need",
+        "Achievements render as stamps, earned in ember and unearned as faint outlines with the earn hint",
+        "Reduced motion paints the finished state with no animation",
+        "Live: the Journey looks right on LaBroi's real history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-077",
+      "title": "Belt promotion ceremony",
+      "description": "LaBroi picked the full ceremony on 2026-10-01: when a new belt is earned, the next time the Journey opens one big stroke in the new belt's color sweeps across with splatter and the rank is set large with its title and the words and days that earned it. Stripes get a smaller moment: the tape slaps onto the belt.",
+      "acceptance": [
+        "A new belt plays the ceremony once, the next time the Journey opens; it never appears over the app being dictated into",
+        "A new stripe plays the tape moment on the belt instead",
+        "Click, Escape, or Enter dismisses; focus returns where it was; it ends on its own after a few seconds",
+        "Reduced motion shows the finished painting and text with no motion",
+        "Live: LaBroi sees a ceremony from a real or simulated promotion"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-078",
+      "title": "A share card painted from your month",
+      "description": "From the approved preview: the share card's background is painted from your own last month of dictation, one stroke per day you dictated, longer for more words, heavier for more sessions, ember on your three biggest days. The rank uses Bricolage Grotesque, which LaBroi allowed on the share card.",
+      "acceptance": [
+        "The card paints from the real history: one stroke per active day in the last thirty days, sized by words and sessions, ember on the top three days",
+        "Two different histories give two different cards; the same history gives the same card",
+        "Text stays legible over the paint; the saved PNG matches what is shown",
+        "Live: LaBroi saves a card from his history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-079",
+      "title": "Website hero in brushwork",
+      "description": "From the approved preview: the site hero holds a live pill visitors can try (hold a button or the space bar, words land in a message with a flick of paint), painted brushwork around it that paints in once on load and then holds still, and the Bricolage Grotesque headline. Paint level: brushwork.",
+      "acceptance": [
+        "The hero demo works with a pointer, a touch, and the space bar, and never asks for the microphone",
+        "The brushwork paints in once, then holds; marks keep their stacking order; reduced motion shows the finished painting",
+        "Bricolage Grotesque loads only on the site with a system fallback",
+        "The SEO, AEO, and security header checks still pass; the page stays light enough to load fast on a phone",
+        "Live: LaBroi approves the hero on the deployed site"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-080",
+      "title": "Launch film: One drop",
+      "description": "LaBroi approved the animatic on 2026-10-01: fifteen seconds, no voiceover. A drop of ember paint hits the key, the splash ring becomes the pill, the voice paints a stroke that writes the first letter of the dictated sentence and settles into the typeface as the camera pulls out, the splatter gathers into a ball that bounces through an email, a doc, and a code editor, and the ball bounces into the ensō pill logo, cooling from ember to amber, with a slow pull out to the lockup. Built in HyperFrames from the same brush code; the project lives outside this repo at ~/Projects/murmur-film so renders and video tooling never enter it.",
+      "acceptance": [
+        "A 1920 by 1080, 60 fps master of 15 seconds, a recomposed 9:16 cut, a 6 second bumper, and a poster frame",
+        "Sound made from scratch: a drip, a key click, dry bristles riding the voice, soft ticks, one low tone; no stock music and no voice",
+        "Frames checked from the rendered files: transitions read as one continuous object and nothing jumps layers",
+        "Live: LaBroi watches and approves the cuts"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
     }
   ]
 }

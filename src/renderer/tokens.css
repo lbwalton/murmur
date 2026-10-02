@@ -30,6 +30,14 @@
   --brand: #d9a441;
   --brand-edge: rgba(217, 164, 65, 0.5);
 
+  /* paint (US-073, the brushwork art direction, LaBroi 2026-10-01).
+     Brush marks only, never interface chrome. Smoke is background
+     brushwork, rice paper is chalky strokes and paper grounds, ember is
+     splatter and celebration. Ember never marks an error; red does. */
+  --smoke: #3a3c44;
+  --rice: #e9e3d6;
+  --ember: #e8582b;
+
   /* signals */
   --amber: #f0a44b;
   --amber-soft: rgba(240, 164, 75, 0.55);
