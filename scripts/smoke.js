@@ -57,6 +57,15 @@ child.on('close', (code) => {
     process.exit(1)
   }
   const result = JSON.parse(line.slice('SMOKE_RESULT '.length))
+  // A failed check's own explanation ("smoke <check>: ...") is the only
+  // way to read a failure on a machine nobody can sit at (CI's Windows
+  // runner); relay those lines and the failed progress lines.
+  if (!result.ok) {
+    const why = output
+      .split('\n')
+      .filter((l) => /^smoke [A-Za-z]+:/.test(l) || /^smoke: [A-Za-z]+=false/.test(l))
+    if (why.length > 0) console.error(why.join('\n'))
+  }
 
   // Second boot through the REAL quit path (app.quit, not app.exit): the
   // process must exit on its own. Regression guard for quit hangs caught

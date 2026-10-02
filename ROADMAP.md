@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (63/81 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (64/82 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -67,6 +67,7 @@
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
 - [x] **US-071** The pill and settings rebuild themselves after a renderer dies
 - [x] **US-074** Ink overlay styles: dabs, flecks, rings, and ribbon, one per belt
+- [x] **US-081** Windows CI green again: the notes fallback check, and failures that explain themselves
 
 ## Built, awaiting live verification
 
@@ -92,4 +93,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-078** A share card painted from your month
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
-- [ ] **US-081** The note receipt: open a note where it landed
+- [ ] **US-082** The note receipt: open a note where it landed

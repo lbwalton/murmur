@@ -1251,6 +1251,21 @@
     },
     {
       "id": "US-081",
+      "title": "Windows CI green again: the notes fallback check, and failures that explain themselves",
+      "description": "Found 2026-10-01 during US-072 (numbered US-081 because the brushwork branch holds US-073 to US-080) and taken on by LaBroi's call the same day. CI's Windows job has failed on every main push since the brain dump merge on 2026-09-22, always on one smoke check, notesFallback, while macOS stayed green; nobody could see why, because scripts/smoke.js relayed only the pass or fail summary and threw away each check's own explanation. Windows CI is the only place murmur runs on Windows before LaBroi's PC does, so while it stays red a new Windows break looks exactly like the old one, and the design and brushwork work coming next changes the windows. This story makes a failing smoke check explain itself in CI, finds the real cause on the Windows runner, and fixes the check or the product, whichever is wrong, without weakening what the check proves: both unreachable folders still fall back to the data folder, nothing is lost, and the missing folder is never recreated.",
+      "acceptance": [
+        "When smoke fails, scripts/smoke.js prints each failed check's own explanation lines, so a CI log names the condition that failed",
+        "The notesFallback check names each condition it checks and reports which failed",
+        "The cause of the Windows failure is identified from the Windows runner's output and fixed at its source (the check or the product), recorded in notes",
+        "notesFallback still proves both unreachable folders fall back to the data folder with both notes saved, the missing folder is never created, and each redirect is logged",
+        "CI is green on macOS and Windows; npm run typecheck, npm run test, and npm run smoke stay green on the Mac"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Built 2026-10-01 on fix/notes-windows-ci in a separate worktree. First red main run: 2026-09-22 (29f726e, the brain dump merge that brought the check in); every red run since failed only notesFallback on Windows. scripts/smoke.js now relays, when smoke fails, every line a check writes as 'smoke <check>: ...' plus the failed progress lines; smoke.ts logs a check that throws in that form; the updater check's message moved to that form. Diagnostic run on the Windows runner (CI run 36958881169): failed=loggedNotDir, with both redirect lines reading reason=ENOENT. Cause: a notes folder path under a regular file is ENOTDIR on macOS and Linux but ENOENT on Windows, and the check hard-coded ENOTDIR; every product condition passed there (both notes fell back and saved, no ghost folder, the save logged, status fallback). The check was wrong, not the product: saveNote never branches on the code, and docs/notes.md names no code. Fix: the check expects each platform's own code for the blocked folder, requires exactly two redirect lines in order (blocked, then missing ENOENT) among the lines written during the check, and falls back to the whole log if it rotated mid-check (review gate). Review gate 2026-10-01 caught a committed node_modules symlink from the worktree (the branch was rebuilt without it, and .gitignore now matches node_modules without a trailing slash so a symlink is ignored too) and the US-073 id collision with the brushwork branch. Verified 2026-10-01: CI run 36959520101 on 6555565 green on macos-latest and windows-latest, the first green Windows run since 2026-09-22; npm run typecheck, npm run test (629), and npm run smoke green on the Mac; review gate re-check clean. Merged to main 2026-10-01."
+    },
+    {
+      "id": "US-082",
       "title": "The note receipt: open a note where it landed",
       "description": "Asked for by LaBroi 2026-10-01: after holding the note chord, he wants a pop-up with a link that opens the note where it was saved. The pill cannot carry a link (it must stay click-through and never take focus), so the receipt is a system notification that can be clicked without taking focus, waits in Notification Center, and follows Do Not Disturb, backed by an Open last note menu item and a last note row on Home. Designed in the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM); which surfaces ship follows LaBroi's pick there.",
       "acceptance": [
