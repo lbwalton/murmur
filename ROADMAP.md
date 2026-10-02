@@ -78,6 +78,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
+- [ ] **US-082** The note receipt: open a note where it landed
 
 ## To do
 
@@ -93,7 +94,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-078** A share card painted from your month
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
-- [ ] **US-082** The note receipt: open a note where it landed
 - [ ] **US-083** Look: pick a waveform by watching it
 - [ ] **US-084** Home: today as one stroke
 - [ ] **US-085** Every tab gets its own title

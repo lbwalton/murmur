@@ -20,7 +20,9 @@ import { resolveTransformConnection } from './formatter'
 import { getSettings } from './settings'
 import { insertText } from './insertion'
 import { type NoteSaveResult, notesConfigured, saveNote } from './notes'
-import { rememberForSort, sortNote } from './notes/sorter'
+import { noteSaved, sortWithReceipt } from './notes/receipt'
+import { rememberForSort } from './notes/sorter'
+import { type LastNote, pillPlace } from '../shared/receipt'
 import {
   getOverlayPhase,
   getOverlayState,
@@ -271,7 +273,7 @@ async function fileNote(
   heardText: string,
   finalText: string,
   timing: { startedAt: number; at?: number; retried?: boolean }
-): Promise<{ saved: NoteSaveResult | null; words: number; wpm: number | null }> {
+): Promise<{ saved: NoteSaveResult | null; receipt: LastNote | null; words: number; wpm: number | null }> {
   let saved: NoteSaveResult | null = null
   try {
     // A retried note files under the day and time it was spoken.
@@ -279,23 +281,30 @@ async function fileNote(
   } catch (error) {
     console.error('[murmur] note save threw:', error)
   }
+  // The receipt (US-082) follows a note that is safely on disk.
+  let receipt: LastNote | null = null
+  try {
+    if (saved?.ok) receipt = noteSaved(saved, finalText)
+  } catch (error) {
+    console.error('[murmur] note receipt threw:', error)
+  }
   const { recordSession } = await import('./history')
   const event = recordSession({ ...timing, rawText: heardText, finalText, kind: 'note' })
-  return { saved, words: event?.words ?? 0, wpm: event?.wpm ?? null }
+  return { saved, receipt, words: event?.words ?? 0, wpm: event?.wpm ?? null }
 }
 
 /** The sorter runs after the words are safe; it decides for itself
  *  whether sorting is on. Nothing here waits. */
-function startSort(finalText: string, saved: NoteSaveResult): void {
+function startSort(finalText: string, saved: NoteSaveResult, receipt: LastNote | null): void {
   const forSort = { text: finalText, base: saved.base, inboxRelative: saved.relative, when: saved.when }
   rememberForSort(forSort)
-  void sortNote(forSort).catch((error) => console.error('[murmur] sort threw:', error))
+  void sortWithReceipt(forSort, receipt).catch((error) => console.error('[murmur] sort threw:', error))
 }
 
 /** A live note's delivery: filed and recorded, then the overlay, then
  *  the sorter once the pill has spoken. */
 async function deliverNote(heardText: string, finalText: string, peak: number): Promise<void> {
-  const { saved, words, wpm } = await fileNote(heardText, finalText, { startedAt: sessionStartedAt })
+  const { saved, receipt, words, wpm } = await fileNote(heardText, finalText, { startedAt: sessionStartedAt })
   if (!saved?.ok) {
     void logDictation(`note-failed words=${words} peak=${peak.toFixed(4)}`)
     setOverlayPhase('error')
@@ -303,10 +312,12 @@ async function deliverNote(heardText: string, finalText: string, peak: number): 
     return
   }
   void logDictation(`delivered kind=note location=${saved.location} words=${words} peak=${peak.toFixed(4)}`)
-  setOverlayPhase('inserted', wpm)
+  // The pill says where in words (noted to inbox); the click-through
+  // link is the receipt.
+  setOverlayPhase('inserted', wpm, { hint: pillPlace(saved.relative, saved.location) })
   playCue('noted')
   refreshOverlayConfig()
-  startSort(finalText, saved)
+  startSort(finalText, saved, receipt)
 }
 
 export type RetriedDelivery =
@@ -343,9 +354,9 @@ export async function deliverRetried(
   if (finalText === null || finalText.trim().length === 0) return nothing
 
   if (take.kind === 'note') {
-    const { saved, words } = await fileNote(heardText, finalText, timing)
+    const { saved, receipt, words } = await fileNote(heardText, finalText, timing)
     if (!saved?.ok) return { ok: true, words, location: 'history' }
-    startSort(finalText, saved)
+    startSort(finalText, saved, receipt)
     return { ok: true, words, location: saved.location }
   }
 
@@ -441,7 +452,8 @@ export function initDictation(): void {
     // first (no folder set means a hint, not a recording), then a full
     // record, transcribe, format, and append into a smoke vault; the
     // other chord's stop cannot end the take, history tags the session
-    // as a note, and the pill says noted.
+    // as a note, the pill says noted to inbox, and the receipt (US-082)
+    // points at the file.
     const { getSettings, updateSettings } = await import('./settings')
     const { existsSync, mkdirSync, readFileSync } = await import('node:fs')
     const { join } = await import('node:path')
@@ -474,11 +486,15 @@ export function initDictation(): void {
       const { readHistory } = await import('./history')
       const events = readHistory()
       const last = events[events.length - 1]
+      const { getLastNote } = await import('./notes/receipt')
       return (
         hinted &&
         stillRecording &&
         getOverlayPhase() === 'inserted' &&
         getOverlayState().mode === 'note' &&
+        // The pill names where in words, and the receipt points there.
+        getOverlayState().hint === 'inbox' &&
+        getLastNote()?.inbox.file === file &&
         /^- \d\d:\d\d /.test(content) &&
         content.endsWith(`${expected}\n`) &&
         last?.kind === 'note' &&

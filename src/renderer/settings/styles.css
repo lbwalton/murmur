@@ -132,6 +132,26 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* The note receipt's Home row (US-082). */
+.last-note-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.last-note-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.last-note-line {
+  overflow-wrap: anywhere;
+}
+
+.last-note-said {
+  margin-top: 6px;
+}
+
 /* Takes waiting to retry (US-068): the log's own rows, with the reason
    underneath in place of words. Quiet, like the rest of the log. */
 .waiting-head {

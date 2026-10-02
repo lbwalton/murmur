@@ -46,9 +46,9 @@ export interface OverlayState {
   /** Words per minute of the finished session, shown on inserted. */
   wpm: number | null
   mode: OverlayMode
-  /** The message of a hint phase, or an error's reason when the error
-   *  has one worth saying (a selection that could not be read); null
-   *  otherwise. */
+  /** The message of a hint phase, an error's reason when the error has
+   *  one worth saying (a selection that could not be read), or where a
+   *  note landed on inserted (inbox); null otherwise. */
   hint: string | null
 }
 
@@ -95,7 +95,7 @@ export class OverlayMachine {
       startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null,
       wpm: to === 'inserted' ? wpm : null,
       mode,
-      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' ? (extras.hint ?? null) : null
+      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' || to === 'inserted' ? (extras.hint ?? null) : null
     }
     return this.get()
   }

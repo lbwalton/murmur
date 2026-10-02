@@ -21,12 +21,20 @@ describe('mergeSettings', () => {
       ideasTemplate: 'murmur/ideas.md',
       filedHeadingTemplate: '## {date} {topic}',
       topicHeadings: false,
+      receipts: true,
       reminders: { enabled: false, times: ['08:30', '13:00', '17:30'] },
       connection: { enabled: false, baseUrl: '', llmModel: '', protocol: 'chat', threshold: 0.5 }
     })
     const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault' } })
     expect(merged.notes.folder).toBe('/tmp/vault')
     expect(merged.notes.pathTemplate).toBe(DEFAULT_SETTINGS.notes.pathTemplate)
+  })
+
+  it('turns note receipts on for a profile saved before they existed', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, { notes: { folder: '/tmp/vault', sort: true } })
+    expect(merged.notes.receipts).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { notes: { receipts: false } }).notes.receipts).toBe(false)
+    expect(mergeSettings(DEFAULT_SETTINGS, { notes: { receipts: 'no' } }).notes.receipts).toBe(true)
   })
 
   it('fills missing keys from defaults and keeps stored values', () => {

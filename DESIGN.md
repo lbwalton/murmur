@@ -35,7 +35,7 @@ Where paint goes:
 | Journey, promotions, share card | Full. |
 | The pill | The ink waveform styles, earned one per belt. |
 | Launch film | Full. |
-| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean. |
+| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles are the one exception, because each is a live preview of the pill. |
 | Errors | None. Clean red, never splatter. |
 | Tray icon | None. |
 

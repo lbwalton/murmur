@@ -19,6 +19,7 @@ import {
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { NOTE_FOLDER_HINT } from '../../shared/notes'
+import { pillPlace } from '../../shared/receipt'
 import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
@@ -413,6 +414,8 @@ export function initOverlay(): void {
       height: number
       timer?: string
       hint?: string
+      noted?: string
+      notedFits: boolean
       fits: boolean
     }
     const read = (): Promise<string> => {
@@ -428,6 +431,14 @@ export function initOverlay(): void {
             height: box ? Math.round(box.height) : 0,
             timer: (document.querySelector('[data-timer]') || {}).textContent,
             hint: (document.querySelector('[data-hint]') || {}).textContent,
+            noted: (document.querySelector('[data-wpm]') || {}).textContent,
+            notedFits: (() => {
+              const slot = document.querySelector('.status-slot')
+              const r = slot ? slot.getBoundingClientRect() : null
+              // The words are whole: no ellipsis took over (US-082 review).
+              return r !== null && box !== null && r.height <= 20 && r.right <= box.right && r.left >= box.left &&
+                slot.scrollWidth <= slot.clientWidth
+            })(),
             fits: box !== null && box.left >= 0 && box.right <= window.innerWidth
           })
         })()`
@@ -448,6 +459,7 @@ export function initOverlay(): void {
       }
       return shape
     }
+    const LONGEST_PLACE = pillPlace('Notes/quarterly-planning.md', 'folder')
     const original = getSettings().overlay.look
     try {
       for (const look of OVERLAY_LOOKS) {
@@ -464,6 +476,14 @@ export function initOverlay(): void {
         const hint = await until((shape) => shape.hint === NOTE_FOLDER_HINT && shape.height === 56)
         setOverlayPhase('idle')
         await until((shape) => shape.hint === undefined)
+        // A saved note names where it landed on one line (US-082), and
+        // the longest place the pill can say still fits its window.
+        setOverlayPhase('recording', null, { mode: 'note' })
+        setOverlayPhase('processing')
+        setOverlayPhase('inserted', 12, { hint: LONGEST_PLACE })
+        const noted = await until((shape) => shape.noted === `noted to ${LONGEST_PLACE}`)
+        setOverlayPhase('idle')
+        await until((shape) => shape.noted === undefined)
         const flags = !overlayWindow.isFocusable() && overlayWindow.isAlwaysOnTop() && clickThrough
         const ok =
           recording.look === look &&
@@ -474,9 +494,12 @@ export function initOverlay(): void {
           hint.height === 56 &&
           hint.fits &&
           hint.hint === NOTE_FOLDER_HINT &&
+          noted.noted === `noted to ${LONGEST_PLACE}` &&
+          noted.notedFits &&
+          noted.fits &&
           flags
         if (!ok) {
-          console.log('[murmur] overlayLooks failed for', look, JSON.stringify({ recording, hint, flags }))
+          console.error('smoke overlayLooks: failed for', look, JSON.stringify({ recording, hint, noted, flags }))
           return false
         }
       }

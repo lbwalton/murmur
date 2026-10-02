@@ -163,7 +163,9 @@ export function App(): React.JSX.Element {
         {state.phase === 'inserted' && (
           <span className="ok" data-wpm="">
             {state.mode === 'note'
-              ? 'noted'
+              ? state.hint
+                ? `noted to ${state.hint}`
+                : 'noted'
               : state.mode === 'transform'
                 ? 'transformed'
                 : state.wpm && state.wpm > 0

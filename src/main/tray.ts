@@ -26,16 +26,23 @@ export interface TrayHandlers {
   /** Open today's notes inbox (US-050); the item shows only while a
    *  notes folder is set. */
   onOpenInbox?: () => void
+  /** Open the newest note where it landed (US-082); shows once a note
+   *  has been saved. */
+  onOpenLastNote?: () => void
 }
 
 let trayHandlers: TrayHandlers | null = null
 let inboxVisible = false
+let lastNoteVisible = false
 
 function buildMenu(): Menu {
   const handlers = trayHandlers
   if (!handlers) return Menu.buildFromTemplate([])
   return Menu.buildFromTemplate([
     { label: 'Open murmur', click: handlers.onOpen },
+    ...(lastNoteVisible && handlers.onOpenLastNote
+      ? [{ label: 'Open last note', click: handlers.onOpenLastNote }]
+      : []),
     ...(inboxVisible && handlers.onOpenInbox
       ? [{ label: "Open today's inbox", click: handlers.onOpenInbox }]
       : []),
@@ -48,6 +55,18 @@ function buildMenu(): Menu {
 export function setTrayInboxVisible(visible: boolean): void {
   if (visible === inboxVisible) return
   inboxVisible = visible
+  tray?.setContextMenu(buildMenu())
+}
+
+/** The menu's labels as built now; the smoke checks read them. */
+export function trayMenuLabels(): string[] {
+  return buildMenu().items.map((item) => item.label)
+}
+
+/** Show Open last note once there is a note to open. */
+export function setTrayLastNoteVisible(visible: boolean): void {
+  if (visible === lastNoteVisible) return
+  lastNoteVisible = visible
   tray?.setContextMenu(buildMenu())
 }
 

@@ -116,3 +116,22 @@ describe('error reasons (US-054)', () => {
     expect(m.transition('error')?.hint).toBeNull()
   })
 })
+
+describe('where a note landed (US-082)', () => {
+  it('inserted can say where, and it clears with the next press', () => {
+    const m = new OverlayMachine()
+    m.transition('recording', undefined, null, { mode: 'note' })
+    m.transition('processing')
+    const noted = m.transition('inserted', undefined, 12, { hint: 'inbox' })
+    expect(noted?.hint).toBe('inbox')
+    expect(noted?.mode).toBe('note')
+    expect(m.transition('recording')?.hint).toBeNull()
+  })
+
+  it('a plain insert carries no place', () => {
+    const m = new OverlayMachine()
+    m.transition('recording')
+    m.transition('processing')
+    expect(m.transition('inserted', undefined, 140)?.hint).toBeNull()
+  })
+})

@@ -22,12 +22,13 @@ import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
+import { getLastNote, onLastNoteChanged, openLastNote } from './notes/receipt'
 import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayInboxVisible } from './tray'
+import { createTray, getTray, setTrayInboxVisible, setTrayLastNoteVisible } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -383,11 +384,17 @@ app.whenReady().then(async () => {
     onQuit: () => app.quit(),
     onOpenInbox: () => {
       void openTodayNote()
+    },
+    onOpenLastNote: () => {
+      void openLastNote('tray')
     }
   })
   // The inbox item exists only while there is a folder to open.
   setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
   onSettingsChanged((s) => setTrayInboxVisible(s.notes.folder.trim() !== ''))
+  // Open last note appears once a note has been saved, and stays.
+  setTrayLastNoteVisible(getLastNote() !== null)
+  onLastNoteChanged((note) => setTrayLastNoteVisible(note !== null))
   // Time back rides the tray tooltip, so it comes up after the tray.
   const { initTimeBack } = await import('./timeback')
   initTimeBack({ openWrapup })
