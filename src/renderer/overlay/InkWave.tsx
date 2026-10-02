@@ -122,10 +122,15 @@ export function InkWave(props: {
       ink: tokenColor('--ink', [15, 14, 17])
     }
     // Wet is the accent; dry is brand gold for the default, or the
-    // custom accent a shade darker, the same pigment once it sets.
+    // custom accent a shade darker, the same pigment once it sets. Main
+    // always sends a color, the default included, so signal amber itself
+    // counts as the default (review gate 2026-10-01).
+    const isAmber = (c: Rgb): boolean =>
+      Math.abs(c[0] - C.amber[0]) + Math.abs(c[1] - C.amber[1]) + Math.abs(c[2] - C.amber[2]) < 6
     const palette = (): { wet: Rgb; dry: Rgb } => {
       const custom = parseColor(accentRef.current)
-      return custom ? { wet: custom, dry: mix(custom, C.ink, 0.35) } : { wet: C.amber, dry: C.gold }
+      if (!custom || isAmber(custom)) return { wet: C.amber, dry: C.gold }
+      return { wet: custom, dry: mix(custom, C.ink, 0.35) }
     }
 
     let lastPhase = phaseRef.current
@@ -137,6 +142,8 @@ export function InkWave(props: {
     let pushes = 0
     let lastPush = modeAt
     let snap: Rgb[] = []
+    // Where the columns sat when the brush lifted, so release never jumps.
+    let frozen = 0
     let smoothed = 0
     const rings: Ring[] = []
     let lastBirth = 0
@@ -177,9 +184,16 @@ export function InkWave(props: {
     const setMode = (m: Mode, now: number): void => {
       const p = palette()
       snap = cols.map((c) => colorRec(c, now, p))
+      frozen = mode === 'rec' ? clamp((now - lastPush) / PUSH_MS, 0, 1) : frozen
       mode = m
       modeAt = now
+      // Errors and no speech start clean: no ring or flung drop carries over.
+      if (m === 'err' || m === 'nospeech') {
+        rings.length = 0
+        flung.length = 0
+      }
       if (m === 'rec' || m === 'idle') {
+        frozen = 0
         for (const c of cols) {
           c.lv = 0
           c.born = -1e9
@@ -203,13 +217,13 @@ export function InkWave(props: {
       const gap = fw / COLS
       const maxH = fh * 0.94
       const mt = now - modeAt
-      const phase = mode === 'rec' ? clamp((now - lastPush) / PUSH_MS, 0, 1) : 0
+      const phase = mode === 'rec' ? clamp((now - lastPush) / PUSH_MS, 0, 1) : frozen
       for (let i = 0; i < COLS; i++) {
         const c = cols[i]
         let lv = c.lv
         let rgb = C.text
         let alpha = 1
-        let dry = 0.32
+        const dry = mode === 'nospeech' ? 0.95 : 0.32
         if (mode === 'rec') {
           rgb = colorRec(c, now, p)
           if (lv < 0.05) {
@@ -218,7 +232,6 @@ export function InkWave(props: {
           }
         } else if (mode === 'proc') {
           rgb = mix(snap[i] ?? p.dry, p.dry, easeOut(clamp(mt / 600, 0, 1)))
-          if (!reduced) alpha = 0.72 + 0.28 * Math.exp(-Math.pow(((mt / 700) * 1.5 - i / COLS) * 5, 2))
           if (lv < 0.05) {
             rgb = C.text
             alpha = 0.3
@@ -231,11 +244,9 @@ export function InkWave(props: {
         } else if (mode === 'err') {
           rgb = C.red
           lv = 0.1 + (i % 4 === 0 ? 0.12 : 0)
-          dry = 0
         } else if (mode === 'nospeech') {
           rgb = C.dim
           lv = 0.05 + 0.08 * Math.abs(Math.sin(i * 1.3))
-          dry = 0.95
           alpha = 0.9
         } else {
           lv = 0.05
@@ -244,9 +255,20 @@ export function InkWave(props: {
         const hh = Math.max(3, 3 + lv * (maxH - 3))
         const x = fx0 + (i + 0.5 - phase) * gap
         if (x < fx0 + 1 || x > fx0 + fw - 1) continue
+        if (mode === 'err') {
+          // Clean red: a plain rounded bar, no bristles.
+          paint.strokeStyle = rgba(rgb, alpha)
+          paint.lineWidth = gap * 0.5
+          paint.lineCap = 'round'
+          paint.beginPath()
+          paint.moveTo(x, cy + hh / 2)
+          paint.lineTo(x, cy - hh / 2)
+          paint.stroke()
+          continue
+        }
         const tilt = (((c.seed * 37) % 7) - 3) * 0.22
         const P = path([[x + tilt, cy + hh / 2], [x - tilt, cy - hh / 2]], 1.3)
-        stroke(paint, P, cachedBrush(c.seed % 64, 9), { width: gap * 0.7, rgb, alpha, dry, ts: 0.18, te: 0.3, core: mode === 'err' ? 1 : 0.35 })
+        stroke(paint, P, cachedBrush(c.seed % 64, 9), { width: gap * 0.7, rgb, alpha, dry, ts: 0.18, te: 0.3, core: 0.35 })
       }
     }
 
@@ -284,9 +306,17 @@ export function InkWave(props: {
         const y = d.y + Math.cos(a2) * jit
         const f = fade(x, y)
         if (f <= 0) continue
+        if (mode === 'err') {
+          // Clean red: plain round dots, never paint flecks.
+          paint.fillStyle = rgba(col, Math.min(1, a) * f)
+          paint.beginPath()
+          paint.arc(x, y, d.r * 0.8, 0, Math.PI * 2)
+          paint.fill()
+          continue
+        }
         // A fleck of paint: stretched along its motion, a satellite drop
-        // trailing the bigger ones.
-        const ang = Math.atan2(-Math.sin(a2) / 160, Math.cos(a1) / 190)
+        // trailing the bigger ones. Reduced motion holds every fleck still.
+        const ang = reduced ? d.ph : Math.atan2(-Math.sin(a2) / 160, Math.cos(a1) / 190)
         const st = 1 + e * 1.8
         paint.fillStyle = rgba(col, Math.min(1, a) * f)
         paint.beginPath()
@@ -363,7 +393,7 @@ export function InkWave(props: {
       const mt = now - modeAt
       const live = mode === 'rec'
       const sp = fw / (RIBBON_SAMPLES - 2)
-      const phase = live ? clamp((now - lastPush) / PUSH_MS, 0, 1) : 0
+      const phase = live ? clamp((now - lastPush) / PUSH_MS, 0, 1) : frozen
       const flat = mode === 'ins' ? 1 - easeOut(clamp(mt / 420, 0, 1)) * 0.85 : 1
       const lvAt = (u: number): number => {
         const x = u * (RIBBON_SAMPLES - 1)
@@ -373,9 +403,20 @@ export function InkWave(props: {
       const quiet = mode === 'idle' || mode === 'nospeech' || mode === 'err'
       const pts: Array<[number, number]> = []
       for (let i = 0; i < RIBBON_SAMPLES; i++) pts.push([fx0 + (i - phase) * sp, cy + Math.sin((pushes + i) * 0.45) * 1.1])
-      const P = path(pts, 1.2)
+      if (mode === 'err') {
+        // Clean red: one plain line, no bristles.
+        paint.strokeStyle = rgba(C.red)
+        paint.lineWidth = Math.max(2, fh * 0.22)
+        paint.lineCap = 'round'
+        paint.beginPath()
+        paint.moveTo(fx0 + fw * 0.08, cy)
+        paint.lineTo(fx0 + fw * 0.97, cy)
+        paint.stroke()
+        return
+      }
+      const P = path(pts, 1.2, true)
       const pf = (u: number): number => {
-        const base = quiet ? (mode === 'err' ? 0.26 : 0.12) : 0.1 + 0.9 * lvAt(u) * flat
+        const base = quiet ? 0.12 : 0.1 + 0.9 * lvAt(u) * flat
         return base * clamp(u / 0.08, 0, 1) * (1 - 0.6 * clamp((u - 0.97) / 0.03, 0, 1))
       }
       const wet = live || mode === 'proc' || mode === 'ins'
@@ -385,8 +426,8 @@ export function InkWave(props: {
         width: fh * 0.95,
         rgb: body,
         alpha: mode === 'idle' ? 0.35 : 1,
-        dry: mode === 'nospeech' ? 0.95 : mode === 'err' ? 0 : 0.35,
-        core: mode === 'err' ? 1 : 0.4,
+        dry: mode === 'nospeech' ? 0.95 : 0.35,
+        core: 0.4,
         pfn: pf,
         sOff,
         ts: 0.01,
@@ -421,6 +462,23 @@ export function InkWave(props: {
       else if (kind === 'rings') drawRings(now, level, p)
       else if (kind === 'ribbon') drawRibbon(now, p)
       else drawDabs(now, p)
+      if (mode === 'proc' && !reduced) {
+        // One sheen crosses the wet paint as it dries, on every style.
+        const x = fx0 + ((now - modeAt) / 700 - 0.2) * fw * 1.5
+        if (x < fx0 + fw * 1.4) {
+          paint.save()
+          paint.globalCompositeOperation = 'source-atop'
+          const g = paint.createLinearGradient(x - fw * 0.18, 0, x + fw * 0.18, 0)
+          g.addColorStop(0, 'rgba(255, 244, 222, 0)')
+          g.addColorStop(0.5, 'rgba(255, 244, 222, 0.4)')
+          g.addColorStop(1, 'rgba(255, 244, 222, 0)')
+          paint.fillStyle = g
+          paint.fillRect(0, 0, width, height)
+          paint.restore()
+        }
+      }
+      // What this frame painted, for the smoke check to read.
+      if (canvas.dataset.mode !== mode) canvas.dataset.mode = mode
       if (bare && buffer) {
         ctx.clearRect(0, 0, width, height)
         applyInkEdge(ctx, edge, dpr)
@@ -437,7 +495,13 @@ export function InkWave(props: {
         lastPhase = phaseRef.current
         setMode(modeOf(lastPhase), now)
       }
-      draw(now)
+      try {
+        draw(now)
+      } catch (error) {
+        // Let the next phase change restart the loop instead of freezing it.
+        running = false
+        throw error
+      }
       const busy = mode === 'rec' || now - modeAt < SETTLE_MS || rings.length > 0 || flung.length > 0
       if (busy) raf = requestAnimationFrame(frame)
       else running = false
