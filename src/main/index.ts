@@ -26,8 +26,20 @@ import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
-import { watchWindow } from './window-watch'
+import { devRendererUrl, watchWindow } from './window-watch'
 import { createTray, getTray, setTrayInboxVisible } from './tray'
+import { installHardening } from './hardening'
+import { reviveOnDeath } from './revive'
+import { refusedSwitch } from './hardening-rules'
+
+// A packaged murmur never starts with a Chromium remote debugging port
+// or pipe (US-072): either hands any program that can launch murmur a
+// live handle on every window, preload bridge and microphone grant
+// included, and no fuse covers them. Exits before any window or
+// DevTools server exists.
+if (refusedSwitch(app.isPackaged, (name) => app.commandLine.hasSwitch(name))) {
+  app.exit(1)
+}
 
 // Development builds get their own userData so the lock, settings, and
 // logs never collide with an installed murmur (or the legacy app still
@@ -126,6 +138,8 @@ function createSettingsWindow(): BrowserWindow {
   })
 
   watchWindow(win, 'settings')
+  // A dead page comes back on its own and remounts from main (US-071).
+  reviveOnDeath(win, 'settings')
 
   // Closing the window hides it; the app lives in the tray.
   win.on('close', (event) => {
@@ -135,7 +149,7 @@ function createSettingsWindow(): BrowserWindow {
     }
   })
 
-  const devServer = process.env.ELECTRON_RENDERER_URL
+  const devServer = devRendererUrl()
   if (devServer) {
     void win.loadURL(`${devServer}/settings/index.html`)
   } else {
@@ -185,6 +199,10 @@ app.on('before-quit', () => {
 app.on('window-all-closed', () => {})
 
 app.whenReady().then(async () => {
+  // Before any window exists: every page is held to its own file and
+  // only the audio window may open the microphone (US-072).
+  installHardening()
+
   // Widget-first on macOS: menu bar resident, no Dock icon. A visible
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
@@ -376,10 +394,6 @@ app.whenReady().then(async () => {
 
   settingsWindow = createSettingsWindow()
   const settingsLoaded = whenLoaded(settingsWindow)
-  // A crashed renderer must be loud in logs, not silent.
-  settingsWindow.webContents.on('render-process-gone', (_event, details) => {
-    console.error('[murmur] settings renderer gone:', JSON.stringify(details))
-  })
 
   registerSmokeCheck('appReady', () => app.isReady())
   registerSmokeCheck('singleInstanceLock', () => gotLock)
@@ -401,6 +415,27 @@ app.whenReady().then(async () => {
     )
     const { bridge, mounted } = JSON.parse(probe) as { bridge: string; mounted: boolean }
     return bridge === 'object' && mounted
+  })
+  registerSmokeCheck('settingsRevive', async () => {
+    // The settings renderer dies: the page reloads on its own and the
+    // app mounts again with its bridge (US-071).
+    await settingsLoaded
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const wasVisible = win.isVisible()
+    const loaded = new Promise<void>((resolve) => win.webContents.once('did-finish-load', () => resolve()))
+    win.webContents.forcefullyCrashRenderer()
+    await loaded
+    if (win.isVisible() !== wasVisible) return false
+    for (let i = 0; i < 30; i++) {
+      const probe = await win.webContents.executeJavaScript(
+        'JSON.stringify({ bridge: typeof window.murmur, mounted: document.querySelector("main.shell") !== null })'
+      )
+      const { bridge, mounted } = JSON.parse(probe) as { bridge: string; mounted: boolean }
+      if (bridge === 'object' && mounted) return true
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    return false
   })
   registerSmokeCheck('wizard', async () => {
     // The pure machine walks the whole path, gates hold, and a fresh

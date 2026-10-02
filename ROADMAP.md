@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (61/70 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (62/72 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -65,6 +65,7 @@
 - [x] **US-061** Overlay look: pill, compact, or bare
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
+- [x] **US-071** The pill and settings rebuild themselves after a renderer dies
 
 ## Built, awaiting live verification
 
@@ -82,3 +83,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-064** Windows installer signed as Eze Media LLC (on hold until sales)
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business
+- [ ] **US-072** Security pass before go-live: windows load only murmur, the mic stays murmur's, the pricing robot cannot ship

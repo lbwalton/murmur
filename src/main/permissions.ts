@@ -32,7 +32,9 @@ export function getPermissionsStatus(): PermissionsStatus {
 export function initPermissions(): void {
   ipcMain.handle('perms:status', () => getPermissionsStatus())
   ipcMain.handle('perms:open', (_event, pane: unknown) => {
-    const url = PANES[String(pane)]
+    // Own keys only: an inherited name like constructor is not a pane.
+    const key = String(pane)
+    const url = Object.hasOwn(PANES, key) ? PANES[key] : undefined
     if (url && process.platform === 'darwin') void shell.openExternal(url)
   })
   ipcMain.handle('hotkeys:status', () => getHotkeysStatus())

@@ -4,7 +4,8 @@
 // insertion into the target app, so focusable stays false forever.
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, screen } from 'electron'
-import { watchWindow } from '../window-watch'
+import { devRendererUrl, watchWindow } from '../window-watch'
+import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import {
   OVERLAY_LOOKS,
@@ -69,7 +70,7 @@ function createOverlayWindow(): BrowserWindow {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
   watchWindow(win, 'overlay')
-  const devServer = process.env.ELECTRON_RENDERER_URL
+  const devServer = devRendererUrl()
   if (devServer) {
     void win.loadURL(`${devServer}/overlay/index.html`)
   } else {
@@ -208,6 +209,11 @@ export function initOverlay(): void {
   overlayWindow = createOverlayWindow()
 
   overlayWindow.webContents.on('did-finish-load', sendOverlayConfig)
+  // A revived page (US-071) gets the phase too, so a dictation in
+  // flight shows its state; at first launch this sends idle. Focus and
+  // click-through belong to the window, which survives the death.
+  overlayWindow.webContents.on('did-finish-load', () => sendState(machine.get()))
+  reviveOnDeath(overlayWindow, 'overlay')
   // Resolving the accent walks the whole history log; only do it when a
   // field that can affect the overlay actually changed (review gate
   // finding: every settings save was re-reading the entire log).
@@ -289,6 +295,52 @@ export function initOverlay(): void {
       clickThrough &&
       !overlayWindow.isDestroyed()
     )
+  })
+
+  registerSmokeCheck('overlayRevive', async () => {
+    // The pill's renderer dies mid-dictation: the page comes back on its
+    // own showing the phase and look it had. Dying again at rest, it
+    // comes back hidden and idle. The window stays unfocusable either
+    // way (US-071); click-through is set once on the window, which a
+    // renderer death never touches.
+    const win = aliveOverlay()
+    if (!win) return false
+    const read = (): Promise<{ phase?: string; look?: string; bridge?: string }> =>
+      win.webContents
+        .executeJavaScript(
+          'JSON.stringify({ phase: document.body.dataset.phase, look: document.body.dataset.look, bridge: typeof window.murmurOverlay })'
+        )
+        .then((json: string) => JSON.parse(json))
+    const die = async (): Promise<void> => {
+      const loaded = new Promise<void>((resolve) => win.webContents.once('did-finish-load', () => resolve()))
+      win.webContents.forcefullyCrashRenderer()
+      await loaded
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    if (!setOverlayPhase('recording', null, { mode: 'dictation' })) {
+      console.error(`smoke overlayRevive: could not start from ${machine.get().phase}`)
+      return false
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    const before = await read()
+    await die()
+    const live = await read()
+    setOverlayPhase('idle')
+    await die()
+    const rest = await read()
+    const ok =
+      live.bridge === 'object' &&
+      live.phase === 'recording' &&
+      live.look !== undefined &&
+      live.look === before.look &&
+      rest.bridge === 'object' &&
+      rest.phase === 'idle' &&
+      !win.isVisible() &&
+      !win.isFocusable()
+    if (!ok) {
+      console.error(`smoke overlayRevive: before=${JSON.stringify(before)} live=${JSON.stringify(live)} rest=${JSON.stringify(rest)}`)
+    }
+    return ok
   })
 
   registerSmokeCheck('overlayBridge', async () => {

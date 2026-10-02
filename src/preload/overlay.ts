@@ -13,15 +13,36 @@ export interface OverlayConfig {
   look?: string
 }
 
+// The page subscribes once it has mounted, which can be after main's
+// first messages arrive: a revived page (US-071) is sent the current
+// phase the moment it loads. The preload listens from the start and
+// hands a late subscriber the latest state and config, so nothing sent
+// at load is lost. Levels are a live stream and are not kept.
+let lastState: OverlayState | null = null
+let lastConfig: OverlayConfig | null = null
+let stateListener: ((state: OverlayState) => void) | null = null
+let configListener: ((config: OverlayConfig) => void) | null = null
+
+ipcRenderer.on('overlay:state', (_event, state: OverlayState) => {
+  lastState = state
+  stateListener?.(state)
+})
+ipcRenderer.on('overlay:config', (_event, config: OverlayConfig) => {
+  lastConfig = config
+  configListener?.(config)
+})
+
 const api = {
   onState: (cb: (state: OverlayState) => void): void => {
-    ipcRenderer.on('overlay:state', (_event, state: OverlayState) => cb(state))
+    stateListener = cb
+    if (lastState) cb(lastState)
   },
   onLevel: (cb: (level: number) => void): void => {
     ipcRenderer.on('overlay:level', (_event, level: number) => cb(level))
   },
   onConfig: (cb: (config: OverlayConfig) => void): void => {
-    ipcRenderer.on('overlay:config', (_event, config: OverlayConfig) => cb(config))
+    configListener = cb
+    if (lastConfig) cb(lastConfig)
   }
 }
 

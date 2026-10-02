@@ -15,7 +15,6 @@ import {
   openSync,
   readdirSync,
   readFileSync,
-  renameSync,
   unlinkSync,
   writeFileSync,
   writeSync
@@ -83,6 +82,7 @@ import { getApiKeyFor, getSettings, ringClearKey, ringSetKey, updateSettings } f
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
 import { errorCode, fileTail, fileText, resolveTemplateOrDefault } from './files'
+import { replaceViaTemp } from './safe-fs'
 
 export interface SortInput {
   /** The note as written to the inbox. Held in memory for Sort again,
@@ -935,17 +935,10 @@ export function tickHeldMatch(id: number): { ok: boolean; reason?: string } {
       reason: ticked.reason === 'already done' ? 'that item is already ticked' : 'that item is no longer in the file'
     })
   }
-  const tmp = `${snapshot.file}.murmur-tmp`
   try {
     backup(snapshot.file)
-    writeFileSync(tmp, ticked.text, 'utf8')
-    renameSync(tmp, snapshot.file)
+    replaceViaTemp(snapshot.file, ticked.text)
   } catch (error) {
-    try {
-      unlinkSync(tmp)
-    } catch {
-      // Nothing to clean, or already gone.
-    }
     writeAppLog(`[sort] tick failed reason=${errorCode(error)}`)
     return setAction({ ok: false, reason: `could not write the file (${errorCode(error)})` })
   }

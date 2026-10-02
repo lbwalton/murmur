@@ -16,6 +16,7 @@ import { registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
 import { probeDecision } from './decide'
+import { openableNote } from './safe-fs'
 import { initReminders } from './reminders'
 import {
   type HeldLine,
@@ -152,7 +153,7 @@ export async function openTodayNote(): Promise<'file' | 'folder' | 'none'> {
   const target = resolveTarget(new Date())
   for (const base of notesBases()) {
     const file = join(base, ...target.segments)
-    if (existsSync(file) && (await shell.openPath(file)) === '') return 'file'
+    if (openableNote(file) && (await shell.openPath(file)) === '') return 'file'
   }
   const base = folder !== '' ? folder : fallbackDir()
   if (existsSync(base) && (await shell.openPath(base)) === '') return 'folder'

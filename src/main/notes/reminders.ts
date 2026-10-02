@@ -14,6 +14,7 @@ import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
 import { notesBases, notesFolder, resolveTemplateOrDefault } from './files'
+import { openableNote } from './safe-fs'
 
 let stateFile = ''
 
@@ -118,7 +119,8 @@ export function runReminder(options: { show?: boolean; due?: string } = {}): Rem
   const notification = new Notification({ title: 'murmur tasks', body })
   // Clicking opens the list itself, which is where the work is.
   notification.on('click', () => {
-    void shell.openPath(file)
+    if (openableNote(file)) void shell.openPath(file)
+    else say('open refused reason=not-a-note')
   })
   notification.show()
   say(`outcome=shown open=${open}`)

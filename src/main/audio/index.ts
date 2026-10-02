@@ -4,7 +4,9 @@
 // resume triggers a re-arm so the warm mic survives sleep.
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, powerMonitor } from 'electron'
-import { watchWindow } from '../window-watch'
+import { devRendererUrl, watchWindow } from '../window-watch'
+import { markMicrophoneWindow } from '../hardening'
+import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import { isDeadStream } from '../../shared/speech-gate'
 import { parseWav } from '../../shared/wav'
@@ -17,8 +19,6 @@ function aliveAudio(): BrowserWindow | null {
 }
 let readyResolvers: Array<() => void> = []
 let ready = false
-let reviveCount = 0
-let lastCrashAt = 0
 
 function whenAudioReady(): Promise<void> {
   if (ready) return Promise.resolve()
@@ -37,6 +37,9 @@ export function initAudio(): void {
     }
   })
 
+  // The one window allowed the microphone (US-072).
+  markMicrophoneWindow(audioWindow.webContents)
+
   ipcMain.on(IpcChannels.audioReady, () => {
     ready = true
     for (const resolve of readyResolvers) resolve()
@@ -48,20 +51,10 @@ export function initAudio(): void {
   })
 
   // A dead capture renderer (GPU reset, OS kill during sleep) means no
-  // dictation until it comes back, so bring it back. The delay
-  // escalates by crash spacing, so a rapid crash loop backs off toward
-  // 30s while an isolated crash revives fast; ready arriving cannot
-  // reset the loop because escalation keys off the crashes themselves.
-  audioWindow.webContents.on('render-process-gone', () => {
+  // dictation until it comes back, so bring it back on the shared
+  // revive rule (US-071); capture is not ready until the page reloads.
+  reviveOnDeath(audioWindow, 'audio', () => {
     ready = false
-    const now = Date.now()
-    if (now - lastCrashAt > 60_000) reviveCount = 0
-    lastCrashAt = now
-    const delay = Math.min(30_000, 250 * 2 ** reviveCount)
-    reviveCount++
-    setTimeout(() => {
-      aliveAudio()?.webContents.reload()
-    }, delay)
   })
 
   // Smoke tightens the liveness watchdog so outage recovery proves
@@ -70,7 +63,7 @@ export function initAudio(): void {
     'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500&silentMs=250&maxSilentRearms=4'
   const query = isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : undefined
   watchWindow(audioWindow, 'audio')
-  const devServer = process.env.ELECTRON_RENDERER_URL
+  const devServer = devRendererUrl()
   if (devServer) {
     const suffix = isSmoke ? `?${smokeParams}` : ''
     void audioWindow.loadURL(`${devServer}/audio/index.html${suffix}`)

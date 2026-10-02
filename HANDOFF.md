@@ -22,6 +22,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [x] US-071 the pill and Settings come back by themselves, live-verified 2026-10-01 on the test build (dictation, Settings, and both pkill checks passed). Merged to main 2026-10-01.
+
+- [ ] US-072 security pass: the test build passed on the Mac 2026-10-01 (it started, dictated with the pill, and Settings worked). Merged to main 2026-10-01. One step left, at the next published release (after the brushwork and design work): (1) let murmur update itself, or quit and reopen it to check sooner; (2) the what's new line on the home tab shows the new version number; (3) dictate one sentence and open Settings once. If all three look normal, tell Claude and the story closes.
+
 - [x] US-069 settings rail, live-verified 2026-09-27 (all six steps passed: all set badge, rail tracking and jumps, search to Hotkey, the API keys list, the Finish setup card opening and folding away on a provider switch, one button size throughout). Merged to main 2026-09-27.
 
 - [x] US-068 retry a failed dictation, live-verified 2026-09-26/27 (your real 68 s take retried and pasted; a fresh wrong-model failure arrived with its reason and retried cleanly). Merged to main 2026-09-27.
@@ -87,7 +91,13 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 ## Known follow-ups (not blocking)
 
-- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Still open for a later story: asar integrity validation, which also stops code planted inside the app bundle but must be proven on Windows first.
+- [ ] Windows CI has been red since 2026-09-27 (found 2026-10-01): every main run fails one smoke check on Windows, notesFallback, while the Mac stays green. The check expects Mac-style error codes and forward slashes in the log line, so it is most likely the check, not the notes fallback itself, but nobody has looked at the Windows log yet. Worth a short story before the next release.
+
+- [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows still waits until it can be proven on the PC.
+
+- [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
+
+- [ ] Seen while testing US-072 (2026-10-01), not new: if a key is pressed at the instant murmur quits, the key hook can abort the quit (logged as FATAL uiohook_to_js_event). It reproduced on the shipped 0.1.8 too. Harmless so far because the app was already quitting; worth stopping the hook earlier in the quit sequence someday.
 
 - [ ] Brain dump recall wiring (pairs with US-050/051 when they ship): add a section to the 7am briefing and 6pm recap scripts that reads murmur/todo.md and the day's murmur/inbox note from the vault: open tasks first, captured ideas after.
 
