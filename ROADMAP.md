@@ -94,11 +94,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-078** A share card painted from your month
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
-- [ ] **US-083** Look: pick a waveform by watching it
-- [ ] **US-084** Home: today as one stroke
-- [ ] **US-085** Every tab gets its own title
-- [ ] **US-086** Analytics in ink
-- [ ] **US-087** Wrap-up: the day as a small painting
-- [ ] **US-088** Empty states that say what to do
-- [ ] **US-089** A painted insignia and tab marker
-- [ ] **US-090** A long wait still reads as working
+- [ ] **US-084** Look: pick a waveform by watching it
+- [ ] **US-085** Home: today as one stroke
+- [ ] **US-086** Every tab gets its own title
+- [ ] **US-087** Analytics in ink
+- [ ] **US-088** Wrap-up: the day as a small painting
+- [ ] **US-089** Empty states that say what to do
+- [ ] **US-090** A painted insignia and tab marker
+- [ ] **US-091** A long wait still reads as working

@@ -53,13 +53,13 @@ The settings window is where people work, so paint appears only where something 
 
 | Where | The touch | Story |
 | --- | --- | --- |
-| Look | Waveform tiles: each style as a live mini pill; locked ones dimmed with the belt that unlocks them. | US-083 |
-| Home | One gold stroke under back today, today against a typical day; the last note row. | US-084, US-082 |
-| Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-085 |
-| Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-086 |
-| Wrap-up | The day as a small painting, one stroke per dictation, with Save card. | US-087 |
-| Empty states | One dry grey scrape and a sentence with the real hotkey. | US-088 |
-| Header | A painted belt insignia and a short gold stroke under the current tab. | US-089 |
+| Look | Waveform tiles: each style as a live mini pill; locked ones dimmed with the belt that unlocks them. | US-084 |
+| Home | One gold stroke under back today, today against a typical day; the last note row. | US-085, US-082 |
+| Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-086 |
+| Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-087 |
+| Wrap-up | The day as a small painting, one stroke per dictation, with Save card. | US-088 |
+| Empty states | One dry grey scrape and a sentence with the real hotkey. | US-089 |
+| Header | A painted belt insignia and a short gold stroke under the current tab. | US-090 |
 | Journey | Painted belt, road, gates, and ink stamps. | US-076 |
 
 Paint in the window is static unless the moment moves (a promotion, a live preview tile), seeded by something stable like the date, so a mark keeps its shape across opens.
@@ -106,5 +106,5 @@ The default accent is signal amber drying to brand gold; a custom accent dries t
 
 - `MURMUR_INK_SHOTS=<dir> npm run smoke` saves every ink style in every look, plus drying and error, from the hermetic smoke run.
 - Settings shots: run `npx electron-vite build`, then `MURMUR_SETTINGS_CAPTURE=<file.png> node_modules/.bin/electron . --murmur-userdata=<scratch dir>`. It saves a shot of the settings window and exits. Add `MURMUR_SETTINGS_PAGE` (home, analytics, wrap-up, or journey; anything else fails the run), `MURMUR_SETTINGS_ANCHOR`, or `MURMUR_SETTINGS_SEARCH` to choose what shows. Seed the scratch dir with a `settings.json` holding `{"onboarding": {"completed": true}}` (without it the setup wizard covers everything) and a `history.jsonl` of made-up sessions so the screens look real. The path is used exactly as given, so never pass the real profile, and the run starts the keyboard hook for a few seconds.
-- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LaBroi 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), picked by LaBroi 2026-10-02 (all yes; the stories are US-082 to US-090). Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
+- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LaBroi 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), picked by LaBroi 2026-10-02 (all yes; the stories are US-082 to US-091). Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
 - The launch film lives outside the repo in `~/Projects/murmur-film` (HyperFrames; `scripts/build.sh` re-renders).
