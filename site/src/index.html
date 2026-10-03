@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="paint.css" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="pill.css" />
     <script src="app.js"></script>
     <script type="module" src="hero.js"></script>
     <script type="application/ld+json">{{JSON_LD}}</script>
@@ -76,7 +77,7 @@
           </div>
 
           <div class="stage" id="stage">
-            <div class="win" id="win" aria-label="A message being written with murmur">
+            <div class="win" id="win" role="group" aria-label="A message being written with murmur">
               <div class="win-bar" aria-hidden="true"><i></i><i></i><i></i><span>Message</span></div>
               <p class="win-to">To: Sam</p>
               <p class="win-body" id="winBody"><span id="seedText">Saw the draft. Two notes before we send it.</span><span id="landed"></span><i class="caret" id="caret" aria-hidden="true"></i></p>
@@ -85,8 +86,9 @@
               <span class="dot" aria-hidden="true"></span>
               <canvas class="wave" id="heroWave" aria-hidden="true"></canvas>
               <span class="wave wave-still" aria-hidden="true">{{PILL_BARS}}</span>
-              <span class="status" id="heroStatus" aria-live="polite"></span>
+              <span class="status" id="heroStatus"></span>
             </div>
+            <p class="sr-only" id="heroSay" aria-live="polite"></p>
             <button type="button" class="hold" id="holdBtn" aria-pressed="false" hidden>Hold to speak</button>
             <p class="hint" id="holdHint" hidden>or hold the space bar. Nothing records: this demo never uses your microphone.</p>
             <canvas class="stage-fx" id="stageFx" aria-hidden="true"></canvas>
@@ -94,11 +96,11 @@
         </div>
 
         <div class="yourturn-row">
-          <div class="yourturn" id="yourTurn" role="group" aria-label="Paint the background" hidden>
+          <div class="yourturn" id="yourTurn" role="group" aria-label="Paint the background">
             <p class="yt-label" id="ytLabel">Your turn. Move your cursor to paint.</p>
             <div class="yt-colors" id="ytColors" role="radiogroup" aria-label="Paint color"></div>
             <div class="yt-actions">
-              <button type="button" class="chip-btn" id="ytToggle" aria-pressed="true">Pause painting</button>
+              <button type="button" class="chip-btn" id="ytToggle">Pause painting</button>
               <button type="button" class="chip-btn" id="ytClear">Clear my strokes</button>
               <button type="button" class="chip-btn chip-primary" id="ytPoster">Make my poster</button>
             </div>
@@ -111,6 +113,7 @@
       <section class="faq" aria-label="Questions">
         <h2 class="label">questions</h2>
         {{FAQ}}
+        <p class="ask">Ask an AI about murmur: {{ASK_AI}}</p>
       </section>
     </main>
 
@@ -123,7 +126,7 @@
       </nav>
     </footer>
 
-    <div class="poster-modal" id="posterModal" role="dialog" aria-modal="true" aria-labelledby="posterTitle" hidden>
+    <dialog class="poster-modal" id="posterModal" aria-labelledby="posterTitle">
       <div class="pm-card">
         <h2 id="posterTitle">Your poster</h2>
         <img id="posterImg" alt="Your painting with the murmur mark and today's date, sized for a post" width="1080" height="1350" />
@@ -133,6 +136,6 @@
           <button type="button" class="chip-btn" id="posterClose">Close</button>
         </div>
       </div>
-    </div>
+    </dialog>
   </body>
 </html>

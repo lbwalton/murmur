@@ -59,6 +59,15 @@ button {
   display: none !important;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* ---------------------------------------------------------- header --- */
 
 .top,
@@ -230,7 +239,9 @@ h1 {
 .win-body {
   font-size: 15px;
   line-height: 1.55;
-  min-height: 4.7em;
+  /* Three lines, fixed, so a demo take never resizes the stage. */
+  height: 4.65em;
+  overflow: hidden;
 }
 
 .win-body .w {
@@ -390,7 +401,7 @@ h1 {
 }
 
 .yourturn {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
@@ -402,6 +413,18 @@ h1 {
   background: var(--panel-glass);
   border: 1px solid var(--cream-14);
   border-radius: 18px;
+}
+
+/* With the hero script the row takes its room from the start, so the
+   hero never grows under its painting; it shows once the paint-in is
+   done. */
+.js-hero .yourturn {
+  display: flex;
+  visibility: hidden;
+}
+
+.js-hero .yourturn.ready {
+  visibility: visible;
   animation: rise 0.6s var(--flick) both;
 }
 
@@ -485,13 +508,16 @@ h1 {
 }
 
 .poster-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  overflow-y: auto;
+  max-width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.poster-modal::backdrop {
   background: var(--panel-glass);
 }
 
@@ -499,7 +525,6 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-width: min(440px, 100%);
   padding: 20px;
   background: var(--panel);
   border: 1px solid var(--cream-14);
@@ -703,6 +728,18 @@ h1 {
 
 .qa a:hover {
   text-decoration-color: var(--brand);
+}
+
+.ask {
+  margin-top: 28px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.ask a {
+  color: var(--text);
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 3px;
 }
 
 /* ---------------------------------------------------------- footer --- */
