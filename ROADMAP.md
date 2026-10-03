@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (65/90 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (65/91 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -94,6 +94,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-078** A share card painted from your month
 - [ ] **US-079** Website hero in brushwork
 - [ ] **US-080** Launch film: One drop
+- [ ] **US-083** Windows gets the asar fuses: code planted beside murmur cannot run as murmur
 - [ ] **US-084** Look: pick a waveform by watching it
 - [ ] **US-085** Home: today as one stroke
 - [ ] **US-086** Every tab gets its own title
