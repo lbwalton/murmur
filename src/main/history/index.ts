@@ -200,9 +200,13 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
-  ipcMain.handle('history:clear', () => {
+  ipcMain.handle('history:clear', async () => {
     log?.clear()
     memoryOnly = null
+    // Clear all forgets the last note's record too (LaBroi, 2026-10-02);
+    // the note file itself stays where it landed.
+    const { forgetLastNote } = await import('../notes/receipt')
+    forgetLastNote()
     return []
   })
 

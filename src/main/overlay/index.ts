@@ -8,6 +8,7 @@ import { devRendererUrl, watchWindow } from '../window-watch'
 import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import {
+  INK_STYLES,
   OVERLAY_LOOKS,
   type OverlayLook,
   OverlayMachine,
@@ -18,6 +19,7 @@ import {
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { NOTE_FOLDER_HINT } from '../../shared/notes'
+import { pillPlace } from '../../shared/receipt'
 import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 
@@ -194,7 +196,9 @@ function currentLook(): OverlayLook {
 
 function sendOverlayConfig(): void {
   void (async () => {
-    const style = process.env.MURMUR_OVERLAY_STYLE ?? getSettings().overlay.style
+    // Smoke walks the ink styles through the setting, so the QA override
+    // must not pin the style there either.
+    const style = (isSmoke ? undefined : process.env.MURMUR_OVERLAY_STYLE) ?? getSettings().overlay.style
     const accent = await resolveAccent()
     aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent, look: currentLook() })
   })()
@@ -410,6 +414,8 @@ export function initOverlay(): void {
       height: number
       timer?: string
       hint?: string
+      noted?: string
+      notedFits: boolean
       fits: boolean
     }
     const read = (): Promise<string> => {
@@ -425,6 +431,14 @@ export function initOverlay(): void {
             height: box ? Math.round(box.height) : 0,
             timer: (document.querySelector('[data-timer]') || {}).textContent,
             hint: (document.querySelector('[data-hint]') || {}).textContent,
+            noted: (document.querySelector('[data-wpm]') || {}).textContent,
+            notedFits: (() => {
+              const slot = document.querySelector('.status-slot')
+              const r = slot ? slot.getBoundingClientRect() : null
+              // The words are whole: no ellipsis took over (US-082 review).
+              return r !== null && box !== null && r.height <= 20 && r.right <= box.right && r.left >= box.left &&
+                slot.scrollWidth <= slot.clientWidth
+            })(),
             fits: box !== null && box.left >= 0 && box.right <= window.innerWidth
           })
         })()`
@@ -445,6 +459,7 @@ export function initOverlay(): void {
       }
       return shape
     }
+    const LONGEST_PLACE = pillPlace('Notes/quarterly-planning.md', 'folder')
     const original = getSettings().overlay.look
     try {
       for (const look of OVERLAY_LOOKS) {
@@ -461,6 +476,14 @@ export function initOverlay(): void {
         const hint = await until((shape) => shape.hint === NOTE_FOLDER_HINT && shape.height === 56)
         setOverlayPhase('idle')
         await until((shape) => shape.hint === undefined)
+        // A saved note names where it landed on one line (US-082), and
+        // the longest place the pill can say still fits its window.
+        setOverlayPhase('recording', null, { mode: 'note' })
+        setOverlayPhase('processing')
+        setOverlayPhase('inserted', 12, { hint: LONGEST_PLACE })
+        const noted = await until((shape) => shape.noted === `noted to ${LONGEST_PLACE}`)
+        setOverlayPhase('idle')
+        await until((shape) => shape.noted === undefined)
         const flags = !overlayWindow.isFocusable() && overlayWindow.isAlwaysOnTop() && clickThrough
         const ok =
           recording.look === look &&
@@ -471,9 +494,12 @@ export function initOverlay(): void {
           hint.height === 56 &&
           hint.fits &&
           hint.hint === NOTE_FOLDER_HINT &&
+          noted.noted === `noted to ${LONGEST_PLACE}` &&
+          noted.notedFits &&
+          noted.fits &&
           flags
         if (!ok) {
-          console.log('[murmur] overlayLooks failed for', look, JSON.stringify({ recording, hint, flags }))
+          console.error('smoke overlayLooks: failed for', look, JSON.stringify({ recording, hint, noted, flags }))
           return false
         }
       }
@@ -486,6 +512,132 @@ export function initOverlay(): void {
       await wait(100)
     }
   })
+
+  // Every ink style (US-074) in every look, live in the DOM, one check
+  // per style so each has its own time budget: the style's canvas
+  // mounts, reports a recording frame with paint on it, and keeps
+  // changing across two reads at least 100 ms apart (the loop really
+  // runs), while the window keeps its flags. The user's style and look
+  // are restored afterwards.
+  interface Ink {
+    look: string | undefined
+    phase: string | undefined
+    ink: string | null
+    /** The mode the canvas last painted, stamped by InkWave. */
+    mode: string | null
+    painted: number
+    /** A cheap fingerprint of the whole canvas. */
+    print: number
+  }
+  const readInk = async (win: BrowserWindow): Promise<Ink> =>
+    JSON.parse(
+      await win.webContents.executeJavaScript(
+        `(() => {
+          const c = document.querySelector('canvas[data-ink]')
+          let painted = 0, print = 0
+          if (c && c.width > 0 && c.height > 0) {
+            const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data
+            for (let i = 3; i < d.length; i += 4) {
+              if (d[i] > 8) painted++
+              print = (print * 31 + d[i] + d[i - 1]) % 1000000007
+            }
+          }
+          return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, mode: c ? c.dataset.mode || null : null, painted, print })
+        })()`
+      )
+    ) as Ink
+  const inkWait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+  for (const style of INK_STYLES) {
+    registerSmokeCheck(`overlayInk-${style}`, async () => {
+      const win = aliveOverlay()
+      if (!win) return false
+      const deadline = Date.now() + 8_000
+      const until = async (ready: (ink: Ink) => boolean, voice = false): Promise<Ink> => {
+        let ink = await readInk(win)
+        while (!ready(ink) && Date.now() < deadline) {
+          // A synthetic voice, so dabs and ribbon have height to paint.
+          if (voice) win.webContents.send(IpcChannels.overlayLevel, 0.22)
+          await inkWait(40)
+          ink = await readInk(win)
+        }
+        return ink
+      }
+      const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+      try {
+        for (const look of OVERLAY_LOOKS) {
+          updateSettings({ overlay: { style, look } })
+          await until((ink) => ink.look === look && ink.ink === style)
+          if (!setOverlayPhase('recording')) return false
+          const live = await until((ink) => ink.mode === 'rec' && ink.painted > 40, true)
+          const t1 = Date.now()
+          const second = await until((ink) => ink.print !== live.print && Date.now() - t1 >= 100, true)
+          const t2 = Date.now()
+          const third = await until((ink) => ink.print !== second.print && Date.now() - t2 >= 100, true)
+          setOverlayPhase('idle')
+          await until((ink) => ink.phase === 'idle')
+          const flags = !win.isFocusable() && win.isAlwaysOnTop() && clickThrough
+          const animating =
+            second.print !== live.print && third.print !== second.print && third.mode === 'rec' && third.painted > 40
+          if (!(live.ink === style && live.look === look && live.mode === 'rec' && live.painted > 40 && animating && flags)) {
+            console.log('[murmur] overlayInk failed for', style, look, JSON.stringify({ live, second, third, flags }))
+            return false
+          }
+        }
+        return true
+      } finally {
+        setOverlayPhase('idle')
+        updateSettings({ overlay: original })
+        await inkWait(100)
+      }
+    })
+  }
+
+  // Design QA for the ink styles: MURMUR_INK_SHOTS=<dir> with npm run
+  // smoke saves each style in each look after most of a second of a synthetic
+  // voice, plus the drying state in the pill, one check per shot so
+  // none can outrun the per-check timeout. Smoke's throwaway profile
+  // and mocks mean no hotkey, mic, or real settings.
+  const shotsDir = process.env.MURMUR_INK_SHOTS
+  if (isSmoke && shotsDir) {
+    for (const style of INK_STYLES) {
+      for (const look of OVERLAY_LOOKS) {
+        registerSmokeCheck(`overlayInkShot-${style}-${look}`, async () => {
+          const win = aliveOverlay()
+          if (!win) return false
+          const { writeFile } = await import('node:fs/promises')
+          const shoot = async (name: string): Promise<void> => {
+            const image = await win.webContents.capturePage()
+            await writeFile(join(shotsDir, `${name}.png`), image.toPNG())
+          }
+          const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+          try {
+            updateSettings({ overlay: { style, look } })
+            await inkWait(250)
+            if (!setOverlayPhase('recording')) return false
+            for (let t = 0; t < 900; t += 33) {
+              const level = 0.04 + 0.2 * Math.abs(Math.sin(t / 110)) * (0.5 + 0.5 * Math.abs(Math.sin(t / 430)))
+              win.webContents.send(IpcChannels.overlayLevel, level)
+              await inkWait(33)
+            }
+            await shoot(`${style}-${look}`)
+            if (look === 'pill') {
+              setOverlayPhase('processing')
+              await inkWait(320)
+              await shoot(`${style}-${look}-drying`)
+              setOverlayPhase('error')
+              await inkWait(200)
+              await shoot(`${style}-${look}-error`)
+            }
+            return true
+          } finally {
+            setOverlayPhase('idle')
+            updateSettings({ overlay: original })
+            await inkWait(100)
+          }
+        })
+      }
+    }
+  }
 
   registerSmokeCheck('overlayStatesAndTimer', async () => {
     if (!overlayWindow) return false

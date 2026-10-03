@@ -1,13 +1,24 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* The murmur site: night studio, copied from the app's tokens.css at
-   build time. The waveform pill is the one loud element; amber appears
-   only in it (a live state), the download button wears the brand gold,
-   and everything else stays quiet. */
+   build time, with the brushwork hero (US-079) over it. The hero is the
+   one loud moment: paint around a live pill, then the visitor's turn to
+   paint. Amber appears only while the demo pill is live, the download
+   button wears the brand gold, and everything below the hero stays
+   quiet. Bricolage Grotesque is the display face here and nowhere in
+   the app; fonts.css loads it at build time, with a system fallback. */
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+:root {
+  --display: 'Bricolage Grotesque', 'Arial Narrow', 'Helvetica Neue', system-ui, sans-serif;
+  --flick: cubic-bezier(0.16, 1, 0.3, 1);
+  --wide: 1180px;
+  --narrow: 760px;
+  --gutter: clamp(16px, 4vw, 40px);
 }
 
 html {
@@ -24,6 +35,7 @@ body {
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
@@ -31,38 +43,68 @@ a {
 }
 
 a:focus-visible,
-.btn:focus-visible {
-  outline: 2px solid var(--text);
+button:focus-visible,
+video:focus-visible {
+  outline: 2px solid var(--brand);
   outline-offset: 3px;
   border-radius: 6px;
 }
 
-.top,
-main,
-.bottom {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  padding-left: 24px;
-  padding-right: 24px;
+button {
+  font: inherit;
+  color: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------- header --- */
 
+.top,
+.bottom {
+  width: 100%;
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
 .top {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 28px;
-  padding-bottom: 28px;
+  padding-top: 22px;
+  padding-bottom: 22px;
 }
 
 .wordmark {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0.22em;
-  color: var(--brand);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 80%;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  color: var(--text);
   text-decoration: none;
+}
+
+.mark {
+  width: 30px;
+  height: 30px;
 }
 
 .top nav,
@@ -96,65 +138,198 @@ main,
 }
 
 .hero {
-  padding-top: 56px;
-  padding-bottom: 72px;
-  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--cream-06);
+}
+
+.hero .layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 72px);
+  align-items: center;
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding: clamp(32px, 7vw, 96px) var(--gutter) clamp(40px, 7vw, 96px);
+}
+
+.hero-copy {
+  min-width: 0;
+  max-width: 34rem;
 }
 
 h1 {
-  margin: 18px auto 0;
-  max-width: 15em;
-  font-size: clamp(2.1rem, 6.2vw, 3.3rem);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  margin-top: 16px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 78%;
+  font-size: clamp(2.6rem, 6.2vw, 5.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 .lede {
-  margin: 20px auto 0;
-  max-width: 34em;
+  margin-top: 22px;
+  max-width: 32rem;
   font-size: 1.12rem;
+  color: var(--text);
+  opacity: 0.86;
+}
+
+/* The stage: a message being written, the live pill, and the button
+   that drives it. */
+.stage {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding-block: 12px;
+}
+
+.win {
+  width: min(100%, 420px);
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 14px;
+  box-shadow: 0 30px 60px -20px var(--ink-edge);
+  padding: 14px 18px 22px;
+}
+
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.win-bar i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cream-14);
+}
+
+.win-bar span {
+  margin-left: 8px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
-/* The signature: the same pill the app floats over your work. */
-.stage {
-  display: flex;
-  justify-content: center;
-  margin: 64px 0 56px;
+.win-to {
+  font-size: 13px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--cream-06);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
 }
 
+.win-body {
+  font-size: 15px;
+  line-height: 1.55;
+  /* Three lines, fixed, so a demo take never resizes the stage. */
+  height: 4.65em;
+  overflow: hidden;
+}
+
+.win-body .w {
+  display: inline-block;
+  animation: land 0.32s var(--flick) both;
+}
+
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  background: var(--text);
+  margin-left: 2px;
+  animation: blink 1.05s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* The signature: the same pill the app floats over your work. */
 .pill {
   display: flex;
   align-items: center;
-  gap: 16px;
-  height: 84px;
-  padding: 0 30px;
+  gap: 12px;
+  height: 56px;
+  padding: 0 18px 0 20px;
   border-radius: 999px;
   background: var(--panel-glass);
-  border: 1px solid var(--panel-edge);
-  box-shadow: 0 30px 70px -30px var(--ink-edge);
+  border: 1px solid var(--cream-14);
+  box-shadow: 0 14px 34px -10px var(--ink-edge);
 }
 
 .dot {
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 10px var(--red-glow);
+  background: var(--cream-35);
+  transition: background 0.15s;
+}
+
+.pill[data-phase='recording'] .dot {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber-soft);
 }
 
 .wave {
+  width: 168px;
+  height: 32px;
+  display: block;
+}
+
+/* Without the hero script, the pill speaks with plain bars. */
+.wave-still {
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 56px;
+  justify-content: space-between;
+}
+
+.js-hero .wave-still,
+.pill canvas.wave {
+  display: none;
+}
+
+.js-hero .pill canvas.wave {
+  display: block;
 }
 
 .bar {
-  width: 4px;
-  height: 56px;
+  width: 3px;
+  height: 32px;
   border-radius: 2px;
   background: var(--amber);
   transform: scaleY(var(--rest));
@@ -170,38 +345,232 @@ h1 {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bar {
-    animation: none;
-    transform: scaleY(var(--peak));
+.status {
+  min-width: 70px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.pill[data-phase='inserted'] .status {
+  color: var(--text);
+}
+
+.hold {
+  border: 1px solid var(--cream-14);
+  background: var(--panel-lift);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hold[aria-pressed='true'] {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.hint {
+  max-width: 26rem;
+  margin-top: -8px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.stage-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Your turn: once the paint-in settles, the visitor paints behind the
+   page. The cursor turns into a brush only over open paint. */
+.yourturn-row {
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--gutter) clamp(28px, 4vw, 44px);
+}
+
+.yourturn {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 18px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 10px 14px;
+  background: var(--panel-glass);
+  border: 1px solid var(--cream-14);
+  border-radius: 18px;
+}
+
+/* With the hero script the row takes its room from the start, so the
+   hero never grows under its painting; it shows once the paint-in is
+   done. */
+.js-hero .yourturn {
+  display: flex;
+  visibility: hidden;
+}
+
+.js-hero .yourturn.ready {
+  visibility: visible;
+  animation: rise 0.6s var(--flick) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.yt-label {
+  font-size: 14px;
+}
+
+.yt-colors {
+  display: flex;
+  gap: 8px;
+}
+
+.yt-colors button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--cream-14);
+  cursor: pointer;
+  padding: 0;
+}
+
+.yt-colors button[aria-checked='true'] {
+  border-color: var(--text);
+  box-shadow:
+    0 0 0 2px var(--ink),
+    0 0 0 4px var(--brand);
+}
+
+.yt-actions,
+.pm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.chip-btn {
+  border: 1px solid var(--cream-14);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-btn:hover {
+  border-color: var(--rice);
+}
+
+.chip-primary {
+  background: var(--rice);
+  border-color: var(--rice);
+  color: var(--ink);
+}
+
+.hero.painting {
+  cursor: crosshair;
+}
+
+.hero.painting .hero-copy,
+.hero.painting .stage,
+.hero.painting .yourturn {
+  cursor: auto;
+}
+
+.hero.touch-paint {
+  touch-action: none;
+}
+
+.poster-modal {
+  max-width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.poster-modal::backdrop {
+  background: var(--panel-glass);
+}
+
+.pm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 18px;
+}
+
+.pm-card h2 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 85%;
+  font-size: 26px;
+}
+
+.pm-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.pm-note {
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 /* -------------------------------------------------------- download --- */
 
 .download {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  margin-top: 30px;
 }
 
 .dl-intro {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   color: var(--text-dim);
 }
 
 .dl-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 28px;
+  gap: 20px 28px;
 }
 
 .dl {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   max-width: 340px;
 }
 
@@ -238,7 +607,6 @@ h1 {
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-dim);
-  text-align: left;
 }
 
 .note a {
@@ -248,7 +616,7 @@ h1 {
 }
 
 .also {
-  margin-top: 20px;
+  margin-top: 16px;
   font-size: 14px;
 }
 
@@ -263,7 +631,7 @@ h1 {
 }
 
 .fine {
-  margin-top: 28px;
+  margin-top: 18px;
   max-width: 30em;
   font-size: 14px;
   color: var(--text-dim);
@@ -283,12 +651,52 @@ h1 {
   display: inline;
 }
 
+/* ------------------------------------------------------------ film --- */
+
+.film,
+.faq {
+  width: 100%;
+  max-width: var(--narrow);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.film {
+  padding-top: clamp(48px, 7vw, 88px);
+  padding-bottom: clamp(40px, 6vw, 72px);
+}
+
+.film h2,
+.faq h2.title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-stretch: 82%;
+  font-size: clamp(2rem, 4.4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.film p {
+  margin-top: 12px;
+  color: var(--text-dim);
+}
+
+.film video {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--cream-06);
+  background: var(--panel);
+}
+
 /* ------------------------------------------------------------- faq --- */
 
 .faq {
   padding-top: 8px;
   padding-bottom: 64px;
-  border-top: 1px solid var(--cream-06);
 }
 
 .faq .label {
@@ -322,6 +730,18 @@ h1 {
   text-decoration-color: var(--brand);
 }
 
+.ask {
+  margin-top: 28px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.ask a {
+  color: var(--text);
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 3px;
+}
+
 /* ---------------------------------------------------------- footer --- */
 
 .bottom {
@@ -338,48 +758,52 @@ h1 {
   color: var(--text-dim);
 }
 
+.bottom a {
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------- narrow --- */
+
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 560px) {
-  .top,
-  main,
-  .bottom {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  .hero {
-    padding-top: 28px;
-    padding-bottom: 56px;
-  }
-
-  .stage {
-    margin: 44px 0 40px;
-  }
-
-  .pill {
-    height: 60px;
-    padding: 0 18px;
-    gap: 10px;
-  }
-
-  .wave {
-    gap: 3px;
-    height: 40px;
-  }
-
-  .bar {
-    width: 3px;
-    height: 40px;
-  }
-
-  .dl-row {
-    width: 100%;
-  }
-
-  .dl {
+  .dl,
+  .btn {
     width: 100%;
   }
 
   .btn {
-    width: 100%;
+    text-align: center;
+  }
+
+  .pill {
+    gap: 8px;
+    padding: 0 12px 0 14px;
+  }
+
+  .wave {
+    width: 132px;
+  }
+
+  .status {
+    min-width: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .bar {
+    transform: scaleY(var(--peak));
   }
 }

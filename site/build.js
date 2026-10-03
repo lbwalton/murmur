@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-only
-// Builds murmur's one-page site (US-066) into site/dist: the page with its
-// FAQ and structured data rendered from content.js, the night studio
-// tokens copied from the app, robots.txt, sitemap.xml, llms.txt, and the
-// icons and preview image drawn by the same kit as the app icons, so no
-// binary asset ever lives in the repo. SITE_URL sets every absolute URL;
-// a Vercel build without it fails rather than publish placeholder links.
-const { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs')
+// Builds murmur's one-page site (US-066, US-079) into site/dist: the page
+// with its FAQ and structured data rendered from content.js, the night
+// studio tokens copied from the app, the app's brush engine stripped of
+// its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt,
+// the _headers Cloudflare Pages serves, and the icons and preview image
+// drawn by the same kit as the app icons. Nothing binary lives in the
+// repo: the display face is fetched at build time (the page falls back
+// to system fonts without it) and the film is copied from FILM_DIR,
+// which lives outside the repo. SITE_URL sets every absolute URL; a
+// deploy build without it fails rather than publish placeholder links.
+const { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs')
+const { homedir } = require('node:os')
 const { join } = require('node:path')
+const { stripTypeScriptTypes } = require('node:module')
 const { encodePng, render, renderRect, insideRoundedRect, makeBars, BAR_HEIGHTS } = require('../scripts/lib/draw')
 const { links, facts, title, description, faq } = require('./content')
+const { headersFile } = require('./headers')
 
 const here = __dirname
 const root = join(here, '..')
@@ -19,10 +26,22 @@ const tokensFile = join(root, 'src', 'renderer', 'tokens.css')
 
 const PLACEHOLDER = 'https://murmur.example'
 const SITE_URL = (process.env.SITE_URL || PLACEHOLDER).replace(/\/+$/, '')
-if (process.env.VERCEL && SITE_URL === PLACEHOLDER) {
-  console.error('site: set SITE_URL in the Vercel project (for example https://murmur.app) before deploying')
+if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && SITE_URL === PLACEHOLDER) {
+  console.error('site: set SITE_URL (for example https://murmurapp.app) before a deploy build')
   process.exit(1)
 }
+// The support address appears once Email Routing forwards it.
+const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || '').trim()
+// The film renders outside the repo (~/Projects/murmur-film); without
+// it the page simply has no film section.
+const FILM_DIR = process.env.FILM_DIR || join(homedir(), 'Projects', 'murmur-film', 'out')
+const FILM = {
+  video: 'one-drop-master-1920x1080.mp4',
+  poster: 'one-drop-poster-1920x1080.png',
+  // When the film was rendered, for its structured data.
+  uploaded: '2026-10-01T19:02:00-07:00'
+}
+const hasFilm = () => existsSync(join(FILM_DIR, FILM.video)) && existsSync(join(FILM_DIR, FILM.poster))
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 
 // ---------------------------------------------------------- tokens ---
@@ -106,6 +125,7 @@ function jsonLd() {
         name: 'Eze Media LLC',
         url: `${SITE_URL}/`,
         founder: { '@type': 'Person', name: 'LaBroi Walton' },
+        ...(SUPPORT_EMAIL ? { contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: SUPPORT_EMAIL } } : {}),
         sameAs: [links.repo]
       },
       { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: `${SITE_URL}/`, name: 'murmur', publisher: { '@id': org } },
@@ -130,6 +150,21 @@ function jsonLd() {
         publisher: { '@id': org },
         sameAs: [links.repo]
       },
+      ...(hasFilm()
+        ? [
+            {
+              '@type': 'VideoObject',
+              '@id': `${SITE_URL}/#film`,
+              name: 'murmur: One drop',
+              description: FILM_TEXT,
+              thumbnailUrl: `${SITE_URL}/film/one-drop-poster.png`,
+              contentUrl: `${SITE_URL}/film/one-drop.mp4`,
+              uploadDate: FILM.uploaded,
+              duration: 'PT15S',
+              publisher: { '@id': org }
+            }
+          ]
+        : []),
       {
         '@type': 'FAQPage',
         '@id': `${SITE_URL}/#faq`,
@@ -145,8 +180,46 @@ function jsonLd() {
   return JSON.stringify(data).replace(/</g, '\\u003c')
 }
 
-function page(tokens) {
+const FILM_TEXT =
+  'Fifteen seconds, painted by the same brush code as the app. A drop of ember paint hits a key, the splash becomes the pill, your voice writes the first letter of a sentence, and the paint bounces through an email, a doc, and a code editor before it lands in the murmur mark. There is no voice in it, only the sounds of a drip, a key, and the brush.'
+
+function filmHtml() {
+  if (!hasFilm()) return ''
+  return `<section class="film" id="film" aria-labelledby="film-title">
+        <p class="label">the film</p>
+        <h2 id="film-title">One drop</h2>
+        <p>${escapeHtml(FILM_TEXT)}</p>
+        <video controls playsinline preload="none" data-poster="film/one-drop-poster.png" width="1920" height="1080" aria-labelledby="film-title">
+          <source src="film/one-drop.mp4" type="video/mp4" />
+        </video>
+      </section>`
+}
+
+// Answer engines read the page; these hand a visitor's question to one
+// with the site named (prefill formats verified 2026-07 in the
+// seo-geo-aeo skill).
+const ASK_AI = [
+  ['ChatGPT', 'https://chatgpt.com/?q='],
+  ['Claude', 'https://claude.ai/new?q='],
+  ['Perplexity', 'https://www.perplexity.ai/search?q='],
+  ['Gemini', 'https://gemini.google.com/app?q=']
+]
+
+function askAiHtml() {
+  const host = SITE_URL.replace(/^https?:\/\//, '')
+  const prompt = `Tell me about murmur, the push-to-talk dictation app at ${host}. What does it do, what does it cost, and how do I get started?`
+  return ASK_AI.map(
+    ([name, base]) => `<a href="${escapeHtml(base + encodeURIComponent(prompt))}" target="_blank" rel="noopener noreferrer">${name}</a>`
+  ).join(' · ')
+}
+
+function page(tokens, font) {
   const values = {
+    FONT_PRELOAD: font ? `<link rel="preload" href="fonts/${font}" as="font" type="font/woff2" crossorigin />` : '',
+    FILM: filmHtml(),
+    FILM_NAV: hasFilm() ? '<a href="#film">film</a>' : '',
+    ASK_AI: askAiHtml(),
+    SUPPORT: SUPPORT_EMAIL ? ` · <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}">${escapeHtml(SUPPORT_EMAIL)}</a>` : '',
     TITLE: escapeHtml(title),
     DESCRIPTION: escapeHtml(description),
     SITE_URL,
@@ -310,21 +383,96 @@ function llmsTxt() {
 
 ${qa}
 
-## Contact
-- Issues and support: ${links.issues}
+${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM_TEXT}\n\n` : ''}## Contact
+- Issues and support: ${links.issues}${SUPPORT_EMAIL ? `\n- Email: ${SUPPORT_EMAIL}` : ''}
 `
 }
 
 // ------------------------------------------------------------- main ---
 
-function main() {
+// ------------------------------------------------------------ paint ---
+
+/** The app's brush engine as a browser module: brush.ts with its types
+ *  stripped by Node itself (22.13 or later), so the site paints with the
+ *  same code as the app and needs no bundler. */
+function brushJs() {
+  const ts = readFileSync(join(root, 'src', 'renderer', 'brush.ts'), 'utf8')
+  return stripTypeScriptTypes(ts, { mode: 'strip' })
+}
+
+/** Belt colors from the app's cosmetics, for the paint-your-own palette. */
+function paintCss() {
+  const { beltColors } = JSON.parse(readFileSync(join(root, 'shared', 'cosmetics.json'), 'utf8'))
+  const vars = Object.entries(beltColors).map(([name, hex]) => `  --belt-${name}: ${hex};`)
+  return `/* SPDX-License-Identifier: GPL-3.0-only */\n/* Generated by site/build.js from shared/cosmetics.json. */\n:root {\n${vars.join('\n')}\n}\n`
+}
+
+// ------------------------------------------------------------- font ---
+
+// Bricolage Grotesque (SIL Open Font License 1.1), the display face on
+// the site, the film, and the share card only. Fetched at build time so
+// no font file lives in the repo: the extra bold, the condensed widths
+// the page uses, and the optical size axis, cut to printable ASCII plus
+// the curly apostrophe, ellipsis, and middle dot (about 54 KB instead
+// of 131 KB for the whole latin set). Display text outside that set
+// falls back to the system face.
+const FONT_CHARS = `${Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('')}\u2019\u2026\u00b7`
+const FONT_CSS = `https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..85,800&display=swap&text=${encodeURIComponent(FONT_CHARS)}`
+const FONT_LICENSE = 'https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/OFL.txt'
+// Google serves woff2 only to browsers it recognizes.
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
+
+async function fetchFont() {
+  const empty = '/* SPDX-License-Identifier: GPL-3.0-only */\n/* The display face was not fetched; system fonts stand in. */\n'
+  if (process.env.SITE_OFFLINE) return { css: empty, file: null }
+  try {
+    const sheet = await fetch(FONT_CSS, { headers: { 'User-Agent': BROWSER_UA } })
+    if (!sheet.ok) throw new Error(`font stylesheet answered ${sheet.status}`)
+    const css = await sheet.text()
+    const latin = /(@font-face\s*\{[^}]*\})/.exec(css)
+    const url = latin && /url\((https:[^)]+)\)\s*format\('woff2'\)/.exec(latin[1])
+    if (!url) throw new Error('no woff2 in the font stylesheet')
+    const res = await fetch(url[1])
+    const font = Buffer.from(await res.arrayBuffer())
+    // A woff2 file starts with the bytes wOF2; anything else is not a font.
+    if (!res.ok || font.subarray(0, 4).toString('latin1') !== 'wOF2') throw new Error('the font file is not woff2')
+    // The license travels with the font or the font does not ship.
+    const license = await fetch(FONT_LICENSE)
+    const ofl = license.ok ? await license.text() : ''
+    if (!/SIL OPEN FONT LICENSE/i.test(ofl)) throw new Error('the font license could not be fetched')
+    mkdirSync(join(out, 'fonts'), { recursive: true })
+    const file = 'bricolage-grotesque-display.woff2'
+    writeFileSync(join(out, 'fonts', file), font)
+    writeFileSync(join(out, 'fonts', 'OFL.txt'), ofl)
+    const face = latin[1].replace(url[1], `fonts/${file}`)
+    return { css: `/* SPDX-License-Identifier: GPL-3.0-only */\n/* Bricolage Grotesque, SIL Open Font License 1.1 (fonts/OFL.txt). */\n${face}\n`, file }
+  } catch (error) {
+    console.warn(`site: display face not fetched (${error.message}); system fonts stand in`)
+    return { css: empty, file: null }
+  }
+}
+
+// ------------------------------------------------------------- main ---
+
+async function main() {
   const tokens = readTokens()
   rmSync(out, { recursive: true, force: true })
   mkdirSync(out, { recursive: true })
-  writeFileSync(join(out, 'index.html'), page(tokens))
+  const font = await fetchFont()
+  writeFileSync(join(out, 'fonts.css'), font.css)
+  writeFileSync(join(out, 'index.html'), page(tokens, font.file))
   copyFileSync(tokensFile, join(out, 'tokens.css'))
   copyFileSync(join(src, 'styles.css'), join(out, 'styles.css'))
   copyFileSync(join(src, 'app.js'), join(out, 'app.js'))
+  copyFileSync(join(src, 'hero.js'), join(out, 'hero.js'))
+  writeFileSync(join(out, 'brush.js'), brushJs())
+  writeFileSync(join(out, 'paint.css'), paintCss())
+  writeFileSync(join(out, '_headers'), headersFile())
+  if (hasFilm()) {
+    mkdirSync(join(out, 'film'), { recursive: true })
+    copyFileSync(join(FILM_DIR, FILM.video), join(out, 'film', 'one-drop.mp4'))
+    copyFileSync(join(FILM_DIR, FILM.poster), join(out, 'film', 'one-drop-poster.png'))
+  }
   writeFileSync(join(out, 'pill.css'), pillCss())
   writeFileSync(join(out, 'favicon.svg'), faviconSvg(tokens))
   writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(tokens))
@@ -332,7 +480,12 @@ function main() {
   writeFileSync(join(out, 'robots.txt'), robotsTxt())
   writeFileSync(join(out, 'sitemap.xml'), sitemapXml())
   writeFileSync(join(out, 'llms.txt'), llmsTxt())
-  console.log(`site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}`)
+  console.log(
+    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
+  )
 }
 
-main()
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

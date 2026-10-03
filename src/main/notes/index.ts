@@ -8,7 +8,7 @@
 // Nothing here ever logs the text itself.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
+import { type BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, shell } from 'electron'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, renderNoteEntry } from '../../shared/notes'
 import { getApiKeyFor, getSettings, updateSettings } from '../settings'
@@ -17,6 +17,7 @@ import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
 import { probeDecision } from './decide'
 import { openableNote } from './safe-fs'
+import { initReceipts } from './receipt'
 import { initReminders } from './reminders'
 import {
   type HeldLine,
@@ -160,22 +161,34 @@ export async function openTodayNote(): Promise<'file' | 'folder' | 'none'> {
   return 'none'
 }
 
+/**
+ * The native folder picker: the only way a path enters settings besides
+ * typing one. createDirectory lets a fresh vault be made on the spot;
+ * the picker cannot return a path the user did not choose. Without a
+ * window (the receipt's Choose folder) murmur comes forward first so
+ * the picker is not lost behind other apps.
+ */
+export async function chooseNotesFolder(win: BrowserWindow | null): Promise<boolean> {
+  const current = getSettings().notes.folder.trim()
+  const options: OpenDialogOptions = {
+    title: 'Choose your notes folder',
+    buttonLabel: 'Use this folder',
+    defaultPath: current !== '' ? current : app.getPath('home'),
+    properties: ['openDirectory', 'createDirectory']
+  }
+  if (!win && process.platform === 'darwin') app.focus({ steal: true })
+  const { canceled, filePaths } = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  const chosen = filePaths[0]
+  if (canceled || !chosen) return false
+  updateSettings({ notes: { folder: chosen } })
+  return true
+}
+
 export function initNotes(settingsWindow: () => BrowserWindow | null): void {
-  // The native folder picker: the only way a path enters settings
-  // besides typing one. createDirectory lets a fresh vault be made on
-  // the spot; the picker cannot return a path the user did not choose.
   ipcMain.handle(IpcChannels.notesChooseFolder, async () => {
     const win = settingsWindow()
     if (!win || win.isDestroyed()) return getNotesStatus()
-    const current = getSettings().notes.folder.trim()
-    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Choose your notes folder',
-      buttonLabel: 'Use this folder',
-      defaultPath: current !== '' ? current : app.getPath('home'),
-      properties: ['openDirectory', 'createDirectory']
-    })
-    const chosen = filePaths[0]
-    if (!canceled && chosen) updateSettings({ notes: { folder: chosen } })
+    await chooseNotesFolder(win)
     return getNotesStatus()
   })
   ipcMain.handle(IpcChannels.notesStatus, () => getNotesStatus())
@@ -225,6 +238,13 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   })
   initSorter()
   initReminders()
+  initReceipts({
+    settingsWindow,
+    chooseFolder: async () => {
+      const chosen = await chooseNotesFolder(null)
+      writeAppLog(`[receipt] choose folder outcome=${chosen ? 'chosen' : 'canceled'}`)
+    }
+  })
 
   const probeMoment = new Date(2026, 8, 18, 10, 32)
   const defaults = { pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE, entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE }

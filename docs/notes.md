@@ -4,9 +4,23 @@ murmur can send a dictation to a markdown file instead of your cursor. Hold a se
 
 ## How do I speak a note instead of pasting it?
 
-Set two things under Settings, Notes: a note chord (click the field, press a combo) and a notes folder (type a path, or Choose… to pick one). Then, from any app, hold the chord and speak. The pill shows a gold edge and a small "note" tag while you talk, says "noted" when the file is written, and your cursor never moves. The chord follows the same trigger mode as your main hotkey: hold to talk, or tap to start and stop.
+Set two things under Settings, Notes: a note chord (click the field, press a combo) and a notes folder (type a path, or Choose… to pick one). Then, from any app, hold the chord and speak. The pill shows a gold edge and a small "note" tag while you talk, says where the note went when the file is written ("noted to inbox"), and your cursor never moves. A note receipt follows, so you can open the note with one click (see the next answer). The chord follows the same trigger mode as your main hotkey: hold to talk, or tap to start and stop.
 
 The chord follows the paste-last chord's rules. It needs a regular key (a modifier plus an F-key, like Ctrl+F11, is the safest shape), it cannot contain your dictation hotkey, and it cannot be the same combo as another chord. murmur refuses those at capture and says why.
+
+## How do I open a note right after I say it?
+
+Click the note receipt. After every note, murmur shows a notification named for where the note landed, for example "Noted to inbox/2026-10-02.md", with the note's first line under it. Clicking it opens that exact file in whatever app your system uses for markdown (Obsidian, if you have told your system so, or your editor). murmur does not open its own window for a receipt. The notification's button shows the file instead: Show in Finder on a Mac, Open folder on Windows.
+
+- **It follows the sort.** With sorting on, once the sort files lines into your tasks or ideas file, the receipt is replaced by one naming where they went, for example "Sorted into todo.md and 1 more", and clicking opens the first of those files. The inbox keeps the whole note either way.
+- **One at a time.** Each new receipt replaces the last one, so Notification Center (Action Center on Windows) never fills up with them.
+- **When the notes folder was unreachable**, the receipt says "Noted to murmur's data folder" and offers Choose folder, which opens the folder picker so you can point murmur at the right folder.
+- **Missed it?** The menu bar icon (the tray icon on Windows) has Open last note, and the home tab shows your last note with open and show in Finder (open folder on Windows) buttons. Both keep working after murmur restarts.
+- **Do Not Disturb and Focus** are respected: the receipt waits quietly in Notification Center instead of popping up. The receipt makes no sound of its own; the pill already plays the noted cue.
+- **Turning it off:** Settings, Notes, Note receipts. Off stops the notification only; Open last note and the home tab row keep working.
+- **Clear all** on the home tab forgets the last note as well: the card and Open last note go away, and on a Mac so does the latest receipt still waiting in Notification Center (on Windows, one from since murmur last started). The note file in your folder is never touched.
+
+The pill itself can never carry the link: it must never take a click or focus, or it would pull your cursor out of the app you were typing in. A notification can be clicked without taking focus, which is why the receipt lives there. murmur only ever opens a real `.md` or `.txt` file this way: if the file was replaced by a link to something else, or by a folder, nothing opens and the diagnostics log says `[receipt] open refused`.
 
 ## Does this work with Obsidian?
 
@@ -66,7 +80,7 @@ If you press the note chord before choosing a folder, the pill says "set a notes
 
 ## How do I open today's inbox?
 
-Two ways: the tray menu has Open today's inbox whenever a notes folder is set, and the notes section in settings has the same button. It opens today's file in whatever app your system uses for markdown (Obsidian, if you have told your system so, or your editor). Before today's first note exists, it opens the folder instead.
+Two ways: the tray menu has Open today's inbox whenever a notes folder is set, and the notes section in settings has the same button. To open the note you just spoke instead, use its receipt or Open last note (see How do I open a note right after I say it?). It opens today's file in whatever app your system uses for markdown (Obsidian, if you have told your system so, or your editor). Before today's first note exists, it opens the folder instead.
 
 ## Do notes count toward my belts and history?
 

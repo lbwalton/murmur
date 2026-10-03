@@ -1000,19 +1000,19 @@
     {
       "id": "US-066",
       "title": "A one-page home for murmur with a single download button",
-      "description": "Shaped with LaBroi 2026-09-26. murmur has no website by choice so far: everything lives on GitHub. That serves developers and fails everyone else, who expect to land on a page, see what the product is, and press one button. This story builds that page and nothing more: what murmur is in a sentence, the waveform pill as the one loud element (the design system's signature, night studio tokens, no drift), one download button that detects Mac or Windows and points at the US-063 stable link for that platform with the other platform one small link away, and short answers to the first questions (what it costs, BYOK in one line, privacy, where the docs are). It depends on US-063 for links that never break, and ships after US-065 so the Mac button leads to a build that runs on every Mac. US-064 (Windows signing) is on hold until sales (LaBroi 2026-09-26), so until it lands the page tells Windows visitors, right under their button, that Windows may show a protection screen for a new app and how to get past it; the note comes off when signing ships. The docs directive already says the docs in docs/ are the single source a future murmur website populates from; this page links to them and does not fork their content. Hosting on Vercel, the stack default, with a custom domain that is LaBroi's decision and purchase. Being public, it runs the seo-geo-aeo checklist (robots.txt with AI crawlers, sitemap, llms.txt, JSON-LD for a SoftwareApplication, per-page metadata, semantic HTML) and the pre-ship hardening checklist (all six security headers set at the host, SPF and DMARC on the domain even though it sends no mail). No binary assets in the repo: the logo and any imagery come from the existing generation scripts. Where the page lives (a site/ folder here or a separate repo) is decided at build time and recorded.",
+      "description": "Shaped with LaBroi 2026-09-26. murmur has no website by choice so far: everything lives on GitHub. That serves developers and fails everyone else, who expect to land on a page, see what the product is, and press one button. This story builds that page and nothing more: what murmur is in a sentence, the waveform pill as the one loud element (the design system's signature, night studio tokens, no drift), one download button that detects Mac or Windows and points at the US-063 stable link for that platform with the other platform one small link away, and short answers to the first questions (what it costs, BYOK in one line, privacy, where the docs are). It depends on US-063 for links that never break, and ships after US-065 so the Mac button leads to a build that runs on every Mac. US-064 (Windows signing) is on hold until sales (LaBroi 2026-09-26), so until it lands the page tells Windows visitors, right under their button, that Windows may show a protection screen for a new app and how to get past it; the note comes off when signing ships. The docs directive already says the docs in docs/ are the single source a future murmur website populates from; this page links to them and does not fork their content. Hosting on Vercel, the stack default, with a custom domain that is LaBroi's decision and purchase. Being public, it runs the seo-geo-aeo checklist (robots.txt with AI crawlers, sitemap, llms.txt, JSON-LD for a SoftwareApplication, per-page metadata, semantic HTML) and the pre-ship hardening checklist (all six security headers set at the host, SPF and DMARC on the domain even though it sends no mail). No binary assets in the repo: the logo and any imagery come from the existing generation scripts. Where the page lives (a site/ folder here or a separate repo) is decided at build time and recorded. Hosting changed 2026-10-02 (LaBroi): Cloudflare Pages instead of Vercel, because Vercel's Hobby plan is for non-commercial use only and a site selling murmur Pro is commercial (Vercel's fair use guidelines, checked 2026-10-02); the domain murmurapp.app and its DNS already live at Cloudflare.",
       "acceptance": [
         "A single page states what murmur is, shows the waveform pill, and offers one download button that picks Mac or Windows from the visitor's system, with the other platform one link away, both pointing at the US-063 stable links",
         "While the Windows installer is unsigned, a short plain note under the Windows button explains the Windows protection screen and the two clicks past it, removed once US-064 ships",
         "It uses the murmur night studio design system with lowercase murmur everywhere, links to the docs rather than copying them, and ships no binary assets",
         "The seo-geo-aeo checklist passes (robots.txt with AI crawlers, sitemap.xml, llms.txt, SoftwareApplication JSON-LD, metadata, semantic HTML)",
         "The pre-ship hardening checklist passes on the live domain: curl -sI shows all six security headers, and dig shows SPF and DMARC records",
-        "Deployed on Vercel at the domain LaBroi chooses and buys; where the page's source lives is recorded",
+        "Deployed on Cloudflare Pages at murmurapp.app (LaBroi's call 2026-10-02); where the page's source lives and how it deploys is recorded",
         "Live: LaBroi opens the page on a Mac and on the PC, presses the one button on each, and gets the right installer without reading anything else"
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-09-26 in site/ on feature/distribution; not deployed (LaBroi: deploy once he has the domain). Where it lives and why is recorded in site/README.md: in this repo so the page reads the app's tokens.css, draws its favicon, home screen icon, and 1200x630 preview with scripts/lib/draw.js (the app icon kit, extracted from gen-icons.js with all 20 icon files byte-identical before and after), takes the version from package.json, and uses the US-063 stable links. Plain HTML, CSS, and one script; no dependencies. site/build.js renders the FAQ from site/content.js into both the visible answers and FAQPage JSON-LD, plus robots.txt (AI crawlers named), sitemap.xml, and llms.txt; a Vercel build without SITE_URL fails. vercel.json sets all six security headers with a strict CSP (no unsafe-inline: the pill's per-bar timing ships as a generated pill.css). check-design and check-headers now cover site/. Verified locally 2026-09-26 in Chrome, served with the vercel.json headers on the claimed port 4870: the Mac was detected and Download for Mac led with Also for Windows beneath; clicking it swapped to the Windows button with its protection-screen note; at 360 and 390 px wide there is no horizontal scroll and the pill fits; one h1; the eight FAQ answers match the JSON-LD text exactly; Organization, WebSite, SoftwareApplication, and FAQPage parse; under the strict CSP app.js ran, all stylesheets applied, the bars animated, and the console showed no errors. Facts on the page verified 2026-09-26: Pro $49 on the live Stripe checkout; macOS 13 and Windows 10 minimums from Electron. Open: a universal release out first (US-065) so the Mac button serves every Mac; LaBroi picks and buys the domain; Vercel project with SITE_URL; live curl -sI for the six headers; SPF and DMARC via dig; validator.schema.org on the live URL; LaBroi presses the button on the Mac and the PC."
+      "notes": "Built 2026-09-26 in site/ on feature/distribution; not deployed (LaBroi: deploy once he has the domain). Where it lives and why is recorded in site/README.md: in this repo so the page reads the app's tokens.css, draws its favicon, home screen icon, and 1200x630 preview with scripts/lib/draw.js (the app icon kit, extracted from gen-icons.js with all 20 icon files byte-identical before and after), takes the version from package.json, and uses the US-063 stable links. Plain HTML, CSS, and one script; no dependencies. site/build.js renders the FAQ from site/content.js into both the visible answers and FAQPage JSON-LD, plus robots.txt (AI crawlers named), sitemap.xml, and llms.txt; a Vercel build without SITE_URL fails. vercel.json sets all six security headers with a strict CSP (no unsafe-inline: the pill's per-bar timing ships as a generated pill.css). check-design and check-headers now cover site/. Verified locally 2026-09-26 in Chrome, served with the vercel.json headers on the claimed port 4870: the Mac was detected and Download for Mac led with Also for Windows beneath; clicking it swapped to the Windows button with its protection-screen note; at 360 and 390 px wide there is no horizontal scroll and the pill fits; one h1; the eight FAQ answers match the JSON-LD text exactly; Organization, WebSite, SoftwareApplication, and FAQPage parse; under the strict CSP app.js ran, all stylesheets applied, the bars animated, and the console showed no errors. Facts on the page verified 2026-09-26: Pro $49 on the live Stripe checkout; macOS 13 and Windows 10 minimums from Electron. Open: a universal release out first (US-065) so the Mac button serves every Mac; LaBroi picks and buys the domain; the hosting project with SITE_URL (now Cloudflare Pages, see below); live curl -sI for the six headers; SPF and DMARC via dig; validator.schema.org on the live URL; LaBroi presses the button on the Mac and the PC. 2026-10-02, with US-079 on feature/brushwork: the hosting moved to Cloudflare Pages, deployed by direct upload with wrangler from the Mac that holds the film (site/README.md); vercel.json is gone and site/headers.js is the one header list, written into dist/_headers for Pages and sent by site/serve.js for the local preview (all seven headers verified with curl on port 4870). The seo-geo-aeo checklist re-run on a build for https://murmurapp.app: one h1, headings in order, Organization, WebSite, SoftwareApplication, VideoObject, and FAQPage parse, the eight visible FAQ answers equal the JSON-LD text, robots.txt names the AI crawlers with the sitemap, llms.txt uses absolute URLs and adds the film, external links open in a new tab with noopener (the two download buttons stay in place on purpose), and an Ask an AI about murmur line links to ChatGPT, Claude, Perplexity, and Gemini with the question prefilled. Open: the deploy, the domain, the live header and DNS checks, and LaBroi's button presses. Deployed 2026-10-03 on LaBroi's go: Cloudflare Pages project murmur (murmur-edb.pages.dev), direct upload with wrangler of a build with SITE_URL=https://murmurapp.app and SUPPORT_EMAIL=support@murmurapp.app; murmurapp.app and www.murmurapp.app attached through the Pages custom domain flow (Cloudflare added proxied CNAMEs to murmur-edb.pages.dev), and a Redirect Rule (Cloudflare's www-to-root template, 301, query string kept) sends www to the apex. Verified from outside through 1.1.1.1: https://murmurapp.app answers 200 with a valid certificate and all seven headers (Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy); https://www.murmurapp.app/?ref=test answers 301 to https://murmurapp.app/?ref=test; robots.txt, sitemap.xml, llms.txt, the film, the font, and og.png all answer 200 with the right types; validator.schema.org on the live URL finds SoftwareApplication, VideoObject, WebSite, and FAQPage with 0 errors and 0 warnings. Email: Email Routing records added (three Cloudflare MX, the DKIM key, SPF v=spf1 include:_spf.mx.cloudflare.net ~all) and support@murmurapp.app routes to lbwalton@gmail.com (Active); DMARC v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s at _dmarc; all confirmed with dig at 1.1.1.1. Open: LaBroi's button presses on the Mac and the PC, and the Search Console property and sitemap."
     },
     {
       "id": "US-067",
@@ -1127,6 +1127,129 @@
       "notes": "Built 2026-10-01 on feature/hardening; automated and packaged criteria verified, live step in HANDOFF. Code: window-watch devRendererUrl (dev server only when unpackaged); hardening-rules.ts (refusedSwitch, permissionAllowed, navigationAllowed, unit tested) and hardening.ts (web-contents-created lock on will-navigate, will-redirect, window.open, webviews; permission request and check handlers; smoke checks navigationLock and permissionLock, both proven able to fail by a sabotage run); index.ts exits a packaged build carrying remote-debugging-port or -pipe; audio marks itself the microphone window; scripts/after-pack.js adds the Mac-only fuses; shared/catalog.ts catalogRefusal applied to refreshed and cached catalogs; notes/safe-fs.ts (replaceViaTemp with an exclusive temp file, openableNote) used by ticking, the inbox open, and reminder clicks; CSPs gained object-src, base-uri, form-action none; perms:open checks own keys; Electron 44.5.1 (newest 44.x on npm 2026-10-01; 44.3 to 44.5 carry Chromium and V8 security backports per releases.electronjs.org, checked 2026-10-01); npm audit 0 for runtime and dev. Packaged checks 2026-10-01 on a signed, unnotarized universal build (electron-builder --mac --universal --dir), every launch an isolated smoke run, the real profile's settings and key files untouched: fuses read RunAsNode, NodeOptions, NodeCliInspect Disabled and EmbeddedAsarIntegrityValidation, OnlyLoadAppFromAsar Enabled, codesign verifies; smoke ok under arm64 and under Rosetta (a first Rosetta run failed four checks at load average near 60; rerun at normal load passed, as did 0.1.8 under Rosetta as a control); ELECTRON_RENDERER_URL pointed at a local server drew 0 requests from the packaged app and 3 from the dev build (control); --remote-debugging-port and --remote-debugging-pipe each exit 1 with no DevTools endpoint, while the dev build printed one (control); the same one-letter edit inside out/main/index.js in app.asar ran fine in a copy of the shipped 0.1.8 and stopped the new build with ASAR Integrity Violation. Not proven: an app folder planted beside or instead of app.asar never executed even on 0.1.8 in this test, so the claim rests on the asar edit; only-load-from-asar is on regardless. pricing-watch: it had never run (every run 2026-09-14 to 2026-09-28 failed asking for an OIDC token), so the vendor-page path was never live. Now: job permissions read-only for the agent, github_token passed, pages fetched by scripts/pricing-watch.js before the agent, the agent limited to Read, Grep, Glob and Edit on the catalog and pricing-sources/notes.json (Bash, WebFetch, WebSearch, Write denied), checker and starting catalog set aside in RUNNER_TEMP before the agent and the job's .git deleted right after it, so no git (checkout's post-job cleanup included) reads anything the agent touched (review gate findings: a git filter written into .git/config would otherwise run), change list re-checked and applied to main by the push job with a PR body built from ids and source URLs only; actions pinned to v4.4.0, v4.6.2, v4.3.0, v1.0.238. Unit tests in scripts/lib/pricing-watch.test.js; check and apply exercised end to end locally; fetch tried locally (13 of 13 sources). The tool fence checked locally 2026-10-01: claude -p with the workflow's exact allowed and denied tools edited the catalog and notes files and was refused on another file and on .git/config. Workflow run from the branch 2026-10-01 (run 36851610029, the first successful run ever): all 13 sources fetched, the agent finished in 21 turns with 0 permission denials, the check found 0 changes and kept 3 notes (openai gpt-5.6-luna and whisper-1, mistral mistral-small-latest, each ambiguous), and the push job applied nothing and skipped the PR as designed. CI on draft PR 5: macOS green; Windows red only on notesFallback, which has failed the same way on every main run since 2026-09-27 (pre-existing, logged in HANDOFF). Review gate 2026-10-01 findings fixed: cleanup URL (llmBaseUrl) unchecked by the catalog rule (blocker), id swap past the shipped-preset rule, git after the agent, three smoke assertions that could not fail, an overclaiming comment, malformed dates, a silent refused reminder open. Deferred, with reasons: Windows asar fuses and update signing (US-064, Windows unprovable here); transient clipboard markers (Electron cannot write marker types beside text without a native module); a word-overlap check so cleanup cannot answer a spoken request (quality more than security; the speaker's words would be typed anyway); the unassigned legacy key following a base URL the user picks (low, user-chosen); http base URLs typed for remote hosts; IPC sender checks; note appends that follow a planted link (corruption of a user-owned file, not code execution); MURMUR_DEBUG still opening devtools in packaged builds (support tool; needs hands on the keyboard; LaBroi's call); PowerShell by absolute path; redirect error mode; recovery audio pruned by count rather than retention days; the allow-unsigned-executable-memory entitlement. Seen while testing, not caused here: a keystroke arriving while a smoke run exits can abort uiohook (FATAL uiohook_to_js_event), reproduced on a copy of the shipped 0.1.8 too. Live on the test build 2026-10-01 (LaBroi: all set): murmur started, dictated with the pill, and Settings worked, so the microphone rule and the window locks hold on the real profile. Open: the update half of the live criterion, which needs the next published release (LaBroi: after the brushwork and design work lands). Merged to main 2026-10-01."
     },
     {
+      "id": "US-073",
+      "title": "The brush: a seeded paint engine and the paint colors",
+      "description": "Asked for by LaBroi 2026-10-01 (brushwork art direction, see CLAUDE.md). Every painted mark in murmur comes from one engine: a bristle brush that drags along a path with pressure, dry-brush streaks that break up as the paint runs out, and splatter. It is seeded, so the same seed always paints the same mark, which keeps icons deterministic and needs no image files. Marks stack in the order they start painting, the same while animating and after, so nothing jumps layers when an animation settles (LaBroi's round-2 note on the preview). The paint colors smoke, rice paper, and ember join the night studio tokens.",
+      "acceptance": [
+        "One brush module serves every renderer: seeded bristles, pressure along the stroke, dry-brush breakup toward the tail, splatter, and a texture offset so a scrolling stroke keeps its pattern",
+        "Deterministic: the same seed and path give the same bristles, the same resampled path, and the same splatter, proven by unit tests",
+        "Stacking: marks are drawn in the order they start, animated or static, proven by a unit test on the ordering",
+        "tokens.css gains smoke, rice paper, and ember with their roles (ember is splatter and celebration only, never an error); the design lint stays clean",
+        "npm run typecheck, npm run test, and npm run smoke stay green; no new runtime dependencies"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Built 2026-10-01 on feature/brushwork. src/renderer/brush.ts is the one engine (seeded bristles, pressure, dry-brush streaks, splatter, sOff texture offset, stackOrder and paintScene for scenes); any renderer imports it, the overlay first (US-074). Verified: brush.test.ts proves the same seed gives the same random sequence, bristles, and splatter, a different seed differs, bristles span the full width, paths resample evenly with normals and keep raw corners, and stackOrder orders marks by start time with ties in list order. tokens.css gained smoke, rice, and ember with their roles; npm run test (design lint included) clean. npm run typecheck, npm run test, and npm run smoke (67 checks) green. Review gate 2026-10-01: the stacking criterion says animated or static, and no animated painter exists in the app yet; passes stays false until the first animated scene (US-076) paints through stackOrder and a test proves the animated order matches. 2026-10-02: animateScene added to brush.ts, the animated half of the stacking rule: a wet mark keeps its own layer, finished marks flatten in stacking order once everything under them is done, and every frame composites the flat picture and then the wet layers in stacking order; a stroke's splat never lands before its stroke is done; drops in flight and swelling dots ride an fx canvas until they land; cancel clears fx. brush.test.ts proves it with recording fake canvases: on every frame the wet layers draw in stacking order over the flat picture (with two or more wet at once), the flattened order equals the still painting's order, a 3 s stroke's drops land after every bristle, and layers are sized and placed in device pixels at dpr 2. The first animated scene to paint through it is the website hero's paint-in (US-079); the Journey (US-076) and the ceremony (US-077) use the same runner. Review gate 2026-10-02 (with US-082): the splat-landing and cancel findings fixed and tested; noted, not changed: a finished mark behind a slow one keeps its layer until it flattens (bounding-box sized, so the hero holds a few small layers for about a second and a half). Verified: npm run typecheck, npm run test, npm run smoke green."
+    },
+    {
+      "id": "US-074",
+      "title": "Ink overlay styles: dabs, flecks, rings, and ribbon, one per belt",
+      "description": "LaBroi picked all four ink styles from the preview on 2026-10-01, unlocking one per belt: dabs (ink bars) at white, flecks (ink speckle) at blue, rings (ink pulse) at purple, and ribbon (new: one continuous stroke the voice paints) at brown. Every ink style follows the same rules: wet paint in the accent while live, drying to brand gold (or a darker shade of a custom accent) when the brush lifts, a single sheen while processing, flat when inserted, a dry grey scrape for no speech, and clean red with no bristles for an error. They work in all three looks: the pill, compact, and bare with its ink edge and soft fade, which LaBroi asked to have built in without a separate preview.",
+      "acceptance": [
+        "cosmetics.json lists dabs, flecks, rings, and ribbon with unlocks white, blue, purple, and brown; a locked style shows how to earn it and cannot be picked; unit tests cover the unlock mapping",
+        "Each ink style draws in the pill, compact, and bare looks; in bare it carries the ink edge and fades out before the canvas edge; hints, errors, and no speech still get the full pill",
+        "Phase behavior matches the rules above for idle, recording, processing, inserted, no speech, and error; the default accent dries from amber to brand gold; a custom accent dries to a darker shade of itself",
+        "Reduced motion: no jitter, no flung drops, no ring births; the level still reads",
+        "A smoke check paints every ink style in every look while recording and proves each canvas drew, the window stayed unfocusable and click-through, and the user's style and look were restored",
+        "docs/settings.md and docs/journey.md describe the ink styles and when each unlocks",
+        "Live: each ink style looks right on LaBroi's Mac in each look with a real voice"
+      ],
+      "passes": true,
+      "needs_human": true,
+      "notes": "Built 2026-10-01 on feature/brushwork; automated criteria verified, the live check is in HANDOFF. overlay/InkWave.tsx draws dabs, flecks, rings, and ribbon; INK_STYLES lives in shared/overlay-state.ts; cosmetics.json unlocks them at white, blue, purple, brown. Verified: cosmetics.test.ts covers the unlock ladder (fresh user none, white dabs, blue adds flecks, purple adds rings, brown adds ribbon) and that every ink style has a belt unlock. Smoke checks overlayInk-dabs, -flecks, -rings, -ribbon (one per style, own deadline) walk all three looks: the canvas reports a recording frame with paint on it, then changes across two reads at least 100 ms apart, and the window stays unfocusable, on top, and click-through; the user's style and look are restored. A sabotage run (the loop stopped after one frame) failed every ink check, so the checks can fail. Review gate fixes 2026-10-01: the default accent arrives from main as signal amber, so amber now counts as the default and dries to brand gold (it was drying to a muddy amber); errors are clean red with no bristles in every style (plain bars, plain dots, the heart dot, one plain line) and rings and flung drops clear on error and no speech; reduced motion holds flecks still; the scroll offset freezes on release so nothing jumps; every style gets the one drying sheen; the ribbon skips a per-frame smoothing pass; a throw in a frame no longer freezes the loop. Design QA: MURMUR_INK_SHOTS=<dir> node scripts/smoke.js saves each style in each look plus drying and error in the pill (Claude reviewed them 2026-10-01: pill, compact, bare over dark and white, drying gold, clean red errors). docs/settings.md and docs/journey.md updated. MURMUR_OVERLAY_STYLE is ignored under smoke, like MURMUR_OVERLAY_LOOK. Full smoke run takes 35 s of the harness's 60 s. Live-verified 2026-10-01 by LaBroi on the signed test build (installed by direct swap, asar probe confirmed the ink code): every style, look, and state worked as it should. Review gate 2026-10-01 (second pass): ink flecks no longer keep a hint of amber at rest; idle is plain for every style."
+    },
+    {
+      "id": "US-075",
+      "title": "The ensō pill mark: app icon, tray, and favicon",
+      "description": "LaBroi picked the ensō pill on 2026-10-01: the pill drawn as one open loop of the brush with the amber live dot inside, so the logo and the app's signature are the same shape. gen-icons.js paints it with the brush engine at 64 pixels and up and draws a clean version for the tray and anything 32 pixels or smaller, where brushwork turns to mud.",
+      "acceptance": [
+        "App icons (png, icns, ico) show the brushed ensō pill on ink; the same seed gives the same bytes on every run",
+        "Tray icons and every size at or under 32 pixels use the clean drawn ensō pill; macOS template images still recolor with the system",
+        "The website favicon and social card use the mark",
+        "No binary is tracked in the repo; icons still generate on postinstall",
+        "Live: the dock, taskbar, and tray icons read clearly on LaBroi's Mac"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-076",
+      "title": "The Journey, painted: belt, road, gates, and ink stamps",
+      "description": "From the preview LaBroi approved 2026-10-01. The belt is painted fabric with crisp tape stripes, the way stripes go on in a gym. The ladder becomes a road painted in each belt's color up to where you are. The two promotion gates become a stroke for words and tally marks for days on the mat. Achievements become ink stamps, earned ones pressed in ember. LaBroi confirmed it again in the app refresh preview on 2026-10-02: build as shown.",
+      "acceptance": [
+        "The belt paints in the current belt's fabric color with the rank bar and tape stripes; coral and red belts paint correctly; the founder crown still shows",
+        "The road shows every rank, painted to your position, with the next rank marked",
+        "The words gate is a stroke filling toward the next rank; the days gate is tally marks, painted for days you have and pencil for days you need",
+        "Achievements render as stamps, earned in ember and unearned as faint outlines with the earn hint",
+        "Reduced motion paints the finished state with no animation",
+        "Live: the Journey looks right on LaBroi's real history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-077",
+      "title": "Belt promotion ceremony",
+      "description": "LaBroi picked the full ceremony on 2026-10-01: when a new belt is earned, the next time the Journey opens one big stroke in the new belt's color sweeps across with splatter and the rank is set large with its title and the words and days that earned it. Stripes get a smaller moment: the tape slaps onto the belt.",
+      "acceptance": [
+        "A new belt plays the ceremony once, the next time the Journey opens; it never appears over the app being dictated into",
+        "A new stripe plays the tape moment on the belt instead",
+        "Click, Escape, or Enter dismisses; focus returns where it was; it ends on its own after a few seconds",
+        "Reduced motion shows the finished painting and text with no motion",
+        "Live: LaBroi sees a ceremony from a real or simulated promotion"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-078",
+      "title": "A share card painted from your month",
+      "description": "From the approved preview: the share card's background is painted from your own last month of dictation, one stroke per day you dictated, longer for more words, heavier for more sessions, ember on your three biggest days. The rank uses Bricolage Grotesque, which LaBroi allowed on the share card.",
+      "acceptance": [
+        "The card paints from the real history: one stroke per active day in the last thirty days, sized by words and sessions, ember on the top three days",
+        "Two different histories give two different cards; the same history gives the same card",
+        "Text stays legible over the paint; the saved PNG matches what is shown",
+        "Live: LaBroi saves a card from his history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-079",
+      "title": "Website hero in brushwork",
+      "description": "From the approved preview: the site hero holds a live pill visitors can try (hold a button or the space bar, words land in a message with a flick of paint), painted brushwork around it that paints in once on load and then holds still, and the Bricolage Grotesque headline. Paint level: brushwork. Added by LaBroi 2026-10-01: once the paint-in finishes, it is the visitor's turn. Their cursor becomes a brush that paints behind the page (thin and dry when fast, a splatter on a quick flick), they can pick a color and clear their strokes, and they can save a poster of their painting with the murmur mark to post anywhere.",
+      "acceptance": [
+        "The hero demo works with a pointer, a touch, and the space bar, and never asks for the microphone",
+        "The brushwork paints in once, then holds; marks keep their stacking order; reduced motion shows the finished painting",
+        "After the paint-in, the visitor paints behind the page: by moving the cursor on a desktop, or by tapping Paint and dragging on a phone so scrolling still works; strokes never land on the headline or the controls; a color row, Clear my strokes, and a pause toggle are keyboard reachable",
+        "Make my poster saves a 4:5 PNG of the painting with the ensō pill lockup and the date, downloads it on a desktop and opens the share sheet on a phone; no data leaves the browser",
+        "Bricolage Grotesque loads only on the site with a system fallback",
+        "The SEO, AEO, and security header checks still pass; the page stays light enough to load fast on a phone",
+        "Live: LaBroi approves the hero on the deployed site"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-02 on feature/brushwork in site/: site/src/hero.js paints with the app's own engine (src/renderer/brush.ts, stripped of its types by Node at build time into dist/brush.js), and the paint-in is the first scene to run through animateScene (US-073), so it stacks the same live and settled. Reduced motion paints the finished picture at once. The hero holds a message window, the live pill drawn as ink dabs (wet amber drying to gold, sinking flat as the words land, a grey scrape for no speech), a Hold to speak button, the space bar, and Enter on the button; the demo never calls the microphone, and a take ends if the page loses focus. After the paint-in a your-turn bar appears: the cursor paints behind the page (thin and dry when fast, a splatter on a quick flick), a phone gets a Paint toggle so scrolling still works, a six-color row (ember, gold, rice, smoke, blue and purple belt) is a keyboard radio group, and Clear my strokes and Pause painting are buttons. Make my poster draws a 1080 by 1350 PNG of the painting with the ensō pill lockup, the wordmark in Bricolage, and the date, shown in a native modal dialog; Save poster downloads it, and on a phone that can share files it opens the share sheet; nothing leaves the browser. Bricolage Grotesque (OFL) is fetched at build time, cut to the condensed extra bold and the page's characters (54 KB), with its license beside it and a system fallback; the film section plays One drop from site/dist/film, copied from ~/Projects/murmur-film at build time, with its poster loaded only as it nears. Verified 2026-10-02 in Chrome and offscreen Electron windows on the local preview (port 4870, production headers): no console errors or CSP violations; the paint-in runs once and the your-turn bar appears; synthetic strokes paint, a fast flick throws splatter, and a stroke dragged straight through the headline leaves zero pixels on it at 1280 wide (the brush is clipped around the copy, the window, the pill, the hold button and hint, and the bar, and a stroke that would jump across them ends at their edge); the paint canvas matches the hero's size exactly after the bar appears (the review found it stretched before the fix); the poster dialog opens with a 1080 by 1350 blob image and focus on Save; the hold button records with amber dabs and lands a phrase in the message; the film plays under the CSP; at 390 wide nothing scrolls sideways and the controls wrap; the starting painting keeps clear of all text at 1000 and 1440 wide. Review gate 2026-10-02: one blocker (canvases stretched when the hero grew) and seven should-fix items fixed, plus the nits; the re-review confirmed all of them and found two the fixes introduced, both fixed: a landing flick no longer wipes the stroke being drawn (the drops land on both canvases without a repaint), and the message box keeps a fixed three-line height (a take that would overflow starts a fresh message), so demo takes never move the stage. Keep-out areas are now wiped box by box after each draw, so overlapping boxes stay clear. LaBroi kept Space for the demo while the hero is on screen (2026-10-02). Deployed 2026-10-03 to https://murmurapp.app (see US-066 for the hosting checks). Open: LaBroi's approval on the live site, and a real phone for the Paint toggle and the share sheet."
+    },
+    {
+      "id": "US-080",
+      "title": "Launch film: One drop",
+      "description": "LaBroi approved the animatic on 2026-10-01: fifteen seconds, no voiceover. A drop of ember paint hits the key, the splash ring becomes the pill, the voice paints a stroke that writes the first letter of the dictated sentence and settles into the typeface as the camera pulls out, the splatter gathers into a ball that bounces through an email, a doc, and a code editor, and the ball bounces into the ensō pill logo, cooling from ember to amber, with a slow pull out to the lockup. Built in HyperFrames from the same brush code; the project lives outside this repo at ~/Projects/murmur-film so renders and video tooling never enter it.",
+      "acceptance": [
+        "A 1920 by 1080, 60 fps master of 15 seconds, a recomposed 9:16 cut, a 6 second bumper, and a poster frame",
+        "Sound made from scratch: a drip, a key click, dry bristles riding the voice, soft ticks, one low tone; no stock music and no voice",
+        "Frames checked from the rendered files: transitions read as one continuous object and nothing jumps layers",
+        "Live: LaBroi watches and approves the cuts"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-01 by a build agent in ~/Projects/murmur-film (outside the repo), from the approved animatic. out/ holds the 1920x1080 60 fps master (15.000 s), the recomposed 1080x1920 vertical cut (15.000 s), the 6 s bumper, a poster PNG, and a contact sheet. Verified from frames pulled from the rendered MP4s: scene timings match the animatic, the stroke-to-R, splatter-to-ball, and ball-to-dot handoffs read as one object, the last 0.65 s is still, the lockup is centered. Sound is generated in code (scripts/sound.cjs), master at -18.4 LUFS. Remaining: LaBroi watches and approves; the audio has not been listened to yet. 2026-10-02: the master cut plays in the film section of the website (site/dist/film, copied at build time, never committed), with VideoObject structured data; it goes live with the site, so LaBroi's watch of the film comes before the deploy."
+    },
+    {
       "id": "US-081",
       "title": "Windows CI green again: the notes fallback check, and failures that explain themselves",
       "description": "Found 2026-10-01 during US-072 (numbered US-081 because the brushwork branch holds US-073 to US-080) and taken on by LaBroi's call the same day. CI's Windows job has failed on every main push since the brain dump merge on 2026-09-22, always on one smoke check, notesFallback, while macOS stayed green; nobody could see why, because scripts/smoke.js relayed only the pass or fail summary and threw away each check's own explanation. Windows CI is the only place murmur runs on Windows before LaBroi's PC does, so while it stays red a new Windows break looks exactly like the old one, and the design and brushwork work coming next changes the windows. This story makes a failing smoke check explain itself in CI, finds the real cause on the Windows runner, and fixes the check or the product, whichever is wrong, without weakening what the check proves: both unreachable folders still fall back to the data folder, nothing is lost, and the missing folder is never recreated.",
@@ -1140,6 +1263,27 @@
       "passes": true,
       "needs_human": false,
       "notes": "Built 2026-10-01 on fix/notes-windows-ci in a separate worktree. First red main run: 2026-09-22 (29f726e, the brain dump merge that brought the check in); every red run since failed only notesFallback on Windows. scripts/smoke.js now relays, when smoke fails, every line a check writes as 'smoke <check>: ...' plus the failed progress lines; smoke.ts logs a check that throws in that form; the updater check's message moved to that form. Diagnostic run on the Windows runner (CI run 36958881169): failed=loggedNotDir, with both redirect lines reading reason=ENOENT. Cause: a notes folder path under a regular file is ENOTDIR on macOS and Linux but ENOENT on Windows, and the check hard-coded ENOTDIR; every product condition passed there (both notes fell back and saved, no ghost folder, the save logged, status fallback). The check was wrong, not the product: saveNote never branches on the code, and docs/notes.md names no code. Fix: the check expects each platform's own code for the blocked folder, requires exactly two redirect lines in order (blocked, then missing ENOENT) among the lines written during the check, and falls back to the whole log if it rotated mid-check (review gate). Review gate 2026-10-01 caught a committed node_modules symlink from the worktree (the branch was rebuilt without it, and .gitignore now matches node_modules without a trailing slash so a symlink is ignored too) and the US-073 id collision with the brushwork branch. Verified 2026-10-01: CI run 36959520101 on 6555565 green on macos-latest and windows-latest, the first green Windows run since 2026-09-22; npm run typecheck, npm run test (629), and npm run smoke green on the Mac; review gate re-check clean. Merged to main 2026-10-01."
+    },
+    {
+      "id": "US-082",
+      "title": "The note receipt: open a note where it landed",
+      "description": "Asked for by LaBroi 2026-10-01: after holding the note chord, he wants a pop-up with a link that opens the note where it was saved. The pill cannot carry a link (it must stay click-through and never take focus), so the receipt is a system notification that can be clicked without taking focus, waits in Notification Center, and follows Do Not Disturb, backed by an Open last note menu item and a last note row on Home. Designed in the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM). LaBroi picked all three surfaces on 2026-10-02: the notification, the menu item, and the Home row.",
+      "acceptance": [
+        "After a note is safely written, a notification names where it landed and shows the note's first line, cut at about 80 characters; clicking it opens that exact file in the default app through the existing safe note opener",
+        "macOS offers Show in Finder; Windows offers Open folder",
+        "When sorting moves the note, the receipt is replaced by one naming the destination, with and N more for a brain dump that lands in several places, and clicking opens the first",
+        "When the notes folder was unreachable, the receipt names murmur's data folder and offers Choose folder",
+        "Only one note receipt shows at a time; a new one replaces the last",
+        "The tray menu (the menu bar icon on macOS) gains Open last note; Home shows the last note with Open and Show in Finder (Open folder on Windows)",
+        "Clicking a receipt opens the note and never brings up murmur's own window",
+        "Settings, Notes, has a Note receipts switch, on by default; docs/notes.md describes the receipt and the switch",
+        "The pill names the file in words on a saved note and stays click-through and unfocusable",
+        "A smoke check proves a saved note produces a receipt pointing at the right file and that the opener refuses anything that is not a note",
+        "Live: LaBroi dictates a note, clicks the receipt, and lands in the note"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-02 on feature/brushwork; automated criteria verified, the live check is in HANDOFF. src/shared/receipt.ts words every surface (first line cut near 80 characters at a word, place names like inbox/2026-10-02.md and todo.md, the title, the click target, the pill word) and parses the stored record strictly; 13 unit tests. src/main/notes/receipt.ts shows one notification per note with a fixed id (a new one replaces the last), silent because the pill already played the noted cue, and holds a reference until the next receipt replaces it, so a banner that timed out into Windows Action Center still answers a click; the log says shown only when the system reports the notification shown, and failed when it could not; the click opens the target through openableNote and shell.openPath and touches no window; the button is Show in Finder on macOS and Open folder on Windows (shell.showItemInFolder, also behind openableNote); a fallback note adds Choose folder, which opens the folder picker with murmur brought forward. The sorter now reports the files a filed sort wrote (places, tasks first); sortWithReceipt runs the sort and skips the receipt update when the sort it joined was another note's (sortInFlight), and a newer note makes an older sort's update stale. A retried note's record carries the time it was spoken. The newest note is remembered in userData/last-note.json (written through a temp file, read back strictly), so the tray's Open last note (shown once a note exists) and Home's last note row (open, show in Finder or open folder, the place in words) survive a restart. Settings, Notes, Note receipts (notes.receipts, default on) silences only the notification. The pill says noted to inbox (the overlay machine keeps a place on inserted): for a file named only by its date, as the default daily inbox is, it names the folder; otherwise the file's name. The place is capped at ten characters and the pill gained an ellipsis safety net so it never outgrows its window. docs/notes.md answers How do I open a note right after I say it?. Verified: npm run typecheck, npm run test (50 files, 658 tests, including the animated stacking tests added for the site), and npm run smoke green. New smoke check noteReceipt: a saved note's receipt is titled Noted to inbox/2026-10-02.md with the cut first line and points at the saved file; a filed sort replaces it with Sorted into todo.md and 1 more pointing at todo.md; a stale sort changes nothing; the tray menu gains Open last note; the opener opens the target and refuses a script, a folder named like a note, and a link named like a note that points at a script, and the reveal refuses the script; with the switch off nothing is shown but the record updates; the record on disk matches, with the spoken time; a real mocked sort of one note still running when a second note asks to sort leaves the second note's receipt alone (it joined the first sort and got its report), and a sort called for the second note on its own then replaces that note's receipt (its line checked) with Sorted into ideas.md pointing at ideas.md (that call proves the follow-through works; murmur itself does not re-sort a note that joined another's sort, which is the sorter's existing behavior). noteSort now also proves a filed sort reports todo.md then ideas.md as its places. noteLoop now also proves the live pipeline's pill says inbox and the receipt points at the written file; overlayLooks proves noted to plus the longest pill place shows whole (no ellipsis) on one line inside the pill in the pill, compact, and bare looks, with focus and click-through unchanged. Settings captures 2026-10-02 (scratch profile): Home shows the last note card under back today; Notes shows the Note receipts switch. Review gate 2026-10-02: no blockers; six should-fix findings fixed (the fit check could pass while cut off, a window-visibility smoke condition that proved nothing was removed, the Windows Action Center click, the failed log line, the untested joined-sort guard and places, a listener failure costing the receipt) plus the nits (stranded comments, the retried note's time, the tile carve-out in the paint rule). Live only: that a click opens the note without bringing murmur's window forward, on macOS with the window open behind another app and right after a Retry from Home, and the Windows Action Center click. LaBroi's calls on the review's two questions (2026-10-02): Clear all on the home tab also forgets the last note (the record, its file, and this session's receipt, plus on macOS the latest receipt by its id even after a restart; the note file is never touched), wired into history:clear and smoke-proven through forgetLastNote (the record and file are gone, the tray item hides, and a fresh read stays empty); the receipt keeps the note's first line, with the system's preview setting deciding what the lock screen shows. Re-review 2026-10-02: every finding confirmed fixed; its follow-up nits (shown logged from the show event, macOS removal by id, the smoke line check, the follow-through wording) fixed."
     },
     {
       "id": "US-083",
@@ -1156,6 +1300,128 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-10-02 on feature/win-fuses, on LaBroi's PC (Windows 11 23H2 x64). scripts/after-pack.js now applies the two fuses for win32 as well as darwin. electron-builder 26.15.3 already computes the app.asar header hash and writes it into murmur.exe as an INTEGRITY/ELECTRONASAR resource (electronWin addWinAsarIntegrity) before afterPack runs, so no other build change was needed. Packaged checks 2026-10-02 (electron-builder --win, unsigned), every launch an isolated smoke profile in temp: fuses read RunAsNode, NodeOptions, NodeCliInspect Disabled and EmbeddedAsarIntegrityValidation, OnlyLoadAppFromAsar Enabled on win-unpacked and win-arm64-unpacked, and each embedded hash equals the sha256 of its own app.asar header; the x64 packaged smoke run passed all 65 checks and the quit-path run exited 0 (the arm64 app cannot run on this x64 PC). Tamper: the same one-letter edit inside out/main/index.js in app.asar ran in a control copy with the two fuses flipped off (it printed the edited SMOKE_RESULX line) and stopped the fused copy with 'ASAR Integrity Violation: got a hash mismatch', exit 1. Planted folder: with app.asar moved aside and resources/app holding a package.json and main.js that log and exit 7, the control ran it (exit 7) and the fused copy exited 1 without running it, which the Mac test could not show. Both installers (x64, arm64, and the combined one) build. npm run typecheck and npm run smoke green on the PC; npm run test 625 of 629 on the PC, the 4 failures all in safe-fs.test.ts at fs.symlink with EPERM because a standard Windows account cannot create symlinks without Developer Mode (unrelated to this change; CI's Windows runner can). CI run 36995196594 on draft PR 8 green on macos-latest and windows-latest. The x64 installer was installed on the PC 2026-10-02 as a test build, and the installed murmur.exe reads both fuses Enabled. Open: the live criterion, which needs a published release installed on the PC. Merged to main 2026-10-02."
+    },
+    {
+      "id": "US-084",
+      "title": "Look: pick a waveform by watching it",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. The waveform setting is a dropdown of names today, and with seven styles a name like ink flecks means nothing until you see it move. It becomes a grid of live mini pills, one per style, each drawn by the same code as the overlay. Locked styles stay visible, dimmed, with the belt that unlocks them, so the grid also shows the path through the Journey.",
+      "acceptance": [
+        "Settings, Look, Waveform shows one tile per style (bars, speckle, pulse, ink dabs, ink flecks, ink rings, ink ribbon), each a live mini pill drawn by the overlay's own renderers and driven by a made-up voice; the microphone is never touched",
+        "The style in use is marked; clicking an unlocked tile picks it and the next dictation uses it",
+        "Locked tiles are dimmed, name the belt that unlocks them, and cannot be picked",
+        "Keyboard: the grid is one tab stop, arrow keys move between tiles, Enter or Space picks; a screen reader hears each name, whether it is in use, and whether it is locked",
+        "Tiles animate only while they are on screen and the window is open; reduced motion shows a still frame of each",
+        "Settings search still finds Waveform; npm run typecheck, npm run test, and npm run smoke stay green",
+        "Live: LaBroi picks a style from the tiles and dictates with it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-085",
+      "title": "Home: today as one stroke",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Home opens on today. The back today number gets one gold brush stroke under it, as long as today is compared with your typical day, so the day reads at a glance. It is the only painted mark on the page. The last note row under it ships with the note receipt (US-082).",
+      "acceptance": [
+        "Home's back today card draws one gold brush stroke under the number, its length today's time back over a typical day, with a dotted pencil line for the rest of the typical day; a day over typical fills the width",
+        "A typical day is the median time back across active days in the last 28, not counting today; the line under the stroke says it in words, for example 78% of your typical day, 18 min",
+        "With fewer than three active days to compare, the line says the comparison starts after a few days and no stroke is drawn",
+        "The stroke is seeded by the date, so it keeps its shape across opens and re-renders",
+        "Unit tests cover the typical day: the median, too little history, and a day over typical",
+        "Live: LaBroi reads his day from Home"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-086",
+      "title": "Every tab gets its own title",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Every tab opens with the same Push-to-talk dictation block today: it teaches once, then takes about 70 pixels of every page forever. Each tab gets a real title instead, and the how-to stays on Home only until you have dictated a few times.",
+      "acceptance": [
+        "Each tab opens with its own title and one quiet line: Home is Today with the date, Analytics is Your numbers, Wrap-up is Today, wrapped, Journey is your rank with its title, and Settings is Settings",
+        "The shared how-to block is gone from every tab except Home, where it shows with the real hotkey until five dictations exist and then goes for good",
+        "The first-run wizard is unchanged",
+        "npm run typecheck, npm run test, and npm run smoke stay green; the settings capture of each tab shows its title",
+        "Live: LaBroi clicks through the tabs and each one says where he is"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-087",
+      "title": "Analytics in ink",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. The last fourteen days become brush dabs, the same mark as the ink dabs waveform, so the same stroke means the same thing everywhere, with today in gold. The activity wall keeps its colors, painted as small blots instead of flat squares. Every number stays exactly as it is.",
+      "acceptance": [
+        "The fourteen-day chart draws each day as a brush dab exactly as tall as its bar would be, today in brand gold and other days in rice, with the same day labels",
+        "The activity wall keeps its layout and color scale, each active day painted as a small blot and each empty day a faint dot",
+        "Marks are seeded by date, so the same history paints the same chart on every open",
+        "Both charts keep a text label a screen reader can read; the numbers on the page do not change",
+        "Live: LaBroi opens Analytics on his real history"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-088",
+      "title": "Wrap-up: the day as a small painting",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. Today, wrapped becomes a card painted from the day itself: one stroke per dictation, longer for more words, the day's biggest take in ember. Copy the summary or save the card. It is the daily cousin of the share card (US-078) and shares its painter.",
+      "acceptance": [
+        "The wrap-up card paints one stroke per dictation today, longer for more words, the biggest take in ember, through the brush engine's paintScene so marks stack in start order",
+        "The same day paints the same card; a different day paints a different one",
+        "The summary over the painting (dictations, words, time back, longest take, best pace) stays legible",
+        "Copy summary copies the same text as today; Save card saves a PNG of the card through a save dialog and sends nothing anywhere",
+        "Live: LaBroi saves a card from a real day"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-089",
+      "title": "Empty states that say what to do",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02. An empty day reads A quiet day so far today. An empty screen should invite the first action instead: one dry brush mark, the same dry grey scrape the pill shows for no speech, and a sentence that says how to make the first stroke with your real hotkey.",
+      "acceptance": [
+        "Home, Wrap-up, Analytics, and Journey each show, when they have nothing yet, one dry grey brush mark and a sentence naming the real hotkey from settings, for example Hold Alt+Space anywhere and speak. Your first one lands here.",
+        "The empty mark is the pill's dry scrape: never red, never splatter",
+        "Changing the hotkey changes the sentence",
+        "The settings capture with an empty history shows each empty state",
+        "Live: LaBroi sees an empty state on a fresh profile or a quiet morning"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-090",
+      "title": "A painted insignia and tab marker",
+      "description": "LaBroi picked this from the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM) on 2026-10-02: the tiny belt beside the wordmark is painted like the Journey belt, and the tab you are on gets a short gold brush stroke under it instead of a pill. The smallest change, and the most visible.",
+      "acceptance": [
+        "The insignia beside the wordmark paints the current belt's fabric with its rank bar and tape stripes using the Journey's belt painter; the founder crown still shows",
+        "The current tab gets a short brand gold brush stroke under its label in place of the pill highlight; each tab has its own seed, so a stroke never changes shape when you come back",
+        "The current tab is still announced to screen readers and keyboard focus still shows",
+        "Live: LaBroi sees the insignia and the marker on every tab"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-091",
+      "title": "A long wait still reads as working",
+      "description": "Decided by LaBroi on 2026-10-02: while processing runs long, the drying sheen repeats every 2 seconds. Today the ink pill dries with one sheen and then holds still until the words land, so a long take or a slow provider looks frozen. After the first sheen, a softer one crosses the dried paint every 2 seconds until the words arrive.",
+      "acceptance": [
+        "In processing, the first sheen plays as today; then a softer sheen crosses the dried paint every 2 seconds until the phase changes, on all four ink styles and in the pill, compact, and bare looks",
+        "Reduced motion shows no sheen, as today",
+        "The bars, speckle, and pulse styles are unchanged",
+        "A unit test proves the sheen timing (first sheen, then one every 2 seconds, none after processing ends); the smoke ink shots still save",
+        "Live: LaBroi sees the repeat on a long take"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
     }
   ]
 }

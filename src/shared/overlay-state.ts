@@ -30,6 +30,15 @@ export function normalizeOverlayLook(value: unknown): OverlayLook {
   return (OVERLAY_LOOKS as readonly unknown[]).includes(value) ? (value as OverlayLook) : 'pill'
 }
 
+/** The ink waveforms (US-074), drawn with the brush. Each is a
+ *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
+export const INK_STYLES = ['dabs', 'flecks', 'rings', 'ribbon'] as const
+export type InkStyle = (typeof INK_STYLES)[number]
+
+export function isInkStyle(value: unknown): value is InkStyle {
+  return (INK_STYLES as readonly unknown[]).includes(value)
+}
+
 export interface OverlayState {
   phase: OverlayPhase
   /** Epoch ms when recording began; drives the live timer. */
@@ -37,9 +46,9 @@ export interface OverlayState {
   /** Words per minute of the finished session, shown on inserted. */
   wpm: number | null
   mode: OverlayMode
-  /** The message of a hint phase, or an error's reason when the error
-   *  has one worth saying (a selection that could not be read); null
-   *  otherwise. */
+  /** The message of a hint phase, an error's reason when the error has
+   *  one worth saying (a selection that could not be read), or where a
+   *  note landed on inserted (inbox); null otherwise. */
   hint: string | null
 }
 
@@ -86,7 +95,7 @@ export class OverlayMachine {
       startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null,
       wpm: to === 'inserted' ? wpm : null,
       mode,
-      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' ? (extras.hint ?? null) : null
+      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' || to === 'inserted' ? (extras.hint ?? null) : null
     }
     return this.get()
   }

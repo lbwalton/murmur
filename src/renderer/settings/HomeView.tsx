@@ -7,6 +7,7 @@ import changelogRaw from '../../../CHANGELOG.md?raw'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, countsTowardStats, groupByDay } from '../../shared/history'
+import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
@@ -87,6 +88,56 @@ function whenOf(at: number): string {
 function lengthOf(ms: number): string {
   const s = Math.max(1, Math.round(ms / 1000))
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
+/** The note receipt's Home half (US-082): the newest note, where it
+ *  landed, and the two ways back to it. Opening goes through main's
+ *  note opener, which refuses anything that is not a note file. */
+function LastNoteRow(): React.JSX.Element | null {
+  const [note, setNote] = useState<LastNote | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = (): void => {
+      void bridge().getLastNote().then(setNote)
+    }
+    load()
+    return bridge().onLastNoteChanged(load)
+  }, [])
+
+  if (!note) return null
+  const reveal = revealLabel(navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32')
+  const act = async (what: 'open' | 'reveal'): Promise<void> => {
+    const outcome = what === 'open' ? await bridge().openLastNote() : await bridge().revealLastNote()
+    setSaid(
+      outcome === 'refused' || outcome === 'none'
+        ? 'That file is not there anymore, or it is no longer a note.'
+        : outcome === 'failed'
+          ? 'Your computer could not open it. Try the other button.'
+          : null
+    )
+  }
+
+  return (
+    <section className="panel last-note">
+      <p className="micro-label">last note</p>
+      <div className="last-note-row">
+        <div className="last-note-text">
+          <p className="last-note-line">{note.line !== '' ? note.line : 'An empty note'}</p>
+          <p className="mono-inline dim">
+            {receiptWhere(note)} · {whenOf(note.at)}
+          </p>
+        </div>
+        <button className="btn quiet-btn" onClick={() => void act('open')}>
+          open
+        </button>
+        <button className="btn quiet-btn" onClick={() => void act('reveal')}>
+          {reveal.charAt(0).toLowerCase() + reveal.slice(1)}
+        </button>
+      </div>
+      {said && <p className="dim last-note-said">{said}</p>}
+    </section>
+  )
 }
 
 /**
@@ -248,6 +299,7 @@ export function HomeView(props: {
           </p>
         </section>
       )}
+      <LastNoteRow />
       {grouped.length === 0 && (
         <section className="panel empty-log">
           <p className="micro-label">transcriptions</p>

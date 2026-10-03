@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (63/74 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (65/91 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -66,6 +66,8 @@
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
 - [x] **US-071** The pill and settings rebuild themselves after a renderer dies
+- [x] **US-073** The brush: a seeded paint engine and the paint colors
+- [x] **US-074** Ink overlay styles: dabs, flecks, rings, and ribbon, one per belt
 - [x] **US-081** Windows CI green again: the notes fallback check, and failures that explain themselves
 
 ## Built, awaiting live verification
@@ -77,6 +79,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
+- [ ] **US-082** The note receipt: open a note where it landed
 
 ## To do
 
@@ -85,4 +88,18 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business
 - [ ] **US-072** Security pass before go-live: windows load only murmur, the mic stays murmur's, the pricing robot cannot ship
+- [ ] **US-075** The ensō pill mark: app icon, tray, and favicon
+- [ ] **US-076** The Journey, painted: belt, road, gates, and ink stamps
+- [ ] **US-077** Belt promotion ceremony
+- [ ] **US-078** A share card painted from your month
+- [ ] **US-079** Website hero in brushwork
+- [ ] **US-080** Launch film: One drop
 - [ ] **US-083** Windows gets the asar fuses: code planted beside murmur cannot run as murmur
+- [ ] **US-084** Look: pick a waveform by watching it
+- [ ] **US-085** Home: today as one stroke
+- [ ] **US-086** Every tab gets its own title
+- [ ] **US-087** Analytics in ink
+- [ ] **US-088** Wrap-up: the day as a small painting
+- [ ] **US-089** Empty states that say what to do
+- [ ] **US-090** A painted insignia and tab marker
+- [ ] **US-091** A long wait still reads as working

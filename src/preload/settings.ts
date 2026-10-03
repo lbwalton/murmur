@@ -126,6 +126,14 @@ const api = {
   chooseNotesFolder: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:chooseFolder'),
   getNotesStatus: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:status'),
   openTodayNote: (): Promise<'file' | 'folder' | 'none'> => ipcRenderer.invoke('notes:openToday'),
+  getLastNote: (): Promise<import('../shared/receipt').LastNote | null> => ipcRenderer.invoke('notes:last'),
+  openLastNote: (): Promise<'opened' | 'refused' | 'failed' | 'none'> => ipcRenderer.invoke('notes:openLast'),
+  revealLastNote: (): Promise<'shown' | 'refused' | 'none'> => ipcRenderer.invoke('notes:revealLast'),
+  onLastNoteChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('notes:lastChanged', handler)
+    return () => ipcRenderer.removeListener('notes:lastChanged', handler)
+  },
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
   clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),
