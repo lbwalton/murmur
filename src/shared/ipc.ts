@@ -32,6 +32,7 @@ export const IpcChannels = {
   licenseBuy: 'license:buy',
   analyticsSummary: 'analytics:summary',
   analyticsHeatmap: 'analytics:heatmap',
+  analyticsDays: 'analytics:days',
   providerTest: 'provider:test',
   permsStatus: 'perms:status',
   permsOpen: 'perms:open',

@@ -23,6 +23,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-078 share card painted from your month (built 2026-10-04; needs the next test build). (1) Open murmur's window, click journey, then Share card. (2) A preview opens: your belt and rank over brush strokes, one per day you dictated in the last 30 days, your three biggest days in orange-red. (3) The rank (for example white belt, four stripes) should be in a tall, narrow, heavy typeface, the same one as the murmurapp.app headline; plain Arial means the font did not load. (4) Click Save card and pick where to save; open the PNG and it should look exactly like the preview. (5) Post it if you like it, and tell Claude if any text is hard to read.
+
 - [ ] US-077 belt promotion ceremony (built 2026-10-04; needs the next test build, and a promotion). (1) Keep dictating as usual. (2) After your next new belt, open murmur's window and click journey: a big brush stroke in the new belt's color sweeps across with a splash, and the belt's name appears large with the words and days that earned it. (3) Click anywhere or press Escape to close it. After a new stripe instead, the new strip of tape should drop onto your belt. If a promotion is far off, tell Claude and it can show you one in a test profile.
 
 - [ ] US-090 painted insignia and tab marker (built 2026-10-04; needs the next test build). (1) Open murmur's window. (2) Next to the word murmur at the top left, your belt is a tiny painted belt with your stripes. (3) The tab you are on has a short gold brush stroke under its name instead of a rounded box; click another tab and the stroke paints in under it. Tell Claude if the tiny belt is too small to read.

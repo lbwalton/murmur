@@ -160,6 +160,9 @@ const api = {
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
   },
+  getRecentDays: (): Promise<Array<{ day: string; words: number; sessions: number }>> => {
+    return ipcRenderer.invoke('analytics:days')
+  },
   getHeatmap: (year: number | null): Promise<import('../shared/analytics').HeatmapData> => {
     return ipcRenderer.invoke('analytics:heatmap', year)
   },

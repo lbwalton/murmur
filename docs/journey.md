@@ -81,7 +81,7 @@ Cosmetics only, visible proof of practice: new waveform styles for the pill (pul
 
 ## What is the share card?
 
-A button on the journey tab renders your belt, title, totals, and badge count into a PNG, drawn and saved entirely on your machine. Post it wherever you like: the point of a belt is that people can see it.
+Share card on the journey tab paints a card from your own last 30 days: one brush stroke for each day you dictated, longer for more words and heavier for more sessions, with your three biggest days in ember. Your painted belt, your rank (set in murmur's display face), its title, your words and days on the mat for those 30 days, and your level sit over it. Two people at the same belt get different cards, and the same history always paints the same card. A preview shows the card exactly as it will save; Save card writes it to a PNG wherever you choose. Everything is drawn and saved on your machine and nothing is sent anywhere. Post it wherever you like: the point of a belt is that people can see it.
 
 ## Can I cheat?
 

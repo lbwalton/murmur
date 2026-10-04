@@ -317,6 +317,13 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return heatmap(statsEvents(), { year: picked })
   })
 
+  // The share card's month (US-078): the last 30 days' words and
+  // sessions, totaled here from the whole log.
+  ipcMain.handle('analytics:days', async () => {
+    const { dailyTotals } = await import('../../shared/analytics')
+    return dailyTotals(statsEvents(), 30)
+  })
+
   registerSmokeCheck('history', () => {
     if (!log) return false
     const probe: SessionEvent = {
@@ -333,7 +340,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   registerSmokeCheck('analytics', async () => {
-    const { aggregate, heatmap } = await import('../../shared/analytics')
+    const { aggregate, dailyTotals, heatmap } = await import('../../shared/analytics')
     const { ratesFromCatalog, validateCatalog } = await import('../../shared/catalog')
     const catalog = validateCatalog((await import('../../../shared/provider-catalog.json')).default)
     if (!catalog) return false
@@ -343,6 +350,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       llmModel: 'llama-3.3-70b-versatile'
     })
     const wall = heatmap(events)
+    const month = dailyTotals(events, 30)
     // Time back rides the same summary: a known take (100 words in a
     // minute at 40 wpm is 1.5 back) plus the live log never below zero.
     const known = aggregate(
@@ -359,6 +367,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       summary.days.every((d) => d.minutesBack >= 0) &&
       known.lifetime.minutesBack === 1.5 &&
       wall.days.length >= 365 &&
+      month.length === 30 &&
+      month.reduce((n, d) => n + d.words, 0) >= 1 &&
       wall.totalWords >= 1 &&
       wall.years.length >= 1
     )

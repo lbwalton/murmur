@@ -15,6 +15,8 @@ export interface JourneyColors {
   rice: Rgb
   text: Rgb
   ink: Rgb
+  smoke: Rgb
+  founder: Rgb
   ember: Rgb
   gold: Rgb
   dim: Rgb
@@ -32,6 +34,8 @@ export function journeyColors(beltHex: Record<string, string>): JourneyColors {
   return {
     rice: tokenColor('--rice', [233, 227, 214]),
     text: tokenColor('--text', [236, 233, 228]),
+    smoke: tokenColor('--smoke', [58, 60, 68]),
+    founder: tokenColor('--founder-gold', [224, 182, 79]),
     ink: tokenColor('--ink', [15, 14, 17]),
     ember: tokenColor('--ember', [232, 88, 43]),
     gold: tokenColor('--brand', [217, 164, 65]),

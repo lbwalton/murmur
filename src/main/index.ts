@@ -612,6 +612,19 @@ app.whenReady().then(async () => {
       )
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
+    // MURMUR_SETTINGS_CLICK=selector clicks that element last (opening a
+    // dialog such as the share card), then waits for it to paint.
+    const clickOn = process.env.MURMUR_SETTINGS_CLICK
+    if (clickOn) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const el = document.querySelector(${JSON.stringify(clickOn)})
+          if (el) el.click()
+          return Boolean(el)
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
     const image = await settingsWindow.webContents.capturePage()
     const { writeFile } = await import('node:fs/promises')
     await writeFile(settingsCapture, image.toPNG())

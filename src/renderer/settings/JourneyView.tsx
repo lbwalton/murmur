@@ -26,6 +26,7 @@ import type { ProgressReport, RankSpec } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, sentence } from './PageTitle'
 import { Ceremony } from './Ceremony'
+import { ShareCardDialog } from './ShareCard'
 import { type Celebration, lastCelebrated, rememberCelebrated, toCelebrate } from './celebrate'
 import { EmptyState } from './EmptyState'
 
@@ -161,7 +162,7 @@ export function JourneyView(props: {
   const [defs, setDefs] = useState<AchievementDef[]>([])
   const [cosmetics, setCosmetics] = useState<CosmeticsReport | null>(null)
   const [line, setLine] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const pick = useRef(Math.random())
 
   useEffect(() => {
@@ -218,97 +219,20 @@ export function JourneyView(props: {
   const gateColor: Rgb = (props.accent ? parseColor(props.accent) : null) ?? beltOnInk(progress.rank.belt, colors)
   const gateColorKey = gateColor.join(',')
 
-  const shareCard = async (): Promise<void> => {
-    setSaving(true)
-    try {
-      const styles = getComputedStyle(document.documentElement)
-      const token = (name: string, fallback: string): string =>
-        styles.getPropertyValue(name).trim() || fallback
-      const canvas = document.createElement('canvas')
-      canvas.width = 840
-      canvas.height = 440
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      const ink = token('--ink', 'rgb(15, 14, 17)')
-      const panel = token('--panel', 'rgb(23, 22, 27)')
-      const text = token('--text', 'rgb(236, 233, 228)')
-      const dim = token('--text-dim', 'rgb(154, 150, 143)')
-      const mono = token('--font-mono', 'ui-monospace, monospace')
-      const body = token('--font-body', 'sans-serif')
-
-      ctx.fillStyle = ink
-      ctx.fillRect(0, 0, 840, 440)
-      ctx.fillStyle = panel
-      ctx.beginPath()
-      ctx.roundRect(28, 28, 784, 384, 22)
-      ctx.fill()
-
-      ctx.fillStyle = token('--brand', dim)
-      ctx.font = `12px ${mono}`
-      ctx.fillText('m u r m u r', 64, 84)
-
-      // The belt.
-      ctx.fillStyle = cosmetics.beltColor
-      ctx.beginPath()
-      ctx.roundRect(64, 112, 320, 44, 8)
-      ctx.fill()
-      if (progress.rank.belt !== 'red') {
-        ctx.fillStyle = progress.rank.belt === 'white' ? ink : 'rgba(0, 0, 0, 0.55)'
-        ctx.fillRect(300, 112, 60, 44)
-        ctx.fillStyle = text
-        for (let i = 0; i < Math.min(progress.rank.stripes, 6); i++) {
-          ctx.fillRect(308 + i * 8, 118, 4, 32)
-        }
-      }
-
-      ctx.fillStyle = text
-      ctx.font = `bold 34px ${body}`
-      ctx.fillText(progress.rank.label, 64, 216)
-      const labelWidth = ctx.measureText(progress.rank.label).width
-      ctx.fillStyle = dim
-      ctx.font = `14px ${mono}`
-      ctx.fillText(`lvl. ${progress.level.toLocaleString()}`, 64 + labelWidth + 16, 216)
-      ctx.fillStyle = dim
-      ctx.font = `italic 17px ${body}`
-      ctx.fillText(`"${progress.rank.title}"`, 64, 248)
-
-      ctx.font = `14px ${mono}`
-      ctx.fillStyle = text
-      ctx.fillText(
-        `${progress.totals.words.toLocaleString()} words · ${progress.totals.activeDays} days on the mat · ${earned.length} achievements`,
-        64,
-        304
-      )
-      if (line) {
-        ctx.fillStyle = dim
-        ctx.font = `13px ${body}`
-        ctx.fillText(line.length > 88 ? `${line.slice(0, 88)}…` : line, 64, 336)
-      }
-      if (progress.founder) {
-        // Centered on the solid red belt, matching the live view.
-        ctx.fillStyle = token('--founder-gold', cosmetics.beltColor)
-        ctx.font = `26px ${body}`
-        ctx.textAlign = 'center'
-        ctx.fillText('♛', 224, 143)
-        ctx.textAlign = 'start'
-      }
-      ctx.fillStyle = dim
-      ctx.font = `11px ${mono}`
-      ctx.fillText('push-to-talk dictation · earned, never bought', 64, 384)
-
-      await bridge().saveShareCard(canvas.toDataURL('image/png'))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const ceremony = celebration.current?.belt && !ceremonyDone ? celebration.current.belt : null
+  const shareData = { rank: progress.rank, level: progress.level, founder: progress.founder }
   // The tape moment for a new stripe plays once the ceremony is over.
   const tapeNow = Boolean(celebration.current?.tape && celebration.current.tape.id === progress.rank.id && !ceremony)
   return (
     <div className="home">
       {ceremony && <Ceremony rank={ceremony} onClose={() => setCeremonyDone(true)} />}
+      {sharing && (
+        <ShareCardDialog
+          card={shareData}
+          onClose={() => setSharing(false)}
+        />
+      )}
       <PageTitle title={sentence(progress.rank.label)} sub={`"${progress.rank.title}"`} />
       {progress.totals.words === 0 && !progress.founder && (
         <EmptyState
@@ -320,8 +244,8 @@ export function JourneyView(props: {
       <section className="panel">
         <div className="panel-head">
           <p className="micro-label">the journey</p>
-          <button className="btn quiet-btn" onClick={() => void shareCard()} disabled={saving}>
-            {saving ? 'Saving…' : 'Share card'}
+          <button className="btn quiet-btn" onClick={() => setSharing(true)}>
+            Share card
           </button>
         </div>
         <div className="journey-hero">

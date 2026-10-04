@@ -22,6 +22,7 @@ const { encodePng, render, renderRect, insideRoundedRect, makeBars, BAR_HEIGHTS 
 const { content, DOCS } = require('./content')
 const { clip, firstParagraph, renderDoc } = require('./markdown')
 const { headersFile } = require('./headers')
+const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
 const here = __dirname
 const root = join(here, '..')
@@ -853,42 +854,18 @@ function paintCss() {
 
 // ------------------------------------------------------------- font ---
 
-// Bricolage Grotesque (SIL Open Font License 1.1), the display face on
-// the site, the film, and the share card only. Fetched at build time so
-// no font file lives in the repo: the extra bold, the condensed widths
-// the page uses, and the optical size axis, cut to printable ASCII plus
-// the curly apostrophe, ellipsis, and middle dot (about 54 KB instead
-// of 131 KB for the whole latin set). Display text outside that set
-// falls back to the system face.
-const FONT_CHARS = `${Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('')}\u2019\u2026\u00b7`
-const FONT_CSS = `https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..85,800&display=swap&text=${encodeURIComponent(FONT_CHARS)}`
-const FONT_LICENSE = 'https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/OFL.txt'
-// Google serves woff2 only to browsers it recognizes.
-const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
-
+// The display face comes from scripts/lib/display-face.js, the same fetch
+// the app's share card uses.
 async function fetchFont() {
   const empty = '/* SPDX-License-Identifier: GPL-3.0-only */\n/* The display face was not fetched; system fonts stand in. */\n'
   if (process.env.SITE_OFFLINE) return { css: empty, file: null }
   try {
-    const sheet = await fetch(FONT_CSS, { headers: { 'User-Agent': BROWSER_UA } })
-    if (!sheet.ok) throw new Error(`font stylesheet answered ${sheet.status}`)
-    const css = await sheet.text()
-    const latin = /(@font-face\s*\{[^}]*\})/.exec(css)
-    const url = latin && /url\((https:[^)]+)\)\s*format\('woff2'\)/.exec(latin[1])
-    if (!url) throw new Error('no woff2 in the font stylesheet')
-    const res = await fetch(url[1])
-    const font = Buffer.from(await res.arrayBuffer())
-    // A woff2 file starts with the bytes wOF2; anything else is not a font.
-    if (!res.ok || font.subarray(0, 4).toString('latin1') !== 'wOF2') throw new Error('the font file is not woff2')
-    // The license travels with the font or the font does not ship.
-    const license = await fetch(FONT_LICENSE)
-    const ofl = license.ok ? await license.text() : ''
-    if (!/SIL OPEN FONT LICENSE/i.test(ofl)) throw new Error('the font license could not be fetched')
+    const { font, license, face: remote, url } = await fetchDisplayFace()
     mkdirSync(join(out, 'fonts'), { recursive: true })
-    const file = 'bricolage-grotesque-display.woff2'
+    const file = DISPLAY_FACE_FILE
     writeFileSync(join(out, 'fonts', file), font)
-    writeFileSync(join(out, 'fonts', 'OFL.txt'), ofl)
-    const face = latin[1].replace(url[1], `fonts/${file}`)
+    writeFileSync(join(out, 'fonts', 'OFL.txt'), license)
+    const face = remote.replace(url, `fonts/${file}`)
     return { css: `/* SPDX-License-Identifier: GPL-3.0-only */\n/* Bricolage Grotesque, SIL Open Font License 1.1 (fonts/OFL.txt). */\n${face}\n`, file }
   } catch (error) {
     console.warn(`site: display face not fetched (${error.message}); system fonts stand in`)

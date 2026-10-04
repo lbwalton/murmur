@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import bundled from '../../shared/provider-catalog.json'
 import { ratesFromCatalog, validateCatalog } from './catalog'
 import type { SessionEvent } from './history'
-import { type RatesSpec, aggregate, heatmap, sessionCostUsd, typicalDayBack, typicalShare } from './analytics'
+import { type RatesSpec, aggregate, dailyTotals, heatmap, sessionCostUsd, typicalDayBack, typicalShare } from './analytics'
 
 const RATES: RatesSpec = ratesFromCatalog(validateCatalog(bundled)!)
 
@@ -120,6 +120,19 @@ describe('aggregate', () => {
     // 3.125, rounded to a tenth once after the sum.
     expect(summary.today.minutesBack).toBe(3.1)
     expect(summary.days.at(-1)?.minutesBack).toBe(3.1)
+  })
+})
+
+describe('dailyTotals', () => {
+  it('totals the last N days from the whole log, zero-filled, oldest first', () => {
+    const many = Array.from({ length: 900 }, (_, i) => event(new Date(2026, 8, 5 - (i % 30), 9, 0).getTime() + i, 10))
+    const month = dailyTotals(many, 30, () => NOW)
+    expect(month).toHaveLength(30)
+    expect(month[0].day).toBe('2026-08-07')
+    expect(month.at(-1)?.day).toBe('2026-09-05')
+    expect(month.reduce((n, d) => n + d.words, 0)).toBe(9000)
+    expect(month.every((d) => d.sessions === 30)).toBe(true)
+    expect(dailyTotals([], 3, () => NOW).map((d) => d.words)).toEqual([0, 0, 0])
   })
 })
 

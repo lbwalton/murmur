@@ -887,6 +887,54 @@ select.field {
   color: var(--text-dim);
 }
 
+/* The share card's preview (US-078): the card at full resolution,
+   shown as it will save. */
+.share-dialog {
+  width: min(760px, calc(100vw - 48px));
+  max-width: none;
+  margin: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.share-dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.share-head h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.share-head .dim {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.share-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 840 / 440;
+  margin: 14px 0;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+}
+
+.share-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.share-actions .dim {
+  margin-right: auto;
+  font-size: 13px;
+}
+
 /* The belt promotion ceremony (US-077): the whole window, inside
    murmur's own window only. */
 .ceremony {

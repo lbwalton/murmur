@@ -51,6 +51,31 @@ export interface AnalyticsSummary {
   typicalBack: number | null
 }
 
+/**
+ * Words and sessions for each of the last `count` days ending today
+ * (local days, oldest first, zero-filled), from the whole log: the share
+ * card's month (US-078), which a capped history list would undercount.
+ */
+export function dailyTotals(
+  events: readonly SessionEvent[],
+  count: number,
+  now: () => number = () => Date.now()
+): Array<{ day: string; words: number; sessions: number }> {
+  const today = new Date(now())
+  const days = new Map<string, { day: string; words: number; sessions: number }>()
+  for (let i = count - 1; i >= 0; i--) {
+    const key = dayKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() - i).getTime())
+    days.set(key, { day: key, words: 0, sessions: 0 })
+  }
+  for (const event of events) {
+    const day = days.get(eventDay(event))
+    if (!day) continue
+    day.words += event.words
+    day.sessions += 1
+  }
+  return [...days.values()]
+}
+
 /** A typical day is measured over this many days before today. */
 export const TYPICAL_WINDOW_DAYS = 28
 /** Fewer active days than this in the window and there is no typical day. */
