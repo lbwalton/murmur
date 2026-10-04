@@ -56,7 +56,8 @@ export function beltOnInk(belt: string, c: JourneyColors): Rgb {
  * the coral belts alternate, stitching, the rank bar (red on a black
  * belt; none on coral or red belts), and tape stripes, which are crisp
  * because tape is not paint. progress paints the fabric in from the left;
- * the tape goes on once the fabric is done.
+ * the tape goes on once the fabric is done. drop slaps one tape on from
+ * above (a new stripe, US-077): k runs 0 to 1.
  */
 export function paintBelt(
   ctx: CanvasRenderingContext2D,
@@ -65,7 +66,8 @@ export function paintBelt(
   belt: string,
   stripes: number,
   c: JourneyColors,
-  progress = 1
+  progress = 1,
+  drop?: { i: number; k: number }
 ): void {
   const seed = 5
   const bandH = h * 0.5
@@ -149,9 +151,23 @@ export function paintBelt(
     const r = mulberry(seed + 77)
     for (let i = 0; i < n; i++) {
       const tx = rx1 - sp * (i + 0.85)
+      let ty = cy
+      let rot = (r() - 0.5) * 0.08
+      let scale = 1
+      let alpha = 1
+      if (drop && drop.i === i) {
+        // Falls from above, turning and a touch large, and lands flat.
+        const k = clamp(drop.k, 0, 1)
+        ty -= (1 - flickEase(k)) * h * 0.9
+        rot += (1 - k) * 0.5
+        scale = 1 + (1 - k) * 0.2
+        alpha = clamp(k * 3, 0, 1)
+      }
       ctx.save()
-      ctx.translate(tx, cy)
-      ctx.rotate((r() - 0.5) * 0.08)
+      ctx.translate(tx, ty)
+      ctx.rotate(rot)
+      ctx.scale(scale, scale)
+      ctx.globalAlpha = alpha
       ctx.shadowColor = rgba(c.ink, 0.55)
       ctx.shadowBlur = 4
       ctx.shadowOffsetY = 1.5

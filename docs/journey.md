@@ -21,6 +21,10 @@ The two gates to the next rank are painted too. Words is a brush stroke that fil
 
 Achievements are ink stamps: pressed in ember when earned, a faint dashed outline with the way to earn it when not. Everything on the tab is drawn by code from your progress, so the same progress always paints the same picture, and it paints itself in only when your progress moved since you last looked; otherwise, and always with reduced motion turned on in your system settings, it appears finished.
 
+## What happens when I earn a new belt?
+
+A notification tells you the moment it happens. Then, the next time you open the journey tab, murmur holds a small ceremony inside its own window: one big brush stroke in your new belt's color sweeps across with a splash of paint, and the rank is set large with its title and the words and days that earned it. Click anywhere, or press Escape, Enter, or Space, to carry on; it also ends on its own after a few seconds, and it never appears over the app you are dictating into. A new stripe or degree gets a smaller moment: the new strip of tape slaps onto your belt. Each promotion is celebrated once, and only the newest if several arrived since you last looked. With reduced motion turned on in your system settings, the ceremony shows the finished painting with no movement.
+
 ## What are the exact requirements for each belt and stripe?
 
 Every promotion requires BOTH numbers: lifetime words dictated AND distinct days on which you dictated at least once. The full ladder, straight from the file the promotion engine reads (`shared/ranks.json`), is also visible in the app on the journey tab under "the full ladder":

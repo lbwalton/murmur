@@ -25,6 +25,8 @@ import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { ProgressReport, RankSpec } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, sentence } from './PageTitle'
+import { Ceremony } from './Ceremony'
+import { type Celebration, lastCelebrated, rememberCelebrated, toCelebrate } from './celebrate'
 import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
@@ -82,15 +84,23 @@ function Belt(props: {
   founder: boolean
   colors: JourneyColors
   paintIn: boolean
+  /** A new stripe (US-077): its tape slaps onto the finished fabric. */
+  tape: boolean
 }): React.JSX.Element {
+  const newest = Math.min(props.stripes, props.belt === 'black' ? 6 : 4) - 1
   return (
     <div className="belt-paint">
       <PaintCanvas
+        key={props.tape ? 'tape' : 'belt'}
         className="belt-canvas"
         label={props.label}
         paintKey={`${props.belt}|${props.stripes}`}
-        paintInMs={props.paintIn ? 760 : 0}
-        paint={(ctx, w, h, k) => paintBelt(ctx, w, h, props.belt, props.stripes, props.colors, paintEase(k))}
+        paintInMs={props.tape ? 520 : props.paintIn ? 760 : 0}
+        paint={(ctx, w, h, k) =>
+          props.tape
+            ? paintBelt(ctx, w, h, props.belt, props.stripes, props.colors, 1, { i: newest, k })
+            : paintBelt(ctx, w, h, props.belt, props.stripes, props.colors, paintEase(k))
+        }
       />
       {props.founder && (
         <span className="belt-crown" title="the founder">
@@ -174,6 +184,19 @@ export function JourneyView(props: {
   }, [])
 
   const colors = useMemo(() => journeyColors(BELT_HEX), [])
+  // The promotion to celebrate, decided once, when progress first arrives,
+  // so the belt's first paint already knows about a new stripe.
+  const celebration = useRef<Celebration | null | undefined>(undefined)
+  if (progress && celebration.current === undefined) {
+    celebration.current = progress.founder ? null : toCelebrate(progress.promotions, LADDER, lastCelebrated(), Date.now())
+  }
+  const [ceremonyDone, setCeremonyDone] = useState(false)
+  // Remember how high you have climbed, celebrated or not, so the first
+  // open of a long history sets the mark and nothing below it replays.
+  const reachedIndex = progress && !progress.founder ? LADDER.findIndex((r) => r.id === progress.rank.id) : -1
+  useEffect(() => {
+    if (reachedIndex >= 0) rememberCelebrated(reachedIndex)
+  }, [reachedIndex])
   // Progress as of this visit: the paint-in plays only when it moved.
   const progressKey = progress ? `${progress.rank.id}|${progress.totals.words}|${progress.totals.activeDays}` : ''
   const moved = useMemo(() => (progressKey ? progressMoved(progressKey) : false), [progressKey])
@@ -280,8 +303,12 @@ export function JourneyView(props: {
     }
   }
 
+  const ceremony = celebration.current?.belt && !ceremonyDone ? celebration.current.belt : null
+  // The tape moment for a new stripe plays once the ceremony is over.
+  const tapeNow = Boolean(celebration.current?.tape && celebration.current.tape.id === progress.rank.id && !ceremony)
   return (
     <div className="home">
+      {ceremony && <Ceremony rank={ceremony} onClose={() => setCeremonyDone(true)} />}
       <PageTitle title={sentence(progress.rank.label)} sub={`"${progress.rank.title}"`} />
       {progress.totals.words === 0 && !progress.founder && (
         <EmptyState
@@ -305,6 +332,7 @@ export function JourneyView(props: {
             founder={progress.founder}
             colors={colors}
             paintIn={moved}
+            tape={tapeNow}
           />
           <div>
             <p className="journey-rank">
