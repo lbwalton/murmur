@@ -1392,7 +1392,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-10-04 on feature/brushwork. src/renderer/settings/EmptyState.tsx paints one dry grey scrape with the brush engine (the pill's no speech mark: the text-dim token, dry 0.95, no core, seed 55, so it is the same mark every time), beside a short title and Hold <hotkey> anywhere and speak, then a line for the tab. Home (no history, once the list has loaded: Nothing here yet. Every dictation lands here.), Wrap-up (none today, once loaded: No dictations yet today. Your first one lands here.), Analytics (no sessions ever: No numbers yet, in place of a page of zeros), and Journey (no words yet, never for the founder: Your journey starts with your first dictation, above the belt). The hotkey comes from settings through App, so changing it changes the sentence. Never red, never splatter. Analytics now keeps its title while loading. Verified: typecheck, test, smoke green; settings captures 2026-10-04 from an empty profile show all four empty states with the scrape and Alt+Space. docs/quickstart.md says it. Review gate 2026-10-04: no blockers; fixed: Home and Wrap-up wait for the history list before showing the invitation (no flash for a full history), the mark repaints when the window moves to a screen of another pixel density, the founder never sees the white belt line, the quickstart says Wrap-up asks again each day, and unused CSS went. Escalated to LaBroi: history retention (90 days by default) deletes events outright and stats and belts are computed from what remains (HANDOFF). Re-verified: typecheck, test, smoke green; captures redone."
     },
     {
       "id": "US-090",

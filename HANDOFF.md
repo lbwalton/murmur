@@ -23,6 +23,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] Decide (found in the US-089 review, 2026-10-04; nothing changed yet): history keeps 90 days by default, and older dictations are deleted. Your numbers, time back, and belt are all counted from what is left, so after a long break (or Clear all) analytics could say No numbers yet and your belt could drop. Options: keep lifetime totals in a separate counter that never gets pruned, or leave it. Tell Claude which.
+
+- [ ] US-089 empty states (built 2026-10-04; you have years of history, so these only show on a fresh profile; Claude checked them with screenshots). Optional: on a new day before your first dictation, open the wrap-up tab: it should show a dry grey brush mark and Hold (your hotkey) anywhere and speak. Your first one lands here.
+
 - [ ] US-086 every tab has its own title (built 2026-10-04; needs the next test build). (1) Open murmur and click through home, analytics, wrap-up, journey, and settings. (2) Each should start with its own title: Today with the date, Your numbers, Today, wrapped, your belt (for example White belt, four stripes), and Settings. (3) The old Push-to-talk dictation line should be gone from every tab (you have far more than five dictations, so the home reminder will not show). (4) Tell Claude if any title reads wrong.
 
 - [ ] US-091 the sheen repeats while processing runs long (built 2026-10-04; needs the next test build). (1) In Settings, Look, set Waveform to an ink style, for example ink dabs. (2) Press Preview beside Overlay look. The pill speaks for a few seconds, then holds the drying state for five seconds: one bright sheen as it dries, then a softer sheen at 2 and at 4 seconds, then the words land. (3) A real dictation on Groq usually finishes in about a second, so you will normally see only the first sheen; that is expected. (4) Tell Claude if the repeat ever looks busy or the pill looks frozen.

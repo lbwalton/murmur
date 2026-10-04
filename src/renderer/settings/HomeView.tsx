@@ -13,6 +13,7 @@ import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
 import { PageTitle, useToday } from './PageTitle'
+import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -267,12 +268,20 @@ export function HomeView(props: {
   onUpdateSettings: (partial: Partial<Settings>) => Promise<void>
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
+  // The empty state waits for the list, so a full history never flashes
+  // the first-run invitation while it loads.
+  const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const typingWpm = props.settings.timeBack.typingWpm
 
   useEffect(() => {
-    void bridge().listHistory().then(setEvents)
+    void bridge()
+      .listHistory()
+      .then((list) => {
+        setEvents(list)
+        setLoaded(true)
+      })
     // Unsubscribe on unmount, and cap live growth to match the list
     // handler so a long-running hidden window never accumulates state.
     return bridge().onHistoryAppended((event) => {
@@ -335,14 +344,8 @@ export function HomeView(props: {
         </section>
       )}
       <LastNoteRow />
-      {grouped.length === 0 && (
-        <section className="panel empty-log">
-          <p className="micro-label">transcriptions</p>
-          <p className="dim">
-            Nothing yet. Hold <span className="kbd">{props.settings.hotkey.binding}</span> anywhere
-            and speak; every dictation lands here.
-          </p>
-        </section>
+      {loaded && grouped.length === 0 && (
+        <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
       )}
 
       {grouped.map((group) => (

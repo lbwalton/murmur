@@ -7,6 +7,7 @@ import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../sh
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle } from './PageTitle'
+import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -14,15 +15,23 @@ export function WrapUpView(props: {
   /** The speed time back is measured against, from the settings App
    *  already holds, so the sentence never flashes a placeholder. */
   typingWpm: number
+  /** The dictation hotkey, for the empty state's sentence. */
+  hotkey: string
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
+  // Nothing renders until the list arrives, so a full day never flashes
+  // the empty state.
+  const [loaded, setLoaded] = useState(false)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
 
   useEffect(() => {
     const load = (): void => {
       void bridge()
         .listHistory()
-        .then((all) => setEvents(all.filter((e) => countsTowardStats(e) && eventDay(e) === dayKey(Date.now()))))
+        .then((all) => {
+          setEvents(all.filter((e) => countsTowardStats(e) && eventDay(e) === dayKey(Date.now())))
+          setLoaded(true)
+        })
       // Time back comes from main at the typing speed in settings, the
       // same number the home card reads.
       void bridge().getAnalytics().then(setSummary)
@@ -40,45 +49,44 @@ export function WrapUpView(props: {
   return (
     <div className="home">
       <PageTitle title="Today, wrapped" sub="How the day went, ready to copy." />
-      <section className="panel">
-        <p className="micro-label">the day</p>
-        {events.length === 0 ? (
-          <p className="dim empty-log">A quiet day so far: no dictations yet.</p>
-        ) : (
-          <>
-            <div className="stat-row">
-              <div className="stat">
-                <div className="stat-value">{events.length}</div>
-                <div className="stat-label">sessions</div>
-              </div>
-              <div className="stat">
-                <div className="stat-value">{minutes}</div>
-                <div className="stat-label">minutes spoken</div>
-              </div>
-              <div className="stat">
-                <div className="stat-value">{words.toLocaleString()}</div>
-                <div className="stat-label">words</div>
-              </div>
-              <div className="stat">
-                <div className="stat-value">{bestWpm}</div>
-                <div className="stat-label">best wpm</div>
-              </div>
-              {summary && (
-                <div className="stat">
-                  <div className="stat-value">{formatMinutesBack(back)}</div>
-                  <div className="stat-label">time back</div>
-                </div>
-              )}
+      {loaded && events.length === 0 && (
+        <EmptyState title="No dictations yet today." hotkey={props.hotkey} after="Your first one lands here." />
+      )}
+      {events.length > 0 && (
+        <section className="panel">
+          <p className="micro-label">the day</p>
+          <div className="stat-row">
+            <div className="stat">
+              <div className="stat-value">{events.length}</div>
+              <div className="stat-label">sessions</div>
             </div>
-            {back >= 1 && (
-              <p className="row-desc rates-note">
-                At your typing speed of {typingWpm} wpm, that is roughly {formatMinutesBack(back)} you
-                did not spend typing.
-              </p>
+            <div className="stat">
+              <div className="stat-value">{minutes}</div>
+              <div className="stat-label">minutes spoken</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">{words.toLocaleString()}</div>
+              <div className="stat-label">words</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">{bestWpm}</div>
+              <div className="stat-label">best wpm</div>
+            </div>
+            {summary && (
+              <div className="stat">
+                <div className="stat-value">{formatMinutesBack(back)}</div>
+                <div className="stat-label">time back</div>
+              </div>
             )}
-          </>
-        )}
-      </section>
+          </div>
+          {back >= 1 && (
+            <p className="row-desc rates-note">
+              At your typing speed of {typingWpm} wpm, that is roughly {formatMinutesBack(back)} you
+              did not spend typing.
+            </p>
+          )}
+        </section>
+      )}
 
       {events.length > 0 && (
         <section className="panel">

@@ -9,7 +9,7 @@ Install to first dictation in about five minutes.
 5. **Pick your hotkey.** Click the field, press your combo. Modifiers alone work: press and release Ctrl+Alt together and holding Ctrl+Alt becomes your push-to-talk.
 6. **Say something.** Click the test box, hold the hotkey, speak a sentence, release. The pill shows your voice; your words land in the box.
 
-That is the whole loop. From now on it works in every app: email, docs, chat, code comments. Your dictations appear in the home tab, your numbers in analytics. Each tab opens with its own title, and the home tab keeps a one-line reminder of your hotkey until your fifth dictation.
+That is the whole loop. From now on it works in every app: email, docs, chat, code comments. Your dictations appear in the home tab, your numbers in analytics. Each tab opens with its own title, and the home tab keeps a one-line reminder of your hotkey until your fifth dictation. Before your first dictation, home, analytics, and journey each say how to make it, with your hotkey, and wrap-up says the same each day until that day's first dictation.
 
 ## The three commands worth memorizing
 

@@ -622,9 +622,9 @@ export function App(): React.JSX.Element {
       {page !== 'setup' && (
         <div className="page">
           {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
-          {page === 'analytics' && <AnalyticsView />}
-          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
-          {page === 'journey' && <JourneyView />}
+          {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
+          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} />}
+          {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} />}
         </div>
       )}
 

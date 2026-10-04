@@ -52,6 +52,24 @@ body {
   gap: 18px;
 }
 
+/* An empty tab's invitation (US-089): the dry scrape and one sentence. */
+.empty-state {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.dry-mark {
+  flex: none;
+  width: 120px;
+  height: 40px;
+}
+
+.empty-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
 /* Each tab's own title (US-086). */
 .page-title {
   padding-top: 6px;
@@ -99,10 +117,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 18px;
-}
-
-.empty-log .dim {
-  padding-bottom: 12px;
 }
 
 .log-list {

@@ -10,6 +10,7 @@ import type { Settings } from '../../shared/settings'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle } from './PageTitle'
+import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -55,7 +56,7 @@ function heatFill(level: number, base: string, inverted: boolean): string | unde
   return `color-mix(in srgb, ${base} ${HEAT_PCT[level]}%, transparent)`
 }
 
-export function AnalyticsView(): React.JSX.Element {
+export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [wall, setWall] = useState<HeatmapData | null>(null)
   const [year, setYear] = useState<number | null>(null)
@@ -73,14 +74,28 @@ export function AnalyticsView(): React.JSX.Element {
     return bridge().onHistoryAppended(() => load())
   }, [year])
 
-  if (!summary) return <div className="home" />
+  const title = <PageTitle title="Your numbers" sub="This month and the last two weeks." />
+  if (!summary) return <div className="home">{title}</div>
+  // Nothing dictated yet: an invitation instead of a page of zeros.
+  if (summary.lifetime.sessions === 0) {
+    return (
+      <div className="home">
+        {title}
+        <EmptyState
+          title="No numbers yet."
+          hotkey={props.hotkey}
+          after="Your words, minutes, and time back count from your first dictation."
+        />
+      </div>
+    )
+  }
 
   const recent = summary.days.slice(-14)
   const maxWords = Math.max(1, ...recent.map((d) => d.words))
 
   return (
     <div className="home">
-      <PageTitle title="Your numbers" sub="This month and the last two weeks." />
+      {title}
       <section className="panel">
         <p className="micro-label">this month</p>
         <div className="stat-row">

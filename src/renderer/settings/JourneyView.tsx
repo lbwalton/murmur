@@ -8,6 +8,7 @@ import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { ProgressReport, RankSpec } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, sentence } from './PageTitle'
+import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -42,7 +43,7 @@ function Belt(props: { color: string; belt: string; stripes: number; founder: bo
   )
 }
 
-export function JourneyView(): React.JSX.Element {
+export function JourneyView(props: { hotkey: string }): React.JSX.Element {
   const [progress, setProgress] = useState<ProgressReport | null>(null)
   const [earned, setEarned] = useState<EarnedAchievement[]>([])
   const [defs, setDefs] = useState<AchievementDef[]>([])
@@ -168,6 +169,13 @@ export function JourneyView(): React.JSX.Element {
   return (
     <div className="home">
       <PageTitle title={sentence(progress.rank.label)} sub={`"${progress.rank.title}"`} />
+      {progress.totals.words === 0 && !progress.founder && (
+        <EmptyState
+          title="Your journey starts with your first dictation."
+          hotkey={props.hotkey}
+          after="Words and days on the mat count toward your white belt."
+        />
+      )}
       <section className="panel">
         <div className="panel-head">
           <p className="micro-label">the journey</p>
