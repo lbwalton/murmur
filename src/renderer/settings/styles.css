@@ -52,6 +52,124 @@ body {
   gap: 18px;
 }
 
+/* The waveform tiles (US-084): each a mini pill drawn by the overlay's
+   own renderer. The wave box matches the overlay's (40 px tall, bars
+   3 px wide with 3 px gaps; overlay/styles.css) so a tile is the pill. */
+.wave-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
+  gap: 10px;
+}
+
+.wave-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wave-tile:hover {
+  border-color: var(--cream-22);
+}
+
+.wave-tile:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.wave-tile[aria-checked='true'] {
+  border-color: var(--brand);
+}
+
+.wave-tile[aria-disabled='true'] {
+  cursor: default;
+}
+
+.wave-tile[aria-disabled='true']:hover {
+  border-color: var(--panel-edge);
+}
+
+.wave-tile[aria-disabled='true'] .mini-pill,
+.wave-tile[aria-disabled='true'] .tile-name {
+  opacity: 0.4;
+}
+
+.mini-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  margin-bottom: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 1px solid var(--panel-edge);
+}
+
+.mini-pill .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cream-25);
+}
+
+.mini-pill .wave {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  overflow: hidden;
+}
+
+.mini-pill .bar {
+  flex: none;
+  width: 3px;
+  min-height: 6px;
+  border-radius: 2px;
+  background: var(--wave-accent, var(--amber));
+  transition: height 90ms linear;
+}
+
+.mini-pill .speckle,
+.mini-pill .wave-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tile-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tile-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.wave-tile[aria-checked='true'] .tile-status {
+  color: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-pill .bar {
+    transition: none;
+  }
+}
+
 /* An empty tab's invitation (US-089): the dry scrape and one sentence. */
 .empty-state {
   display: flex;

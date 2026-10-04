@@ -23,6 +23,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] Decide (US-084 review, 2026-10-04; nothing changed yet): with reduced motion turned on in your Mac or Windows settings, the pulse and ink rings tiles show only the dot, because those styles draw rings only when motion is allowed (the real pill does the same). Options: draw one still ring for reduced motion (in the tiles and the pill), or leave it. Tell Claude which.
+
+- [ ] US-084 waveform tiles (built 2026-10-04; needs the next test build). (1) Open murmur's window, click settings, then Look in the list on the left. (2) Under Waveform you should see a grid of little pills, each one moving like someone is talking. (3) The one you use now has a gold outline and says in use; styles you have not earned yet are faded and say which belt earns them. (4) Click a different unlocked tile, then hold your hotkey and talk: the pill should draw your voice in that style. (5) Tell Claude if any tile looks frozen or wrong.
+
 - [ ] US-092 one header, the docs on the site, and the Wispr Flow page (built 2026-10-03; live after the next deploy). On your phone: (1) Open murmurapp.app and scroll down: the bar with murmur, film, docs, compare, and download stays at the top the whole way. (2) Tap docs: the same bar, a row of doc names, and every doc's questions. (3) Tap a question: it opens that doc at that question, not hidden under the bar. (4) Tap compare: murmur and Wispr Flow side by side, each row stacked so it reads on a phone. (5) Later, on the computer, do the same and tell Claude anything that reads wrong.
 - [ ] Search setup only you can do (2026-10-03). (1) Bing Webmaster Tools (bing.com/webmasters): sign in with Google, choose Import from Google Search Console, pick murmurapp.app. ChatGPT's search leans on Bing's index, so this is how murmur shows up there. (2) Optional, when you want: list murmur on AlternativeTo as an alternative to Wispr Flow, and on Product Hunt at launch. Answer engines read those listings.
 

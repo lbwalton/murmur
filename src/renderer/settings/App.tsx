@@ -27,6 +27,7 @@ import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
+import { WaveTiles } from './WaveTiles'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
   Advanced,
@@ -1166,21 +1167,16 @@ export function App(): React.JSX.Element {
           <Section id="look" title="Look" sub="The waveform pill and the window around it.">
             <Row
               label="Waveform"
-              keywords="overlay style visualizer"
-              desc="How the pill draws your voice. Locked styles show how to earn them."
+              keywords="overlay style visualizer ink dabs flecks rings ribbon bars speckle pulse"
+              desc="How the pill draws your voice. Each tile is the real pill, moving to a made-up voice; locked styles show the belt that earns them."
+              block
             >
-              <select
-                className="field"
-                aria-label="Waveform"
+              <WaveTiles
+                styles={cosmetics?.overlayStyles ?? []}
                 value={settings.overlay.style}
-                onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
-              >
-                {(cosmetics?.overlayStyles ?? []).map((item) => (
-                  <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                    {item.unlocked ? `${item.name} (${item.hint})` : `${item.name} (locked: ${item.hint})`}
-                  </option>
-                ))}
-              </select>
+                accent={guiAccent}
+                onPick={(style) => void update({ overlay: { ...settings.overlay, style } })}
+              />
             </Row>
 
             <Row

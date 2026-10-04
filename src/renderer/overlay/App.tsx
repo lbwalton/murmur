@@ -11,6 +11,7 @@ import {
 } from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
 import type { OverlayApi } from '../../preload/overlay'
+import { BAR_COUNT, Bars } from './Bars'
 import { InkWave } from './InkWave'
 import { PulseWave } from './PulseWave'
 import { SpeckleWave } from './SpeckleWave'
@@ -21,7 +22,6 @@ declare global {
   }
 }
 
-const BAR_COUNT = 21
 /** Phases whose whole point is a sentence to read: they always get
  *  the full pill, whatever the look. */
 const TEXT_PHASES: ReadonlySet<OverlayPhase> = new Set(['hint', 'error', 'nospeech'])
@@ -92,8 +92,6 @@ export function App(): React.JSX.Element {
   // The look actually drawn this phase: an error in bare borrows the
   // pill, and its canvas must remount at that size and back.
   const drawnAs = bareNow ? 'bare' : compactNow ? 'compact' : 'pill'
-  const barBase = compactNow ? 4 : 6
-  const barSpan = compactNow ? 20 : 30
   const classes = [
     'pill',
     `pill-${state.phase}`,
@@ -140,13 +138,7 @@ export function App(): React.JSX.Element {
               bare={bareNow}
             />
           ) : (
-            levels.map((level, i) => (
-              <span
-                key={i}
-                className="bar"
-                style={{ height: `${Math.round(barBase + level * barSpan)}px` }}
-              />
-            ))
+            <Bars levels={levels} compact={compactNow} />
           )}
         </div>
       </div>

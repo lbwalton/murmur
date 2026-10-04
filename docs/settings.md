@@ -96,7 +96,7 @@ An expansion turns a spoken trigger phrase into a saved snippet: say "insert my 
 
 ## What are the waveform styles?
 
-How the overlay pill visualizes your voice while recording. Pick one in Settings, Look, Waveform.
+How the overlay pill visualizes your voice while recording. Pick one in Settings, Look, Waveform: each style is a tile showing the real pill, moving to a made-up voice (your microphone is never used for the tiles). Click a tile to use it from your next dictation; the one in use is outlined in gold. Locked styles stay in the grid, dimmed, with the belt that earns them. With the keyboard, tab into the grid, move with the arrow keys, and press Enter or Space to pick. The tiles move only while you can see them, and with reduced motion turned on in your system settings each shows a still frame.
 
 - **Bars** is the classic equalizer.
 - **Speckle** is a dust field that drifts when quiet and vibrates with your speech.
