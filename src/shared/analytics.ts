@@ -46,6 +46,31 @@ export interface AnalyticsSummary {
   today: UsageTotals
   /** Most recent days first is NOT used: chronological, oldest first. */
   days: DayUsage[]
+  /** Time back on a typical day (US-085), or null until there are
+   *  TYPICAL_MIN_DAYS active days to measure it by. */
+  typicalBack: number | null
+}
+
+/** A typical day is measured over this many days before today. */
+export const TYPICAL_WINDOW_DAYS = 28
+/** Fewer active days than this in the window and there is no typical day. */
+export const TYPICAL_MIN_DAYS = 3
+
+/** The median time back across the active days given (each day's
+ *  total), or null when there are too few to call any of them typical. */
+export function typicalDayBack(activeDays: readonly number[]): number | null {
+  if (activeDays.length < TYPICAL_MIN_DAYS) return null
+  const sorted = [...activeDays].sort((a, b) => a - b)
+  const mid = sorted.length >> 1
+  const median = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+  return roundBack(median)
+}
+
+/** Today as a share of a typical day: 1 is typical, above 1 a bigger
+ *  day. A typical day with no time back counts any time back as full. */
+export function typicalShare(today: number, typical: number): number {
+  if (typical <= 0) return today > 0 ? 1 : 0
+  return Math.max(0, today) / typical
 }
 
 /** Estimated cost of one session in USD at current rates. */
@@ -136,6 +161,12 @@ export function aggregate(
     days.push(usage)
     dayIndex.set(key, usage)
   }
+  // The typical day's window: the TYPICAL_WINDOW_DAYS before today.
+  const windowDays = new Set<string>()
+  for (let i = 1; i <= TYPICAL_WINDOW_DAYS; i++) {
+    windowDays.add(dayKey(new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - i).getTime()))
+  }
+  const backByDay = new Map<string, number>()
 
   for (const event of events) {
     const cost = sessionCostUsd(event, rates, sttModel, llmModel)
@@ -144,6 +175,7 @@ export function aggregate(
     const key = eventDay(event)
     if (key.startsWith(monthPrefix)) add(month, event, cost, back)
     if (key === todayKey) add(today, event, cost, back)
+    if (windowDays.has(key)) backByDay.set(key, (backByDay.get(key) ?? 0) + back)
     const bucket = dayIndex.get(key)
     if (bucket) {
       bucket.sessions += 1
@@ -159,7 +191,14 @@ export function aggregate(
     bucket.minutesBack = roundBack(bucket.minutesBack)
   }
 
-  return { lifetime: round(lifetime), month: round(month), today: round(today), days }
+  return {
+    lifetime: round(lifetime),
+    month: round(month),
+    today: round(today),
+    days,
+    // Each day as it is shown (never below zero) before the median.
+    typicalBack: typicalDayBack([...backByDay.values()].map(roundBack))
+  }
 }
 
 export interface HeatDay {

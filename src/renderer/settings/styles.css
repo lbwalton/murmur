@@ -170,6 +170,20 @@ body {
   }
 }
 
+/* Today against a typical day (US-085): the gold stroke and its line. */
+.day-stroke {
+  display: block;
+  width: 100%;
+  height: 24px;
+  margin-top: 6px;
+}
+
+.timeback-typical {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 /* An empty tab's invitation (US-089): the dry scrape and one sentence. */
 .empty-state {
   display: flex;

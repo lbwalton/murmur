@@ -4,15 +4,16 @@
 // dictations land.
 import { useEffect, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
-import type { AnalyticsSummary } from '../../shared/analytics'
+import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
-import { type SessionEvent, countsTowardStats, groupByDay } from '../../shared/history'
+import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
 import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
 import { PageTitle, useToday } from './PageTitle'
+import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
@@ -140,6 +141,13 @@ function LastNoteRow(): React.JSX.Element | null {
       {said && <p className="dim last-note-said">{said}</p>}
     </section>
   )
+}
+
+/** Today in words against a typical day (US-085). Past double, the
+ *  percentage stops meaning much, so it says so instead. */
+function typicalLine(share: number, typical: number): string {
+  const of = `your typical day (${formatMinutesBack(typical)})`
+  return share > 2 ? `More than double ${of}` : `${Math.round(share * 100)}% of ${of}`
 }
 
 /** The how-to's one-way switch (US-086): set once five dictations exist. */
@@ -274,6 +282,7 @@ export function HomeView(props: {
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const typingWpm = props.settings.timeBack.typingWpm
+  const today = useToday()
 
   useEffect(() => {
     void bridge()
@@ -297,7 +306,9 @@ export function HomeView(props: {
     }
     load()
     return bridge().onHistoryAppended(() => load())
-  }, [typingWpm])
+    // A new day (the window left open past midnight) reloads too, so
+    // back today and the typical day never belong to yesterday.
+  }, [typingWpm, today])
 
   const copy = async (event: SessionEvent): Promise<void> => {
     await bridge().copyText(event.finalText)
@@ -306,7 +317,6 @@ export function HomeView(props: {
   }
 
   const grouped = groupByDay(events)
-  const today = useToday()
   // The how-to teaches the first few dictations, then gets out of the
   // way for good (US-086): once five exist it is remembered, so a Clear
   // all or a retention cut never brings it back. An empty log already
@@ -337,6 +347,16 @@ export function HomeView(props: {
           >
             {formatMinutesBack(summary.today.minutesBack)}
           </div>
+          {summary.typicalBack !== null && (
+            <DayStroke share={typicalShare(summary.today.minutesBack, summary.typicalBack)} day={dayKey(Date.now())} />
+          )}
+          <p className="timeback-typical">
+            {summary.typicalBack === null
+              ? `Today is measured against your typical day once you have ${TYPICAL_MIN_DAYS} days of dictation in the last four weeks, not counting today.`
+              : summary.typicalBack > 0
+                ? typicalLine(typicalShare(summary.today.minutesBack, summary.typicalBack), summary.typicalBack)
+                : 'Your typical day has no time back yet, so today stands on its own.'}
+          </p>
           <p className="timeback-spans">
             {formatMinutesBack(summary.month.minutesBack)} this month ·{' '}
             {formatMinutesBack(summary.lifetime.minutesBack)} lifetime

@@ -23,6 +23,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-085 today against a typical day (built 2026-10-04; needs the next test build). (1) Open murmur's window on the home tab. (2) Under the big back today number you should see a gold brush stroke, then a dotted line. (3) The line under it says something like 63% of your typical day (41 min). (4) Dictate a few times and reopen home: the stroke should grow. Tell Claude if the number feels wrong for your day.
+
 - [ ] Decide (site review, 2026-10-04; nothing changed yet): the pill you can try on murmurapp.app draws ink dabs, a brush style that is not in the released app yet (0.1.8 has bars and speckle; ink comes with the next release, earned by belt). Options: keep it as brand art, or show bars until the release that ships ink. Tell Claude which.
 
 - [ ] Decide (US-084 review, 2026-10-04; nothing changed yet): with reduced motion turned on in your Mac or Windows settings, the pulse and ink rings tiles show only the dot, because those styles draw rings only when motion is allowed (the real pill does the same). Options: draw one still ring for reduced motion (in the tiles and the pill), or leave it. Tell Claude which.

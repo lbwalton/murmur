@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import bundled from '../../shared/provider-catalog.json'
 import { ratesFromCatalog, validateCatalog } from './catalog'
 import type { SessionEvent } from './history'
-import { type RatesSpec, aggregate, heatmap, sessionCostUsd } from './analytics'
+import { type RatesSpec, aggregate, heatmap, sessionCostUsd, typicalDayBack, typicalShare } from './analytics'
 
 const RATES: RatesSpec = ratesFromCatalog(validateCatalog(bundled)!)
 
@@ -120,6 +120,50 @@ describe('aggregate', () => {
     // 3.125, rounded to a tenth once after the sum.
     expect(summary.today.minutesBack).toBe(3.1)
     expect(summary.days.at(-1)?.minutesBack).toBe(3.1)
+  })
+})
+
+describe('typical day', () => {
+  it('is the median of the active days', () => {
+    expect(typicalDayBack([4, 30, 10])).toBe(10)
+    expect(typicalDayBack([4, 30, 10, 20])).toBe(15)
+  })
+
+  it('waits for three active days', () => {
+    expect(typicalDayBack([])).toBeNull()
+    expect(typicalDayBack([12, 40])).toBeNull()
+    expect(typicalDayBack([12, 40, 7])).toBe(12)
+  })
+
+  it('never lets a day below zero pull the median down', () => {
+    const day = (daysAgo: number, words: number, ms: number): ReturnType<typeof event> =>
+      event(new Date(2026, 8, 5 - daysAgo, 9, 0).getTime(), words, ms)
+    // Two slow days sum below zero (speaking took longer than typing
+    // would have); each counts as the 0 it shows, so the median of
+    // [0, 0, one, one] is half of one, not dragged lower by negatives.
+    const one = aggregate([day(1, 300, 30_000)], RATES, { now: () => NOW }).days.at(-2)?.minutesBack ?? 0
+    expect(one).toBeGreaterThan(0)
+    const slow = [day(3, 5, 600_000), day(4, 5, 600_000)]
+    const summary = aggregate([...slow, day(1, 300, 30_000), day(2, 300, 30_000)], RATES, { now: () => NOW })
+    expect(summary.typicalBack).toBe(Math.round((one / 2) * 10) / 10)
+  })
+
+  it('measures the 28 days before today, and never today itself', () => {
+    const day = (daysAgo: number, words: number): ReturnType<typeof event> =>
+      event(new Date(2026, 8, 5 - daysAgo, 9, 0).getTime(), words, 30_000)
+    const inside = [day(1, 300), day(2, 300), day(28, 300)]
+    const summary = aggregate([...inside, day(0, 3000), day(29, 3000)], RATES, { now: () => NOW })
+    const one = aggregate([day(1, 300)], RATES, { now: () => NOW }).days.at(-2)?.minutesBack ?? 0
+    expect(one).toBeGreaterThan(0)
+    expect(summary.typicalBack).toBe(one)
+    expect(aggregate([day(1, 300), day(2, 300), day(0, 300)], RATES, { now: () => NOW }).typicalBack).toBeNull()
+  })
+
+  it('reads today against it, past full on a big day', () => {
+    expect(typicalShare(9, 12)).toBe(0.75)
+    expect(typicalShare(30, 12)).toBe(2.5)
+    expect(typicalShare(0, 12)).toBe(0)
+    expect(typicalShare(5, 0)).toBe(1)
   })
 })
 
