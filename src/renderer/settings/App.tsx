@@ -19,6 +19,7 @@ import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
 import { ApiKeys } from './ApiKeys'
 import { HomeView } from './HomeView'
+import { PageTitle } from './PageTitle'
 import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
@@ -620,13 +621,6 @@ export function App(): React.JSX.Element {
 
       {page !== 'setup' && (
         <div className="page">
-          <div className="hero">
-            <h1>Push-to-talk dictation.</h1>
-            <p className="dim">
-              Hold <span className="kbd">{settings.hotkey.binding}</span>, speak, release. Text lands at
-              your cursor.
-            </p>
-          </div>
           {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
           {page === 'analytics' && <AnalyticsView />}
           {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
@@ -646,6 +640,7 @@ export function App(): React.JSX.Element {
         />
 
         <div className="settings-content">
+          <PageTitle title="Settings" sub="How murmur listens, where your words go, and how it looks." />
           {status === 'bad' && <FinishSetup checks={checks} />}
 
           <Section

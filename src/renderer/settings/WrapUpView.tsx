@@ -6,6 +6,7 @@ import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
+import { PageTitle } from './PageTitle'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -38,8 +39,9 @@ export function WrapUpView(props: {
 
   return (
     <div className="home">
+      <PageTitle title="Today, wrapped" sub="How the day went, ready to copy." />
       <section className="panel">
-        <p className="micro-label">today, wrapped</p>
+        <p className="micro-label">the day</p>
         {events.length === 0 ? (
           <p className="dim empty-log">A quiet day so far: no dictations yet.</p>
         ) : (

@@ -1347,7 +1347,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-10-04 on feature/brushwork. src/renderer/settings/PageTitle.tsx renders each tab's title and one quiet line: Home is Today with the date (weekday, month, day), Analytics is Your numbers, Wrap-up is Today, wrapped (its card's label became the day so the title is not repeated), Journey is the rank in sentence case with its title in quotes (the belt card keeps the belt and the level), and Settings is Settings with one line, above the setup card. The shared Push-to-talk dictation block is gone; Home shows the how-to line with the real hotkey while fewer than five dictations exist and the log is not empty (an empty log already says how to start); once five exist a one-way flag is remembered, so a Clear all or a retention cut never brings it back. The wizard is untouched. Verified: npm run typecheck, npm run test (666), npm run smoke green; settings captures 2026-10-04 of all five tabs from a scratch profile show each title (Home with the how-to at 3 dictations, Journey reading No belt with \"just walked in\", Settings above Finish setup). docs/quickstart.md says it. Review gate 2026-10-04: no blockers; fixed: Home's date stays current (useToday refreshes on focus, on visibility, and at midnight, since the settings window lives on hidden), Journey shows a Journey title while loading or if loading fails, the how-to is remembered as done (and shows for a log that holds only spoken edits), and the leftover Journey styles were tidied. Re-verified: typecheck, test, smoke green; captures redone."
     },
     {
       "id": "US-087",

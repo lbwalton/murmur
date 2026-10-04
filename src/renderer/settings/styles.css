@@ -52,8 +52,13 @@ body {
   gap: 18px;
 }
 
-.hero {
+/* Each tab's own title (US-086). */
+.page-title {
   padding-top: 6px;
+}
+
+.page-title h1 {
+  margin-bottom: 4px;
 }
 
 .nav {
@@ -715,14 +720,8 @@ select.field {
   white-space: nowrap;
 }
 
-.journey-rank {
-  font-size: 22px;
-  font-weight: 650;
-}
-
-.journey-title {
-  font-style: italic;
-  margin-top: 3px;
+.journey-rank .level-chip {
+  margin-left: 0;
 }
 
 .journey-line {

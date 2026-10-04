@@ -7,6 +7,7 @@ import type { EarnedAchievement } from '../../shared/achievements'
 import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { ProgressReport, RankSpec } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
+import { PageTitle, sentence } from './PageTitle'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -69,7 +70,13 @@ export function JourneyView(): React.JSX.Element {
     return bridge().onHistoryAppended(() => load())
   }, [])
 
-  if (!progress || !cosmetics) return <div className="home" />
+  if (!progress || !cosmetics) {
+    return (
+      <div className="home">
+        <PageTitle title="Journey" />
+      </div>
+    )
+  }
 
   const earnedIds = new Set(earned.map((e) => e.id))
 
@@ -160,6 +167,7 @@ export function JourneyView(): React.JSX.Element {
 
   return (
     <div className="home">
+      <PageTitle title={sentence(progress.rank.label)} sub={`"${progress.rank.title}"`} />
       <section className="panel">
         <div className="panel-head">
           <p className="micro-label">the journey</p>
@@ -170,13 +178,11 @@ export function JourneyView(): React.JSX.Element {
         <div className="journey-hero">
           <Belt color={cosmetics.beltColor} belt={progress.rank.belt} stripes={progress.rank.stripes} founder={progress.founder} />
           <div>
-            <h2 className="journey-rank">
-              {progress.rank.label}
+            <p className="journey-rank">
               <span className="level-chip" title="one level per hundred thousand words">
                 lvl. {progress.level.toLocaleString()}
               </span>
-            </h2>
-            <p className="dim journey-title">"{progress.rank.title}"</p>
+            </p>
           </div>
         </div>
         {line && <p className="row-desc journey-line">{line}</p>}

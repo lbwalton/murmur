@@ -9,6 +9,7 @@ import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { Settings } from '../../shared/settings'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
+import { PageTitle } from './PageTitle'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -79,6 +80,7 @@ export function AnalyticsView(): React.JSX.Element {
 
   return (
     <div className="home">
+      <PageTitle title="Your numbers" sub="This month and the last two weeks." />
       <section className="panel">
         <p className="micro-label">this month</p>
         <div className="stat-row">

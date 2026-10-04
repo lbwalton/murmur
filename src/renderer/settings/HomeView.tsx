@@ -12,6 +12,7 @@ import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
+import { PageTitle, useToday } from './PageTitle'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -138,6 +139,23 @@ function LastNoteRow(): React.JSX.Element | null {
       {said && <p className="dim last-note-said">{said}</p>}
     </section>
   )
+}
+
+/** The how-to's one-way switch (US-086): set once five dictations exist. */
+const HOW_TO_KEY = 'murmur-howto-done'
+function howToDone(): boolean {
+  try {
+    return localStorage.getItem(HOW_TO_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function rememberHowToDone(): void {
+  try {
+    if (!howToDone()) localStorage.setItem(HOW_TO_KEY, '1')
+  } catch {
+    // Without storage the history count still decides.
+  }
 }
 
 /**
@@ -279,9 +297,26 @@ export function HomeView(props: {
   }
 
   const grouped = groupByDay(events)
+  const today = useToday()
+  // The how-to teaches the first few dictations, then gets out of the
+  // way for good (US-086): once five exist it is remembered, so a Clear
+  // all or a retention cut never brings it back. An empty log already
+  // says how to start.
+  const dictated = events.filter(countsTowardStats).length
+  if (dictated >= 5) rememberHowToDone()
+  const showHowTo = grouped.length > 0 && dictated < 5 && !howToDone()
 
   return (
     <div className="home">
+      <PageTitle title="Today" sub={today} />
+      {showHowTo && (
+        <section className="panel howto">
+          <p className="dim">
+            Hold <span className="kbd">{props.settings.hotkey.binding}</span>, speak, release. Text lands at your
+            cursor.
+          </p>
+        </section>
+      )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
       <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} />
       {events.some(countsTowardStats) && summary && (
