@@ -181,7 +181,7 @@ The color picker chooses the fill: vibrant orange (the default), your belt color
 
 ## Can my accent color change the rest of the app?
 
-Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look there. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.
+Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey's painted gates (the words stroke and the tally marks). The default signal amber stays reserved for live recording states, so choosing it leaves the gates in your belt's own color. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.
 
 ## Why don't I see murmur notifications on my Mac?
 

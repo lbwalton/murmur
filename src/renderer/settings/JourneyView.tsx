@@ -1,8 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The journey: your belt, drawn; the road to the next one; the story of
 // how far your voice has carried; the badges along the way.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ranksFile from '../../../shared/ranks.json'
+import cosmeticsFile from '../../../shared/cosmetics.json'
+import { type Rgb, clamp, parseColor } from '../brush'
+import { PaintCanvas } from './PaintCanvas'
+import {
+  type JourneyColors,
+  ROAD,
+  beltOnInk,
+  daysPerMark,
+  journeyColors,
+  paintBelt,
+  paintEase,
+  paintRoad,
+  paintStamp,
+  paintTallies,
+  paintWordsGate,
+  youX
+} from './journeyPaint'
 import type { EarnedAchievement } from '../../shared/achievements'
 import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { ProgressReport, RankSpec } from '../../shared/ranks'
@@ -14,6 +31,38 @@ const bridge = (): SettingsApi => window.murmur
 
 // The same file the engine promotes from, so this list can never drift.
 const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
+/** The road: every rank after the starting none; the founder-only rank
+ *  only on the founder's road. */
+const roadRanks = (founder: boolean): RankSpec[] => LADDER.filter((rank) => rank.id !== 'none' && (!rank.founderOnly || founder))
+const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
+
+const cssValue = (name: string, fallback: string): string =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+
+/** Share of the way from your rank's total to the next one's: the road,
+ *  the words stroke, and the tallies all measure since your current rank,
+ *  so they always agree. */
+function sinceRank(have: number, from: number, need: number): number {
+  return need <= from ? 1 : clamp((have - from) / (need - from), 0, 1)
+}
+
+/** Paint in only when progress moved since the last visit; otherwise the
+ *  Journey opens finished (paint stays still unless the moment moves). */
+const SEEN_KEY = 'murmur-journey-painted'
+function progressMoved(key: string): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) !== key
+  } catch {
+    return false
+  }
+}
+function rememberProgress(key: string): void {
+  try {
+    localStorage.setItem(SEEN_KEY, key)
+  } catch {
+    // Without storage the Journey simply opens finished next time too.
+  }
+}
 
 interface AchievementDef {
   id: string
@@ -21,19 +70,28 @@ interface AchievementDef {
   hint: string
 }
 
-function Belt(props: { color: string; belt: string; stripes: number; founder: boolean }): React.JSX.Element {
-  // 9th and 10th degree belts are solid red fabric with no rank bar,
-  // which is what sets them apart from every rank below.
-  const solid = props.belt === 'red'
+/**
+ * The belt, painted (US-076): fabric in the belt's color, the rank bar
+ * (none on coral and red belts), and crisp tape stripes. The founder
+ * crown still sits on the fabric.
+ */
+function Belt(props: {
+  belt: string
+  stripes: number
+  label: string
+  founder: boolean
+  colors: JourneyColors
+  paintIn: boolean
+}): React.JSX.Element {
   return (
-    <div className="belt" style={{ background: props.color }}>
-      {!solid && (
-        <div className="belt-bar">
-          {Array.from({ length: Math.min(props.stripes, 6) }, (_, i) => (
-            <span className="belt-stripe" key={i} />
-          ))}
-        </div>
-      )}
+    <div className="belt-paint">
+      <PaintCanvas
+        className="belt-canvas"
+        label={props.label}
+        paintKey={`${props.belt}|${props.stripes}`}
+        paintInMs={props.paintIn ? 760 : 0}
+        paint={(ctx, w, h, k) => paintBelt(ctx, w, h, props.belt, props.stripes, props.colors, paintEase(k))}
+      />
       {props.founder && (
         <span className="belt-crown" title="the founder">
           ♛
@@ -43,7 +101,51 @@ function Belt(props: { color: string; belt: string; stripes: number; founder: bo
   )
 }
 
-export function JourneyView(props: { hotkey: string }): React.JSX.Element {
+/** The road, painted to where you are, scrolled so you are in view. */
+function Road(props: { progress: ProgressReport; colors: JourneyColors; paintIn: boolean }): React.JSX.Element {
+  const { progress } = props
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const road = roadRanks(progress.founder)
+  const roadIndex = progress.founder ? road.length - 1 : road.findIndex((r) => r.id === progress.rank.id)
+  const toNext = progress.next
+    ? Math.min(
+        sinceRank(progress.totals.words, progress.rank.words ?? 0, progress.next.words ?? 0),
+        sinceRank(progress.totals.activeDays, progress.rank.activeDays ?? 0, progress.next.activeDays ?? 0)
+      )
+    : 1
+  const you = youX(roadIndex, toNext, road.length)
+  const words = `you, ${progress.totals.words.toLocaleString()} words`
+  useEffect(() => {
+    const box = scrollRef.current
+    if (box) box.scrollLeft = Math.max(0, you - box.clientWidth * 0.35)
+  }, [you])
+  const mono = cssValue('--font-mono', 'monospace')
+  const label = progress.next
+    ? `The road: ${progress.rank.label}, ${Math.round(toNext * 100)} percent of the way to ${progress.next.label}`
+    : `The road: ${progress.rank.label}, at the end of the road`
+  return (
+    <div className="road-scroll" ref={scrollRef}>
+      <PaintCanvas
+        className="road-canvas"
+        width={ROAD.W}
+        height={ROAD.H}
+        label={label}
+        paintKey={`${roadIndex}|${you.toFixed(1)}|${words}`}
+        paintInMs={props.paintIn ? 900 : 0}
+        paint={(ctx, _w, _h, k) =>
+          paintRoad(ctx, road, roadIndex, you, ROAD.pad + (you - ROAD.pad) * paintEase(k), words, props.colors, mono)
+        }
+      />
+    </div>
+  )
+}
+
+export function JourneyView(props: {
+  hotkey: string
+  /** The chosen accent color, or null for the default: it tints the
+   *  gates, as it tints progress across the window. */
+  accent: string | null
+}): React.JSX.Element {
   const [progress, setProgress] = useState<ProgressReport | null>(null)
   const [earned, setEarned] = useState<EarnedAchievement[]>([])
   const [defs, setDefs] = useState<AchievementDef[]>([])
@@ -71,6 +173,14 @@ export function JourneyView(props: { hotkey: string }): React.JSX.Element {
     return bridge().onHistoryAppended(() => load())
   }, [])
 
+  const colors = useMemo(() => journeyColors(BELT_HEX), [])
+  // Progress as of this visit: the paint-in plays only when it moved.
+  const progressKey = progress ? `${progress.rank.id}|${progress.totals.words}|${progress.totals.activeDays}` : ''
+  const moved = useMemo(() => (progressKey ? progressMoved(progressKey) : false), [progressKey])
+  useEffect(() => {
+    if (progressKey) rememberProgress(progressKey)
+  }, [progressKey])
+
   if (!progress || !cosmetics) {
     return (
       <div className="home">
@@ -80,6 +190,10 @@ export function JourneyView(props: { hotkey: string }): React.JSX.Element {
   }
 
   const earnedIds = new Set(earned.map((e) => e.id))
+  const bodyFont = cssValue('--font-body', 'sans-serif')
+  // The gates take the chosen accent, else the belt's own color.
+  const gateColor: Rgb = (props.accent ? parseColor(props.accent) : null) ?? beltOnInk(progress.rank.belt, colors)
+  const gateColorKey = gateColor.join(',')
 
   const shareCard = async (): Promise<void> => {
     setSaving(true)
@@ -184,7 +298,14 @@ export function JourneyView(props: { hotkey: string }): React.JSX.Element {
           </button>
         </div>
         <div className="journey-hero">
-          <Belt color={cosmetics.beltColor} belt={progress.rank.belt} stripes={progress.rank.stripes} founder={progress.founder} />
+          <Belt
+            belt={progress.rank.belt}
+            stripes={progress.rank.stripes}
+            label={progress.rank.label}
+            founder={progress.founder}
+            colors={colors}
+            paintIn={moved}
+          />
           <div>
             <p className="journey-rank">
               <span className="level-chip" title="one level per hundred thousand words">
@@ -196,43 +317,67 @@ export function JourneyView(props: { hotkey: string }): React.JSX.Element {
         {line && <p className="row-desc journey-line">{line}</p>}
       </section>
 
-      {progress.next && (
-        <section className="panel">
-          <p className="micro-label">next: {progress.next.label}</p>
-          {progress.words && (
-            <div className="gate">
-              <div className="gate-head">
-                <span className="mono-inline dim">words</span>
-                <span className="mono-inline dim">
-                  {progress.words.have.toLocaleString()} / {progress.words.need.toLocaleString()}
-                </span>
-              </div>
-              <div className="gate-track">
-                <div className="gate-fill" style={{ width: `${Math.round(progress.words.pct * 100)}%` }} />
-              </div>
+      <section className="panel">
+        <p className="micro-label">{progress.next ? `next: ${progress.next.label}` : 'the road'}</p>
+        <Road progress={progress} colors={colors} paintIn={moved} />
+        {progress.words && progress.next && (
+          <div className={`gate${progress.words.pct >= 1 ? ' gate-closed' : ''}`}>
+            <div className="gate-head">
+              <span className="mono-inline dim">words</span>
+              <span className="mono-inline dim">
+                {progress.words.have.toLocaleString()} / {progress.words.need.toLocaleString()}
+              </span>
             </div>
-          )}
-          {progress.activeDays && (
-            <div className="gate">
-              <div className="gate-head">
-                <span className="mono-inline dim">days on the mat</span>
-                <span className="mono-inline dim">
-                  {progress.activeDays.have} / {progress.activeDays.need}
-                </span>
-              </div>
-              <div className="gate-track">
-                <div
-                  className="gate-fill"
-                  style={{ width: `${Math.round(progress.activeDays.pct * 100)}%` }}
-                />
-              </div>
+            <PaintCanvas
+              className="gate-canvas"
+              label={`Words: ${progress.words.have.toLocaleString()} of ${progress.words.need.toLocaleString()}`}
+              paintKey={`${progress.words.have}|${progress.words.need}|${progress.rank.id}|${gateColorKey}`}
+              paintInMs={moved ? 700 : 0}
+              paint={(ctx, w, h, k) =>
+                paintWordsGate(
+                  ctx,
+                  w,
+                  h,
+                  sinceRank(progress.totals.words, progress.rank.words ?? 0, progress.next?.words ?? 0) * paintEase(k),
+                  gateColor,
+                  colors
+                )
+              }
+            />
+          </div>
+        )}
+        {progress.activeDays && progress.next && (
+          <div className={`gate${progress.activeDays.pct >= 1 ? ' gate-closed' : ''}`}>
+            <div className="gate-head">
+              <span className="mono-inline dim">
+                days on the mat
+                {daysPerMark(progress.activeDays.need - (progress.rank.activeDays ?? 0)) > 1 &&
+                  ` · each mark is ${daysPerMark(progress.activeDays.need - (progress.rank.activeDays ?? 0))} days`}
+              </span>
+              <span className="mono-inline dim">
+                {progress.activeDays.have} / {progress.activeDays.need}
+              </span>
             </div>
-          )}
+            <PaintCanvas
+              className="gate-canvas"
+              label={`Days on the mat: ${progress.activeDays.have} of ${progress.activeDays.need}`}
+              paintKey={`${progress.activeDays.have}|${progress.activeDays.need}|${progress.rank.id}|${gateColorKey}`}
+              paintInMs={moved ? 700 : 0}
+              paint={(ctx, w, h, k) => {
+                const days = progress.activeDays
+                if (!days) return
+                const from = progress.rank.activeDays ?? 0
+                paintTallies(ctx, w, h, days.need - from, days.have - from, gateColor, colors, paintEase(k))
+              }}
+            />
+          </div>
+        )}
+        {progress.next && (
           <p className="row-desc rates-note">
             Both gates must close. Words come from dictating; days only from showing up.
           </p>
-        </section>
-      )}
+        )}
+      </section>
 
       <section className="panel">
         <details className="ladder">
@@ -273,14 +418,23 @@ export function JourneyView(props: { hotkey: string }): React.JSX.Element {
 
       <section className="panel">
         <p className="micro-label">achievements</p>
-        <div className="badge-grid">
-          {defs.map((def) => {
+        <div className="stamps">
+          {defs.map((def, i) => {
             const got = earnedIds.has(def.id)
             return (
-              <div className={`badge ${got ? 'badge-earned' : ''}`} key={def.id} title={def.hint}>
-                <span className="badge-mark">{got ? '✓' : '·'}</span>
-                <span className="badge-name">{def.name}</span>
-                {!got && <span className="badge-hint">{def.hint}</span>}
+              <div className={`stamp${got ? ' stamp-earned' : ''}`} key={def.id} title={def.hint}>
+                <PaintCanvas
+                  className="stamp-canvas"
+                  width={76}
+                  height={76}
+                  paintKey={`${def.id}|${got}`}
+                  paint={(ctx, w) => paintStamp(ctx, w, def.id, got, 1200 + i * 9, colors, bodyFont)}
+                />
+                <span className="stamp-name">
+                  {def.name}
+                  <span className="visually-hidden">{got ? ', earned' : ', not yet earned'}</span>
+                </span>
+                {!got && <span className="stamp-hint">{def.hint}</span>}
               </div>
             )
           })}

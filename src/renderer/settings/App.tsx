@@ -625,7 +625,7 @@ export function App(): React.JSX.Element {
           {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
           {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
           {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} />}
-          {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} />}
+          {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} accent={guiAccent} />}
         </div>
       )}
 

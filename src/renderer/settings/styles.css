@@ -799,32 +799,73 @@ select.field {
   padding: 10px 0 8px;
 }
 
-.belt {
+/* The Journey, painted (US-076). The belt is fabric paint at 560 by
+   120; the road scrolls sideways, painted to where you are; the gates
+   are a stroke and tally marks; achievements are ink stamps. */
+.belt-paint {
   position: relative;
-  width: 170px;
-  height: 34px;
-  border-radius: 6px;
   flex: none;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  width: min(100%, 300px);
+  aspect-ratio: 560 / 120;
 }
 
-.belt-bar {
-  position: absolute;
-  right: 18px;
-  top: 0;
-  bottom: 0;
-  width: 44px;
-  background: rgba(0, 0, 0, 0.45);
+.belt-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.road-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 2px -4px 6px;
+  padding: 0 4px;
+}
+
+.road-canvas {
+  display: block;
+}
+
+.gate-canvas {
+  display: block;
+  width: 100%;
+  height: 36px;
+}
+
+.gate-closed .gate-head .mono-inline {
+  color: var(--brand);
+}
+
+.stamps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 16px 10px;
+  padding: 8px 0 14px;
+}
+
+.stamp {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  gap: 5px;
+  text-align: center;
+  min-width: 0;
 }
 
-.belt-stripe {
-  width: 3px;
-  height: 22px;
-  background: var(--text);
+.stamp-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stamp:not(.stamp-earned) .stamp-name {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.stamp-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-dim);
 }
 
 .belt-crown {
@@ -869,60 +910,6 @@ select.field {
   display: flex;
   justify-content: space-between;
   margin-bottom: 5px;
-}
-
-.gate-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--cream-06);
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.gate-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--gui-accent, var(--cream-55));
-}
-
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  padding: 6px 0 14px;
-}
-
-.badge {
-  border: 1px solid var(--panel-edge);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.badge-earned {
-  border-color: var(--ok-edge);
-}
-
-.badge-mark {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.badge-earned .badge-mark {
-  color: var(--ok);
-}
-
-.badge-name {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.badge-hint {
-  font-size: 11px;
-  color: var(--text-dim);
 }
 
 .promo-row {
@@ -1072,17 +1059,20 @@ details[open] > .ladder-summary::after {
 }
 
 /* The default scrollbar paints a bright track on ink; keep it quiet. */
-.heat-scroll::-webkit-scrollbar {
+.heat-scroll::-webkit-scrollbar,
+.road-scroll::-webkit-scrollbar {
   height: 7px;
   background: transparent;
 }
 
-.heat-scroll::-webkit-scrollbar-thumb {
+.heat-scroll::-webkit-scrollbar-thumb,
+.road-scroll::-webkit-scrollbar-thumb {
   background: var(--cream-14);
   border-radius: 4px;
 }
 
-.heat-scroll::-webkit-scrollbar-track {
+.heat-scroll::-webkit-scrollbar-track,
+.road-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
