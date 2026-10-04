@@ -5,15 +5,9 @@
 // width. Seeded by the date, so the stroke keeps its shape all day.
 import { useEffect, useRef } from 'react'
 import { cachedBrush, mulberry, path, rgba, stroke, tokenColor } from '../brush'
+import { daySeed } from './inkMarks'
 
 const H = 24
-
-/** A small, stable number from the day's key (YYYY-MM-DD). */
-function daySeed(day: string): number {
-  let h = 7
-  for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return h
-}
 
 function paint(canvas: HTMLCanvasElement, share: number, day: string): void {
   const width = Math.max(40, canvas.clientWidth)

@@ -84,7 +84,7 @@ Lists use plain text markers ("- " and "1. "), so they paste correctly everywher
 
 ## What does the analytics tab show, and how is the cost estimated?
 
-The analytics tab shows your dictation in numbers: minutes, words, sessions, time back, and an estimated cost for this month, a fourteen-day activity chart, and lifetime totals. Time back is the minutes you did not spend typing, computed as described under "How does murmur calculate time earned back?" below. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
+The analytics tab shows your dictation in numbers: minutes, words, sessions, time back, and an estimated cost for this month, the last fourteen days as brush dabs (each as tall as that day's words, today in gold, a day without dictation a faint speck), and lifetime totals. Time back is the minutes you did not spend typing, computed as described under "How does murmur calculate time earned back?" below. The cost figure is an estimate computed locally from your usage at published provider rates (from the provider catalog, `shared/provider-catalog.json`, each rate carrying its own verified-on date): audio time at the speech model's hourly rate, honoring Groq's 10-second minimum per request, plus an approximation of the cleanup model's token usage. Your provider bills you directly; murmur never sees your billing, and no numbers leave your machine. At typical usage, expect the estimate to read in cents, not dollars: that is the point of BYOK.
 
 ## How does the custom dictionary work?
 
@@ -173,15 +173,15 @@ Settings, history, and analytics live in your platform's application data folder
 
 ## What is the "getting active" grid on the analytics page?
 
-A GitHub-style activity wall. Every square is a day; the deeper the fill, the more words you dictated that day, scaled against your busiest day in the period. Today carries an outline, month and weekday labels frame the grid, hovering a square shows its date and word count, and the line above the wall totals the words for the whole period.
+A GitHub-style activity wall, painted. Every day you dictated is a small blot of paint; the deeper the color, the more words you dictated that day, scaled against your busiest day in the period. A day with no dictation is a faint dot. Today carries an outline, month and weekday labels frame the grid, hovering a day shows its date and word count, and the line above the wall totals the words for the whole period. Each blot's shape comes from its date, so the same history paints the same wall every time.
 
 The period picker shows lifetime by default (everything since your first dictation, padded back to at least a full year so young walls keep their shape) and can jump to any single calendar year back to your first dictation.
 
-The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: empty squares turn pure white and activity darkens them, so a dark fill never disappears into the background. Earning the black belt also unlocks the invert checkbox, which flips the wall to the white paper look for any fill color you choose (except near-white ones, which would vanish on paper). Cosmetic only; it changes nothing about what is counted.
+The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: every day sits on a white square and activity paints darker blots on it, so a dark fill never disappears into the background. Earning the black belt also unlocks the invert checkbox, which flips the wall to the white paper look for any fill color you choose (except near-white ones, which would vanish on paper). Cosmetic only; it changes nothing about what is counted.
 
 ## Can my accent color change the rest of the app?
 
-Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the 14-day chart bars and the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look in charts.
+Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey progress bars. The default signal amber stays reserved for live recording states, so choosing it keeps the quiet cream look there. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.
 
 ## Why don't I see murmur notifications on my Mac?
 

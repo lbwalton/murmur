@@ -596,6 +596,22 @@ app.whenReady().then(async () => {
       )
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
+    // MURMUR_SETTINGS_SCROLL=selector scrolls that element to the top of
+    // whatever tab is open, so the lower half of a page can be shot, and
+    // the activity wall to its newest days.
+    const scrollTo = process.env.MURMUR_SETTINGS_SCROLL
+    if (scrollTo) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const el = document.querySelector(${JSON.stringify(scrollTo)})
+          if (el) el.scrollIntoView({ block: 'start' })
+          // Sideways scrollers (the activity wall) show their newest end.
+          for (const x of document.querySelectorAll('.heat-scroll')) x.scrollLeft = x.scrollWidth
+          return Boolean(el)
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
     const image = await settingsWindow.webContents.capturePage()
     const { writeFile } = await import('node:fs/promises')
     await writeFile(settingsCapture, image.toPNG())

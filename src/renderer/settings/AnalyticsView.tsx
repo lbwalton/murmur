@@ -3,7 +3,7 @@
 // lifetime totals, a fourteen-day activity chart, and the activity
 // wall. Pure presentation over computed summaries; transcripts never
 // enter this view.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AnalyticsSummary, HeatDay, HeatmapData } from '../../shared/analytics'
 import type { CosmeticsReport } from '../../shared/cosmetics'
 import type { Settings } from '../../shared/settings'
@@ -11,6 +11,8 @@ import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle } from './PageTitle'
 import { EmptyState } from './EmptyState'
+import { type Rgb, mix, parseColor, rgba, tokenColor } from '../brush'
+import { daySeed, paintBlot, paintDab } from './inkMarks'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -45,15 +47,6 @@ function hexLuminance(color: string): number | null {
   const g = (n >> 8) & 255
   const b = n & 255
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
-}
-
-function heatFill(level: number, base: string, inverted: boolean): string | undefined {
-  if (inverted) {
-    if (level === 0) return 'var(--heat-invert-bg)'
-    return `color-mix(in srgb, ${base} ${HEAT_PCT_INVERTED[level]}%, var(--heat-invert-bg))`
-  }
-  if (level === 0) return undefined
-  return `color-mix(in srgb, ${base} ${HEAT_PCT[level]}%, transparent)`
 }
 
 export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
@@ -113,12 +106,18 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
 
       <section className="panel">
         <p className="micro-label">last 14 days</p>
-        <div className="chart" aria-hidden="true">
-          {recent.map((day) => (
+        <div
+          className="chart"
+          role="img"
+          aria-label={`Words per day, last 14 days: ${recent.map((d) => `${prettyDay(d.day)}, ${d.words.toLocaleString()}`).join('; ')}`}
+        >
+          {recent.map((day, i) => (
             <div className="chart-col" key={day.day} title={`${day.words} words on ${prettyDay(day.day)}`}>
-              <div
-                className={`chart-bar ${day.words > 0 ? 'chart-bar-live' : ''}`}
-                style={{ height: `${Math.max(3, Math.round((day.words / maxWords) * 72))}px` }}
+              <ChartDab
+                day={day.day}
+                height={Math.max(3, Math.round((day.words / maxWords) * 72))}
+                empty={day.words === 0}
+                today={i === recent.length - 1}
               />
               <span className="chart-tick">{day.day.slice(8)}</span>
             </div>
@@ -150,6 +149,119 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
       </section>
     </div>
   )
+}
+
+const CHART_H = 76
+
+/** The screen's pixel density, kept current when the window moves to a
+ *  screen of another density, so painted marks repaint sharp. */
+function useDevicePixelRatio(): number {
+  const [dpr, setDpr] = useState(() => window.devicePixelRatio || 1)
+  useEffect(() => {
+    const query = window.matchMedia(`(resolution: ${dpr}dppx)`)
+    const onChange = (): void => setDpr(window.devicePixelRatio || 1)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [dpr])
+  return dpr
+}
+
+/**
+ * One day of the fourteen as a brush dab (US-087), the ink dabs
+ * waveform's mark, exactly as tall as its bar was: today in brand gold,
+ * other days in rice, an empty day a faint speck. Seeded by the date.
+ */
+function ChartDab(props: { day: string; height: number; empty: boolean; today: boolean }): React.JSX.Element {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const screenDpr = useDevicePixelRatio()
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const draw = (): void => {
+      const width = canvas.clientWidth
+      if (width === 0) return
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(CHART_H * dpr)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.clearRect(0, 0, width, CHART_H)
+      const rgb = props.today && !props.empty ? tokenColor('--brand', [217, 164, 65]) : tokenColor('--rice', [233, 227, 214])
+      const dabWidth = Math.min(props.empty ? 8 : 18, width * 0.72)
+      paintDab(ctx, width / 2, CHART_H - 1, props.height, dabWidth, rgb, daySeed(props.day), props.empty ? 0.22 : 0.92)
+    }
+    draw()
+    const watch = new ResizeObserver(draw)
+    watch.observe(canvas)
+    return () => watch.disconnect()
+  }, [props.day, props.height, props.empty, props.today, screenDpr])
+  return <canvas ref={ref} className="chart-dab" />
+}
+
+/** A CSS color the wall uses (a token reference or a hex) as RGB. */
+function wallRgb(color: string, fallback: Rgb): Rgb {
+  const token = /^var\((--[a-z0-9-]+)\)$/i.exec(color)
+  if (token) return tokenColor(token[1], fallback)
+  return parseColor(color) ?? fallback
+}
+
+const CELL = 11
+const STEP = 14
+/** Room around the cells for the biggest blots' ragged edges. */
+const BLEED = 2
+
+/** The color a heat level paints, on the same scale as the old squares. */
+function blotColor(level: number, base: Rgb, inverted: boolean, paper: Rgb): { rgb: Rgb; alpha: number } {
+  if (inverted) return { rgb: mix(paper, base, HEAT_PCT_INVERTED[level] / 100), alpha: 1 }
+  return { rgb: base, alpha: HEAT_PCT[level] / 100 }
+}
+
+/**
+ * The activity wall's paint (US-087): each active day a small blot in
+ * the wall's color at its heat level, each empty day a faint dot (paper
+ * mode keeps its white squares, painted by the cells underneath).
+ * Seeded by the date, so the wall paints the same on every open.
+ */
+interface Mark {
+  /** Seeds the blot's edge: the day it stands for. */
+  seed: string
+  level: number
+}
+
+function paintWall(canvas: HTMLCanvasElement, marks: ReadonlyArray<Mark | null>, rows: number, base: Rgb, inverted: boolean): void {
+  const cols = Math.ceil(marks.length / rows)
+  const width = Math.max(1, cols * STEP - (STEP - CELL)) + 2 * BLEED
+  const height = rows * STEP - (STEP - CELL) + 2 * BLEED
+  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  canvas.width = Math.round(width * dpr)
+  canvas.height = Math.round(height * dpr)
+  canvas.style.width = `${width}px`
+  canvas.style.height = `${height}px`
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, width, height)
+  // Cells start BLEED in, so an edge blot is never clipped.
+  ctx.translate(BLEED, BLEED)
+  const paper = tokenColor('--heat-invert-bg', [236, 233, 228])
+  const faint = tokenColor('--text', [236, 233, 228])
+  marks.forEach((mark, i) => {
+    if (!mark) return
+    const x = Math.floor(i / rows) * STEP + CELL / 2
+    const y = (i % rows) * STEP + CELL / 2
+    const lv = mark.level
+    if (lv === 0) {
+      if (inverted) return
+      ctx.fillStyle = rgba(faint, 0.12)
+      ctx.beginPath()
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2)
+      ctx.fill()
+      return
+    }
+    const { rgb, alpha } = blotColor(lv, base, inverted, paper)
+    paintBlot(ctx, x, y, 3.9 + lv * 0.35, rgb, daySeed(mark.seed), alpha)
+  })
 }
 
 function ActivityWall(props: {
@@ -229,6 +341,27 @@ function ActivityWall(props: {
   const beltChoices = cosmetics?.accents.filter((a) => a.id.startsWith('belt-')) ?? []
   const gold = cosmetics?.accents.find((a) => a.id === 'gold')
   const periodLabel = wall.period === 'lifetime' ? 'lifetime' : `in ${wall.period}`
+  const active = wall.days.filter((d) => d.words > 0)
+  const busiest = active.reduce<HeatDay | null>((best, d) => (best && best.words >= d.words ? best : d), null)
+  const wallLabel = busiest
+    ? `Activity wall: ${wall.totalWords.toLocaleString()} words ${periodLabel}, on ${active.length.toLocaleString()} days; the busiest was ${prettyDay(busiest.day)} with ${busiest.words.toLocaleString()} words`
+    : `Activity wall: no dictation ${periodLabel} yet`
+
+  // The paint over the cells, redrawn whenever the days, the color, or
+  // paper mode change. The legend paints its five levels the same way.
+  const wallRef = useRef<HTMLCanvasElement>(null)
+  const legendRef = useRef<HTMLCanvasElement>(null)
+  const screenDpr = useDevicePixelRatio()
+  useEffect(() => {
+    const base = wallRgb(heatBase, [249, 115, 22])
+    const marks = cells.map((cell) => (cell ? { seed: cell.day, level: heatLevel(cell.words) } : null))
+    if (wallRef.current) paintWall(wallRef.current, marks, 7, base, inverted)
+    // The legend: one row, a mark for each level from none to most.
+    const legend = HEAT_PCT.map((_, level) => ({ seed: `legend-${level}`, level }))
+    if (legendRef.current) paintWall(legendRef.current, legend, 1, base, inverted)
+    // cells and heatLevel are rebuilt every render from wall; each load
+    // brings a new wall, so the data itself is the dependency.
+  }, [wall, heatBase, inverted, screenDpr])
 
   return (
     <section className="panel">
@@ -306,7 +439,7 @@ function ActivityWall(props: {
               </span>
             ))}
           </div>
-          <div className="heat" aria-hidden="true">
+          <div className="heat heat-ink" role="img" aria-label={wallLabel}>
             {cells.map((cell, i) =>
               cell === null ? (
                 <span className="heat-cell heat-pad" key={`pad-${i}`} />
@@ -314,22 +447,30 @@ function ActivityWall(props: {
                 <span
                   className={`heat-cell ${cell.day === todayKey ? 'heat-today' : ''}`}
                   key={cell.day}
-                  style={{ background: heatFill(heatLevel(cell.words), heatBase, inverted) }}
+                  style={{ background: inverted ? 'var(--heat-invert-bg)' : 'transparent' }}
                   title={`${cell.words.toLocaleString()} words on ${prettyDay(cell.day)}`}
                 />
               )
             )}
+            <canvas ref={wallRef} className="heat-paint" aria-hidden="true" />
           </div>
         </div>
       </div>
       <div className="heat-legend" aria-hidden="true">
         <span className="chart-tick">less</span>
-        {HEAT_PCT.map((_, level) => (
-          <span className="heat-cell" key={level} style={{ background: heatFill(level, heatBase, inverted) }} />
-        ))}
+        <span className="heat-legend-ink">
+          {HEAT_PCT.map((_, level) => (
+            <span
+              className="heat-cell"
+              key={level}
+              style={{ background: inverted ? 'var(--heat-invert-bg)' : 'transparent' }}
+            />
+          ))}
+          <canvas ref={legendRef} className="heat-paint" />
+        </span>
         <span className="chart-tick">more</span>
       </div>
-      <p className="row-desc rates-note">Every square is a day; depth is words. Show up and the wall fills.</p>
+      <p className="row-desc rates-note">Every mark is a day; deeper paint is more words. Show up and the wall fills.</p>
     </section>
   )
 }

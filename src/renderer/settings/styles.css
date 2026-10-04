@@ -403,19 +403,6 @@ body {
   gap: 5px;
 }
 
-.chart-bar {
-  width: 100%;
-  max-width: 26px;
-  border-radius: 3px 3px 0 0;
-  background: var(--cream-14);
-}
-
-.chart-bar-live {
-  /* Data emphasis, not a live state: amber stays reserved. The chosen
-     accent recolors it via --gui-accent; cream is the quiet default. */
-  background: var(--gui-accent, var(--cream-60));
-}
-
 .wizard-panel {
   padding: 26px 28px 20px;
 }
@@ -1130,6 +1117,39 @@ details[open] > .ladder-summary::after {
 
 .heat-pad {
   background: transparent;
+}
+
+/* The wall in ink (US-087): a canvas of blots over the cells, which
+   keep their layout, hover titles, and today's outline. */
+.heat-ink {
+  position: relative;
+}
+
+.heat-paint {
+  position: absolute;
+  /* The cells' top padding, less the 2 px bleed the canvas paints in. */
+  top: 2px;
+  left: -2px;
+  pointer-events: none;
+}
+
+.heat-legend-ink {
+  position: relative;
+  display: inline-flex;
+  gap: 3px;
+}
+
+.heat-legend-ink .heat-paint {
+  top: -2px;
+}
+
+/* The fourteen days in ink (US-087): one dab per day, as tall as its
+   bar was. */
+.chart-dab {
+  display: block;
+  width: 100%;
+  max-width: 26px;
+  height: 76px;
 }
 
 .heat-today {

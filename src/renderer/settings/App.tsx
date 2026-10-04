@@ -563,8 +563,8 @@ export function App(): React.JSX.Element {
     { id: 'pro', title: 'murmur Pro', group: 'app' }
   ]
 
-  // The chosen accent recolors data emphasis across the GUI (chart
-  // bars, gate fills) via one CSS variable. Amber stays reserved for
+  // The chosen accent recolors data emphasis across the GUI (progress
+  // and gate fills) via one CSS variable; the analytics chart is ink. Amber stays reserved for
   // live states, so the default accent keeps the quiet cream look.
   const guiAccent = ((): string | null => {
     if (!settings || !cosmetics) return null
@@ -1206,7 +1206,7 @@ export function App(): React.JSX.Element {
             <Row
               label="Accent"
               keywords="color colour"
-              desc="Colors the waveform, chart bars, and progress fills. The activity wall keeps its own picker. Earned, never bought."
+              desc="Colors the waveform and progress fills. The activity wall keeps its own picker; the fourteen-day chart paints today in gold. Earned, never bought."
             >
               <div className="inline">
                 {(() => {

@@ -23,6 +23,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] Decide (US-087 review, 2026-10-04): your accent color used to tint the 14-day chart on the analytics tab. The new ink chart paints the days in rice paper color with today in gold, as the preview showed, so an earned accent no longer shows there (it still colors the waveform and the journey bars). Options: keep it as built, or tint the other days with your accent and keep today gold. Tell Claude which.
+
+- [ ] US-087 analytics in ink (built 2026-10-04; needs the next test build). (1) Open murmur's window and click analytics. (2) Last 14 days: each day is a brush dab instead of a bar, today's in gold. (3) Getting active: every day you dictated is a little blot of paint, deeper color for bigger days, and empty days are faint dots. Scroll the wall to the right end to see your recent days. (4) The numbers on the page should be the same as before. Tell Claude if anything reads worse than the old squares.
+
 - [ ] US-085 today against a typical day (built 2026-10-04; needs the next test build). (1) Open murmur's window on the home tab. (2) Under the big back today number you should see a gold brush stroke, then a dotted line. (3) The line under it says something like 63% of your typical day (41 min). (4) Dictate a few times and reopen home: the stroke should grow. Tell Claude if the number feels wrong for your day.
 
 - [ ] Decide (site review, 2026-10-04; nothing changed yet): the pill you can try on murmurapp.app draws ink dabs, a brush style that is not in the released app yet (0.1.8 has bars and speckle; ink comes with the next release, earned by belt). Options: keep it as brand art, or show bars until the release that ships ink. Tell Claude which.
