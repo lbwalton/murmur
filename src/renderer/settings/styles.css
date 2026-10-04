@@ -229,14 +229,33 @@ body {
   cursor: pointer;
 }
 
+.nav-btn {
+  position: relative;
+}
+
 .nav-btn:hover {
   color: var(--text);
 }
 
+.nav-btn:focus-visible {
+  /* Cream, so focus never merges with the current tab's gold stroke. */
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* The tab you are on (US-090): its label in brand gold over a short
+   painted stroke, in place of a pill. */
 .nav-active {
   color: var(--brand);
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
+}
+
+.tab-stroke {
+  position: absolute;
+  left: 8px;
+  bottom: -5px;
+  width: calc(100% - 16px);
+  height: 7px;
+  pointer-events: none;
 }
 
 .nav-alert {
@@ -971,23 +990,22 @@ details[open] > .ladder-summary::after {
 }
 
 .insignia {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 12px;
-  border-radius: 3px;
-  padding: 0 6px;
   margin-left: 10px;
-  vertical-align: 2px;
 }
 
-.insignia-stripe {
-  width: 2px;
-  height: 7px;
-  background: rgba(0, 0, 0, 0.5);
+.insignia-canvas {
+  display: block;
 }
 
+/* The founder mark, worn on the painted fabric like the Journey's. */
 .insignia-crown {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
   font-size: 10px;
   line-height: 1;
   color: var(--founder-gold);

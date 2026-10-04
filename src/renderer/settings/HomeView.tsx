@@ -150,6 +150,10 @@ function typicalLine(share: number, typical: number): string {
   return share > 2 ? `More than double ${of}` : `${Math.round(share * 100)}% of ${of}`
 }
 
+/** Told to the rest of the window when Clear all empties the log, so the
+ *  header's belt and anything else counted from history reloads. */
+export const HISTORY_CLEARED = 'murmur:history-cleared'
+
 /** The how-to's one-way switch (US-086): set once five dictations exist. */
 const HOW_TO_KEY = 'murmur-howto-done'
 function howToDone(): boolean {
@@ -431,7 +435,14 @@ export function HomeView(props: {
               </select>
               <button
                 className="btn quiet-btn"
-                onClick={() => void bridge().clearHistory().then(setEvents)}
+                onClick={() =>
+                  void bridge()
+                    .clearHistory()
+                    .then((list) => {
+                      setEvents(list)
+                      window.dispatchEvent(new Event(HISTORY_CLEARED))
+                    })
+                }
               >
                 Clear all
               </button>

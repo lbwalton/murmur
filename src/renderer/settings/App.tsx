@@ -28,6 +28,8 @@ import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
+import { Insignia, TabStroke } from './HeaderMarks'
+import { HISTORY_CLEARED } from './HomeView'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
   Advanced,
@@ -214,7 +216,7 @@ export function App(): React.JSX.Element {
   const [pasteCaptureNote, setPasteCaptureNote] = useState<string | null>(null)
   const [version, setVersion] = useState('')
   const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
-  const [insignia, setInsignia] = useState<{ color: string; stripes: number; founder: boolean } | null>(null)
+  const [insignia, setInsignia] = useState<{ belt: string; label: string; stripes: number; founder: boolean } | null>(null)
   const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'journey' | 'setup'>('home')
   const [wizardOpen, setWizardOpen] = useState(false)
   const offeredWizard = useRef(false)
@@ -281,7 +283,8 @@ export function App(): React.JSX.Element {
       void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
         setCosmetics(c)
         setInsignia({
-          color: c.beltColor,
+          belt: p.rank.belt,
+          label: p.rank.label,
           stripes: p.rank.belt === 'red' ? 0 : p.rank.stripes,
           founder: p.founder
         })
@@ -289,6 +292,9 @@ export function App(): React.JSX.Element {
     }
     loadCosmetics()
     const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
+    // Clear all (on Home) resets what the belt is counted from, so the
+    // insignia and cosmetics reload then too.
+    window.addEventListener(HISTORY_CLEARED, loadCosmetics)
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved. With no key there is nothing to wait on.
@@ -317,6 +323,7 @@ export function App(): React.JSX.Element {
       clearInterval(timer)
       unNav()
       unCosmetics()
+      window.removeEventListener(HISTORY_CLEARED, loadCosmetics)
     }
   }, [refresh, runTest])
 
@@ -588,8 +595,13 @@ export function App(): React.JSX.Element {
     settings.provider.llmModel !== DEFAULT_SETTINGS.provider.llmModel
 
   const navButton = (id: typeof page, label: string): React.JSX.Element => (
-    <button className={`nav-btn ${page === id ? 'nav-active' : ''}`} onClick={() => setPage(id)}>
+    <button
+      className={`nav-btn ${page === id ? 'nav-active' : ''}`}
+      aria-current={page === id ? 'page' : undefined}
+      onClick={() => setPage(id)}
+    >
       {label}
+      {page === id && <TabStroke tab={id} />}
     </button>
   )
 
@@ -602,12 +614,7 @@ export function App(): React.JSX.Element {
         <p className="micro-label wordmark">
           murmur
           {insignia && (
-            <span className="insignia" style={{ background: insignia.color }} title="your belt">
-              {Array.from({ length: Math.min(insignia.stripes, 4) }, (_, i) => (
-                <span className="insignia-stripe" key={i} />
-              ))}
-              {insignia.founder && <span className="insignia-crown">♛</span>}
-            </span>
+            <Insignia belt={insignia.belt} stripes={insignia.stripes} label={insignia.label} founder={insignia.founder} />
           )}
         </p>
         <nav className="nav" aria-label="Pages">
