@@ -18,7 +18,9 @@ const { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 const { homedir } = require('node:os')
 const { join } = require('node:path')
 const { stripTypeScriptTypes } = require('node:module')
-const { encodePng, render, renderRect, insideRoundedRect, makeBars, BAR_HEIGHTS } = require('../scripts/lib/draw')
+const { encodePng } = require('../scripts/lib/draw')
+const { ensoSvgParts, loadBrush } = require('../scripts/lib/enso')
+const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
 const { clip, firstParagraph, renderDoc } = require('./markdown')
 const { headersFile } = require('./headers')
@@ -70,7 +72,7 @@ function readTokens() {
   const block = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')))
   const tokens = {}
   for (const [, name, hex] of block.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6})\b/gi)) tokens[name] = hex
-  for (const name of ['ink', 'panel', 'amber', 'red', 'brand']) {
+  for (const name of ['ink', 'panel', 'amber', 'red', 'brand', 'rice']) {
     if (!tokens[name]) throw new Error(`tokens.css has no --${name}`)
   }
   return tokens
@@ -245,11 +247,13 @@ function askAiHtml() {
 
 // ------------------------------------------------------------ shell ---
 
-// The mark in the header: the clean drawn pill (the app icon's geometry
-// at 30 px, the size where it is never brushed) as inline SVG, so every
-// page shows the same mark without a script.
-const MARK_SVG =
-  '<svg class="mark" viewBox="0 0 30 30" aria-hidden="true" focusable="false"><rect class="mark-ring" x="4.2" y="9.3" width="21.6" height="11.4" rx="5.7" /><circle class="mark-dot" cx="9.9" cy="15" r="2.1" /></svg>'
+// The mark in the header: the clean drawn ensō pill (US-075; at 30 px,
+// the size where it is never brushed) as inline SVG, so every page shows
+// the same mark without a script.
+const MARK_SVG = (() => {
+  const mark = ensoSvgParts(30, { loopClass: 'mark-ring', dotClass: 'mark-dot' })
+  return `<svg class="mark" viewBox="0 0 30 30" aria-hidden="true" focusable="false">${mark.loop}${mark.dot}</svg>`
+})()
 
 /** One header for every page (US-092): it stays at the top while the
  *  page scrolls, and the link for the page you are on is marked. */
@@ -314,66 +318,25 @@ function page(tokens, font) {
 
 // ----------------------------------------------------------- images ---
 
-/** The favicon: the app icon's geometry as SVG text. */
+/** The favicon: the clean ensō pill (US-075) on the app icon's ink
+ *  square, as SVG text. */
 function faviconSvg(tokens) {
   const s = 64
   const inset = 0.05 * s
   const radius = 0.22 * s
-  const barWidth = 0.075 * s
-  const gap = 0.055 * s
-  const maxHalf = 0.21 * s
-  const total = BAR_HEIGHTS.length * barWidth + (BAR_HEIGHTS.length - 1) * gap
-  const startX = (s - total) / 2
-  const bars = BAR_HEIGHTS.map((h, i) => {
-    const hh = Math.max(maxHalf * h, barWidth / 2)
-    const x = startX + i * (barWidth + gap)
-    return `<rect x="${x.toFixed(2)}" y="${(s / 2 - hh).toFixed(2)}" width="${barWidth.toFixed(2)}" height="${(2 * hh).toFixed(2)}" rx="${(barWidth / 2).toFixed(2)}" fill="${tokens.amber}"/>`
-  }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}"><rect x="${inset}" y="${inset}" width="${s - 2 * inset}" height="${s - 2 * inset}" rx="${radius.toFixed(2)}" fill="${tokens.ink}"/>${bars}</svg>\n`
+  const mark = ensoSvgParts(s, { loop: tokens.rice, dot: tokens.amber }, { line: 0.09 })
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}"><rect x="${inset}" y="${inset}" width="${s - 2 * inset}" height="${s - 2 * inset}" rx="${radius.toFixed(2)}" fill="${tokens.ink}"/>${mark.loop}${mark.dot}</svg>\n`
 }
 
-/** Home screen icon: full-bleed ink (iOS masks the corners itself). */
-function touchIconPng(tokens) {
-  const s = 180
-  const ink = rgb(tokens.ink)
-  const amber = rgb(tokens.amber)
-  const bars = makeBars(s, 0.21 * s, 0.075 * s, 0.055 * s)
-  return encodePng(s, s, render(s, (px, py) => (bars(px, py) ? [...amber, 1] : [...ink, 1])))
+/** Home screen icon: the brushed mark, full-bleed ink (iOS masks the
+ *  corners itself). */
+function touchIconPng(brush) {
+  return encodePng(180, 180, markOnInkRgba(180, 180, 180, brush))
 }
 
-/** The 1200 x 630 link preview: the live pill, centered on ink. */
-function previewPng(tokens) {
-  const W = 1200
-  const H = 630
-  const ink = rgb(tokens.ink)
-  const panel = rgb(tokens.panel)
-  const amber = rgb(tokens.amber)
-  const red = rgb(tokens.red)
-  const pill = { cx: W / 2, cy: H / 2, hw: 380, hh: 90 }
-  const dot = { cx: pill.cx - pill.hw + 88, cy: pill.cy, r: 15 }
-  const n = 24
-  const barW = 12
-  const gap = 12
-  const startX = dot.cx + 56
-  const heights = Array.from({ length: n }, (_, i) => {
-    const t = i / (n - 1)
-    return Math.max(0.16, (0.3 + 0.7 * Math.sin(Math.PI * t)) * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.7 + 0.4))))
-  })
-  return encodePng(
-    W,
-    H,
-    renderRect(W, H, (px, py) => {
-      if (!insideRoundedRect(px, py, pill.cx, pill.cy, pill.hw, pill.hh, pill.hh)) return [...ink, 1]
-      if (Math.hypot(px - dot.cx, py - dot.cy) <= dot.r) return [...red, 1]
-      const i = Math.floor((px - startX) / (barW + gap))
-      if (i >= 0 && i < n) {
-        const cx = startX + i * (barW + gap) + barW / 2
-        const half = Math.max(barW / 2, 62 * heights[i])
-        if (insideRoundedRect(px, py, cx, pill.cy, barW / 2, half, barW / 2)) return [...amber, 1]
-      }
-      return [...panel, 1]
-    })
-  )
+/** The 1200 x 630 link preview: the brushed ensō pill, large, on ink. */
+function previewPng(brush) {
+  return encodePng(1200, 630, markOnInkRgba(1200, 630, 620, brush))
 }
 
 // ------------------------------------------------------------- text ---
@@ -507,7 +470,7 @@ function subpage({ path, pageTitle, pageDescription, current, body, data, font }
     <meta property="og:image" content="${SITE_URL}/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="murmur's waveform pill, live" />
+    <meta property="og:image:alt" content="murmur's mark: the pill drawn as one open brush loop with the live dot inside" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
     <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />
@@ -967,9 +930,10 @@ async function main() {
   }
   writeFileSync(join(out, 'pill.css'), pillCss())
   fingerprint()
+  const brush = await loadBrush().catch(() => null)
   writeFileSync(join(out, 'favicon.svg'), faviconSvg(tokens))
-  writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(tokens))
-  writeFileSync(join(out, 'og.png'), previewPng(tokens))
+  writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(brush))
+  writeFileSync(join(out, 'og.png'), previewPng(brush))
   writeFileSync(join(out, 'robots.txt'), robotsTxt())
   writeFileSync(join(out, 'sitemap.xml'), sitemapXml(docs))
   writeFileSync(join(out, 'llms.txt'), llmsTxt(docs))

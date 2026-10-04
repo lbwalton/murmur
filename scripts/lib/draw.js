@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The drawing kit behind every generated image: a minimal PNG encoder
-// over zlib, a supersampled scene renderer, and the waveform mark.
-// Shared by scripts/gen-icons.js (app and tray icons) and site/build.js
-// (the website's icons and preview image), so the mark is drawn once.
+// over zlib and a supersampled scene renderer. Shared by
+// scripts/gen-icons.js (app and tray icons) and site/build.js (the
+// website's icons and preview image); the mark itself, the ensō pill,
+// lives in scripts/lib/enso.js and scripts/lib/icons.js.
 // Pure Node, no dependencies, deterministic.
 const zlib = require('node:zlib')
 
@@ -103,37 +104,4 @@ function render(size, scene) {
   return renderRect(size, size, scene)
 }
 
-// The waveform mark: five rounded bars, symmetric, mid bar tallest.
-const BAR_HEIGHTS = [0.4, 0.72, 1.0, 0.62, 0.44]
-
-/** Bar hit test in a size s canvas. maxHalf is half the tallest bar. */
-function makeBars(s, maxHalf, barWidth, gap) {
-  const n = BAR_HEIGHTS.length
-  const total = n * barWidth + (n - 1) * gap
-  const startX = (s - total) / 2
-  const cy = s / 2
-  return (px, py) => {
-    for (let i = 0; i < n; i++) {
-      const cx = startX + i * (barWidth + gap) + barWidth / 2
-      const hh = Math.max(maxHalf * BAR_HEIGHTS[i], barWidth / 2)
-      if (insideRoundedRect(px, py, cx, cy, barWidth / 2, hh, barWidth / 2)) return true
-    }
-    return false
-  }
-}
-
-/** App icon: ink rounded square, amber waveform. */
-function appIconScene(s, ink, amber) {
-  const inset = 0.05 * s
-  const radius = 0.22 * s
-  const bars = makeBars(s, 0.21 * s, 0.075 * s, 0.055 * s)
-  return (px, py) => {
-    if (bars(px, py)) return [...amber, 1]
-    if (insideRoundedRect(px, py, s / 2, s / 2, s / 2 - inset, s / 2 - inset, radius)) {
-      return [...ink, 1]
-    }
-    return [0, 0, 0, 0]
-  }
-}
-
-module.exports = { encodePng, render, renderRect, insideRoundedRect, makeBars, BAR_HEIGHTS, appIconScene }
+module.exports = { encodePng, render, renderRect, insideRoundedRect }

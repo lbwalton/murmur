@@ -31,7 +31,7 @@ Where paint goes:
 | Surface | Paint |
 | --- | --- |
 | Website hero | Full: paints in once, then the visitor can paint and save a poster. |
-| Logo and app icon | Brushed at 64 px and up; a clean drawn version at 32 px and below. |
+| Logo and app icon | The ensō pill (US-075). Brushed at 64 px and up (the splat from 128 px); a clean drawn version below 64 px, in the tray, the favicon, and the site header. |
 | Journey, promotions, share card | Full. |
 | The pill | The ink waveform styles, earned one per belt. |
 | Launch film | Full. |
@@ -86,6 +86,7 @@ One orchestrated moment beats scattered effects: the hero paints in once, a prom
 - `stroke(ctx, path, bristles, options)` paints: `width`, `rgb`, `dry` (0 wet, 1 runs dry), `core` (the wet body), `pfn` (custom pressure), `i0`/`i1` (paint part of a path), `sOff` (keep a scrolling stroke's texture).
 - `splat(seed, x, y, options)` and `drawSplat(ctx, splat, rgb, k)` throw and draw splatter, `k` being how far through its flight.
 - `stackOrder(items)` and `paintScene(ctx, items)` give scenes their stacking order; `animateScene(base, fx, items, options)` paints one over time and stacks exactly as `paintScene` does (the website hero's paint-in, the Journey, the ceremony).
+- Outside a browser, the same engine paints the brushed icons: `scripts/lib/raster.js` is a small software canvas with just the calls the brush uses, `scripts/lib/enso.js` holds the mark's one geometry (brushed and clean, and as SVG), and `scripts/lib/icons.js` composes the app icons, the tray icons, and the site's home screen icon and link preview. Same bytes on every run with one Node version (trigonometry can differ a hair between versions; nothing generated is committed).
 
 ## The ink waveforms
 
