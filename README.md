@@ -2,6 +2,8 @@
 
 Push-to-talk dictation that lives in your tray. Hold a key, speak, release, and clean text lands at your cursor in any app. Windows and macOS. Bring your own key: Groq Whisper by default, any OpenAI-compatible endpoint supported.
 
+Website and docs: [murmurapp.app](https://murmurapp.app). A free, open source alternative to Wispr Flow: [how they compare](https://murmurapp.app/wispr-flow-alternative/).
+
 The name is always lowercase: murmur.
 
 ## Why murmur

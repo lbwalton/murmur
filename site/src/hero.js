@@ -157,19 +157,6 @@ function ensoItems(S, ox = 0, oy = 0, onPaper = false) {
   ]
 }
 
-/** The clean drawn mark for 32 px and below: no bristles. */
-function drawCleanMark(ctx, S) {
-  ctx.strokeStyle = rgba(C.rice)
-  ctx.lineWidth = Math.max(1.4, S * 0.08)
-  ctx.beginPath()
-  ctx.roundRect(S * 0.14, S * 0.31, S * 0.72, S * 0.38, S * 0.19)
-  ctx.stroke()
-  ctx.fillStyle = rgba(C.amber)
-  ctx.beginPath()
-  ctx.arc(S * 0.33, S * 0.5, S * 0.07, 0, TAU)
-  ctx.fill()
-}
-
 // -------------------------------------------------------------- hero ---
 
 const hero = { el: null, B: null, F: null, st: null, cancel: null }
@@ -1236,19 +1223,11 @@ function setupPill() {
 
 // ------------------------------------------------------------- boot ---
 
-function paintMark() {
-  const cv = $('#mark')
-  if (!cv) return
-  const L = fit(cv, 30, 30)
-  drawCleanMark(L.ctx, 30)
-}
-
 function boot() {
   hero.el = $('#hero')
   if (!hero.el || !hero.el.getBoundingClientRect || !HTMLCanvasElement.prototype.getContext) return
   readColors()
   document.documentElement.classList.add('js-hero')
-  paintMark()
   setupPill()
   setupYourTurn()
   layoutHero(true)

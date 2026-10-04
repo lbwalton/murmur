@@ -17,7 +17,7 @@ Say **"period"**, **"comma"**, or **"new line"** to punctuate. Say **"scratch th
 
 ## If something misbehaves
 
-If anything is missing, the settings tab opens a Finish setup card that lists only what needs doing, each with a button that fixes it or takes you there. When everything works it folds into an all set badge. See [settings.md](./settings.md) for every control and [providers.md](./providers.md) for provider issues.
+If anything is missing, the settings tab opens a Finish setup card that lists only what needs doing, each with a button that fixes it or takes you there. When everything works it folds into an all set badge. See [settings, explained](./settings.md) for every control and [connecting a provider](./providers.md) for provider issues.
 
 ## Is murmur in the Mac App Store?
 

@@ -1,12 +1,21 @@
 # murmur site
 
-The one-page home for murmur at https://murmurapp.app (US-066), with the brushwork hero (US-079): what murmur is, a live pill to try, paint around it that the visitor can add to and save as a poster, the One drop film, one download button that picks Mac or Windows, and short answers to the first questions. Everything deeper links to the docs in `docs/`, which stay the single source of truth.
+murmur's site at https://murmurapp.app. The home page (US-066) carries the brushwork hero (US-079): what murmur is, a live pill to try, paint around it that the visitor can add to and save as a poster, the One drop film, one download button that picks Mac or Windows, and short answers to the first questions.
+
+Since US-092 the site also has:
+
+- **The docs.** Every file in `docs/` becomes its own page at `/docs/<name>/`, and `/docs/` lists them all with their questions. `docs/` stays the single source of truth: edit a doc there and the next build carries it. `site/markdown.js` renders the Markdown the docs use, with GitHub's heading anchors, so a link to a question works on both. A new doc must be added to `DOCS` in `content.js`, in reading order; the build stops if one is missing.
+- **The Wispr Flow comparison** at `/wispr-flow-alternative/`, written in `content.js`. Every Wispr Flow fact there carries the date it was checked against Wispr's own pages; recheck before changing a word.
+- **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
+- **A 404 page** with the same header.
+
+The build checks every link on every page: one that points at a page or a question that does not exist stops it.
 
 ## Where it lives, and why
 
 Here in `site/`, inside the murmur repo, decided 2026-09-26. The page reads the app's own `src/renderer/tokens.css`, paints with the app's own brush engine (`src/renderer/brush.ts`, stripped of its types by Node at build time), takes the belt colors from `shared/cosmetics.json`, draws its favicon and preview image with the same kit as the app icons (`scripts/lib/draw.js`), takes the version from `package.json`, and points at the stable release links from US-063. Keeping it in the repo means none of that can drift, and the design and header lints cover it too.
 
-It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework. Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
+It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework. The docs and comparison pages have no script at all. Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
 
 ## Build and preview
 
@@ -44,4 +53,4 @@ After a deploy:
 
 - `curl -sI https://murmurapp.app/` shows Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.
 - `dig +short TXT murmurapp.app` shows the SPF record, and `dig +short TXT _dmarc.murmurapp.app` shows `v=DMARC1; p=reject`.
-- `/robots.txt`, `/sitemap.xml`, and `/llms.txt` load; the JSON-LD passes validator.schema.org; the sitemap is submitted in Google Search Console.
+- `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` load; the JSON-LD on the home page, a doc, and the comparison passes validator.schema.org; the sitemap is submitted in Google Search Console.

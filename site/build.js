@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-only
-// Builds murmur's one-page site (US-066, US-079) into site/dist: the page
-// with its FAQ and structured data rendered from content.js, the night
+// Builds murmur's site (US-066, US-079, US-092) into site/dist: the home
+// page with its FAQ and structured data rendered from content.js, a page
+// for every doc in docs/ and an index of them, the Wispr Flow
+// comparison, and a 404, all under one header and footer. Also the night
 // studio tokens copied from the app, the app's brush engine stripped of
-// its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt,
+// its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt and
+// llms-full.txt,
 // the _headers Cloudflare Pages serves, and the icons and preview image
 // drawn by the same kit as the app icons. Nothing binary lives in the
 // repo: the display face is fetched at build time (the page falls back
 // to system fonts without it) and the film is copied from FILM_DIR,
 // which lives outside the repo. SITE_URL sets every absolute URL; a
 // deploy build without it fails rather than publish placeholder links.
-const { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs')
+const { execFileSync } = require('node:child_process')
+const { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
 const { join } = require('node:path')
 const { stripTypeScriptTypes } = require('node:module')
 const { encodePng, render, renderRect, insideRoundedRect, makeBars, BAR_HEIGHTS } = require('../scripts/lib/draw')
-const { links, facts, title, description, faq } = require('./content')
+const { content, DOCS } = require('./content')
+const { clip, firstParagraph, renderDoc } = require('./markdown')
 const { headersFile } = require('./headers')
 
 const here = __dirname
@@ -30,6 +35,8 @@ if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && SITE_URL === PLACEHOLDE
   console.error('site: set SITE_URL (for example https://murmurapp.app) before a deploy build')
   process.exit(1)
 }
+const { links, facts, title, description, faq, compare } = content(SITE_URL)
+const docsDir = join(root, 'docs')
 // The support address appears once Email Routing forwards it.
 const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || '').trim()
 // The film renders outside the repo (~/Projects/murmur-film); without
@@ -67,18 +74,18 @@ const escapeHtml = (s) =>
 
 const plain = (pieces) => pieces.map((p) => (typeof p === 'string' ? p : p.text)).join('')
 
-function answerHtml(pieces) {
-  return pieces
-    .map((p) =>
-      typeof p === 'string'
-        ? escapeHtml(p)
-        : `<a href="${escapeHtml(p.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.text)}</a>`
-    )
-    .join('')
+/** A link: pages on this site open in place, anything else in a new tab. */
+function linkHtml(href, text) {
+  if (href.startsWith(`${SITE_URL}/`)) return `<a href="${escapeHtml(href.slice(SITE_URL.length))}">${escapeHtml(text)}</a>`
+  return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`
 }
 
-function faqHtml() {
-  return faq
+function answerHtml(pieces) {
+  return pieces.map((p) => (typeof p === 'string' ? escapeHtml(p) : linkHtml(p.href, p.text))).join('')
+}
+
+function faqHtml(items = faq) {
+  return items
     .map(
       (item) =>
         `<div class="qa">\n          <h3>${escapeHtml(item.q)}</h3>\n          <p>${answerHtml(item.a)}</p>\n        </div>`
@@ -137,6 +144,18 @@ function jsonLd() {
         url: `${SITE_URL}/`,
         image: `${SITE_URL}/og.png`,
         applicationCategory: 'UtilitiesApplication',
+        applicationSubCategory: 'Dictation software',
+        keywords:
+          'dictation app, speech to text, voice typing, push to talk dictation, Whisper, open source dictation, Wispr Flow alternative, Mac, Windows',
+        featureList: [
+          'Push-to-talk dictation into any app',
+          'Bring your own key: Groq Whisper by default, any OpenAI-compatible endpoint, or a local Whisper server',
+          'Works offline with a local Whisper server',
+          'AI cleanup that fails open, so a dictation is never lost',
+          'Notes and brain dumps into any folder or Obsidian vault',
+          'Transform: speak an edit to selected text',
+          'No account, no telemetry'
+        ],
         operatingSystem: `${facts.macos.replace(' Ventura', '')}, ${facts.windows}`,
         softwareVersion: version,
         downloadUrl: [links.mac, links.windows],
@@ -189,8 +208,8 @@ function filmHtml() {
         <p class="label">the film</p>
         <h2 id="film-title">One drop</h2>
         <p>${escapeHtml(FILM_TEXT)}</p>
-        <video controls playsinline preload="none" data-poster="film/one-drop-poster.png" width="1920" height="1080" aria-labelledby="film-title">
-          <source src="film/one-drop.mp4" type="video/mp4" />
+        <video controls playsinline preload="none" data-poster="/film/one-drop-poster.png" width="1920" height="1080" aria-labelledby="film-title">
+          <source src="/film/one-drop.mp4" type="video/mp4" />
         </video>
       </section>`
 }
@@ -213,13 +232,55 @@ function askAiHtml() {
   ).join(' · ')
 }
 
+// ------------------------------------------------------------ shell ---
+
+// The mark in the header: the clean drawn pill (the app icon's geometry
+// at 30 px, the size where it is never brushed) as inline SVG, so every
+// page shows the same mark without a script.
+const MARK_SVG =
+  '<svg class="mark" viewBox="0 0 30 30" aria-hidden="true" focusable="false"><rect class="mark-ring" x="4.2" y="9.3" width="21.6" height="11.4" rx="5.7" /><circle class="mark-dot" cx="9.9" cy="15" r="2.1" /></svg>'
+
+/** One header for every page (US-092): it stays at the top while the
+ *  page scrolls, and the link for the page you are on is marked. */
+function headerHtml(current) {
+  const here = (name) => (current === name ? ' aria-current="page"' : '')
+  return `<header class="topbar">
+      <div class="top">
+        <a class="wordmark" href="/" aria-label="murmur home"${here('home')}>${MARK_SVG}<span>murmur</span></a>
+        <nav aria-label="Site">
+          ${hasFilm() ? '<a class="nav-film" href="/#film">film</a>' : ''}
+          <a href="/docs/"${here('docs')}>docs</a>
+          <a href="/wispr-flow-alternative/"${here('compare')}>compare</a>
+          <a class="nav-github" href="${links.repo}" target="_blank" rel="noopener noreferrer">github</a>
+          <a class="nav-download" href="/#download">download</a>
+        </nav>
+      </div>
+    </header>`
+}
+
+function footerHtml() {
+  return `<footer class="bottom">
+      <p>murmur · version ${version} · GPL-3.0 · © 2026 Eze Media LLC${SUPPORT_EMAIL ? ` · <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}">${escapeHtml(SUPPORT_EMAIL)}</a>` : ''}</p>
+      <nav aria-label="More">
+        <a href="/docs/">docs</a>
+        <a href="/wispr-flow-alternative/">murmur vs Wispr Flow</a>
+        <a href="${links.releases}" target="_blank" rel="noopener noreferrer">releases</a>
+        <a href="${links.repo}" target="_blank" rel="noopener noreferrer">source</a>
+      </nav>
+    </footer>`
+}
+
+function fontPreload(font) {
+  return font ? `<link rel="preload" href="/fonts/${font}" as="font" type="font/woff2" crossorigin />` : ''
+}
+
 function page(tokens, font) {
   const values = {
-    FONT_PRELOAD: font ? `<link rel="preload" href="fonts/${font}" as="font" type="font/woff2" crossorigin />` : '',
+    FONT_PRELOAD: fontPreload(font),
+    HEADER: headerHtml('home'),
+    FOOTER: footerHtml(),
     FILM: filmHtml(),
-    FILM_NAV: hasFilm() ? '<a href="#film">film</a>' : '',
     ASK_AI: askAiHtml(),
-    SUPPORT: SUPPORT_EMAIL ? ` · <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}">${escapeHtml(SUPPORT_EMAIL)}</a>` : '',
     TITLE: escapeHtml(title),
     DESCRIPTION: escapeHtml(description),
     SITE_URL,
@@ -229,13 +290,9 @@ function page(tokens, font) {
     FAQ: faqHtml(),
     MAC_URL: links.mac,
     WINDOWS_URL: links.windows,
-    WINDOWS_SCREEN_URL: links.windowsScreen,
-    DOCS_URL: links.docs,
-    REPO_URL: links.repo,
-    RELEASES_URL: links.releases,
+    WINDOWS_SCREEN_URL: links.windowsScreen.slice(SITE_URL.length),
     MACOS: facts.macos.replace(' Ventura', ''),
-    WINDOWS: facts.windows,
-    VERSION: version
+    WINDOWS: facts.windows
   }
   const html = readFileSync(join(src, 'index.html'), 'utf8').replace(/\{\{([A-Z_]+)\}\}/g, (match, key) => {
     if (!(key in values)) throw new Error(`index.html asks for an unknown value ${match}`)
@@ -333,22 +390,24 @@ function robotsTxt() {
   return `${blocks.join('\n')}\nSitemap: ${SITE_URL}/sitemap.xml\n`
 }
 
-function sitemapXml() {
-  const today = new Date().toISOString().slice(0, 10)
+function sitemapXml(docs) {
+  const site = gitDate('site', 'package.json')
+  const entries = [
+    ['/', site, '1.0'],
+    ['/wispr-flow-alternative/', compareDate(), '0.9'],
+    ['/docs/', [...docs.map((d) => d.updated), gitDate('site/content.js')].sort().at(-1), '0.8'],
+    ...docs.map((d) => [`/docs/${d.name}/`, d.updated, '0.7'])
+  ]
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${SITE_URL}/</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
+${entries.map(([path, date, priority]) => `  <url>\n    <loc>${SITE_URL}${path}</loc>\n    <lastmod>${date}</lastmod>\n    <priority>${priority}</priority>\n  </url>`).join('\n')}
 </urlset>
 `
 }
 
-function llmsTxt() {
+function llmsTxt(docs) {
   const qa = faq.map((item) => `### ${item.q}\n\n${plain(item.a)}`).join('\n\n')
+  const c = compare
   return `# murmur: ${SITE_URL}
 
 > murmur is free, open source (GPL-3.0) push-to-talk dictation for macOS and Windows, made by Eze Media LLC. Hold a hotkey, speak, and release: murmur transcribes the audio, cleans up the text, and types it at the cursor in any app. It is bring your own key: transcription runs on the user's own API key, with Groq Whisper by default or any OpenAI-compatible endpoint, including a local server.
@@ -367,17 +426,20 @@ function llmsTxt() {
 - Every release: ${links.releases}
 
 ## Docs
-- Downloading and installing: ${links.doc('download')}
-- Quickstart: ${links.doc('quickstart')}
-- Settings: ${links.doc('settings')}
-- Connecting a provider: ${links.doc('providers')}
-- Notes and brain dumps: ${links.doc('notes')}
-- Transform: ${links.doc('transform')}
-- Troubleshooting: ${links.doc('troubleshooting')}
-- murmur Pro: ${links.doc('pro')}
+${docs.map((d) => `- ${d.title}: ${links.doc(d.name)}`).join('\n')}
+- Every doc in one file: ${SITE_URL}/llms-full.txt
 
 ## Pages
 - ${SITE_URL}/ : what murmur is, the download button, and answers to common questions
+- ${links.docs} : the docs, every page listed with its questions
+- ${links.compare} : murmur compared with Wispr Flow
+
+## Compared with Wispr Flow
+${c.answer}
+
+${c.rows.map(([what, ours, theirs]) => `- ${what}: murmur: ${ours} Wispr Flow: ${theirs}`).join('\n')}
+
+Wispr Flow's plans, prices, platforms, and requirements checked ${c.checked} against ${c.sources.map(([, href]) => href).join(' and ')}.
 
 ## Questions
 
@@ -385,6 +447,356 @@ ${qa}
 
 ${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM_TEXT}\n\n` : ''}## Contact
 - Issues and support: ${links.issues}${SUPPORT_EMAIL ? `\n- Email: ${SUPPORT_EMAIL}` : ''}
+`
+}
+
+// ------------------------------------------------------------ pages ---
+
+const ORG = () => ({ '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'Eze Media LLC', url: `${SITE_URL}/` })
+
+/** The last commit date (YYYY-MM-DD) of any of these paths, for lastmod
+ *  and "updated" lines; today when git has nothing to say. */
+function gitDate(...paths) {
+  try {
+    const date = execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], { cwd: root, encoding: 'utf8' }).trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
+  } catch {
+    // Not a checkout (a tarball build): fall through.
+  }
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Every page but home: the same head, header, and footer. */
+function subpage({ path, pageTitle, pageDescription, current, body, data, font }) {
+  const url = `${SITE_URL}${path}`
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(pageTitle)}</title>
+    <meta name="description" content="${escapeHtml(pageDescription)}" />
+    <link rel="canonical" href="${url}" />
+    <meta name="theme-color" content="${THEME_COLOR}" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="author" content="Eze Media LLC" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="murmur" />
+    <meta property="og:title" content="${escapeHtml(pageTitle)}" />
+    <meta property="og:description" content="${escapeHtml(pageDescription)}" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:image" content="${SITE_URL}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="murmur's waveform pill, live" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
+    <meta name="twitter:description" content="${escapeHtml(pageDescription)}" />
+    <meta name="twitter:image" content="${SITE_URL}/og.png" />
+    ${fontPreload(font)}
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/fonts.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/pages.css" />
+    ${data ? `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>` : ''}
+  </head>
+  <body>
+    ${headerHtml(current)}
+
+    <main class="page-main">
+      ${body}
+    </main>
+
+    ${footerHtml()}
+  </body>
+</html>
+`
+}
+
+let THEME_COLOR = ''
+
+/** The comparison changed when its facts were last checked or its words
+ *  last committed, whichever is later. */
+const compareDate = () => [compare.checked, gitDate('site/content.js')].sort().at(-1)
+
+const crumbs = (items) => ({
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${SITE_URL}${path}` }))
+})
+
+const faqData = (id, items) => ({
+  '@type': 'FAQPage',
+  '@id': id,
+  mainEntity: items.map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } }))
+})
+
+const DOC_NAMES = new Set(DOCS.map(([name]) => name))
+
+/** A heading phrased as a question, allowing a trailing aside like
+ *  "How do I use Groq with murmur? (default)". */
+const isQuestion = (heading) => /\?(\s*\([^)]*\))?$/.test(heading)
+
+/** A link inside a doc: another doc becomes its page here, a page's own
+ *  anchors stay, the web stays the web, and any other repo file goes to
+ *  GitHub. */
+function resolveDocLink(href) {
+  if (/^(https?:|mailto:)/.test(href)) return { href, external: /^https?:/.test(href) }
+  if (href.startsWith('#')) return { href, external: false }
+  const doc = /^(?:\.\/)?([a-z0-9-]+)\.md(#[^\s]*)?$/.exec(href)
+  if (doc && DOC_NAMES.has(doc[1])) return { href: `/docs/${doc[1]}/${doc[2] || ''}`, external: false }
+  return { href: `${links.repo}/blob/main/docs/${href.replace(/^\.\//, '')}`, external: true }
+}
+
+/** Every doc rendered once: name, short name, title, description, body, its
+ *  questions, and when it last changed. */
+function readDocs() {
+  const files = readdirSync(docsDir).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3))
+  const missing = files.filter((f) => !DOC_NAMES.has(f))
+  if (missing.length) throw new Error(`site: docs/${missing[0]}.md is not in DOCS in site/content.js`)
+  return DOCS.map(([name, short, written]) => {
+    const file = join(docsDir, `${name}.md`)
+    if (!existsSync(file)) throw new Error(`site: DOCS lists ${name} but docs/${name}.md does not exist`)
+    const markdown = readFileSync(file, 'utf8')
+    const doc = renderDoc(markdown, resolveDocLink)
+    const description = clip(written || firstParagraph(markdown) || doc.title, 158)
+    return { name, short, markdown, ...doc, description, updated: gitDate(`docs/${name}.md`) }
+  })
+}
+
+function docNav(docs, current) {
+  return `<nav class="doc-nav" aria-label="Docs">
+          <p class="label"><a href="/docs/">docs</a></p>
+          <ul>
+            ${docs.map((d) => `<li><a href="/docs/${d.name}/"${d.name === current ? ' aria-current="page"' : ''}>${escapeHtml(d.short)}</a></li>`).join('\n            ')}
+          </ul>
+        </nav>`
+}
+
+function docPage(docs, doc, font) {
+  const i = docs.indexOf(doc)
+  const next = docs[i + 1]
+  const path = `/docs/${doc.name}/`
+  const description = doc.description
+  const questions = doc.sections.filter((s) => isQuestion(s.question) && s.answer)
+  const body = `<div class="doc-layout">
+        ${docNav(docs, doc.name)}
+        <article class="doc">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="/docs/">docs</a> <span aria-hidden="true">/</span> <span aria-current="page">${escapeHtml(doc.short)}</span></nav>
+          <h1>${escapeHtml(doc.title)}</h1>
+          ${doc.html}
+          <p class="doc-meta">Updated ${doc.updated} · <a href="${links.docSource(doc.name)}" target="_blank" rel="noopener noreferrer">this page on GitHub</a></p>
+          ${next ? `<p class="doc-next">Next: <a href="/docs/${next.name}/">${escapeHtml(next.title)}</a></p>` : ''}
+        </article>
+      </div>`
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'TechArticle',
+        '@id': `${SITE_URL}${path}#article`,
+        headline: doc.title,
+        description,
+        url: `${SITE_URL}${path}`,
+        dateModified: doc.updated,
+        inLanguage: 'en',
+        author: ORG(),
+        publisher: ORG(),
+        about: { '@type': 'SoftwareApplication', '@id': `${SITE_URL}/#app`, name: 'murmur' },
+        isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'murmur', url: `${SITE_URL}/` }
+      },
+      crumbs([
+        ['murmur', '/'],
+        ['docs', '/docs/'],
+        [doc.short, path]
+      ]),
+      ...(questions.length ? [faqData(`${SITE_URL}${path}#faq`, questions.map((q) => ({ q: q.question, a: q.answer })))] : [])
+    ]
+  }
+  return subpage({ path, pageTitle: `${doc.title}: murmur docs`, pageDescription: description, current: 'docs', body, data, font })
+}
+
+function docsIndexPage(docs, font) {
+  const path = '/docs/'
+  const description =
+    'Everything murmur does, written as answers to the questions people ask: install, settings, providers and keys, notes, transform, the journey, and troubleshooting.'
+  const body = `<div class="doc-layout">
+        ${docNav(docs, null)}
+        <article class="doc">
+          <p class="label">docs</p>
+          <h1>murmur docs</h1>
+          <p class="lede">Everything murmur does, written as answers to the questions people ask. New here? Start with the <a href="/docs/quickstart/">quickstart</a>: install to first dictation in about five minutes.</p>
+          ${docs
+            .map(
+              (d) => `<section class="doc-card" aria-labelledby="doc-${d.name}">
+            <h2 id="doc-${d.name}"><a href="/docs/${d.name}/">${escapeHtml(d.title)}</a></h2>
+            <p>${escapeHtml(d.description)}</p>
+            ${
+              d.sections.some((s) => isQuestion(s.question))
+                ? `<ul class="doc-questions">${d.sections
+                    .filter((s) => isQuestion(s.question))
+                    .map((s) => `<li><a href="/docs/${d.name}/#${escapeHtml(s.id)}">${escapeHtml(s.question)}</a></li>`)
+                    .join('')}</ul>`
+                : ''
+            }
+          </section>`
+            )
+            .join('\n          ')}
+        </article>
+      </div>`
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': `${SITE_URL}${path}#page`,
+        name: 'murmur docs',
+        description,
+        url: `${SITE_URL}${path}`,
+        publisher: ORG(),
+        hasPart: docs.map((d) => ({ '@type': 'TechArticle', headline: d.title, url: `${SITE_URL}/docs/${d.name}/` }))
+      },
+      crumbs([
+        ['murmur', '/'],
+        ['docs', path]
+      ])
+    ]
+  }
+  return subpage({ path, pageTitle: 'murmur docs: setup, settings, providers, and answers', pageDescription: description, current: 'docs', body, data, font })
+}
+
+function comparePage(font) {
+  const c = compare
+  const path = '/wispr-flow-alternative/'
+  const cell = (text) => escapeHtml(text)
+  const body = `<article class="doc doc-wide">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="/">murmur</a> <span aria-hidden="true">/</span> <span aria-current="page">compare</span></nav>
+        <h1>${escapeHtml(c.h1)}</h1>
+        <p class="lede">${escapeHtml(c.answer)}</p>
+        <p class="cta-row"><a class="btn" href="/#download">Download murmur</a> <a class="cta-link" href="/docs/quickstart/">Read the quickstart</a></p>
+
+        <h2 id="side-by-side">murmur and Wispr Flow side by side</h2>
+        <div class="table-wrap">
+          <table class="compare" role="table">
+            <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader"><span class="sr-only">What</span></th><th scope="col" role="columnheader">murmur</th><th scope="col" role="columnheader">Wispr Flow</th></tr></thead>
+            <tbody role="rowgroup">
+              ${c.rows.map(([what, ours, theirs]) => `<tr role="row"><th scope="row" role="rowheader">${cell(what)}</th><td role="cell" data-label="murmur">${cell(ours)}</td><td role="cell" data-label="Wispr Flow">${cell(theirs)}</td></tr>`).join('\n              ')}
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="why-pick-murmur">Why pick murmur?</h2>
+        <ul class="points">
+          ${c.why.map(([lead, rest]) => `<li><strong>${cell(lead)}</strong> ${cell(rest)}</li>`).join('\n          ')}
+        </ul>
+
+        <h2 id="when-is-wispr-flow-the-better-pick">When is Wispr Flow the better pick?</h2>
+        <ul class="points">
+          ${c.better.map(([lead, rest]) => `<li><strong>${cell(lead)}</strong> ${cell(rest)}</li>`).join('\n          ')}
+        </ul>
+
+        <h2 id="how-do-i-switch-from-wispr-flow-to-murmur">How do I switch from Wispr Flow to murmur?</h2>
+        <ol>
+          ${c.steps.map(([lead, rest, href]) => `<li><strong>${href ? linkHtml(href, lead) : cell(lead)}</strong>${cell(rest)}</li>`).join('\n          ')}
+        </ol>
+
+        <section class="faq-block" aria-labelledby="questions">
+          <h2 id="questions">Questions</h2>
+          ${faqHtml(c.faq)}
+        </section>
+
+        <p class="sources">Wispr Flow's plans, prices, platforms, and requirements checked ${c.checked} against Wispr's own pages: ${c.sources
+          .map(([name, href]) => linkHtml(href, name))
+          .join(', ')}. Plans and prices change; those pages are the truth. Wispr Flow is a trademark of its owner, and murmur is not affiliated with Wispr.</p>
+      </article>`
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': `${SITE_URL}${path}#page`,
+        name: c.title,
+        description: c.description,
+        url: `${SITE_URL}${path}`,
+        dateModified: compareDate(),
+        publisher: ORG(),
+        about: { '@type': 'SoftwareApplication', '@id': `${SITE_URL}/#app`, name: 'murmur' },
+        mentions: { '@type': 'SoftwareApplication', name: 'Wispr Flow', url: 'https://wisprflow.ai/' }
+      },
+      crumbs([
+        ['murmur', '/'],
+        ['murmur vs Wispr Flow', path]
+      ]),
+      faqData(`${SITE_URL}${path}#faq`, c.faq.map((item) => ({ q: item.q, a: plain(item.a) })))
+    ]
+  }
+  return subpage({ path, pageTitle: c.title, pageDescription: c.description, current: 'compare', body, data, font })
+}
+
+function notFoundPage(font) {
+  const body = `<article class="doc">
+        <p class="label">404</p>
+        <h1>That page is not here.</h1>
+        <p class="lede">It may have moved. The <a href="/docs/">docs</a> answer most questions, and <a href="/">the home page</a> has the download.</p>
+      </article>`
+  const html = subpage({ path: '/404', pageTitle: 'Page not found: murmur', pageDescription: description, current: null, body, data: null, font })
+  const canonical = `<link rel="canonical" href="${SITE_URL}/404" />`
+  // A 404 must never claim a canonical address of its own.
+  if (!html.includes(canonical)) throw new Error('site: the 404 page has no canonical line to swap for noindex')
+  return html.replace(canonical, '<meta name="robots" content="noindex" />')
+}
+
+/**
+ * Every link to a page or an anchor on this site must land: a doc
+ * renamed or a question reworded would otherwise leave a dead link that
+ * only a visitor finds. Checked across every page the build writes.
+ */
+function checkLinks(pages) {
+  const files = new Set()
+  const ids = new Map()
+  for (const [path, html] of pages) ids.set(path, new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])))
+  for (const [path, html] of pages) {
+    for (const [, raw] of html.matchAll(/href="([^"]+)"/g)) {
+      const href = raw.replace(/&amp;/g, '&')
+      const local = href.startsWith(`${SITE_URL}/`) ? href.slice(SITE_URL.length) : href
+      if (!local.startsWith('/') || local.startsWith('//')) continue
+      const [target, anchor] = local.split('#')
+      if (/\.[a-z0-9]+$/i.test(target)) {
+        files.add(target)
+        continue
+      }
+      const page = ids.get(target)
+      if (!page) throw new Error(`site: ${path} links to ${local}, which is not a page`)
+      if (anchor && !page.has(anchor)) throw new Error(`site: ${path} links to ${local}, but that page has no #${anchor}`)
+    }
+    // Stylesheets, scripts, icons, the film: checked once dist is written.
+    for (const [, ref] of html.matchAll(/\s(?:src|data-poster)="(\/[^"#?]+)/g)) files.add(ref)
+  }
+  return files
+}
+
+/** Every file a page points at exists in dist, so a typo in a path
+ *  fails the build instead of a visitor's request. */
+function checkFiles(files) {
+  for (const file of files) {
+    if (!existsSync(join(out, file))) throw new Error(`site: a page points at ${file}, which the build did not write`)
+  }
+}
+
+/** Every doc in one Markdown file for language models, links made
+ *  absolute so they still work out of context. */
+function llmsFullTxt(docs) {
+  const absolute = (md) =>
+    md.replace(/\]\(([^)\s]+)\)/g, (match, href) => {
+      const target = resolveDocLink(href)
+      return target.href.startsWith('/') ? `](${SITE_URL}${target.href})` : `](${target.href})`
+    })
+  return `# murmur docs: ${SITE_URL}/docs/
+
+> The complete murmur documentation in one file. murmur is free, open source (GPL-3.0) push-to-talk dictation for macOS and Windows. Each doc also has its own page; its address is on the line under its title.
+
+${docs.map((d) => `${absolute(d.markdown).replace(/^# (.*)$/m, `# $1\n\n${links.doc(d.name)}`).trim()}`).join('\n\n---\n\n')}
 `
 }
 
@@ -467,7 +879,15 @@ function fingerprint() {
     for (const ref of refs) {
       if (!existsSync(join(out, ref))) continue
       const v = hash(ref)
-      text = text.split(`"${ref}"`).join(`"${ref}?v=${v}"`).split(`'./${ref}'`).join(`'./${ref}?v=${v}'`).split(`(${ref})`).join(`(${ref}?v=${v})`)
+      text = text
+        .split(`"${ref}"`)
+        .join(`"${ref}?v=${v}"`)
+        .split(`"/${ref}"`)
+        .join(`"/${ref}?v=${v}"`)
+        .split(`'./${ref}'`)
+        .join(`'./${ref}?v=${v}'`)
+        .split(`(${ref})`)
+        .join(`(${ref}?v=${v})`)
       // A reference written some other way would stay unstamped and
       // stale for hours; the build stops instead.
       if (!text.includes(`${ref}?v=${v}`)) throw new Error(`site: ${file} has no stampable reference to ${ref}`)
@@ -489,7 +909,13 @@ function fingerprint() {
     'film/one-drop.mp4',
     'film/one-drop-poster.png'
   ])
+  for (const file of subpageFiles) {
+    stamp(file, ['tokens.css', 'fonts.css', 'styles.css', 'pages.css', 'fonts/bricolage-grotesque-display.woff2'])
+  }
 }
+
+// The pages besides home, as written into dist, for the fingerprint pass.
+const subpageFiles = []
 
 // ------------------------------------------------------------- main ---
 
@@ -499,9 +925,25 @@ async function main() {
   mkdirSync(out, { recursive: true })
   const font = await fetchFont()
   writeFileSync(join(out, 'fonts.css'), font.css)
-  writeFileSync(join(out, 'index.html'), page(tokens, font.file))
+  THEME_COLOR = tokens.ink
+  const home = page(tokens, font.file)
+  writeFileSync(join(out, 'index.html'), home)
+  const docs = readDocs()
+  const pages = [
+    ['/docs/', 'docs/index.html', docsIndexPage(docs, font.file)],
+    ...docs.map((d) => [`/docs/${d.name}/`, `docs/${d.name}/index.html`, docPage(docs, d, font.file)]),
+    ['/wispr-flow-alternative/', 'wispr-flow-alternative/index.html', comparePage(font.file)],
+    ['/404', '404.html', notFoundPage(font.file)]
+  ]
+  const linkedFiles = checkLinks([['/', home], ...pages.map(([path, , html]) => [path, html])])
+  for (const [, file, html] of pages) {
+    mkdirSync(join(out, file, '..'), { recursive: true })
+    writeFileSync(join(out, file), html)
+    subpageFiles.push(file)
+  }
   copyFileSync(tokensFile, join(out, 'tokens.css'))
   copyFileSync(join(src, 'styles.css'), join(out, 'styles.css'))
+  copyFileSync(join(src, 'pages.css'), join(out, 'pages.css'))
   copyFileSync(join(src, 'app.js'), join(out, 'app.js'))
   copyFileSync(join(src, 'hero.js'), join(out, 'hero.js'))
   writeFileSync(join(out, 'brush.js'), brushJs())
@@ -518,10 +960,12 @@ async function main() {
   writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(tokens))
   writeFileSync(join(out, 'og.png'), previewPng(tokens))
   writeFileSync(join(out, 'robots.txt'), robotsTxt())
-  writeFileSync(join(out, 'sitemap.xml'), sitemapXml())
-  writeFileSync(join(out, 'llms.txt'), llmsTxt())
+  writeFileSync(join(out, 'sitemap.xml'), sitemapXml(docs))
+  writeFileSync(join(out, 'llms.txt'), llmsTxt(docs))
+  writeFileSync(join(out, 'llms-full.txt'), llmsFullTxt(docs))
+  checkFiles(linkedFiles)
   console.log(
-    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
+    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; ${pages.length + 1} pages; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
   )
 }
 

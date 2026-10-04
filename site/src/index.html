@@ -9,8 +9,8 @@
     <meta name="theme-color" content="{{THEME_COLOR}}" />
     <meta name="color-scheme" content="dark" />
     <meta name="author" content="Eze Media LLC" />
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="murmur" />
     <meta property="og:title" content="{{TITLE}}" />
@@ -25,24 +25,17 @@
     <meta name="twitter:description" content="{{DESCRIPTION}}" />
     <meta name="twitter:image" content="{{SITE_URL}}/og.png" />
     {{FONT_PRELOAD}}
-    <link rel="stylesheet" href="tokens.css" />
-    <link rel="stylesheet" href="fonts.css" />
-    <link rel="stylesheet" href="paint.css" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="pill.css" />
-    <script src="app.js"></script>
-    <script type="module" src="hero.js"></script>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/fonts.css" />
+    <link rel="stylesheet" href="/paint.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/pill.css" />
+    <script src="/app.js"></script>
+    <script type="module" src="/hero.js"></script>
     <script type="application/ld+json">{{JSON_LD}}</script>
   </head>
   <body>
-    <header class="top">
-      <a class="wordmark" href="./" aria-label="murmur home"><canvas class="mark" id="mark" width="30" height="30" aria-hidden="true"></canvas><span>murmur</span></a>
-      <nav aria-label="Project">
-        {{FILM_NAV}}
-        <a href="{{DOCS_URL}}" target="_blank" rel="noopener noreferrer">docs</a>
-        <a href="{{REPO_URL}}" target="_blank" rel="noopener noreferrer">github</a>
-      </nav>
-    </header>
+    {{HEADER}}
 
     <main>
       <section class="hero" id="hero" aria-label="What murmur is">
@@ -51,7 +44,7 @@
         <canvas class="layer" id="heroFx" aria-hidden="true"></canvas>
         <div class="hero-grid">
           <div class="hero-copy" id="heroCopy">
-            <p class="label">push-to-talk dictation</p>
+            <p class="label">free, open source dictation</p>
             <h1>Hold a key, speak, and your words land at your cursor.</h1>
             <p class="lede">murmur is dictation for Mac and Windows. Release the key and clean text appears in whatever app you are typing in.</p>
 
@@ -65,7 +58,7 @@
                 <div class="dl dl-windows">
                   <a class="btn" href="{{WINDOWS_URL}}">Download for Windows</a>
                   <p class="meta">{{WINDOWS}} · standard and ARM PCs</p>
-                  <p class="note">Windows may show a blue Windows protected your PC screen, because the installer is not signed yet. Click More info, then Run anyway. <a href="{{WINDOWS_SCREEN_URL}}" target="_blank" rel="noopener noreferrer">Why</a></p>
+                  <p class="note">Windows may show a blue Windows protected your PC screen, because the installer is not signed yet. Click More info, then Run anyway. <a href="{{WINDOWS_SCREEN_URL}}">Why</a></p>
                 </div>
               </div>
               <p class="also">
@@ -117,14 +110,7 @@
       </section>
     </main>
 
-    <footer class="bottom">
-      <p>murmur · version {{VERSION}} · GPL-3.0 · © 2026 Eze Media LLC{{SUPPORT}}</p>
-      <nav aria-label="More">
-        <a href="{{RELEASES_URL}}" target="_blank" rel="noopener noreferrer">releases</a>
-        <a href="{{DOCS_URL}}" target="_blank" rel="noopener noreferrer">docs</a>
-        <a href="{{REPO_URL}}" target="_blank" rel="noopener noreferrer">source</a>
-      </nav>
-    </footer>
+    {{FOOTER}}
 
     <dialog class="paint-sheet" id="paintSheet" aria-labelledby="sheetTitle">
       <p class="sheet-title" id="sheetTitle">Paint your poster. Drag anywhere.</p>

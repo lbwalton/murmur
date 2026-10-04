@@ -25,6 +25,8 @@ html {
   background: var(--ink);
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
+  /* A jump to #film or a doc's question lands below the sticky header. */
+  scroll-padding-top: 80px;
 }
 
 body {
@@ -70,6 +72,19 @@ button {
 
 /* ---------------------------------------------------------- header --- */
 
+/* One header on every page (US-092), held at the top while the page
+   scrolls, on a glass of the ground color so paint and text pass
+   quietly under it. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--ink) 86%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--cream-06);
+}
+
 .top,
 .bottom {
   width: 100%;
@@ -80,13 +95,12 @@ button {
 }
 
 .top {
-  position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 22px;
-  padding-bottom: 22px;
+  gap: 16px;
+  padding-top: 15px;
+  padding-bottom: 15px;
 }
 
 .wordmark {
@@ -103,8 +117,19 @@ button {
 }
 
 .mark {
+  flex: none;
   width: 30px;
   height: 30px;
+}
+
+.mark-ring {
+  fill: none;
+  stroke: var(--rice);
+  stroke-width: 2.4;
+}
+
+.mark-dot {
+  fill: var(--amber);
 }
 
 .top nav,
@@ -122,9 +147,32 @@ button {
   text-decoration: none;
 }
 
+.top nav {
+  align-items: center;
+}
+
 .top nav a:hover,
-.bottom nav a:hover {
+.bottom nav a:hover,
+.top nav a[aria-current='page'] {
   color: var(--text);
+}
+
+.top nav a[aria-current='page'] {
+  text-decoration: underline;
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 6px;
+}
+
+.top nav .nav-download {
+  color: var(--brand);
+  border: 1px solid var(--brand-edge);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.top nav .nav-download:hover {
+  color: var(--text);
+  border-color: var(--brand);
 }
 
 /* ------------------------------------------------------------ hero --- */
@@ -810,6 +858,52 @@ h1 {
 @media (max-width: 900px) {
   .hero-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .top nav {
+    gap: 14px;
+  }
+
+  .top nav a {
+    letter-spacing: 0.06em;
+  }
+
+  /* GitHub stays one tap away in the footer. */
+  .top nav .nav-github {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .wordmark {
+    font-size: 21px;
+    gap: 8px;
+  }
+
+  .top nav {
+    gap: 11px;
+  }
+
+  .top nav a {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .top nav .nav-download {
+    padding: 4px 9px;
+  }
+}
+
+@media (max-width: 360px) {
+  /* The smallest phones: the film is one scroll away on the home page. */
+  .top nav .nav-film {
+    display: none;
+  }
+
+  .wordmark {
+    font-size: 19px;
   }
 }
 

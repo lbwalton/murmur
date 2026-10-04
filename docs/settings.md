@@ -1,6 +1,6 @@
 # murmur settings, explained
 
-Everything the settings window can do. For provider setup (base URL, keys, model ids per provider) see [providers.md](./providers.md).
+Everything the settings window can do. For provider setup (base URL, keys, model ids per provider) see [connecting a provider](./providers.md).
 
 ## What is the home view?
 
@@ -51,11 +51,11 @@ Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fi
 
 ## How do I speak a note instead of pasting it?
 
-Set a note chord and a notes folder under Settings, Notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes.md](./notes.md).
+Set a note chord and a notes folder under Settings, Notes. Holding the note chord records like a dictation, but the words append to a markdown file in that folder (an Obsidian vault works as is) instead of landing at your cursor. The whole feature, including custom file layouts, the never-lost fallback, and what Obsidian sees, is on its own page: [notes](./notes.md).
 
 ## How do I rewrite selected text by speaking?
 
-Set a transform chord under Settings, Transform. Select text in any app, hold the chord, and say what to do ("tighten this paragraph"); the result replaces the selection, and paste-last brings the original back. What gets sent, the 8,000 character limit, the separate connection, and the Keep originals in history switch are on their own page: [transform.md](./transform.md).
+Set a transform chord under Settings, Transform. Select text in any app, hold the chord, and say what to do ("tighten this paragraph"); the result replaces the selection, and paste-last brings the original back. What gets sent, the 8,000 character limit, the separate connection, and the Keep originals in history switch are on their own page: [transform](./transform.md).
 
 ## What is the difference between hold to talk and toggle?
 

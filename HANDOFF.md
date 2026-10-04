@@ -23,6 +23,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-092 one header, the docs on the site, and the Wispr Flow page (built 2026-10-03; live after the next deploy). On your phone: (1) Open murmurapp.app and scroll down: the bar with murmur, film, docs, compare, and download stays at the top the whole way. (2) Tap docs: the same bar, a row of doc names, and every doc's questions. (3) Tap a question: it opens that doc at that question, not hidden under the bar. (4) Tap compare: murmur and Wispr Flow side by side, each row stacked so it reads on a phone. (5) Later, on the computer, do the same and tell Claude anything that reads wrong.
+- [ ] Search setup only you can do (2026-10-03). (1) Bing Webmaster Tools (bing.com/webmasters): sign in with Google, choose Import from Google Search Console, pick murmurapp.app. ChatGPT's search leans on Bing's index, so this is how murmur shows up there. (2) Optional, when you want: list murmur on AlternativeTo as an alternative to Wispr Flow, and on Product Hunt at launch. Answer engines read those listings.
+
 - [ ] Decide (found in the US-089 review, 2026-10-04; nothing changed yet): history keeps 90 days by default, and older dictations are deleted. Your numbers, time back, and belt are all counted from what is left, so after a long break (or Clear all) analytics could say No numbers yet and your belt could drop. Options: keep lifetime totals in a separate counter that never gets pruned, or leave it. Tell Claude which.
 
 - [ ] US-089 empty states (built 2026-10-04; you have years of history, so these only show on a fresh profile; Claude checked them with screenshots). Optional: on a new day before your first dictation, open the wrap-up tab: it should show a dry grey brush mark and Hold (your hotkey) anywhere and speak. Your first one lands here.
