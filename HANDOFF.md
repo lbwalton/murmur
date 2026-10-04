@@ -23,6 +23,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] Decide (site review, 2026-10-04; nothing changed yet): the pill you can try on murmurapp.app draws ink dabs, a brush style that is not in the released app yet (0.1.8 has bars and speckle; ink comes with the next release, earned by belt). Options: keep it as brand art, or show bars until the release that ships ink. Tell Claude which.
+
 - [ ] Decide (US-084 review, 2026-10-04; nothing changed yet): with reduced motion turned on in your Mac or Windows settings, the pulse and ink rings tiles show only the dot, because those styles draw rings only when motion is allowed (the real pill does the same). Options: draw one still ring for reduced motion (in the tiles and the pill), or leave it. Tell Claude which.
 
 - [ ] US-084 waveform tiles (built 2026-10-04; needs the next test build). (1) Open murmur's window, click settings, then Look in the list on the left. (2) Under Waveform you should see a grid of little pills, each one moving like someone is talking. (3) The one you use now has a gold outline and says in use; styles you have not earned yet are faded and say which belt earns them. (4) Click a different unlocked tile, then hold your hotkey and talk: the pill should draw your voice in that style. (5) Tell Claude if any tile looks frozen or wrong.

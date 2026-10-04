@@ -4,7 +4,7 @@ murmur's site at https://murmurapp.app. The home page (US-066) carries the brush
 
 Since US-092 the site also has:
 
-- **The docs.** Every file in `docs/` becomes its own page at `/docs/<name>/`, and `/docs/` lists them all with their questions. `docs/` stays the single source of truth: edit a doc there and the next build carries it. `site/markdown.js` renders the Markdown the docs use, with GitHub's heading anchors, so a link to a question works on both. A new doc must be added to `DOCS` in `content.js`, in reading order; the build stops if one is missing.
+- **The docs.** Every file in `docs/` becomes its own page at `/docs/<name>/`, and `/docs/` lists them all with their questions. `docs/` stays the single source of truth. A deploy build reads the docs as they were at the release the download button serves (the tag `v` plus the version in package.json), so the site never describes a feature nobody can download yet; a release's docs reach the site with the first deploy after it is tagged. `DOCS_REF` picks another git ref, and a local build without it reads the working tree. `site/markdown.js` renders the Markdown the docs use, with GitHub's heading anchors, so a link to a question works on both. A new doc must be added to `DOCS` in `content.js`, in reading order; the build stops if one is missing.
 - **The Wispr Flow comparison** at `/wispr-flow-alternative/`, written in `content.js`. Every Wispr Flow fact there carries the date it was checked against Wispr's own pages; recheck before changing a word.
 - **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
 - **A 404 page** with the same header.
@@ -41,9 +41,12 @@ Chosen by LaBroi 2026-10-02. Vercel's Hobby plan is for non-commercial use only,
 The project is deployed by direct upload from a Mac that has the film, so what was checked locally is exactly what ships:
 
 ```
+git fetch --tags
 SITE_URL=https://murmurapp.app SITE_DEPLOY=1 SUPPORT_EMAIL=support@murmurapp.app npm run site
 npx wrangler pages deploy site/dist --project-name murmur --branch main
 ```
+
+The docs pages come from the tag of the version in package.json, and the download buttons serve GitHub's latest published release, so deploy a new version's site only after its release is published (not while it is a draft). Until then, a deploy from a branch that already carries the new version fails for want of its tag; set `DOCS_REF` to the published tag to deploy anyway.
 
 Cloudflare keeps the scripts, stylesheets, and font in browsers for four hours while the page itself is always fetched fresh, so the build stamps each of those references with a fingerprint of the file (`?v=` plus a short hash) and a deploy reaches returning visitors on their next load.
 

@@ -37,6 +37,17 @@ if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && SITE_URL === PLACEHOLDE
 }
 const { links, facts, title, description, faq, compare } = content(SITE_URL)
 const docsDir = join(root, 'docs')
+const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+// The docs pages describe the release the download button serves, so a
+// deploy reads docs/ as it was at that release's tag (v<version>), never
+// a branch with features nobody can download yet. DOCS_REF picks another
+// git ref; a local build without it reads the working tree.
+const DEPLOY = Boolean(process.env.CF_PAGES || process.env.SITE_DEPLOY)
+const DOCS_REF = process.env.DOCS_REF || (DEPLOY ? `v${version}` : '')
+if (DOCS_REF && !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(DOCS_REF)) {
+  console.error(`site: DOCS_REF ${JSON.stringify(DOCS_REF)} is not a plain git ref`)
+  process.exit(1)
+}
 // The support address appears once Email Routing forwards it.
 const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || '').trim()
 // The film renders outside the repo (~/Projects/murmur-film); without
@@ -49,7 +60,6 @@ const FILM = {
   uploaded: '2026-10-01T19:02:00-07:00'
 }
 const hasFilm = () => existsSync(join(FILM_DIR, FILM.video)) && existsSync(join(FILM_DIR, FILM.poster))
-const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 
 // ---------------------------------------------------------- tokens ---
 
@@ -454,11 +464,17 @@ ${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM
 
 const ORG = () => ({ '@type': 'Organization', '@id': `${SITE_URL}/#org`, name: 'Eze Media LLC', url: `${SITE_URL}/` })
 
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+
 /** The last commit date (YYYY-MM-DD) of any of these paths, for lastmod
  *  and "updated" lines; today when git has nothing to say. */
 function gitDate(...paths) {
+  return gitDateAt('HEAD', ...paths)
+}
+
+function gitDateAt(ref, ...paths) {
   try {
-    const date = execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], { cwd: root, encoding: 'utf8' }).trim()
+    const date = git('log', '-1', '--format=%cs', ref, '--', ...paths).trim()
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date
   } catch {
     // Not a checkout (a tarball build): fall through.
@@ -546,22 +562,40 @@ function resolveDocLink(href) {
   if (href.startsWith('#')) return { href, external: false }
   const doc = /^(?:\.\/)?([a-z0-9-]+)\.md(#[^\s]*)?$/.exec(href)
   if (doc && DOC_NAMES.has(doc[1])) return { href: `/docs/${doc[1]}/${doc[2] || ''}`, external: false }
-  return { href: `${links.repo}/blob/main/docs/${href.replace(/^\.\//, '')}`, external: true }
+  return { href: `${links.repo}/blob/${DOCS_REF || 'main'}/docs/${href.replace(/^\.\//, '')}`, external: true }
 }
 
 /** Every doc rendered once: name, short name, title, description, body, its
  *  questions, and when it last changed. */
 function readDocs() {
-  const files = readdirSync(docsDir).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3))
+  if (DOCS_REF) {
+    try {
+      git('rev-parse', '--verify', '--quiet', `${DOCS_REF}^{commit}`)
+    } catch {
+      throw new Error(`site: the docs come from ${DOCS_REF}, which is not a git ref here (tag the release, or set DOCS_REF)`)
+    }
+  }
+  const files = (DOCS_REF ? git('ls-tree', '--name-only', DOCS_REF, 'docs/').split('\n').map((f) => f.replace(/^docs\//, '')) : readdirSync(docsDir))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => f.slice(0, -3))
   const missing = files.filter((f) => !DOC_NAMES.has(f))
   if (missing.length) throw new Error(`site: docs/${missing[0]}.md is not in DOCS in site/content.js`)
-  return DOCS.map(([name, short, written]) => {
-    const file = join(docsDir, `${name}.md`)
-    if (!existsSync(file)) throw new Error(`site: DOCS lists ${name} but docs/${name}.md does not exist`)
-    const markdown = readFileSync(file, 'utf8')
+  // A doc added since the release is not on the site until the release
+  // that ships it; the working tree must have every doc DOCS lists.
+  const listed = DOCS.filter(([name]) => {
+    if (files.includes(name)) return true
+    if (DOCS_REF) {
+      console.log(`site: docs/${name}.md is not at ${DOCS_REF} yet; it joins the site with the release that ships it`)
+      return false
+    }
+    throw new Error(`site: DOCS lists ${name} but docs/${name}.md does not exist`)
+  })
+  return listed.map(([name, short, written]) => {
+    const markdown = DOCS_REF ? git('show', `${DOCS_REF}:docs/${name}.md`) : readFileSync(join(docsDir, `${name}.md`), 'utf8')
     const doc = renderDoc(markdown, resolveDocLink)
     const description = clip(written || firstParagraph(markdown) || doc.title, 158)
-    return { name, short, markdown, ...doc, description, updated: gitDate(`docs/${name}.md`) }
+    const updated = DOCS_REF ? gitDateAt(DOCS_REF, `docs/${name}.md`) : gitDate(`docs/${name}.md`)
+    return { name, short, markdown, ...doc, description, updated }
   })
 }
 
@@ -586,7 +620,7 @@ function docPage(docs, doc, font) {
           <nav class="crumbs" aria-label="Breadcrumb"><a href="/docs/">docs</a> <span aria-hidden="true">/</span> <span aria-current="page">${escapeHtml(doc.short)}</span></nav>
           <h1>${escapeHtml(doc.title)}</h1>
           ${doc.html}
-          <p class="doc-meta">Updated ${doc.updated} · <a href="${links.docSource(doc.name)}" target="_blank" rel="noopener noreferrer">this page on GitHub</a></p>
+          <p class="doc-meta">Updated ${doc.updated} · <a href="${links.docSource(doc.name, DOCS_REF || 'main')}" target="_blank" rel="noopener noreferrer">this page on GitHub</a></p>
           ${next ? `<p class="doc-next">Next: <a href="/docs/${next.name}/">${escapeHtml(next.title)}</a></p>` : ''}
         </article>
       </div>`
@@ -965,7 +999,7 @@ async function main() {
   writeFileSync(join(out, 'llms-full.txt'), llmsFullTxt(docs))
   checkFiles(linkedFiles)
   console.log(
-    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; ${pages.length + 1} pages; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
+    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; ${pages.length + 1} pages; docs from ${DOCS_REF || 'the working tree'}; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
   )
 }
 

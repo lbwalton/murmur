@@ -19,7 +19,7 @@ function content(site) {
     issues: `${REPO}/issues`,
     docs: `${site}/docs/`,
     doc: (name, anchor) => `${site}/docs/${name}/${anchor ? `#${anchor}` : ''}`,
-    docSource: (name) => `${REPO}/blob/main/docs/${name}.md`,
+    docSource: (name, ref = 'main') => `${REPO}/blob/${ref}/docs/${name}.md`,
     compare: `${site}/wispr-flow-alternative/`,
     windowsScreen: `${site}/docs/download/#what-does-windows-protected-your-pc-mean-when-i-install-murmur`,
     groqKeys: 'https://console.groq.com/keys',
