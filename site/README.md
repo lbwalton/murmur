@@ -36,6 +36,8 @@ SITE_URL=https://murmurapp.app SITE_DEPLOY=1 SUPPORT_EMAIL=support@murmurapp.app
 npx wrangler pages deploy site/dist --project-name murmur --branch main
 ```
 
+Cloudflare keeps the scripts, stylesheets, and font in browsers for four hours while the page itself is always fetched fresh, so the build stamps each of those references with a fingerprint of the file (`?v=` plus a short hash) and a deploy reaches returning visitors on their next load.
+
 `site/headers.js` is the one list of security headers: the build writes it into `dist/_headers`, which Pages applies to every response, and the preview server sends the same list.
 
 After a deploy:

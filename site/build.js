@@ -388,8 +388,6 @@ ${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM
 `
 }
 
-// ------------------------------------------------------------- main ---
-
 // ------------------------------------------------------------ paint ---
 
 /** The app's brush engine as a browser module: brush.ts with its types
@@ -452,6 +450,47 @@ async function fetchFont() {
   }
 }
 
+// ---------------------------------------------------- fingerprints ---
+
+/**
+ * Every script, stylesheet, and the font gets a ?v= of its own content
+ * in the files that point at it. The page itself is never cached
+ * (Pages serves it with max-age=0), so a deploy reaches returning
+ * visitors on their next load even though the zone keeps assets for
+ * hours, and an old script can never meet a new page.
+ */
+function fingerprint() {
+  const { createHash } = require('node:crypto')
+  const hash = (file) => createHash('sha256').update(readFileSync(join(out, file))).digest('hex').slice(0, 10)
+  const stamp = (file, refs) => {
+    let text = readFileSync(join(out, file), 'utf8')
+    for (const ref of refs) {
+      if (!existsSync(join(out, ref))) continue
+      const v = hash(ref)
+      text = text.split(`"${ref}"`).join(`"${ref}?v=${v}"`).split(`'./${ref}'`).join(`'./${ref}?v=${v}'`).split(`(${ref})`).join(`(${ref}?v=${v})`)
+      // A reference written some other way would stay unstamped and
+      // stale for hours; the build stops instead.
+      if (!text.includes(`${ref}?v=${v}`)) throw new Error(`site: ${file} has no stampable reference to ${ref}`)
+    }
+    writeFileSync(join(out, file), text)
+  }
+  // Innermost first: a file's fingerprint covers the stamps inside it.
+  stamp('hero.js', ['brush.js'])
+  stamp('fonts.css', ['fonts/bricolage-grotesque-display.woff2'])
+  stamp('index.html', [
+    'tokens.css',
+    'fonts.css',
+    'paint.css',
+    'styles.css',
+    'pill.css',
+    'app.js',
+    'hero.js',
+    'fonts/bricolage-grotesque-display.woff2',
+    'film/one-drop.mp4',
+    'film/one-drop-poster.png'
+  ])
+}
+
 // ------------------------------------------------------------- main ---
 
 async function main() {
@@ -474,6 +513,7 @@ async function main() {
     copyFileSync(join(FILM_DIR, FILM.poster), join(out, 'film', 'one-drop-poster.png'))
   }
   writeFileSync(join(out, 'pill.css'), pillCss())
+  fingerprint()
   writeFileSync(join(out, 'favicon.svg'), faviconSvg(tokens))
   writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(tokens))
   writeFileSync(join(out, 'og.png'), previewPng(tokens))
