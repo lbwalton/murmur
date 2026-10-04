@@ -517,6 +517,49 @@ h1 {
   color: var(--text);
 }
 
+/* On a phone the hero is nearly all words and buttons, so Paint opens a
+   sheet of its own: the hero's painting, cropped like the poster, with
+   the whole screen to paint on. */
+.paint-sheet {
+  /* The page behind never scrolls or rubber-bands while painting; the
+     buttons still take taps. */
+  overscroll-behavior: contain;
+  touch-action: none;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  background: var(--ink);
+  color: var(--text);
+}
+
+.paint-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.paint-sheet::backdrop {
+  background: var(--ink);
+}
+
+.sheet-title {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.sheet-canvas {
+  display: block;
+  border-radius: 12px;
+  border: 1px solid var(--cream-14);
+  touch-action: none;
+}
+
 .poster-modal::backdrop {
   background: var(--panel-glass);
 }

@@ -126,6 +126,17 @@
       </nav>
     </footer>
 
+    <dialog class="paint-sheet" id="paintSheet" aria-labelledby="sheetTitle">
+      <p class="sheet-title" id="sheetTitle">Paint your poster. Drag anywhere.</p>
+      <canvas class="sheet-canvas" id="sheetCanvas" aria-label="Your painting" role="img"></canvas>
+      <div class="yt-colors" id="sheetColors" role="radiogroup" aria-label="Paint color"></div>
+      <div class="pm-actions">
+        <button type="button" class="chip-btn" id="sheetClear">Clear</button>
+        <button type="button" class="chip-btn chip-primary" id="sheetPoster">Make my poster</button>
+        <button type="button" class="chip-btn" id="sheetDone" autofocus>Done</button>
+      </div>
+    </dialog>
+
     <dialog class="poster-modal" id="posterModal" aria-labelledby="posterTitle">
       <div class="pm-card">
         <h2 id="posterTitle">Your poster</h2>

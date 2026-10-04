@@ -474,7 +474,7 @@ function flyTick(now) {
 function syncPainting() {
   const toggle = $('#ytToggle')
   // The label names what a press does; no pressed state on top of it.
-  toggle.textContent = you.touch ? (you.on ? 'Done painting' : 'Paint') : you.on ? 'Pause painting' : 'Paint'
+  toggle.textContent = you.touch ? 'Paint' : you.on ? 'Pause painting' : 'Paint'
   hero.el.classList.toggle('painting', you.ready && you.on && !you.touch)
   hero.el.classList.toggle('touch-paint', you.ready && you.on && you.touch)
 }
@@ -486,13 +486,10 @@ function yourTurnReady() {
   syncPainting()
 }
 
-function setupYourTurn() {
-  you.touch = matchMedia('(hover: none)').matches
-  if (you.touch) {
-    you.on = false
-    $('#ytLabel').textContent = 'Your turn. Tap Paint, then drag to paint.'
-  }
-  const box = $('#ytColors')
+// The color rows (the hero bar and the phone sheet) share one choice.
+const colorRows = []
+function buildColorRow(box) {
+  colorRows.push(box)
   palette().forEach(([name, rgb], i) => {
     const b = document.createElement('button')
     b.type = 'button'
@@ -504,9 +501,11 @@ function setupYourTurn() {
     b.style.background = rgba(rgb)
     b.addEventListener('click', () => {
       you.color = rgb
-      for (const x of box.children) {
-        x.setAttribute('aria-checked', String(x === b))
-        x.tabIndex = x === b ? 0 : -1
+      for (const row of colorRows) {
+        ;[...row.children].forEach((x, k) => {
+          x.setAttribute('aria-checked', String(k === i))
+          x.tabIndex = k === i ? 0 : -1
+        })
       }
     })
     box.appendChild(b)
@@ -521,17 +520,35 @@ function setupYourTurn() {
     nx.click()
     nx.focus()
   })
+}
+
+function setupYourTurn() {
+  you.touch = matchMedia('(hover: none)').matches
+  if (you.touch) {
+    you.on = false
+    $('#ytLabel').textContent = 'Your turn. Tap Paint to paint your own poster.'
+  }
+  buildColorRow($('#ytColors'))
+  buildColorRow($('#sheetColors'))
+  if (you.touch) $('#ytToggle').setAttribute('aria-haspopup', 'dialog')
   you.color = palette()[0][1]
   $('#ytToggle').addEventListener('click', () => {
+    // A phone paints on a sheet of its own; the hero there is all words.
+    if (you.touch) {
+      openSheet()
+      return
+    }
     you.on = !you.on
     penUp()
     syncPainting()
   })
+  setupSheet()
   syncPainting()
   $('#ytClear').addEventListener('click', () => {
     you.strokes = []
     you.cur = null
     repaintYou(true)
+    clearSheet()
   })
   // Never paint over the words or the controls.
   const blocked = (el) => el && el.closest && el.closest('a, button, input, video, .hero-copy, .win, .pill, .hint, .yourturn')
@@ -592,6 +609,183 @@ function setupYourTurn() {
 
 // ------------------------------------------------------------ poster ---
 
+/** The hero's painting cropped 4:5 around the stage, drawn W by H. */
+function drawHeroCrop(ctx, W, H, layers) {
+  const hw = you.w
+  const hh = you.h
+  const st = hero.st || { cx: hw / 2, cy: hh / 2 }
+  let ch = hh
+  let cw = hh * 0.8
+  if (cw > hw) {
+    cw = hw
+    ch = hw * 1.25
+  }
+  const sx = clamp(st.cx - cw / 2, 0, Math.max(0, hw - cw))
+  const sy = clamp(st.cy - ch / 2, 0, Math.max(0, hh - ch))
+  const dpr = you.L.dpr
+  for (const q of layers) ctx.drawImage($(q), sx * dpr, sy * dpr, cw * dpr, ch * dpr, 0, 0, W, H * (ch / (cw * 1.25)))
+}
+
+// ------------------------------------------------------ phone sheet ---
+
+const sheet = { L: null, dry: null, bg: null, w: 0, strokes: [], cur: null, used: false, back: null }
+
+function fitSheet() {
+  // A stroke in progress ends before the canvas changes size.
+  sheetUp()
+  // 16 px of gutter each side, and 2 px for the canvas border.
+  const w = Math.floor(Math.max(160, Math.min(innerWidth - 34, (innerHeight - 190) * 0.8)))
+  const ow = sheet.w
+  sheet.w = w
+  const cv = $('#sheetCanvas')
+  cv.style.width = `${w}px`
+  cv.style.height = `${w * 1.25}px`
+  sheet.L = fit(cv, w, w * 1.25)
+  sheet.dry = fit(document.createElement('canvas'), w, w * 1.25)
+  // The picture under the strokes is cropped once, the first time the
+  // sheet opens, and only scaled after that, so a rotation (which
+  // re-plans the hero's painting) never swaps it under the visitor.
+  const old = sheet.bg
+  sheet.bg = fit(document.createElement('canvas'), w, w * 1.25)
+  if (old) sheet.bg.ctx.drawImage(old.canvas, 0, 0, w, w * 1.25)
+  else {
+    sheet.bg.ctx.fillStyle = rgba(C.ink)
+    sheet.bg.ctx.fillRect(0, 0, w, w * 1.25)
+    drawHeroCrop(sheet.bg.ctx, w, w * 1.25, ['#heroPaint'])
+  }
+  // A rotated phone keeps the strokes where they were on the picture.
+  if (ow && ow !== w) {
+    const k = w / ow
+    for (const s of sheet.strokes) {
+      s.pts = s.pts.map(([x, y]) => [x * k, y * k])
+      s.ws = s.ws.map((v) => v * k)
+      if (s.sp) s.sp = splat(s.seed + 1, s.pts[s.pts.length - 1][0], s.pts[s.pts.length - 1][1], { ...s.spOpts, r: s.spOpts.r * k })
+    }
+  }
+  repaintSheet(true)
+}
+
+function repaintSheet(all = false, add = null) {
+  const draw = (L) => {
+    L.ctx.save()
+    L.ctx.setTransform(1, 0, 0, 1, 0, 0)
+    L.ctx.drawImage(sheet.bg.canvas, 0, 0)
+    L.ctx.restore()
+  }
+  if (all) {
+    clear(sheet.dry)
+    draw(sheet.dry)
+    for (const s of sheet.strokes) paintWhole(sheet.dry.ctx, s)
+  } else if (add) paintWhole(sheet.dry.ctx, add)
+  clear(sheet.L)
+  sheet.L.ctx.save()
+  sheet.L.ctx.setTransform(1, 0, 0, 1, 0, 0)
+  sheet.L.ctx.drawImage(sheet.dry.canvas, 0, 0)
+  sheet.L.ctx.restore()
+}
+
+function sheetMove(x, y, t) {
+  let c = sheet.cur
+  if (!c) {
+    c = sheet.cur = { pts: [[x, y]], ws: [12], rgb: you.color, seed: 6000 + (sheet.strokes.length % 48), len: 0, last: t, drawn: 0, w: 12, speed: 0 }
+    return
+  }
+  const [px, py] = c.pts[c.pts.length - 1]
+  const d = Math.hypot(x - px, y - py)
+  if (d < 2.5) return
+  c.speed = lerp(c.speed, d / Math.max(1, t - c.last), 0.4)
+  c.w = lerp(c.w, clamp(26 - c.speed * 10, 5, 26), 0.25)
+  c.pts.push([x, y])
+  c.ws.push(c.w)
+  c.last = t
+  const from = Math.max(0, c.drawn - 1)
+  const seg = c.pts.slice(from)
+  const P = path(seg, 2, true)
+  const skip = c.drawn > 0 ? Math.hypot(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1]) : 0
+  const step = P.total / (P.length - 1 || 1)
+  const i0 = Math.min(P.length - 2, Math.round(skip / (step || 1)))
+  const sOff = c.len - skip
+  stroke(sheet.L.ctx, P, cachedBrush(c.seed, 22), userOpts(c, c.w, { i0, sOff, pfn: (u) => 0.35 + 0.65 * Math.min(1, (sOff + u * P.total) / 24) }))
+  c.len += P.total - skip
+  c.drawn = c.pts.length - 1
+}
+
+function sheetUp() {
+  const c = sheet.cur
+  sheet.cur = null
+  if (!c || c.pts.length < 3) return
+  // A quick flick throws paint off the end of the finger, as on a desktop.
+  if (c.speed > 1.1) {
+    const n = c.pts.length
+    const [ax, ay] = c.pts[Math.max(0, n - 4)]
+    const [bx, by] = c.pts[n - 1]
+    c.spOpts = { r: c.w * 0.9, count: 8 + c.speed * 6, mist: 10, dir: Math.atan2(by - ay, bx - ax), spread: 0.5, reach: 3 }
+    c.sp = splat(c.seed + 1, bx, by, c.spOpts)
+  }
+  sheet.strokes.push(c)
+  if (sheet.strokes.length > MAX_STROKES) sheet.strokes.shift()
+  sheet.used = true
+  repaintSheet(false, c)
+}
+
+function clearSheet() {
+  sheet.strokes = []
+  sheet.cur = null
+  sheet.used = false
+  if (sheet.L) repaintSheet(true)
+}
+
+function openSheet() {
+  const dialog = $('#paintSheet')
+  if (dialog.open) return
+  sheet.back = document.activeElement
+  dialog.showModal()
+  document.documentElement.style.overflow = 'hidden'
+  fitSheet()
+}
+
+function setupSheet() {
+  const dialog = $('#paintSheet')
+  const cv = $('#sheetCanvas')
+  // One finger paints; a second finger or a resting palm is ignored, so
+  // nothing is ever drawn between two touches.
+  let pid = null
+  const at = (e) => {
+    const r = cv.getBoundingClientRect()
+    return [e.clientX - r.left, e.clientY - r.top]
+  }
+  cv.addEventListener('pointerdown', (e) => {
+    if (pid !== null) return
+    pid = e.pointerId
+    cv.setPointerCapture(e.pointerId)
+    sheetMove(...at(e), e.timeStamp)
+  })
+  cv.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid) return
+    // Every sample since the last frame, so a fast finger draws a curve.
+    const all = e.getCoalescedEvents ? e.getCoalescedEvents() : []
+    for (const c of all.length ? all : [e]) sheetMove(...at(c), c.timeStamp)
+  })
+  const lift = (e) => {
+    if (e.pointerId !== pid) return
+    pid = null
+    sheetUp()
+  }
+  cv.addEventListener('pointerup', lift)
+  cv.addEventListener('pointercancel', lift)
+  cv.addEventListener('lostpointercapture', lift)
+  $('#sheetClear').addEventListener('click', clearSheet)
+  $('#sheetDone').addEventListener('click', () => dialog.close())
+  $('#sheetPoster').addEventListener('click', () => void makePoster())
+  dialog.addEventListener('close', () => {
+    document.documentElement.style.overflow = ''
+    if (sheet.back && sheet.back.focus) sheet.back.focus()
+  })
+  addEventListener('resize', () => {
+    if (dialog.open) fitSheet()
+  })
+}
+
 const poster = { blob: null, url: '', back: null }
 
 /** A 4:5 poster: the hero painting around the pill, the visitor's
@@ -611,19 +805,8 @@ async function makePoster() {
   const ctx = cv.getContext('2d')
   ctx.fillStyle = rgba(C.ink)
   ctx.fillRect(0, 0, W, H)
-  const hw = you.w
-  const hh = you.h
-  const st = hero.st || { cx: hw / 2, cy: hh / 2 }
-  let ch = hh
-  let cw = hh * 0.8
-  if (cw > hw) {
-    cw = hw
-    ch = hw * 1.25
-  }
-  const sx = clamp(st.cx - cw / 2, 0, Math.max(0, hw - cw))
-  const sy = clamp(st.cy - ch / 2, 0, Math.max(0, hh - ch))
-  const dpr = you.L.dpr
-  for (const q of ['#heroPaint', '#heroUser']) ctx.drawImage($(q), sx * dpr, sy * dpr, cw * dpr, ch * dpr, 0, 0, W, H * (ch / (cw * 1.25)))
+  if (sheet.used) ctx.drawImage(sheet.dry.canvas, 0, 0, W, H)
+  else drawHeroCrop(ctx, W, H, ['#heroPaint', '#heroUser'])
   const g = ctx.createLinearGradient(0, H * 0.62, 0, H)
   g.addColorStop(0, rgba(C.ink, 0))
   g.addColorStop(1, rgba(C.ink, 0.92))
@@ -652,7 +835,7 @@ async function makePoster() {
   $('#posterImg').src = poster.url
   // A phone shares; a desktop saves the file.
   $('#posterSave').textContent = canShareFile() ? 'Share poster' : 'Save poster'
-  poster.back = document.activeElement
+  poster.back = $('#paintSheet').open ? $('#sheetPoster') : document.activeElement
   $('#posterModal').showModal()
   $('#posterSave').focus()
 }
@@ -1014,7 +1197,7 @@ function setupPill() {
     if (e.code !== 'Space' || e.repeat) return
     const ae = document.activeElement
     if (ae && ae !== document.body && ae !== btn) return
-    if (!heroIn || $('#posterModal').open) return
+    if (!heroIn || $('#posterModal').open || $('#paintSheet').open) return
     e.preventDefault()
     dict.interacted = true
     spaceHeld = true
