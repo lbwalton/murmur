@@ -146,7 +146,10 @@ export function getOverlayState(): OverlayState {
 }
 
 /** Show the pill with synthetic levels for a moment: settings "preview". */
-export function overlayPreviewBurst(durationMs = 2500): void {
+/** Preview plays the whole cycle without dictating: speaking, then a
+ *  held processing phase long enough to show the drying sheen and its
+ *  repeats (US-091), then the words landing. */
+export function overlayPreviewBurst(durationMs = 2500, processingMs = 5000): void {
   if (getOverlayPhase() !== 'idle') return
   if (!setOverlayPhase('recording')) return
   let t = 0
@@ -157,7 +160,9 @@ export function overlayPreviewBurst(durationMs = 2500): void {
   }, 33)
   const stop = setTimeout(() => {
     clearInterval(levels)
-    setOverlayPhase('idle')
+    if (!setOverlayPhase('processing')) return
+    // Inserted lingers, then the pill rests on its own.
+    previewTimers.push(setTimeout(() => setOverlayPhase('inserted'), processingMs))
   }, durationMs)
   previewTimers.push(levels, stop)
 }
@@ -528,6 +533,8 @@ export function initOverlay(): void {
     painted: number
     /** A cheap fingerprint of the whole canvas. */
     print: number
+    /** Ms into processing by the renderer's own clock, at its last frame. */
+    procMs: number | null
   }
   const readInk = async (win: BrowserWindow): Promise<Ink> =>
     JSON.parse(
@@ -542,7 +549,7 @@ export function initOverlay(): void {
               print = (print * 31 + d[i] + d[i - 1]) % 1000000007
             }
           }
-          return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, mode: c ? c.dataset.mode || null : null, painted, print })
+          return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, mode: c ? c.dataset.mode || null : null, painted, print, procMs: c && c.dataset.procMs ? Number(c.dataset.procMs) : null })
         })()`
       )
     ) as Ink
@@ -591,6 +598,50 @@ export function initOverlay(): void {
       }
     })
   }
+
+  // The repeating sheen (US-091): while processing runs long the ink
+  // keeps moving. The paint goes still once the first sheen has crossed;
+  // past the 2 second mark it must change again. Without the repeat the
+  // loop stops after the settle time and nothing changes there. Timed by
+  // the renderer's own clock (procMs), so a loaded machine slows the
+  // check down instead of failing it.
+  registerSmokeCheck('overlayInkSheen', async () => {
+    const win = aliveOverlay()
+    if (!win) return false
+    const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+    try {
+      updateSettings({ overlay: { style: 'dabs', look: 'pill' } })
+      for (let i = 0; i < 50 && (await readInk(win)).ink !== 'dabs'; i++) await inkWait(40)
+      if (!setOverlayPhase('recording')) return false
+      for (let t = 0; t < 600; t += 40) {
+        win.webContents.send(IpcChannels.overlayLevel, 0.22)
+        await inkWait(40)
+      }
+      setOverlayPhase('processing')
+      const deadline = Date.now() + 8_000
+      // Still: drying (600 ms) and the first sheen (about 800 ms) are done.
+      let still = await readInk(win)
+      while (!(still.mode === 'proc' && (still.procMs ?? 0) >= 1000) && Date.now() < deadline) {
+        await inkWait(40)
+        still = await readInk(win)
+      }
+      let moved = false
+      let last = still
+      while (!moved && Date.now() < deadline) {
+        await inkWait(40)
+        last = await readInk(win)
+        moved = last.mode === 'proc' && (last.procMs ?? 0) >= 2000 && last.print !== still.print
+      }
+      if (!moved) {
+        console.error(`smoke overlayInkSheen: no repeat sheen; still=${still.mode}@${still.procMs} last=${last.mode}@${last.procMs}`)
+      }
+      return still.mode === 'proc' && moved
+    } finally {
+      setOverlayPhase('idle')
+      updateSettings({ overlay: original })
+      await inkWait(100)
+    }
+  })
 
   // Design QA for the ink styles: MURMUR_INK_SHOTS=<dir> with npm run
   // smoke saves each style in each look after most of a second of a synthetic

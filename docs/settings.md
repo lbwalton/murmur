@@ -109,7 +109,7 @@ Four more are painted with a brush, and each arrives with a belt:
 - **Ink rings** (purple belt) are dry-brush arcs that ripple out from the dot and break up as they travel.
 - **Ink ribbon** (brown belt) is one continuous stroke your voice paints, thick when you are loud and thin when you are quiet.
 
-Every ink style follows the same rules: wet paint while you speak, a single sheen as it dries while murmur processes, flat once your words are inserted, a dry grey scrape when no speech was heard, and plain red with no brushwork for an error. With a custom accent color, the paint is your accent and it dries to a darker shade of it. Ink styles work in every overlay look, pill, compact, and bare. **Preview**, beside Overlay look, shows the pill anytime without dictating.
+Every ink style follows the same rules: wet paint while you speak, a sheen as it dries while murmur processes (and a softer one every 2 seconds if processing takes a while, so a long wait never looks frozen), flat once your words are inserted, a dry grey scrape when no speech was heard, and plain red with no brushwork for an error. With a custom accent color, the paint is your accent and it dries to a darker shade of it. Ink styles work in every overlay look, pill, compact, and bare. **Preview**, beside Overlay look, plays the whole cycle anytime without dictating: a few seconds of speaking, five seconds of drying (so you see the sheen repeat), then the words landing.
 
 ## How do I make the overlay smaller or less intrusive?
 

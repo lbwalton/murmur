@@ -2,13 +2,15 @@
 // The ink waveforms (US-074): dabs, flecks, rings, and ribbon, painted
 // with the brush. One set of rules for all four: wet paint in the
 // accent while live, drying to brand gold (or a darker shade of a
-// custom accent) when the brush lifts, one sheen while processing, flat
+// custom accent) when the brush lifts, a sheen while processing (again
+// every 2 seconds while it runs long, sheen.ts), flat
 // when inserted, a dry grey scrape for no speech, and clean red with no
 // bristles for an error. Works in every look; in bare the marks carry
 // the ink edge and fade before the canvas ends, like pulse and speckle.
 import { useEffect, useRef } from 'react'
 import type { InkStyle, OverlayPhase } from '../../shared/overlay-state'
 import { OVERHANG, applyInkEdge, fadeToEdges, inkEdge } from './bare'
+import { nextSheenIn, sheenFor } from './sheen'
 import { type Rgb, cachedBrush, clamp, easeOut, lerp, mix, mulberry, parseColor, path, rgba, stroke, tokenColor } from '../brush'
 
 type Mode = 'idle' | 'rec' | 'proc' | 'ins' | 'err' | 'nospeech'
@@ -466,23 +468,24 @@ export function InkWave(props: {
       else if (kind === 'rings') drawRings(now, level, p)
       else if (kind === 'ribbon') drawRibbon(now, p)
       else drawDabs(now, p)
-      if (mode === 'proc' && !reduced) {
-        // One sheen crosses the wet paint as it dries, on every style.
-        const x = fx0 + ((now - modeAt) / 700 - 0.2) * fw * 1.5
-        if (x < fx0 + fw * 1.4) {
-          paint.save()
-          paint.globalCompositeOperation = 'source-atop'
-          const g = paint.createLinearGradient(x - fw * 0.18, 0, x + fw * 0.18, 0)
-          g.addColorStop(0, 'rgba(255, 244, 222, 0)')
-          g.addColorStop(0.5, 'rgba(255, 244, 222, 0.4)')
-          g.addColorStop(1, 'rgba(255, 244, 222, 0)')
-          paint.fillStyle = g
-          paint.fillRect(0, 0, width, height)
-          paint.restore()
-        }
+      // A sheen crosses the paint as it dries, on every style, and again
+      // every 2 seconds while processing runs long.
+      const sheen = sheenFor(mode === 'proc', now - modeAt, reduced)
+      if (sheen) {
+        const x = fx0 + sheen.at * fw
+        paint.save()
+        paint.globalCompositeOperation = 'source-atop'
+        const g = paint.createLinearGradient(x - fw * 0.18, 0, x + fw * 0.18, 0)
+        g.addColorStop(0, 'rgba(255, 244, 222, 0)')
+        g.addColorStop(0.5, `rgba(255, 244, 222, ${sheen.alpha})`)
+        g.addColorStop(1, 'rgba(255, 244, 222, 0)')
+        paint.fillStyle = g
+        paint.fillRect(0, 0, width, height)
+        paint.restore()
       }
       // What this frame painted, for the smoke check to read.
       if (canvas.dataset.mode !== mode) canvas.dataset.mode = mode
+      if (mode === 'proc') canvas.dataset.procMs = String(Math.round(now - modeAt))
       if (bare && buffer) {
         ctx.clearRect(0, 0, width, height)
         applyInkEdge(ctx, edge, dpr)
@@ -493,6 +496,7 @@ export function InkWave(props: {
     }
 
     let raf = 0
+    let nap = 0
     let running = false
     const frame = (now: number): void => {
       if (phaseRef.current !== lastPhase) {
@@ -506,11 +510,20 @@ export function InkWave(props: {
         running = false
         throw error
       }
-      const busy = mode === 'rec' || now - modeAt < SETTLE_MS || rings.length > 0 || flung.length > 0
+      const t = now - modeAt
+      const sheenOn = sheenFor(mode === 'proc', t, reduced) !== null
+      const busy = mode === 'rec' || sheenOn || t < SETTLE_MS || rings.length > 0 || flung.length > 0
       if (busy) raf = requestAnimationFrame(frame)
-      else running = false
+      else {
+        running = false
+        // Between sheens the paint is still: sleep until the next pass
+        // instead of redrawing the same frame. A phase change wakes it.
+        const wait = mode === 'proc' && !reduced ? nextSheenIn(t) : null
+        if (wait !== null) nap = window.setTimeout(kick, wait)
+      }
     }
     const kick = (): void => {
+      window.clearTimeout(nap)
       if (running) return
       running = true
       raf = requestAnimationFrame(frame)
@@ -519,6 +532,7 @@ export function InkWave(props: {
     kick()
     return () => {
       cancelAnimationFrame(raf)
+      window.clearTimeout(nap)
       running = false
       kickRef.current = () => undefined
     }
