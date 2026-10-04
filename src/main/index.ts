@@ -305,14 +305,18 @@ app.whenReady().then(async () => {
 
   // Share card: the journey page draws a PNG locally; main only offers
   // the save dialog and writes bytes. Nothing leaves the machine.
-  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown) => {
+  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown, kind: unknown, day: unknown) => {
     if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return false
+    // The wrap-up's day card (US-088) is named for the day it shows, a
+    // plain YYYY-MM-DD and nothing else; anything else is the belt card.
+    const dated = kind === 'day' && typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+    const name = dated ? `murmur-day-${day}.png` : kind === 'day' ? 'murmur-day.png' : 'murmur-belt.png'
     const { dialog } = await import('electron')
     const { writeFile } = await import('node:fs/promises')
     const target = settingsWindow
     if (!target || target.isDestroyed()) return false
     const { canceled, filePath } = await dialog.showSaveDialog(target, {
-      defaultPath: 'murmur-belt.png',
+      defaultPath: name,
       filters: [{ name: 'PNG image', extensions: ['png'] }]
     })
     if (canceled || !filePath) return false

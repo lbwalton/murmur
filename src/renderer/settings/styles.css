@@ -887,6 +887,51 @@ select.field {
   color: var(--text-dim);
 }
 
+/* Today, wrapped, as a painting (US-088): the day's strokes fill the
+   card and the summary sits over the fade at its foot. */
+.day-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.day-canvas {
+  display: block;
+  width: 100%;
+  height: 230px;
+}
+
+.day-summary {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.day-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.day-headline {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.day-detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.day-note {
+  font-size: 12px;
+}
+
 /* The share card's preview (US-078): the card at full resolution,
    shown as it will save. */
 .share-dialog {

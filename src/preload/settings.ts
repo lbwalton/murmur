@@ -182,8 +182,8 @@ const api = {
   getEquivalentLine: (pick: number): Promise<string> => {
     return ipcRenderer.invoke('equivalents:line', pick)
   },
-  saveShareCard: (pngDataUrl: string): Promise<boolean> => {
-    return ipcRenderer.invoke('sharecard:save', pngDataUrl)
+  saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' = 'belt', day?: string): Promise<boolean> => {
+    return ipcRenderer.invoke('sharecard:save', pngDataUrl, kind, day)
   },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
