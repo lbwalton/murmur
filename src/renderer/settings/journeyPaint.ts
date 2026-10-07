@@ -209,9 +209,28 @@ export function youX(roadIndex: number, toNext: number, count: number): number {
 }
 
 /**
+ * The index on the road of the highest rank your words and days have
+ * earned (both gates), or -1 before the white belt. The founder's belt is
+ * an identity, never earned this way, so the founder-only rank never
+ * counts: the founder's road shows practice like anyone's.
+ */
+export function earnedIndex(road: readonly RankSpec[], words: number, days: number): number {
+  let best = -1
+  road.forEach((rank, i) => {
+    if (rank.founderOnly || rank.words === null || rank.activeDays === null) return
+    if (words >= rank.words && days >= rank.activeDays) best = i
+  })
+  return best
+}
+
+/** The name a stretch of the road wears: both coral belts are coral. */
+const groupName = (belt: string): string => (belt.startsWith('coral') ? 'coral' : belt)
+
+/**
  * The road: a pencil track the whole way, each belt group's stretch
  * painted in its color up to `paintTo`, a knot per rank (filled when
- * earned, a gold ring on the next one), the group names under it, and
+ * earned, a gold ring on the next one, the founder's crown on the
+ * founder-only rank), the group names under it, never overlapping, and
  * you, marked in brand gold.
  */
 export function paintRoad(
@@ -237,6 +256,7 @@ export function paintRoad(
   ctx.font = `11px ${mono}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
+  let labelEnd = -Infinity
   GROUPS.forEach((g, gi) => {
     const first = road.findIndex((r) => r.belt === g)
     if (first < 0) return
@@ -244,8 +264,15 @@ export function paintRoad(
     while (last + 1 < n && road[last + 1].belt === g) last++
     const x0 = rankX(first, n)
     const x1 = g === 'red' || last + 1 >= n ? rankX(last, n) : rankX(last + 1, n)
-    ctx.fillStyle = rgba(c.dim)
-    ctx.fillText(g.replace('-', ' '), x0, y + 32)
+    // One label per name (the two coral belts share one), and never on
+    // top of the label before it.
+    const name = groupName(g)
+    const named = gi > 0 && groupName(GROUPS[gi - 1]) === name
+    if (!named && x0 >= labelEnd + 10) {
+      ctx.fillStyle = rgba(c.dim)
+      ctx.fillText(name, x0, y + 32)
+      labelEnd = x0 + ctx.measureText(name).width
+    }
     if (paintTo <= x0 || x1 <= x0) return
     const P = path(
       [
@@ -264,6 +291,19 @@ export function paintRoad(
     const x = rankX(i, n)
     const start = rank.stripes === 0 || i === 0 || road[i - 1].belt !== rank.belt
     const r = start ? 5.5 : 3
+    if (rank.founderOnly) {
+      // The founder's crown, in founder gold: an identity, not a rank on
+      // the way.
+      ctx.fillStyle = rgba(c.founder)
+      ctx.font = `15px ${mono}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('♛', x, y)
+      ctx.font = `11px ${mono}`
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      return
+    }
     if (i <= roadIndex) {
       ctx.fillStyle = rgba(c.ink)
       ctx.beginPath()

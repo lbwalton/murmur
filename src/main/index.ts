@@ -616,18 +616,30 @@ app.whenReady().then(async () => {
       )
       await new Promise((resolve) => setTimeout(resolve, 300))
     }
-    // MURMUR_SETTINGS_CLICK=selector clicks that element last (opening a
-    // dialog such as the share card), then waits for it to paint.
+    // MURMUR_SETTINGS_CLICK=selector focuses and clicks that element last
+    // (opening a dialog such as the share card, or a hover note), then
+    // waits for it to paint.
     const clickOn = process.env.MURMUR_SETTINGS_CLICK
     if (clickOn) {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
           const el = document.querySelector(${JSON.stringify(clickOn)})
-          if (el) el.click()
+          // Focus first, as a real click would, so focus-driven notes open.
+          if (el) {
+            el.focus()
+            el.click()
+          }
           return Boolean(el)
         })()`
       )
       await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
+    // MURMUR_SETTINGS_PROBE=expression prints what it evaluates to in the
+    // window just before the shot, for checking state a picture hides.
+    const probe = process.env.MURMUR_SETTINGS_PROBE
+    if (probe) {
+      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(() => { try { return JSON.stringify(${probe}) } catch (e) { return String(e) } })()`)
+      console.log(`[murmur] probe ${String(value)}`)
     }
     const image = await settingsWindow.webContents.capturePage()
     const { writeFile } = await import('node:fs/promises')

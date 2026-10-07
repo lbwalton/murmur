@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (65/92 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (65/94 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,3 +104,5 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-090** A painted insignia and tab marker
 - [ ] **US-091** A long wait still reads as working
 - [ ] **US-092** One header on every page, the docs on the site, and a Wispr Flow comparison
+- [ ] **US-093** The level chip explains the next level
+- [ ] **US-094** The activity wall remembers its period

@@ -11,6 +11,8 @@ import {
   ROAD,
   beltOnInk,
   daysPerMark,
+  earnedIndex,
+  rankX,
   journeyColors,
   paintBelt,
   paintEase,
@@ -22,9 +24,10 @@ import {
 } from './journeyPaint'
 import type { EarnedAchievement } from '../../shared/achievements'
 import type { CosmeticsReport } from '../../shared/cosmetics'
-import type { ProgressReport, RankSpec } from '../../shared/ranks'
+import { type ProgressReport, type RankSpec, WORDS_PER_LEVEL } from '../../shared/ranks'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, sentence } from './PageTitle'
+import { HoverNote } from './HoverNote'
 import { Ceremony } from './Ceremony'
 import { ShareCardDialog } from './ShareCard'
 import { type Celebration, lastCelebrated, rememberCelebrated, toCelebrate } from './celebrate'
@@ -112,42 +115,106 @@ function Belt(props: {
   )
 }
 
-/** The road, painted to where you are, scrolled so you are in view. */
+/** What the level chip explains (US-093): levels count words only, and
+ *  how many more reach the next one. */
+export function levelNote(level: number, words: number): string {
+  const next = level * WORDS_PER_LEVEL
+  const left = Math.max(0, next - words)
+  return `Level ${level.toLocaleString()}. You gain a level for every ${WORDS_PER_LEVEL.toLocaleString()} words you dictate, with no days needed. ${left.toLocaleString()} more ${left === 1 ? 'word' : 'words'} to reach level ${(level + 1).toLocaleString()}.`
+}
+
+/** The rank a knot stands for, in words, for the road's hover note. */
+function knotNote(rank: RankSpec, state: 'earned' | 'next' | 'ahead'): string {
+  if (rank.founderOnly) return `${sentence(rank.label)}: the founder's belt`
+  const needs = `${(rank.words ?? 0).toLocaleString()} words, ${(rank.activeDays ?? 0).toLocaleString()} days`
+  return `${sentence(rank.label)}: ${needs}${state === 'earned' ? ', earned' : state === 'next' ? ', next' : ''}`
+}
+
+/**
+ * The road, painted as far as your words and days have taken you, and
+ * scrolled so you are in view. The founder's belt is an identity, so the
+ * founder's road shows earned practice too, with the crown at the end.
+ * Hovering a mark names its rank and what it takes.
+ */
 function Road(props: { progress: ProgressReport; colors: JourneyColors; paintIn: boolean }): React.JSX.Element {
   const { progress } = props
   const scrollRef = useRef<HTMLDivElement>(null)
   const road = roadRanks(progress.founder)
-  const roadIndex = progress.founder ? road.length - 1 : road.findIndex((r) => r.id === progress.rank.id)
-  const toNext = progress.next
+  const { words: haveWords, activeDays: haveDays } = progress.totals
+  const roadIndex = progress.founder ? earnedIndex(road, haveWords, haveDays) : road.findIndex((r) => r.id === progress.rank.id)
+  const at = roadIndex >= 0 ? road[roadIndex] : null
+  const next = road[roadIndex + 1] && !road[roadIndex + 1].founderOnly ? road[roadIndex + 1] : null
+  const toNext = next
     ? Math.min(
-        sinceRank(progress.totals.words, progress.rank.words ?? 0, progress.next.words ?? 0),
-        sinceRank(progress.totals.activeDays, progress.rank.activeDays ?? 0, progress.next.activeDays ?? 0)
+        sinceRank(haveWords, at?.words ?? 0, next.words ?? 0),
+        sinceRank(haveDays, at?.activeDays ?? 0, next.activeDays ?? 0)
       )
     : 1
   const you = youX(roadIndex, toNext, road.length)
-  const words = `you, ${progress.totals.words.toLocaleString()} words`
+  const words = `you, ${haveWords.toLocaleString()} words`
+  const [tip, setTip] = useState<{ x: number; text: string; edge: '' | 'start' | 'end' } | null>(null)
   useEffect(() => {
     const box = scrollRef.current
     if (box) box.scrollLeft = Math.max(0, you - box.clientWidth * 0.35)
   }, [you])
   const mono = cssValue('--font-mono', 'monospace')
-  const label = progress.next
-    ? `The road: ${progress.rank.label}, ${Math.round(toNext * 100)} percent of the way to ${progress.next.label}`
-    : `The road: ${progress.rank.label}, at the end of the road`
+  const where = at ? at.label : 'no belt yet'
+  // The whole road in words for keyboard and screen reader users, the
+  // next rank's needs included (the hover notes are pointer only).
+  const label = next
+    ? `The road: ${where}, ${Math.round(toNext * 100)} percent of the way to ${next.label}, which needs ${(next.words ?? 0).toLocaleString()} words and ${(next.activeDays ?? 0).toLocaleString()} days on the mat`
+    : `The road: ${where}, at the end of the road`
+  const onMove = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    let nearest = -1
+    let gap = Infinity
+    road.forEach((_, i) => {
+      const d = Math.abs(rankX(i, road.length) - x)
+      if (d < gap) {
+        gap = d
+        nearest = i
+      }
+    })
+    if (nearest < 0 || gap > 16 || Math.abs(y - ROAD.y) > 22) {
+      setTip(null)
+      return
+    }
+    const state = nearest <= roadIndex ? 'earned' : nearest === roadIndex + 1 ? 'next' : 'ahead'
+    const at = rankX(nearest, road.length)
+    // Near either end the note hangs inward, so it never leaves the road.
+    const edge = at < 220 ? 'start' : at > ROAD.W - 260 ? 'end' : ''
+    setTip({ x: at, text: knotNote(road[nearest], state), edge })
+  }
   return (
-    <div className="road-scroll" ref={scrollRef}>
-      <PaintCanvas
-        className="road-canvas"
-        width={ROAD.W}
-        height={ROAD.H}
-        label={label}
-        paintKey={`${roadIndex}|${you.toFixed(1)}|${words}`}
-        paintInMs={props.paintIn ? 900 : 0}
-        paint={(ctx, _w, _h, k) =>
-          paintRoad(ctx, road, roadIndex, you, ROAD.pad + (you - ROAD.pad) * paintEase(k), words, props.colors, mono)
-        }
-      />
-    </div>
+    <>
+      <div className="road-scroll" ref={scrollRef}>
+        <div className="road-inner" onMouseMove={onMove} onMouseLeave={() => setTip(null)}>
+          <PaintCanvas
+            className="road-canvas"
+            width={ROAD.W}
+            height={ROAD.H}
+            label={label}
+            paintKey={`${roadIndex}|${you.toFixed(1)}|${words}`}
+            paintInMs={props.paintIn ? 900 : 0}
+            paint={(ctx, _w, _h, k) =>
+              paintRoad(ctx, road, roadIndex, you, ROAD.pad + (you - ROAD.pad) * paintEase(k), words, props.colors, mono)
+            }
+          />
+          {tip && (
+            <span className={`road-tip${tip.edge ? ` road-tip-${tip.edge}` : ''}`} style={{ left: tip.x }} aria-hidden="true">
+              {tip.text}
+            </span>
+          )}
+        </div>
+      </div>
+      <p className="row-desc road-note">
+        {progress.founder
+          ? "Your belt is the founder's. The road shows the ranks your words and days have earned, with the founder's crown at the end. Hover a mark to see its rank."
+          : 'Every rank from white belt to red, left to right, painted as far as your words and days have taken you. The gold ring is your next promotion. Hover a mark to see its rank.'}
+      </p>
+    </>
   )
 }
 
@@ -260,9 +327,9 @@ export function JourneyView(props: {
           />
           <div>
             <p className="journey-rank">
-              <span className="level-chip" title="one level per hundred thousand words">
+              <HoverNote className="level-chip" note={levelNote(progress.level, progress.totals.words)}>
                 lvl. {progress.level.toLocaleString()}
-              </span>
+              </HoverNote>
             </p>
           </div>
         </div>

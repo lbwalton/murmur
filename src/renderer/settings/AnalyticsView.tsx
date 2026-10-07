@@ -52,7 +52,13 @@ function hexLuminance(color: string): number | null {
 export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [wall, setWall] = useState<HeatmapData | null>(null)
-  const [year, setYear] = useState<number | null>(null)
+  // The wall's period (lifetime or one year) stays as you left it until
+  // you change it again (US-094).
+  const [year, setYear] = useState<number | null>(readWallPeriod)
+  const pickYear = (next: number | null): void => {
+    setYear(next)
+    rememberWallPeriod(next)
+  }
   const [settings, setSettings] = useState<Settings | null>(null)
   const [cosmetics, setCosmetics] = useState<CosmeticsReport | null>(null)
 
@@ -66,6 +72,13 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
     load()
     return bridge().onHistoryAppended(() => load())
   }, [year])
+
+  // A remembered year with no data left (after Clear all) falls back to
+  // lifetime rather than an empty wall.
+  useEffect(() => {
+    if (wall && year !== null && !wall.years.includes(year)) pickYear(null)
+    // pickYear is stable in effect: it sets state and storage only.
+  }, [wall, year])
 
   const title = <PageTitle title="Your numbers" sub="This month and the last two weeks." />
   if (!summary) return <div className="home">{title}</div>
@@ -129,7 +142,7 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
         <ActivityWall
           wall={wall}
           year={year}
-          onYear={setYear}
+          onYear={pickYear}
           settings={settings}
           cosmetics={cosmetics}
           onSettings={setSettings}
@@ -149,6 +162,27 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
       </section>
     </div>
   )
+}
+
+const WALL_PERIOD_KEY = 'murmur-wall-period'
+
+/** The wall period last chosen: null for lifetime, or a year. */
+function readWallPeriod(): number | null {
+  try {
+    const value = localStorage.getItem(WALL_PERIOD_KEY)
+    const year = value === null || value === 'lifetime' ? null : Number(value)
+    return year !== null && Number.isInteger(year) && year > 2000 ? year : null
+  } catch {
+    return null
+  }
+}
+
+function rememberWallPeriod(year: number | null): void {
+  try {
+    localStorage.setItem(WALL_PERIOD_KEY, year === null ? 'lifetime' : String(year))
+  } catch {
+    // Without storage the wall opens on lifetime, as before.
+  }
 }
 
 const CHART_H = 76

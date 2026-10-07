@@ -845,6 +845,39 @@ select.field {
   display: block;
 }
 
+.road-inner {
+  position: relative;
+  width: max-content;
+}
+
+/* A rank's name and what it takes, over the mark you hover. */
+.road-tip {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-lift);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.road-tip-start {
+  transform: translateX(-12px);
+}
+
+.road-tip-end {
+  transform: translateX(calc(-100% + 12px));
+}
+
+.road-note {
+  margin-bottom: 8px;
+}
+
 .gate-canvas {
   display: block;
   width: 100%;
@@ -1121,6 +1154,47 @@ select.field {
 
 .journey-rank .level-chip {
   margin-left: 0;
+}
+
+/* A note that opens after a moment of hovering, or on focus (US-093). */
+.hover-note {
+  position: relative;
+  display: inline-block;
+}
+
+.hover-note-trigger {
+  background: none;
+  cursor: help;
+}
+
+.hover-note-trigger:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.hover-note-left {
+  left: auto;
+  right: 0;
+}
+
+.hover-note-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-lift);
+  box-shadow: 0 10px 28px var(--ink-edge);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  white-space: normal;
+  text-align: left;
 }
 
 .journey-line {
