@@ -535,6 +535,11 @@ export function initOverlay(): void {
     print: number
     /** Ms into processing by the renderer's own clock, at its last frame. */
     procMs: number | null
+    /** Diagnostic only (2026-10-08 CI investigation): whether this
+     *  WebContents itself reports prefers-reduced-motion as reduce,
+     *  which would explain overlayInkSheen never animating a repeat
+     *  (sheenFor returns nothing under reduced motion, by design). */
+    reduced: boolean
   }
   const readInk = async (win: BrowserWindow): Promise<Ink> =>
     JSON.parse(
@@ -549,7 +554,7 @@ export function initOverlay(): void {
               print = (print * 31 + d[i] + d[i - 1]) % 1000000007
             }
           }
-          return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, mode: c ? c.dataset.mode || null : null, painted, print, procMs: c && c.dataset.procMs ? Number(c.dataset.procMs) : null })
+          return JSON.stringify({ look: document.body.dataset.look, phase: document.body.dataset.phase, ink: c ? c.dataset.ink : null, mode: c ? c.dataset.mode || null : null, painted, print, procMs: c && c.dataset.procMs ? Number(c.dataset.procMs) : null, reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches })
         })()`
       )
     ) as Ink
@@ -659,7 +664,9 @@ export function initOverlay(): void {
         moved = last.mode === 'proc' && (last.procMs ?? 0) >= 2000 && last.print !== still.print
       }
       if (!moved) {
-        console.error(`smoke overlayInkSheen: no repeat sheen; still=${still.mode}@${still.procMs} last=${last.mode}@${last.procMs}`)
+        console.error(
+          `smoke overlayInkSheen: no repeat sheen; still=${still.mode}@${still.procMs} last=${last.mode}@${last.procMs} reduced=${last.reduced}`
+        )
       }
       return still.mode === 'proc' && moved
     } finally {
