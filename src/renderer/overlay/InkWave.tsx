@@ -10,7 +10,7 @@
 import { useEffect, useRef } from 'react'
 import type { InkStyle, OverlayPhase } from '../../shared/overlay-state'
 import { OVERHANG, applyInkEdge, fadeToEdges, inkEdge } from './bare'
-import { nextSheenIn, sheenFor } from './sheen'
+import { SHEEN_LIMIT_MS, sheenFor } from './sheen'
 import { type Rgb, cachedBrush, clamp, easeOut, lerp, mix, mulberry, parseColor, path, rgba, stroke, tokenColor } from '../brush'
 
 type Mode = 'idle' | 'rec' | 'proc' | 'ins' | 'err' | 'nospeech'
@@ -496,7 +496,6 @@ export function InkWave(props: {
     }
 
     let raf = 0
-    let nap = 0
     let running = false
     const frame = (now: number): void => {
       if (phaseRef.current !== lastPhase) {
@@ -511,19 +510,30 @@ export function InkWave(props: {
         throw error
       }
       const t = now - modeAt
-      const sheenOn = sheenFor(mode === 'proc', t, reduced) !== null
-      const busy = mode === 'rec' || sheenOn || t < SETTLE_MS || rings.length > 0 || flung.length > 0
+      // Processing keeps the loop on requestAnimationFrame the whole time
+      // (up to the 2 minute cutoff), the same mechanism recording already
+      // leans on, rather than sleeping on a renderer setTimeout and
+      // waking itself for the next pass. A hidden or backgrounded
+      // overlay window can leave that wake-up timer never firing (caught
+      // on both CI runners, 2026-10-08: procMs froze at the first settle
+      // point and the repeat never arrived, even with time to spare).
+      // rAF keeps ticking through the same conditions in 'rec', so it is
+      // the one mechanism already proven to survive there.
+      const busy =
+        mode === 'rec' ||
+        (mode === 'proc' && !reduced && t < SHEEN_LIMIT_MS) ||
+        t < SETTLE_MS ||
+        rings.length > 0 ||
+        flung.length > 0
       if (busy) raf = requestAnimationFrame(frame)
       else {
         running = false
-        // Between sheens the paint is still: sleep until the next pass
-        // instead of redrawing the same frame. A phase change wakes it.
-        const wait = mode === 'proc' && !reduced ? nextSheenIn(t) : null
-        if (wait !== null) nap = window.setTimeout(kick, wait)
+        // Nothing left to animate here (reduced motion, or a phase stuck
+        // in processing well past the cutoff): rest for good. A phase
+        // change wakes it.
       }
     }
     const kick = (): void => {
-      window.clearTimeout(nap)
       if (running) return
       running = true
       raf = requestAnimationFrame(frame)
@@ -532,7 +542,6 @@ export function InkWave(props: {
     kick()
     return () => {
       cancelAnimationFrame(raf)
-      window.clearTimeout(nap)
       running = false
       kickRef.current = () => undefined
     }
