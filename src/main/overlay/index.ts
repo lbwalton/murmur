@@ -612,6 +612,17 @@ export function initOverlay(): void {
   // loop stops after the settle time and nothing changes there. Timed by
   // the renderer's own clock (procMs), so a loaded machine slows the
   // check down instead of failing it.
+  //
+  // The nap between sheens wakes itself with a renderer setTimeout
+  // (InkWave.tsx); in real use the window is already showInactive() from
+  // setOverlayPhase('recording') above it, so that timer is running in a
+  // visible (if unfocused) page. In smoke, isSmoke skips every show/hide
+  // call, so the window stays in its initial show:false state and that
+  // same timer runs in a genuinely hidden page instead, which is where
+  // both CI runners (Mac and Windows, 2026-10-08) stalled it for good
+  // right at the first settle point. Showing the window for real here,
+  // the one spot that leans on the nap, matches production and avoids
+  // asserting on a scenario a real user never hits.
   registerSmokeCheck('overlayInkSheen', async () => {
     const win = aliveOverlay()
     if (!win) return false
@@ -620,6 +631,7 @@ export function initOverlay(): void {
       updateSettings({ overlay: { style: 'dabs', look: 'pill' } })
       for (let i = 0; i < 50 && (await readInk(win)).ink !== 'dabs'; i++) await inkWait(40)
       if (!setOverlayPhase('recording')) return false
+      if (isSmoke) win.showInactive()
       for (let t = 0; t < 600; t += 40) {
         win.webContents.send(IpcChannels.overlayLevel, 0.22)
         await inkWait(40)
@@ -652,6 +664,8 @@ export function initOverlay(): void {
       return still.mode === 'proc' && moved
     } finally {
       setOverlayPhase('idle')
+      // Back to the hidden state every other smoke check expects.
+      if (isSmoke) win.hide()
       updateSettings({ overlay: original })
       await inkWait(100)
     }
