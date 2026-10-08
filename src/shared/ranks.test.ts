@@ -100,6 +100,41 @@ describe('computeProgress', () => {
     expect(report.founder).toBe(true)
   })
 
+  it('the founder practices like anyone: practice is the rank words and days earned', () => {
+    const events = [session(0, 150), session(1, 3000), session(2, 3000), session(3, 100)]
+    const mortal = computeProgress(events, SPEC)
+    const founder = computeProgress(events, SPEC, { founder: true })
+    expect(founder.rank.id).toBe('red-10')
+    expect(founder.practice).toEqual(mortal.practice)
+    expect(founder.practice.rank.id).toBe('white-2')
+    expect(founder.practice.next?.id).toBe('white-3')
+    expect(founder.practice.words).toEqual({ have: 6250, need: 12000, pct: 6250 / 12000 })
+    expect(founder.practice.activeDays).toEqual({ have: 4, need: 6, pct: 4 / 6 })
+    // Promotions are practice too, so the founder's can be celebrated.
+    expect(founder.promotions.map((p) => p.id)).toEqual(['white', 'white-1', 'white-2'])
+  })
+
+  it('for everyone else practice is the report itself', () => {
+    const report = computeProgress([session(0, 150), session(1, 3000)], SPEC)
+    const { rank, index, next, words, activeDays } = report
+    expect(report.practice).toEqual({ rank, index, next, words, activeDays })
+  })
+
+  it('before the white belt, practice is no belt with the white belt next', () => {
+    const founder = computeProgress([], SPEC, { founder: true })
+    expect(founder.practice.rank.id).toBe('none')
+    expect(founder.practice.next?.id).toBe('white')
+  })
+
+  it('at the top of the earnable ladder, practice has no next and no gates', () => {
+    const events = Array.from({ length: 2000 }, (_, i) => session(i, 5000))
+    const founder = computeProgress(events, SPEC, { founder: true })
+    expect(founder.practice.rank.id).toBe('red-9')
+    expect(founder.practice.next).toBeNull()
+    expect(founder.practice.words).toBeNull()
+    expect(founder.practice.activeDays).toBeNull()
+  })
+
   it('stored day keys survive timezone changes (a belt earned stays earned)', () => {
     // Two events with identical epochs would re-bucket identically, but
     // their stored day keys say they happened on different local days.

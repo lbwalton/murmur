@@ -19,6 +19,7 @@ import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
 import { ApiKeys } from './ApiKeys'
 import { HomeView } from './HomeView'
+import { PageTitle } from './PageTitle'
 import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
@@ -26,6 +27,9 @@ import { ConnectionRows } from './ConnectionRows'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
+import { WaveTiles } from './WaveTiles'
+import { Insignia, TabStroke } from './HeaderMarks'
+import { HISTORY_CLEARED } from './HomeView'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
   Advanced,
@@ -53,6 +57,27 @@ const RAIL_GROUPS = [
   { id: 'features', label: 'features' },
   { id: 'app', label: 'app' }
 ] as const
+
+/**
+ * The header stays at the top while the page scrolls (US-097). This
+ * keeps --masthead-h in step with its height (it grows if the tabs wrap
+ * in a narrow window), so the settings rail sits below it and every
+ * jump to a section, row, or focused control stops below it too.
+ */
+function watchMasthead(el: HTMLElement | null): (() => void) | undefined {
+  if (!el) return undefined
+  const root = document.documentElement
+  const measure = (): void => {
+    root.style.setProperty('--masthead-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+  }
+  measure()
+  const watch = new ResizeObserver(measure)
+  watch.observe(el)
+  return () => {
+    watch.disconnect()
+    root.style.removeProperty('--masthead-h')
+  }
+}
 
 const FORMAT_DESC: Record<Settings['formatting']['level'], string> = {
   off: 'Raw transcript, exactly as heard.',
@@ -212,7 +237,7 @@ export function App(): React.JSX.Element {
   const [pasteCaptureNote, setPasteCaptureNote] = useState<string | null>(null)
   const [version, setVersion] = useState('')
   const [cosmetics, setCosmetics] = useState<import('../../shared/cosmetics').CosmeticsReport | null>(null)
-  const [insignia, setInsignia] = useState<{ color: string; stripes: number; founder: boolean } | null>(null)
+  const [insignia, setInsignia] = useState<{ belt: string; label: string; stripes: number; founder: boolean } | null>(null)
   const [page, setPage] = useState<'home' | 'analytics' | 'wrapup' | 'journey' | 'setup'>('home')
   const [wizardOpen, setWizardOpen] = useState(false)
   const offeredWizard = useRef(false)
@@ -279,7 +304,8 @@ export function App(): React.JSX.Element {
       void Promise.all([bridge().getCosmetics(), bridge().getRankProgress()]).then(([c, p]) => {
         setCosmetics(c)
         setInsignia({
-          color: c.beltColor,
+          belt: p.rank.belt,
+          label: p.rank.label,
           stripes: p.rank.belt === 'red' ? 0 : p.rank.stripes,
           founder: p.founder
         })
@@ -287,6 +313,9 @@ export function App(): React.JSX.Element {
     }
     loadCosmetics()
     const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
+    // Clear all (on Home) resets what the belt is counted from, so the
+    // insignia and cosmetics reload then too.
+    window.addEventListener(HISTORY_CLEARED, loadCosmetics)
     void refresh().then((k) => {
       // Health needs a connection verdict: test once automatically when
       // a key is already saved. With no key there is nothing to wait on.
@@ -315,6 +344,7 @@ export function App(): React.JSX.Element {
       clearInterval(timer)
       unNav()
       unCosmetics()
+      window.removeEventListener(HISTORY_CLEARED, loadCosmetics)
     }
   }, [refresh, runTest])
 
@@ -435,7 +465,7 @@ export function App(): React.JSX.Element {
   if (wizardOpen) {
     return (
       <main className="shell">
-        <header className="masthead">
+        <header className="masthead" ref={watchMasthead}>
           <p className="micro-label wordmark">murmur</p>
         </header>
         <div className="page">
@@ -561,8 +591,8 @@ export function App(): React.JSX.Element {
     { id: 'pro', title: 'murmur Pro', group: 'app' }
   ]
 
-  // The chosen accent recolors data emphasis across the GUI (chart
-  // bars, gate fills) via one CSS variable. Amber stays reserved for
+  // The chosen accent recolors data emphasis across the GUI (progress
+  // and gate fills) via one CSS variable; the analytics chart is ink. Amber stays reserved for
   // live states, so the default accent keeps the quiet cream look.
   const guiAccent = ((): string | null => {
     if (!settings || !cosmetics) return null
@@ -586,8 +616,13 @@ export function App(): React.JSX.Element {
     settings.provider.llmModel !== DEFAULT_SETTINGS.provider.llmModel
 
   const navButton = (id: typeof page, label: string): React.JSX.Element => (
-    <button className={`nav-btn ${page === id ? 'nav-active' : ''}`} onClick={() => setPage(id)}>
+    <button
+      className={`nav-btn ${page === id ? 'nav-active' : ''}`}
+      aria-current={page === id ? 'page' : undefined}
+      onClick={() => setPage(id)}
+    >
       {label}
+      {page === id && <TabStroke tab={id} />}
     </button>
   )
 
@@ -596,16 +631,11 @@ export function App(): React.JSX.Element {
       className="shell"
       style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
     >
-      <header className="masthead">
+      <header className="masthead" ref={watchMasthead}>
         <p className="micro-label wordmark">
           murmur
           {insignia && (
-            <span className="insignia" style={{ background: insignia.color }} title="your belt">
-              {Array.from({ length: Math.min(insignia.stripes, 4) }, (_, i) => (
-                <span className="insignia-stripe" key={i} />
-              ))}
-              {insignia.founder && <span className="insignia-crown">♛</span>}
-            </span>
+            <Insignia belt={insignia.belt} stripes={insignia.stripes} label={insignia.label} founder={insignia.founder} />
           )}
         </p>
         <nav className="nav" aria-label="Pages">
@@ -620,17 +650,10 @@ export function App(): React.JSX.Element {
 
       {page !== 'setup' && (
         <div className="page">
-          <div className="hero">
-            <h1>Push-to-talk dictation.</h1>
-            <p className="dim">
-              Hold <span className="kbd">{settings.hotkey.binding}</span>, speak, release. Text lands at
-              your cursor.
-            </p>
-          </div>
           {page === 'home' && <HomeView settings={settings} onUpdateSettings={update} />}
-          {page === 'analytics' && <AnalyticsView />}
-          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} />}
-          {page === 'journey' && <JourneyView />}
+          {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
+          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} />}
+          {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} accent={guiAccent} />}
         </div>
       )}
 
@@ -646,6 +669,7 @@ export function App(): React.JSX.Element {
         />
 
         <div className="settings-content">
+          <PageTitle title="Settings" sub="How murmur listens, where your words go, and how it looks." />
           {status === 'bad' && <FinishSetup checks={checks} />}
 
           <Section
@@ -1171,21 +1195,16 @@ export function App(): React.JSX.Element {
           <Section id="look" title="Look" sub="The waveform pill and the window around it.">
             <Row
               label="Waveform"
-              keywords="overlay style visualizer"
-              desc="How the pill draws your voice. Locked styles show how to earn them."
+              keywords="overlay style visualizer ink dabs flecks rings ribbon bars speckle pulse"
+              desc="How the pill draws your voice. Each tile is the real pill, moving to a made-up voice; locked styles show the belt that earns them."
+              block
             >
-              <select
-                className="field"
-                aria-label="Waveform"
+              <WaveTiles
+                styles={cosmetics?.overlayStyles ?? []}
                 value={settings.overlay.style}
-                onChange={(e) => void update({ overlay: { ...settings.overlay, style: e.target.value } })}
-              >
-                {(cosmetics?.overlayStyles ?? []).map((item) => (
-                  <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                    {item.unlocked ? `${item.name} (${item.hint})` : `${item.name} (locked: ${item.hint})`}
-                  </option>
-                ))}
-              </select>
+                accent={guiAccent}
+                onPick={(style) => void update({ overlay: { ...settings.overlay, style } })}
+              />
             </Row>
 
             <Row
@@ -1215,7 +1234,7 @@ export function App(): React.JSX.Element {
             <Row
               label="Accent"
               keywords="color colour"
-              desc="Colors the waveform, chart bars, and progress fills. The activity wall keeps its own picker. Earned, never bought."
+              desc="Colors the waveform and progress fills. The activity wall keeps its own picker; the fourteen-day chart paints today in gold. Earned, never bought."
             >
               <div className="inline">
                 {(() => {

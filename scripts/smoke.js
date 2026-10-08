@@ -42,10 +42,17 @@ child.stderr.on('data', (d) => {
   output += d.toString()
 })
 
+// Comfortably above the sum of every check's own worst case (see
+// CHECK_TIMEOUT_MS in src/main/smoke.ts): a loaded or GPU-less CI
+// runner can legitimately need several of the ink checks' full
+// budgets back to back. A hang still ends the run; it just gets a
+// fair amount of real time first instead of being judged by a local
+// machine's speed.
+const KILL_AFTER_MS = 150_000
 const killTimer = setTimeout(() => {
-  console.error('smoke timed out after 60s')
+  console.error(`smoke timed out after ${KILL_AFTER_MS / 1000}s`)
   child.kill('SIGKILL')
-}, 60_000)
+}, KILL_AFTER_MS)
 
 child.on('close', (code) => {
   clearTimeout(killTimer)

@@ -49,6 +49,7 @@ import {
   appendSeparator,
   noteMoment
 } from '../../shared/notes'
+import type { ReceiptPlace } from '../../shared/receipt'
 import type { Settings } from '../../shared/settings'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
@@ -137,6 +138,9 @@ export interface SortReport {
    *  their label (US-058). Always zero on a chat connection. */
   held: number
   reason?: string
+  /** The files a filed sort wrote lines into, tasks first (US-082):
+   *  the note receipt names them and opens the first. */
+  places?: ReceiptPlace[]
 }
 
 /** What the sort connection speaks: an OpenAI-compatible chat model,
@@ -221,7 +225,7 @@ function filedPaths(when: Date): {
 }
 
 type WriteOutcome =
-  | { ok: true; counts: { tasks: number; ideas: number; notes: number } }
+  | { ok: true; counts: { tasks: number; ideas: number; notes: number }; places: ReceiptPlace[] }
   | { ok: false; reason: string; landed: { tasks: number; ideas: number; notes: number } }
 
 /**
@@ -286,7 +290,12 @@ function writeEntries(
     return { ok: false, reason: `write ${errorCode(error)}`, landed }
   }
   for (const fd of targets.fds) closeSync(fd)
-  return { ok: true, counts }
+  const places = writes.map((w) => ({
+    kind: w.kind,
+    file: w.file,
+    relative: w.kind === 'tasks' ? tasksPath.relative : ideasPath.relative
+  }))
+  return { ok: true, counts, places }
 }
 
 /** Sentence positions of a note a sort has not settled yet. */
@@ -297,6 +306,12 @@ function pendingFor(input: SortInput): number[] {
 // joins the running sort instead of starting a second one that would
 // append every line twice.
 let inFlight: Promise<SortReport> | null = null
+
+/** A sort is running: a new call joins it and gets ITS report, which
+ *  belongs to the note that started it (the receipt checks this). */
+export function sortInFlight(): boolean {
+  return inFlight !== null
+}
 
 export function getLastSort(): SortReport | null {
   return lastSort
@@ -419,9 +434,10 @@ async function askModel(
 function record(
   outcome: SortOutcome,
   counts: { tasks: number; ideas: number; notes: number; held?: number },
-  reason?: string
+  reason?: string,
+  places?: ReceiptPlace[]
 ): SortReport {
-  lastSort = { at: Date.now(), outcome, held: 0, ...counts, ...(reason ? { reason } : {}) }
+  lastSort = { at: Date.now(), outcome, held: 0, ...counts, ...(reason ? { reason } : {}), ...(places ? { places } : {}) }
   return lastSort
 }
 
@@ -773,7 +789,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   writeAppLog(
     `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}`
   )
-  return record('filed', counts)
+  return record('filed', counts, undefined, written.places)
 }
 
 /**
@@ -1014,7 +1030,13 @@ export function initSorter(): void {
         todoText ===
           '## 2026-09-18\n- [ ] Call the dentist. ([10:32](inbox/2026-09-18.md))\n- [ ] Email Bob. ([10:32](inbox/2026-09-18.md))\n' &&
         ideasText === '## 2026-09-18\n- Maybe the wizard asks for the vault. ([10:32](inbox/2026-09-18.md))\n' &&
-        read(inbox) === inboxBefore
+        read(inbox) === inboxBefore &&
+        // The receipt (US-082) names these files, tasks first.
+        JSON.stringify(filed.places) ===
+          JSON.stringify([
+            { kind: 'tasks', file: todo, relative: 'murmur/todo.md' },
+            { kind: 'ideas', file: ideas, relative: 'murmur/ideas.md' }
+          ])
 
       // The filed input is remembered: Sort again offers nothing for it.
       rememberForSort(input)

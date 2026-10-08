@@ -115,6 +115,9 @@ export interface Settings {
     /** Ask the sort model to name each note, so {topic} in the heading
      *  says what a group is about at a glance. */
     topicHeadings: boolean
+    /** The note receipt (US-082): a notification after each note that
+     *  names where it landed and opens it on a click. On by default. */
+    receipts: boolean
     /** Desktop reminders that read the tasks file and say what is
      *  still open. Off by default: notifications are opt in. */
     reminders: {
@@ -246,6 +249,7 @@ export const DEFAULT_SETTINGS: Settings = {
     ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
     filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE,
     topicHeadings: false,
+    receipts: true,
     reminders: {
       enabled: false,
       times: ['08:30', '13:00', '17:30']

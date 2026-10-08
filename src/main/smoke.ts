@@ -11,7 +11,12 @@ const registry = new Map<string, CheckFn>()
 
 export const isSmoke = process.env.MURMUR_SMOKE === '1'
 
-const CHECK_TIMEOUT_MS = 10_000
+// The ink smoke checks (src/main/overlay/index.ts) each give themselves
+// up to three fresh 8-second windows (one per look, or one for the
+// still frame and one for the repeat), so the outer cap has to clear
+// that worst case with room to spare; everything else finishes in a
+// fraction of this on every platform.
+const CHECK_TIMEOUT_MS = 28_000
 
 export function registerSmokeCheck(name: string, fn: CheckFn): void {
   registry.set(name, fn)

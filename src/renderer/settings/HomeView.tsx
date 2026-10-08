@@ -2,15 +2,19 @@
 // The home view: takes waiting to retry, today's time back, then your
 // transcription log, grouped by day, newest first, updating live as
 // dictations land.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
-import type { AnalyticsSummary } from '../../shared/analytics'
+import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
-import { type SessionEvent, countsTowardStats, groupByDay } from '../../shared/history'
+import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
+import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
+import { PageTitle, useToday } from './PageTitle'
+import { DayStroke } from './DayStroke'
+import { EmptyState } from './EmptyState'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -89,17 +93,121 @@ function lengthOf(ms: number): string {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
 }
 
+/** The note receipt's Home half (US-082): the newest note, where it
+ *  landed, and the two ways back to it. Opening goes through main's
+ *  note opener, which refuses anything that is not a note file. */
+function LastNoteRow(): React.JSX.Element | null {
+  const [note, setNote] = useState<LastNote | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = (): void => {
+      void bridge().getLastNote().then(setNote)
+    }
+    load()
+    return bridge().onLastNoteChanged(load)
+  }, [])
+
+  if (!note) return null
+  const reveal = revealLabel(navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32')
+  const act = async (what: 'open' | 'reveal'): Promise<void> => {
+    const outcome = what === 'open' ? await bridge().openLastNote() : await bridge().revealLastNote()
+    setSaid(
+      outcome === 'refused' || outcome === 'none'
+        ? 'That file is not there anymore, or it is no longer a note.'
+        : outcome === 'failed'
+          ? 'Your computer could not open it. Try the other button.'
+          : null
+    )
+  }
+
+  return (
+    <section className="panel last-note">
+      <p className="micro-label">last note</p>
+      <div className="last-note-row">
+        <div className="last-note-text">
+          <p className="last-note-line">{note.line !== '' ? note.line : 'An empty note'}</p>
+          <p className="mono-inline dim">
+            {receiptWhere(note)} · {whenOf(note.at)}
+          </p>
+        </div>
+        <button className="btn quiet-btn" onClick={() => void act('open')}>
+          open
+        </button>
+        <button className="btn quiet-btn" onClick={() => void act('reveal')}>
+          {reveal.charAt(0).toLowerCase() + reveal.slice(1)}
+        </button>
+      </div>
+      {said && <p className="dim last-note-said">{said}</p>}
+    </section>
+  )
+}
+
+/** Today in words against a typical day (US-085). Past double, the
+ *  percentage stops meaning much, so it says so instead. */
+function typicalLine(share: number, typical: number): string {
+  const of = `your typical day (${formatMinutesBack(typical)})`
+  return share > 2 ? `More than double ${of}` : `${Math.round(share * 100)}% of ${of}`
+}
+
+/** Told to the rest of the window when Clear all empties the log, so the
+ *  header's belt and anything else counted from history reloads. */
+export const HISTORY_CLEARED = 'murmur:history-cleared'
+
+/** The how-to's one-way switch (US-086): set once five dictations exist. */
+const HOW_TO_KEY = 'murmur-howto-done'
+function howToDone(): boolean {
+  try {
+    return localStorage.getItem(HOW_TO_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function rememberHowToDone(): void {
+  try {
+    if (!howToDone()) localStorage.setItem(HOW_TO_KEY, '1')
+  } catch {
+    // Without storage the history count still decides.
+  }
+}
+
+/** What Discard all asks before it deletes (US-096). */
+export function discardAllQuestion(count: number): string {
+  return `Discard all ${count} recordings waiting to retry? Their audio is deleted from this computer, and they cannot be retried.`
+}
+
+/** What Home says once Discard all is done: how many went, and how many
+ *  could not be deleted and are still listed. */
+export function discardedMessage(gone: number, asked: number): string {
+  const recordings = (n: number): string => (n === 1 ? '1 recording' : `${n} recordings`)
+  if (gone === asked) return `Discarded ${recordings(gone)}.`
+  if (gone === 0) return `Could not discard ${recordings(asked)}. They are still listed below; try again in a moment.`
+  return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
+}
+
 /**
  * Takes that were recorded but not transcribed (US-068). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, and a dictation also on the clipboard, where
  * paste-last finds it. Discard asks once, then deletes the audio.
+ * Discard all (US-096) asks in place, with the count, before deleting:
+ * the question counts the takes listed when it opened, and only those
+ * are deleted, so a take that fails while it is open is kept. Keep them
+ * has focus, so a double press never deletes. One question at a time.
  */
 function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | null {
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
+  // The takes Discard all asked about, fixed when the question opened.
+  const [counted, setCounted] = useState<string[] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const discardAllRef = useRef<HTMLButtonElement>(null)
+  const keepRef = useRef<HTMLButtonElement>(null)
+  const messageRef = useRef<HTMLParagraphElement>(null)
+  // Focus moves to the message once Discard all is done, so keyboard and
+  // screen reader users are not dropped at the window's top.
+  const focusMessage = useRef(false)
 
   useEffect(() => {
     const load = (): void => {
@@ -109,9 +217,34 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
     return bridge().onWaitingTakesChanged(load)
   }, [])
 
+  // The counted takes still listed: the count can shrink (one retried or
+  // gone), never grow.
+  const asked = counted ? counted.filter((id) => takes.some((t) => t.id === id)) : []
+  const deleting = busy === 'all'
+  const questionOpen = counted !== null && (deleting || asked.length >= 2)
+  // While deleting, the question holds its count rather than counting down.
+  const shownCount = deleting && counted ? counted.length : asked.length
+
+  useEffect(() => {
+    if (questionOpen) keepRef.current?.focus()
+  }, [questionOpen])
+
+  useEffect(() => {
+    if (focusMessage.current && message) {
+      focusMessage.current = false
+      messageRef.current?.focus()
+    }
+  }, [message])
+
+  // Nothing left to ask about (the counted ones were retried or gone).
+  useEffect(() => {
+    if (counted !== null && !questionOpen) setCounted(null)
+  }, [counted, questionOpen])
+
   const retry = async (ids: string[]): Promise<void> => {
     setMessage(null)
     setConfirming(null)
+    setCounted(null)
     const done: Array<{ kind: WaitingTake['kind']; location: string }> = []
     let failed = 0
     for (const id of ids) {
@@ -144,11 +277,51 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
 
   const discard = async (id: string): Promise<void> => {
     if (confirming !== id) {
+      setCounted(null)
       setConfirming(id)
       return
     }
     setConfirming(null)
     setTakes(await bridge().discardTake(id))
+  }
+
+  const openAll = (): void => {
+    if (questionOpen) {
+      setCounted(null)
+      return
+    }
+    setMessage(null)
+    setConfirming(null)
+    setCounted(takes.map((t) => t.id))
+  }
+
+  const keepAll = (): void => {
+    setCounted(null)
+    discardAllRef.current?.focus()
+  }
+
+  // Deletes exactly the takes the question counted, one by one, and says
+  // how many went; a delete that fails leaves its take listed.
+  const discardAll = async (ids: string[]): Promise<void> => {
+    setBusy('all')
+    let gone = 0
+    try {
+      for (const id of ids) {
+        const left = await bridge().discardTake(id)
+        if (!left.some((t) => t.id === id)) gone += 1
+      }
+    } catch (error) {
+      console.error('[murmur] discard all stopped:', error)
+    } finally {
+      const left = await bridge()
+        .listWaitingTakes()
+        .catch(() => null)
+      if (left) setTakes(left)
+      setBusy(null)
+      setCounted(null)
+      focusMessage.current = true
+      setMessage(discardedMessage(gone, ids.length))
+    }
   }
 
   if (takes.length === 0 && !message) return null
@@ -158,17 +331,56 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
       <div className="waiting-head">
         <p className="micro-label">waiting to retry</p>
         {takes.length > 1 && (
-          <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
-            retry all
-          </button>
+          <span className="waiting-actions">
+            <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
+              retry all
+            </button>
+            <button
+              ref={discardAllRef}
+              className="btn quiet-btn"
+              disabled={busy !== null}
+              aria-expanded={questionOpen}
+              aria-controls={questionOpen ? 'discard-all-confirm' : undefined}
+              onClick={openAll}
+            >
+              discard all
+            </button>
+          </span>
         )}
       </div>
+      {questionOpen && counted && (
+        <div
+          className="waiting-confirm"
+          id="discard-all-confirm"
+          role="group"
+          aria-labelledby="discard-all-question"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !deleting) {
+              e.stopPropagation()
+              keepAll()
+            }
+          }}
+        >
+          <p id="discard-all-question">{discardAllQuestion(shownCount)}</p>
+          <span className="waiting-confirm-actions">
+            <button ref={keepRef} className="btn quiet-btn" disabled={busy !== null} onClick={keepAll}>
+              keep them
+            </button>
+            <button className="btn btn-remove" disabled={busy !== null} onClick={() => void discardAll(asked)}>
+              {deleting ? 'discarding' : `discard ${shownCount}`}
+            </button>
+          </span>
+        </div>
+      )}
       {takes.length > 0 && (
         <p className="dim waiting-intro">
           Recorded but not transcribed. The audio stays on this computer until you retry or discard it.
         </p>
       )}
-      {message && <p className="waiting-message">{message}</p>}
+      {/* Always mounted, so screen readers hear a new message. */}
+      <p className={message ? 'waiting-message' : 'visually-hidden'} ref={messageRef} tabIndex={-1} role="status">
+        {message}
+      </p>
       <div className="log-list">
         {takes.map((take) => (
           <div className="log-entry" key={take.id}>
@@ -198,12 +410,21 @@ export function HomeView(props: {
   onUpdateSettings: (partial: Partial<Settings>) => Promise<void>
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
+  // The empty state waits for the list, so a full history never flashes
+  // the first-run invitation while it loads.
+  const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const typingWpm = props.settings.timeBack.typingWpm
+  const today = useToday()
 
   useEffect(() => {
-    void bridge().listHistory().then(setEvents)
+    void bridge()
+      .listHistory()
+      .then((list) => {
+        setEvents(list)
+        setLoaded(true)
+      })
     // Unsubscribe on unmount, and cap live growth to match the list
     // handler so a long-running hidden window never accumulates state.
     return bridge().onHistoryAppended((event) => {
@@ -219,7 +440,9 @@ export function HomeView(props: {
     }
     load()
     return bridge().onHistoryAppended(() => load())
-  }, [typingWpm])
+    // A new day (the window left open past midnight) reloads too, so
+    // back today and the typical day never belong to yesterday.
+  }, [typingWpm, today])
 
   const copy = async (event: SessionEvent): Promise<void> => {
     await bridge().copyText(event.finalText)
@@ -228,9 +451,25 @@ export function HomeView(props: {
   }
 
   const grouped = groupByDay(events)
+  // The how-to teaches the first few dictations, then gets out of the
+  // way for good (US-086): once five exist it is remembered, so a Clear
+  // all or a retention cut never brings it back. An empty log already
+  // says how to start.
+  const dictated = events.filter(countsTowardStats).length
+  if (dictated >= 5) rememberHowToDone()
+  const showHowTo = grouped.length > 0 && dictated < 5 && !howToDone()
 
   return (
     <div className="home">
+      <PageTitle title="Today" sub={today} />
+      {showHowTo && (
+        <section className="panel howto">
+          <p className="dim">
+            Hold <span className="kbd">{props.settings.hotkey.binding}</span>, speak, release. Text lands at your
+            cursor.
+          </p>
+        </section>
+      )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
       <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} />
       {events.some(countsTowardStats) && summary && (
@@ -242,20 +481,25 @@ export function HomeView(props: {
           >
             {formatMinutesBack(summary.today.minutesBack)}
           </div>
+          {summary.typicalBack !== null && (
+            <DayStroke share={typicalShare(summary.today.minutesBack, summary.typicalBack)} day={dayKey(Date.now())} />
+          )}
+          <p className="timeback-typical">
+            {summary.typicalBack === null
+              ? `Today is measured against your typical day once you have ${TYPICAL_MIN_DAYS} days of dictation in the last four weeks, not counting today.`
+              : summary.typicalBack > 0
+                ? typicalLine(typicalShare(summary.today.minutesBack, summary.typicalBack), summary.typicalBack)
+                : 'Your typical day has no time back yet, so today stands on its own.'}
+          </p>
           <p className="timeback-spans">
             {formatMinutesBack(summary.month.minutesBack)} this month ·{' '}
             {formatMinutesBack(summary.lifetime.minutesBack)} lifetime
           </p>
         </section>
       )}
-      {grouped.length === 0 && (
-        <section className="panel empty-log">
-          <p className="micro-label">transcriptions</p>
-          <p className="dim">
-            Nothing yet. Hold <span className="kbd">{props.settings.hotkey.binding}</span> anywhere
-            and speak; every dictation lands here.
-          </p>
-        </section>
+      <LastNoteRow />
+      {loaded && grouped.length === 0 && (
+        <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
       )}
 
       {grouped.map((group) => (
@@ -321,7 +565,14 @@ export function HomeView(props: {
               </select>
               <button
                 className="btn quiet-btn"
-                onClick={() => void bridge().clearHistory().then(setEvents)}
+                onClick={() =>
+                  void bridge()
+                    .clearHistory()
+                    .then((list) => {
+                      setEvents(list)
+                      window.dispatchEvent(new Event(HISTORY_CLEARED))
+                    })
+                }
               >
                 Clear all
               </button>

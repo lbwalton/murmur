@@ -180,6 +180,20 @@ body {
   text-align: left;
 }
 
+/* A saved note says where it landed (noted to inbox) on one line. The
+   place is capped to fit; should a pill ever outgrow its window, the
+   words give way with an ellipsis before the pill clips. */
+.pill {
+  max-width: 100%;
+}
+
+.pill-inserted .status-slot {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 /* The needle is the dot and the wave together. In the boxed looks it
    dissolves into the pill's own row; bare stacks it over the timer. */
 .needle {

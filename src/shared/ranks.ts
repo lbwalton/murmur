@@ -4,7 +4,9 @@
 // progress toward the next, and a dated promotion history. Both gates
 // (lifetime words AND distinct active days) must hold, so time on the
 // mat cannot be faked with one loud weekend. The 10th degree is the
-// Founder belt: granted only by the founder flag, never by usage.
+// Founder belt: granted only by the founder flag, never by usage. The
+// founder still practices: the practice report is the rank the founder's
+// words and days have earned, with its gates (US-095).
 import { type SessionEvent, eventDay } from './history'
 
 export interface RankSpec {
@@ -34,6 +36,19 @@ export interface Promotion {
   at: number
 }
 
+/** Where words and days alone have taken you, and the gates to the
+ *  next rank. The same as the report's own rank for everyone but the
+ *  founder, whose rank is an identity. */
+export interface PracticeReport {
+  rank: RankSpec
+  /** Index into the ladder. */
+  index: number
+  /** Null at the top of the earnable ladder. */
+  next: RankSpec | null
+  words: GateProgress | null
+  activeDays: GateProgress | null
+}
+
 export interface ProgressReport {
   rank: RankSpec
   /** Index into the ladder. */
@@ -45,6 +60,8 @@ export interface ProgressReport {
   totals: { words: number; activeDays: number }
   promotions: Promotion[]
   founder: boolean
+  /** The rank and gates earned by practice (the founder's included). */
+  practice: PracticeReport
   /** Infinite ladder alongside the belts: one level per hundred
    *  thousand lifetime words, starting at level one. */
   level: number
@@ -104,6 +121,20 @@ export function computeProgress(
   const totals = { words, activeDays: daysSeen.size }
   const level = levelFor(totals.words)
 
+  const index = rankFor(ladder, totals.words, totals.activeDays)
+  const next = ladder.slice(index + 1).find(earnable) ?? null
+  const gate = (have: number, need: number | null): GateProgress | null => {
+    if (need === null) return null
+    return { have, need, pct: need === 0 ? 1 : Math.min(1, have / need) }
+  }
+  const practice: PracticeReport = {
+    rank: ladder[index],
+    index,
+    next,
+    words: next ? gate(totals.words, next.words) : null,
+    activeDays: next ? gate(totals.activeDays, next.activeDays) : null
+  }
+
   if (options.founder) {
     const founderRank = ladder.find((r) => r.founderOnly) ?? ladder[ladder.length - 1]
     return {
@@ -115,28 +146,10 @@ export function computeProgress(
       totals,
       promotions,
       founder: true,
+      practice,
       level
     }
   }
 
-  const index = rankFor(ladder, totals.words, totals.activeDays)
-  const rank = ladder[index]
-  const next = ladder.slice(index + 1).find(earnable) ?? null
-
-  const gate = (have: number, need: number | null): GateProgress | null => {
-    if (need === null) return null
-    return { have, need, pct: need === 0 ? 1 : Math.min(1, have / need) }
-  }
-
-  return {
-    rank,
-    index,
-    next,
-    words: next ? gate(totals.words, next.words) : null,
-    activeDays: next ? gate(totals.activeDays, next.activeDays) : null,
-    totals,
-    promotions,
-    founder: false,
-    level
-  }
+  return { ...practice, totals, promotions, founder: false, practice, level }
 }

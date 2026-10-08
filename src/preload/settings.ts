@@ -126,6 +126,14 @@ const api = {
   chooseNotesFolder: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:chooseFolder'),
   getNotesStatus: (): Promise<NotesStatus> => ipcRenderer.invoke('notes:status'),
   openTodayNote: (): Promise<'file' | 'folder' | 'none'> => ipcRenderer.invoke('notes:openToday'),
+  getLastNote: (): Promise<import('../shared/receipt').LastNote | null> => ipcRenderer.invoke('notes:last'),
+  openLastNote: (): Promise<'opened' | 'refused' | 'failed' | 'none'> => ipcRenderer.invoke('notes:openLast'),
+  revealLastNote: (): Promise<'shown' | 'refused' | 'none'> => ipcRenderer.invoke('notes:revealLast'),
+  onLastNoteChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('notes:lastChanged', handler)
+    return () => ipcRenderer.removeListener('notes:lastChanged', handler)
+  },
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
   clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),
@@ -152,6 +160,9 @@ const api = {
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
   },
+  getRecentDays: (): Promise<Array<{ day: string; words: number; sessions: number }>> => {
+    return ipcRenderer.invoke('analytics:days')
+  },
   getHeatmap: (year: number | null): Promise<import('../shared/analytics').HeatmapData> => {
     return ipcRenderer.invoke('analytics:heatmap', year)
   },
@@ -171,8 +182,8 @@ const api = {
   getEquivalentLine: (pick: number): Promise<string> => {
     return ipcRenderer.invoke('equivalents:line', pick)
   },
-  saveShareCard: (pngDataUrl: string): Promise<boolean> => {
-    return ipcRenderer.invoke('sharecard:save', pngDataUrl)
+  saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' = 'belt', day?: string): Promise<boolean> => {
+    return ipcRenderer.invoke('sharecard:save', pngDataUrl, kind, day)
   },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)

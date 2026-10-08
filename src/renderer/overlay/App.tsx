@@ -6,10 +6,13 @@ import {
   type OverlayLook,
   type OverlayPhase,
   type OverlayState,
+  isInkStyle,
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
 import type { OverlayApi } from '../../preload/overlay'
+import { BAR_COUNT, Bars } from './Bars'
+import { InkWave } from './InkWave'
 import { PulseWave } from './PulseWave'
 import { SpeckleWave } from './SpeckleWave'
 
@@ -19,7 +22,6 @@ declare global {
   }
 }
 
-const BAR_COUNT = 21
 /** Phases whose whole point is a sentence to read: they always get
  *  the full pill, whatever the look. */
 const TEXT_PHASES: ReadonlySet<OverlayPhase> = new Set(['hint', 'error', 'nospeech'])
@@ -90,8 +92,6 @@ export function App(): React.JSX.Element {
   // The look actually drawn this phase: an error in bare borrows the
   // pill, and its canvas must remount at that size and back.
   const drawnAs = bareNow ? 'bare' : compactNow ? 'compact' : 'pill'
-  const barBase = compactNow ? 4 : 6
-  const barSpan = compactNow ? 20 : 30
   const classes = [
     'pill',
     `pill-${state.phase}`,
@@ -112,7 +112,16 @@ export function App(): React.JSX.Element {
         >
           {/* The canvases size their bitmap once on mount, so a change in
               the look being drawn must remount them. */}
-          {style === 'pulse' ? (
+          {isInkStyle(style) ? (
+            <InkWave
+              key={`${drawnAs}-${style}`}
+              kind={style}
+              levelRef={levelRef}
+              phase={state.phase}
+              accent={accent}
+              bare={bareNow}
+            />
+          ) : style === 'pulse' ? (
             <PulseWave
               key={drawnAs}
               levelRef={levelRef}
@@ -129,13 +138,7 @@ export function App(): React.JSX.Element {
               bare={bareNow}
             />
           ) : (
-            levels.map((level, i) => (
-              <span
-                key={i}
-                className="bar"
-                style={{ height: `${Math.round(barBase + level * barSpan)}px` }}
-              />
-            ))
+            <Bars levels={levels} compact={compactNow} />
           )}
         </div>
       </div>
@@ -152,7 +155,9 @@ export function App(): React.JSX.Element {
         {state.phase === 'inserted' && (
           <span className="ok" data-wpm="">
             {state.mode === 'note'
-              ? 'noted'
+              ? state.hint
+                ? `noted to ${state.hint}`
+                : 'noted'
               : state.mode === 'transform'
                 ? 'transformed'
                 : state.wpm && state.wpm > 0

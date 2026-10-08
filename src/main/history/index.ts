@@ -200,9 +200,13 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
-  ipcMain.handle('history:clear', () => {
+  ipcMain.handle('history:clear', async () => {
     log?.clear()
     memoryOnly = null
+    // Clear all forgets the last note's record too (LaBroi, 2026-10-02);
+    // the note file itself stays where it landed.
+    const { forgetLastNote } = await import('../notes/receipt')
+    forgetLastNote()
     return []
   })
 
@@ -279,11 +283,28 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const events = log?.readAll() ?? []
     const report = computeProgress(events, ranksSpec as never)
     const founderReport = computeProgress(events, ranksSpec as never, { founder: true })
+    // The founder practices like anyone (US-095): four days and 6,300
+    // words earn white belt, two stripes, whatever the flag says.
+    const practiced: SessionEvent[] = [150, 3000, 3000, 150].map((words, i) => ({
+      at: Date.UTC(2026, 0, 5 + i, 12),
+      durationMs: 60_000,
+      rawText: 'p',
+      finalText: 'p',
+      words,
+      wpm: 100,
+      day: `2026-01-0${5 + i}`,
+      hour: 12
+    }))
+    const founderPractice = computeProgress(practiced, ranksSpec as never, { founder: true })
     return (
       report.rank.id !== 'red-10' &&
       report.totals.words >= 0 &&
       founderReport.rank.id === 'red-10' &&
-      founderReport.next === null
+      founderReport.next === null &&
+      founderReport.practice.rank.id === report.rank.id &&
+      founderPractice.rank.id === 'red-10' &&
+      founderPractice.practice.rank.id === 'white-2' &&
+      founderPractice.practice.next?.id === 'white-3'
     )
   })
 
@@ -313,6 +334,13 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return heatmap(statsEvents(), { year: picked })
   })
 
+  // The share card's month (US-078): the last 30 days' words and
+  // sessions, totaled here from the whole log.
+  ipcMain.handle('analytics:days', async () => {
+    const { dailyTotals } = await import('../../shared/analytics')
+    return dailyTotals(statsEvents(), 30)
+  })
+
   registerSmokeCheck('history', () => {
     if (!log) return false
     const probe: SessionEvent = {
@@ -329,7 +357,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   registerSmokeCheck('analytics', async () => {
-    const { aggregate, heatmap } = await import('../../shared/analytics')
+    const { aggregate, dailyTotals, heatmap } = await import('../../shared/analytics')
     const { ratesFromCatalog, validateCatalog } = await import('../../shared/catalog')
     const catalog = validateCatalog((await import('../../../shared/provider-catalog.json')).default)
     if (!catalog) return false
@@ -339,6 +367,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       llmModel: 'llama-3.3-70b-versatile'
     })
     const wall = heatmap(events)
+    const month = dailyTotals(events, 30)
     // Time back rides the same summary: a known take (100 words in a
     // minute at 40 wpm is 1.5 back) plus the live log never below zero.
     const known = aggregate(
@@ -355,6 +384,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       summary.days.every((d) => d.minutesBack >= 0) &&
       known.lifetime.minutesBack === 1.5 &&
       wall.days.length >= 365 &&
+      month.length === 30 &&
+      month.reduce((n, d) => n + d.words, 0) >= 1 &&
       wall.totalWords >= 1 &&
       wall.years.length >= 1
     )

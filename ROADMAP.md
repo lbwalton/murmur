@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (63/74 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (79/98 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -66,7 +66,23 @@
 - [x] **US-068** A failed dictation waits on the home tab with a Retry button
 - [x] **US-069** Settings rail: a sidebar, search, and setup that folds away
 - [x] **US-071** The pill and settings rebuild themselves after a renderer dies
+- [x] **US-073** The brush: a seeded paint engine and the paint colors
+- [x] **US-074** Ink overlay styles: dabs, flecks, rings, and ribbon, one per belt
+- [x] **US-075** The ensō pill mark: app icon, tray, and favicon
+- [x] **US-076** The Journey, painted: belt, road, gates, and ink stamps
+- [x] **US-078** A share card painted from your month
 - [x] **US-081** Windows CI green again: the notes fallback check, and failures that explain themselves
+- [x] **US-082** The note receipt: open a note where it landed
+- [x] **US-084** Look: pick a waveform by watching it
+- [x] **US-085** Home: today as one stroke
+- [x] **US-086** Every tab gets its own title
+- [x] **US-087** Analytics in ink
+- [x] **US-088** Wrap-up: the day as a small painting
+- [x] **US-090** A painted insignia and tab marker
+- [x] **US-093** The level chip explains the next level
+- [x] **US-094** The activity wall remembers its period
+- [x] **US-096** Discard all, with the count, after asking
+- [x] **US-097** The window's header stays at the top while you scroll
 
 ## Built, awaiting live verification
 
@@ -77,6 +93,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
+- [ ] **US-095** The founder practices: gates, practice belt, and promotions
 
 ## To do
 
@@ -85,4 +102,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business
 - [ ] **US-072** Security pass before go-live: windows load only murmur, the mic stays murmur's, the pricing robot cannot ship
+- [ ] **US-077** Belt promotion ceremony
+- [ ] **US-079** Website hero in brushwork
+- [ ] **US-080** Launch film: One drop
 - [ ] **US-083** Windows gets the asar fuses: code planted beside murmur cannot run as murmur
+- [ ] **US-089** Empty states that say what to do
+- [ ] **US-091** A long wait still reads as working
+- [ ] **US-092** One header on every page, the docs on the site, and a Wispr Flow comparison
+- [ ] **US-098** A painting a day

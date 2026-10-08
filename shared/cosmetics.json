@@ -32,6 +32,38 @@
       "unlock": {
         "rank": "white"
       }
+    },
+    {
+      "id": "dabs",
+      "name": "ink dabs",
+      "hint": "earn your white belt",
+      "unlock": {
+        "rank": "white"
+      }
+    },
+    {
+      "id": "flecks",
+      "name": "ink flecks",
+      "hint": "earn your blue belt",
+      "unlock": {
+        "rank": "blue"
+      }
+    },
+    {
+      "id": "rings",
+      "name": "ink rings",
+      "hint": "earn your purple belt",
+      "unlock": {
+        "rank": "purple"
+      }
+    },
+    {
+      "id": "ribbon",
+      "name": "ink ribbon",
+      "hint": "earn your brown belt",
+      "unlock": {
+        "rank": "brown"
+      }
     }
   ],
   "accents": [

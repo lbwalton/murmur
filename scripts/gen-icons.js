@@ -2,28 +2,25 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Generates every icon murmur uses: app icons (png, icns, ico) and tray
 // icons, all drawn programmatically so the repo never tracks a binary
-// asset. Pure Node, no dependencies; the drawing kit is scripts/lib/draw.js.
-// Deterministic: same bytes on every run.
+// asset. Pure Node, no dependencies. The mark is the ensō pill (US-075):
+// brushed by the app's own brush engine (src/renderer/brush.ts, on the
+// software canvas in scripts/lib/raster.js) at 64 px and up, clean drawn
+// below that and in the tray. Deterministic: same bytes on every run.
 const { mkdirSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
-const { encodePng, render, makeBars, appIconScene } = require('./lib/draw')
+const { encodePng } = require('./lib/draw')
+const { loadBrush } = require('./lib/enso')
+const { appIconRgba, trayRgba } = require('./lib/icons')
 
 const root = join(__dirname, '..')
 const iconsDir = join(root, 'build', 'icons')
 const trayDir = join(root, 'build', 'icons', 'tray')
 
-// Night studio palette.
+// Tray colors, mirroring tokens.css by hand.
 const INK = [15, 14, 17]
-const AMBER = [240, 164, 75]
 const RED = [229, 72, 77]
 const BLACK = [0, 0, 0]
 const WHITE = [236, 233, 228]
-
-/** Tray icon: transparent background, waveform only, given color. */
-function trayScene(s, color) {
-  const bars = makeBars(s, 0.38 * s, 0.11 * s, 0.09 * s)
-  return (px, py) => (bars(px, py) ? [...color, 1] : [0, 0, 0, 0])
-}
 
 // ---------------------------------------------------------- containers ---
 
@@ -79,14 +76,24 @@ function buildIco(pngBySize, sizes) {
 
 // ------------------------------------------------------------------ go ---
 
-function main() {
+async function main() {
   mkdirSync(iconsDir, { recursive: true })
   mkdirSync(trayDir, { recursive: true })
+  const brush = await loadBrush().catch(() => null)
+  if (!brush) {
+    // A release must ship the brushed icon; a contributor's install just
+    // gets the clean mark everywhere.
+    if (process.argv.includes('--require-brush')) {
+      console.error('icons: a release build needs the brush engine (Node 22.13 or later)')
+      process.exit(1)
+    }
+    console.warn('icons: the brush engine needs Node 22.13 or later; every size gets the clean mark')
+  }
 
   const appSizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024]
   const pngBySize = {}
   for (const s of appSizes) {
-    pngBySize[s] = encodePng(s, s, render(s, appIconScene(s, INK, AMBER)))
+    pngBySize[s] = encodePng(s, s, appIconRgba(s, brush))
     writeFileSync(join(iconsDir, `icon-${s}.png`), pngBySize[s])
   }
 
@@ -109,10 +116,13 @@ function main() {
     ['tray-recording@2x.png', 32, RED]
   ]
   for (const [name, size, color] of trayVariants) {
-    writeFileSync(join(trayDir, name), encodePng(size, size, render(size, trayScene(size, color))))
+    writeFileSync(join(trayDir, name), encodePng(size, size, trayRgba(size, color)))
   }
 
-  console.log(`icons generated: ${appSizes.length} png, icon.icns, icon.ico, ${trayVariants.length} tray`)
+  console.log(`icons generated: ${appSizes.length} png, icon.icns, icon.ico, ${trayVariants.length} tray (${brush ? 'brushed' : 'clean'} mark)`)
 }
 
-main()
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})

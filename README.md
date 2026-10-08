@@ -2,6 +2,8 @@
 
 Push-to-talk dictation that lives in your tray. Hold a key, speak, release, and clean text lands at your cursor in any app. Windows and macOS. Bring your own key: Groq Whisper by default, any OpenAI-compatible endpoint supported.
 
+Website and docs: [murmurapp.app](https://murmurapp.app). A free, open source alternative to Wispr Flow: [how they compare](https://murmurapp.app/wispr-flow-alternative/).
+
 The name is always lowercase: murmur.
 
 ## Why murmur
@@ -50,6 +52,8 @@ npm run dev
 Quality gates: `npm run typecheck`, `npm run test`, and `npm run smoke` (boots the real app headless and checks every subsystem). All three must be green before any commit.
 
 Packaging: `npm run dist:mac` or `npm run dist:win`.
+
+What `npm install` makes, none of it tracked in the repo: the app and tray icons, drawn by `scripts/gen-icons.js`, and the share card's display face, Bricolage Grotesque (SIL Open Font License 1.1), fetched by `scripts/fetch-display-face.js` into `src/renderer/public/fonts` with its license beside it. Offline, or with `MURMUR_OFFLINE=1`, the fetch is skipped and the share card sets its rank in the system face; everything else works. Release builds (`dist:mac`, `dist:win`) require the face and stop without it.
 
 ## Project process
 

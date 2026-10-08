@@ -387,6 +387,17 @@ export function NotesPanel(props: {
         </Row>
       )}
 
+      <Row
+        label="Note receipts"
+        anchor="row-note-receipts"
+        keywords="notification receipt open link finder explorer"
+        desc={`A notification after each note names where it landed; click it to open the note. Off or on, Open last note under the ${
+          navigator.platform.toLowerCase().includes('mac') ? 'menu bar' : 'tray'
+        } icon and the last note on Home still take you there.`}
+      >
+        <Switch checked={notes.receipts} label="Note receipts" onChange={(receipts) => void update({ receipts })} />
+      </Row>
+
       {notes.sort && status && status.heldLines.length > 0 && (
         <div className="held-list">
           {status.lastAction && !status.lastAction.ok && (

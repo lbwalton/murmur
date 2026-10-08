@@ -22,12 +22,13 @@ import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
+import { getLastNote, onLastNoteChanged, openLastNote } from './notes/receipt'
 import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayInboxVisible } from './tray'
+import { createTray, getTray, setTrayInboxVisible, setTrayLastNoteVisible } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -304,14 +305,18 @@ app.whenReady().then(async () => {
 
   // Share card: the journey page draws a PNG locally; main only offers
   // the save dialog and writes bytes. Nothing leaves the machine.
-  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown) => {
+  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown, kind: unknown, day: unknown) => {
     if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return false
+    // The wrap-up's day card (US-088) is named for the day it shows, a
+    // plain YYYY-MM-DD and nothing else; anything else is the belt card.
+    const dated = kind === 'day' && typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+    const name = dated ? `murmur-day-${day}.png` : kind === 'day' ? 'murmur-day.png' : 'murmur-belt.png'
     const { dialog } = await import('electron')
     const { writeFile } = await import('node:fs/promises')
     const target = settingsWindow
     if (!target || target.isDestroyed()) return false
     const { canceled, filePath } = await dialog.showSaveDialog(target, {
-      defaultPath: 'murmur-belt.png',
+      defaultPath: name,
       filters: [{ name: 'PNG image', extensions: ['png'] }]
     })
     if (canceled || !filePath) return false
@@ -383,11 +388,17 @@ app.whenReady().then(async () => {
     onQuit: () => app.quit(),
     onOpenInbox: () => {
       void openTodayNote()
+    },
+    onOpenLastNote: () => {
+      void openLastNote('tray')
     }
   })
   // The inbox item exists only while there is a folder to open.
   setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
   onSettingsChanged((s) => setTrayInboxVisible(s.notes.folder.trim() !== ''))
+  // Open last note appears once a note has been saved, and stays.
+  setTrayLastNoteVisible(getLastNote() !== null)
+  onLastNoteChanged((note) => setTrayLastNoteVisible(note !== null))
   // Time back rides the tray tooltip, so it comes up after the tray.
   const { initTimeBack } = await import('./timeback')
   initTimeBack({ openWrapup })
@@ -527,6 +538,26 @@ app.whenReady().then(async () => {
   if (settingsCapture && settingsWindow) {
     await settingsLoaded.catch(() => undefined)
     await new Promise((resolve) => setTimeout(resolve, 900))
+    // MURMUR_SETTINGS_PAGE=home, analytics, wrap-up, or journey opens
+    // that tab first, so every page can be shot (brushwork design QA).
+    const page = process.env.MURMUR_SETTINGS_PAGE
+    if (page) {
+      const found = await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === ${JSON.stringify(page)})
+          if (nav) nav.click()
+          return Boolean(nav)
+        })()`
+      )
+      // A misspelled page, or the setup wizard covering the tabs, must
+      // fail loudly rather than quietly shoot the wrong screen.
+      if (!found) {
+        console.error(`[murmur] MURMUR_SETTINGS_PAGE: no tab named ${JSON.stringify(page)}`)
+        app.exit(1)
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600))
+    }
     // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
     // row to the top, and unfolds any disclosure in its panel, so any
     // row can be shot, not just the home tab.
@@ -568,6 +599,48 @@ app.whenReady().then(async () => {
         })()`
       )
       await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    // MURMUR_SETTINGS_SCROLL=selector scrolls that element to the top of
+    // whatever tab is open, so the lower half of a page can be shot, and
+    // the activity wall to its newest days.
+    const scrollTo = process.env.MURMUR_SETTINGS_SCROLL
+    if (scrollTo) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const el = document.querySelector(${JSON.stringify(scrollTo)})
+          if (el) el.scrollIntoView({ block: 'start' })
+          // Sideways scrollers (the activity wall) show their newest end.
+          for (const x of document.querySelectorAll('.heat-scroll')) x.scrollLeft = x.scrollWidth
+          return Boolean(el)
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    // MURMUR_SETTINGS_CLICK=selector focuses and clicks that element last
+    // (opening a dialog such as the share card, or a hover note), then
+    // waits for it to paint. Several selectors joined by || are clicked
+    // in turn, each after the last has painted (a confirm, then its yes).
+    const clickOn = process.env.MURMUR_SETTINGS_CLICK
+    for (const selector of clickOn ? clickOn.split('||').map((x) => x.trim()).filter(Boolean) : []) {
+      await settingsWindow.webContents.executeJavaScript(
+        `(() => {
+          const el = document.querySelector(${JSON.stringify(selector)})
+          // Focus first, as a real click would, so focus-driven notes open.
+          if (el) {
+            el.focus()
+            el.click()
+          }
+          return Boolean(el)
+        })()`
+      )
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
+    // MURMUR_SETTINGS_PROBE=expression prints what it evaluates to in the
+    // window just before the shot, for checking state a picture hides.
+    const probe = process.env.MURMUR_SETTINGS_PROBE
+    if (probe) {
+      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(() => { try { return JSON.stringify(${probe}) } catch (e) { return String(e) } })()`)
+      console.log(`[murmur] probe ${String(value)}`)
     }
     const image = await settingsWindow.webContents.capturePage()
     const { writeFile } = await import('node:fs/promises')

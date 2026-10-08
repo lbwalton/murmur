@@ -50,7 +50,7 @@ Groq is murmur's default because Whisper on Groq is extremely fast and inexpensi
 
 Current model list: [console.groq.com/docs/models](https://console.groq.com/docs/models). Note: Groq decommissioned `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on 2026-08-16 ([deprecations](https://console.groq.com/docs/deprecations)); murmur migrates old settings to the replacements automatically.
 
-**Do I pay Groq anything on the free tier?** No. Groq's free tier bills nothing and asks for no card; it enforces rate limits instead. The console still shows dollar-equivalent usage, which can look like a bill accumulating, but on the free tier nothing is ever charged. If you upgrade to their developer tier, billing starts only once lifetime usage passes 50 cents, then lands at 1, 10, 100, 500, and 1,000 dollar thresholds ([billing FAQs](https://console.groq.com/docs/billing-faqs), verified 2026-09-13).
+**Do I pay Groq anything on the free tier?** No. Groq's free tier bills nothing and asks for no card; it enforces rate limits instead. The console still shows dollar-equivalent usage, which can look like a bill accumulating, but on the free tier nothing is ever charged. If you upgrade to their developer tier, which needs a payment method, you are billed at the end of each month or sooner when your total usage reaches 1, 10, 100, 500, and 1,000 dollars ([billing FAQs](https://console.groq.com/docs/billing-faqs), verified 2026-10-03).
 
 ## How do I use OpenAI with murmur?
 

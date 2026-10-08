@@ -7,6 +7,7 @@ build/sounds/
 build/icon.icns
 build/icon.ico
 build/icon.png
+src/renderer/public/fonts/
 *.log
 .DS_Store
 .env

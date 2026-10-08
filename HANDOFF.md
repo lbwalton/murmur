@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-070 go live, Mac first (added 2026-09-27; Windows signing stays on hold, iOS comes next). Do these toward the end, in any order, and tell Claude as each one is done: (1) done 2026-09-27: v0.1.8 is released. (2) Once it is out, make one real purchase: in murmur's settings open murmur pro, click Get Pro, enter the code FOUNDERS at checkout, and pay the $39 with your own card; forward Claude the Stripe receipt or order id, Claude issues the key, and you paste it into the License key box and click Activate. (3) In the Stripe dashboard, open the Payment Link, and under After payment set the confirmation message Claude writes for you, so buyers know their key arrives by email and roughly when. (4) Buy the murmur domain and turn on email forwarding for a support address (for example support@ your domain, forwarding to your Gmail); tell Claude both, and Claude deploys the site, names the address in the docs and site, and gives you the DNS records to add. (5) Sign the copyright assignment below and file it with your LLC records. (6) On the live site, press the Mac button in a private window, install, and dictate once.
+- [ ] US-070 go live, Mac first (added 2026-09-27; Windows signing stays on hold, iOS comes next). Do these toward the end, in any order, and tell Claude as each one is done: (1) done 2026-09-27: v0.1.8 is released. (2) Once it is out, make one real purchase: in murmur's settings open murmur pro, click Get Pro, enter the code FOUNDERS at checkout, and pay the $39 with your own card; forward Claude the Stripe receipt or order id, Claude issues the key, and you paste it into the License key box and click Activate. (3) In the Stripe dashboard, open the Payment Link, and under After payment set the confirmation message Claude writes for you, so buyers know their key arrives by email and roughly when. (4) done 2026-10-03: murmurapp.app is live on Cloudflare Pages, support@murmurapp.app forwards to lbwalton@gmail.com, and SPF and DMARC are set (the address is in the site footer). (5) Sign the copyright assignment below and file it with your LLC records. (6) On the live site, press the Mac button in a private window, install, and dictate once.
 - [x] Groq key and Pro restored 2026-09-27 after Claude's packaged smoke runs wiped them: Pro from the license ledger (founder-owner-001), the Groq key by applying the Groq (baseline) profile. The code is fixed so a smoke run can never touch a real profile again.
 - [x] Smoke leftovers cleaned 2026-09-27 on your OK: the 10 fake history entries and the test folders are gone.
 - [ ] Undertone switchover (rebrand shipped 2026-09-05): Undertone.app is in /Applications with a violet icon, same permissions. When ready: quit the old Murmur.app, launch Undertone (your settings and history migrate automatically), re-enter your Groq key once (the encrypted store follows the app name), then drag Murmur.app to the Trash.
@@ -22,6 +22,61 @@ Live-verification items land here as stories complete. Check them off, then tell
 - [x] v0.1.6 published 2026-09-17: the full test-cycle release (smart lists, provider catalog and key ring, paste-last chord, license switching, diagnostics, the self-healing mic, tray and paste fixes, what's new, Eze Media LLC attribution). Both platforms, notarized, auto-update live.
 
 ## Live verification queue
+
+- [x] US-097 the header stays at the top: live-verified 2026-10-08 (LaBroi: everything is great here).
+- [x] US-096 discard all: live-verified 2026-10-08 (LaBroi: everything is great here).
+- [ ] Decide (US-096 review, 2026-10-07): (a) the discard button in that question is grey until you point at it, like every remove button in murmur, because the design rules keep red for recording and errors; say if you want it red all the time. (b) Clear all at the bottom of Home empties your whole history with no question at all; Claude recommends giving it the same ask-first question with the count.
+- [ ] US-095 the founder practices (built 2026-10-07; practice belt, gates, and draw-on confirmed 2026-10-08; only step 5, a real promotion, remains). (1) Open murmur and click journey. (2) Under lvl. 1 at the top, a small white belt with stripes and the words practice white belt, then your stripes: that is the belt your words and days have earned. (3) Below the road: words and days on the mat, each with a painted bar, counting toward your next stripe. (4) Dictate a few sentences, then open journey again: only the new part of the words bar draws itself on. (5) When you earn your next stripe, the new tape drops onto the small practice belt; at blue belt, the big blue ceremony plays.
+- [x] US-093 level note: live-verified 2026-10-08 (LaBroi: everything is great here).
+- [x] US-094 the wall remembers its period: live-verified 2026-10-08 (LaBroi: everything is great here).
+- [x] US-076 road follow-up: live-verified 2026-10-08 (LaBroi: everything is great here).
+
+- [x] US-075 the ensō pill icons: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+- [ ] On the PC after the next release (carried over 2026-10-07): (1) the taskbar and the tray show the new ensō icon (US-075). (2) Say a note, let its notification slide away by itself, then open Action Center (the bell or date at the bottom right) and click it there: the note should open (US-082).
+- [ ] Decide (US-075, carried over 2026-10-07): the project notes (CLAUDE.md) say the mark is drawn clean at 32 px and below, and the icons draw it clean below 64 px (so 48 px is clean too). Say if CLAUDE.md should say below 64 px, or if 48 px should be brushed.
+
+- [ ] Decide (US-088 review, 2026-10-04): Copy summary on the wrap-up copies the two lines on the card, for example 9 dictations, 1,240 words / 14 min back, longest take 1:12, best pace 168 wpm. The other choice is the same sentence the daily recap notification uses: 4 sessions, 12 minutes, 1,240 words today. 19 minutes back. Tell Claude which you want.
+
+- [x] US-088 the day as a small painting: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [x] US-078 share card painted from your month: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [ ] US-077 belt promotion ceremony (built 2026-10-04; needs the next test build, and a promotion). (1) Keep dictating as usual. (2) After your next new belt, open murmur's window and click journey: a big brush stroke in the new belt's color sweeps across with a splash, and the belt's name appears large with the words and days that earned it. (3) Click anywhere or press Escape to close it. After a new stripe instead, the new strip of tape should drop onto your belt. If a promotion is far off, tell Claude and it can show you one in a test profile.
+
+- [x] US-090 painted insignia and tab marker: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [x] US-076 the Journey, painted: live-verified 2026-10-08 (LaBroi: everything is great here).
+
+- [ ] Decide (US-087 review, 2026-10-04): your accent color used to tint the 14-day chart on the analytics tab. The new ink chart paints the days in rice paper color with today in gold, as the preview showed, so an earned accent no longer shows there (it still colors the waveform and the journey bars). Options: keep it as built, or tint the other days with your accent and keep today gold. Tell Claude which.
+
+- [x] US-087 analytics in ink: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [x] US-085 today against a typical day: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [ ] Decide (site review, 2026-10-04; nothing changed yet): the pill you can try on murmurapp.app draws ink dabs, a brush style that is not in the released app yet (0.1.8 has bars and speckle; ink comes with the next release, earned by belt). Options: keep it as brand art, or show bars until the release that ships ink. Tell Claude which.
+
+- [ ] Decide (US-084 review, 2026-10-04; nothing changed yet): with reduced motion turned on in your Mac or Windows settings, the pulse and ink rings tiles show only the dot, because those styles draw rings only when motion is allowed (the real pill does the same). Options: draw one still ring for reduced motion (in the tiles and the pill), or leave it. Tell Claude which.
+
+- [x] US-084 waveform tiles: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [ ] US-092 one header, the docs on the site, and the Wispr Flow page (built 2026-10-03; live after the next deploy). On your phone: (1) Open murmurapp.app and scroll down: the bar with murmur, film, docs, compare, and download stays at the top the whole way. (2) Tap docs: the same bar, a row of doc names, and every doc's questions. (3) Tap a question: it opens that doc at that question, not hidden under the bar. (4) Tap compare: murmur and Wispr Flow side by side, each row stacked so it reads on a phone. (5) Later, on the computer, do the same and tell Claude anything that reads wrong.
+- [ ] Search setup only you can do (2026-10-03). (1) Bing Webmaster Tools (bing.com/webmasters): sign in with Google, choose Import from Google Search Console, pick murmurapp.app. ChatGPT's search leans on Bing's index, so this is how murmur shows up there. (2) Optional, when you want: list murmur on AlternativeTo as an alternative to Wispr Flow, and on Product Hunt at launch. Answer engines read those listings.
+
+- [ ] Decide (found in the US-089 review, 2026-10-04; nothing changed yet): history keeps 90 days by default, and older dictations are deleted. Your numbers, time back, and belt are all counted from what is left, so after a long break (or Clear all) analytics could say No numbers yet and your belt could drop. Options: keep lifetime totals in a separate counter that never gets pruned, or leave it. Tell Claude which.
+
+- [ ] US-089 empty states (built 2026-10-04; you have years of history, so these only show on a fresh profile; Claude checked them with screenshots). Optional: on a new day before your first dictation, open the wrap-up tab: it should show a dry grey brush mark and Hold (your hotkey) anywhere and speak. Your first one lands here.
+
+- [x] US-086 every tab has its own title: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [ ] US-091 the sheen repeats while processing runs long (built 2026-10-04; needs the next test build). (1) In Settings, Look, set Waveform to an ink style, for example ink dabs. (2) Press Preview beside Overlay look. The pill speaks for a few seconds, then holds the drying state for five seconds: one bright sheen as it dries, then a softer sheen at 2 and at 4 seconds, then the words land. (3) A real dictation on Groq usually finishes in about a second, so you will normally see only the first sheen; that is expected. (4) Tell Claude if the repeat ever looks busy or the pill looks frozen.
+
+- [x] US-082 the note receipt: live-verified 2026-10-07 (LaBroi: everything works as it should for this branch).
+
+- [ ] US-079 and US-066 the website, live at https://murmurapp.app since 2026-10-03 (www.murmurapp.app redirects there; support@murmurapp.app forwards to your Gmail). (1) Open https://murmurapp.app in a private window on the Mac. If it says the site cannot be found, your Mac is still remembering the old empty answer; wait a few minutes and try again. (2) Watch the paint gather, then hold Hold to speak (or the space bar) and let go: the words land in the message with a flick of paint. (3) When the Your turn bar appears, paint with the mouse, try another color, press Make my poster, then Save poster: murmur-poster.png lands in Downloads. (4) Play the film with sound on. (5) Press the big download button: murmur-mac.dmg downloads. (6) On the PC, open the site and press the button: murmur-windows.exe downloads. (7) done 2026-10-04: the phone paint sheet works (you checked it on your iPhone). (8) done 2026-10-04: support@murmurapp.app forwards (Cloudflare's log shows the test as Forwarded); a message from any other address lands in your inbox. (9) done 2026-10-04: murmurapp.app is verified in Search Console with you as an owner, and the sitemap is submitted; open Search Console in a few days to see it read. Tell Claude what to change, or that the site is approved.
+
+- [ ] US-080 the One drop film (rendered 2026-10-01; it lives outside the repo in ~/Projects/murmur-film). (1) In Finder, open your home folder, then Projects, murmur-film, out. (2) Double-click one-drop-master-1920x1080.mp4 and watch it with sound on: a drop hits the key, the pill wakes, the stroke writes the R, the ball bounces through three apps and lands in the logo. (3) Watch one-drop-vertical-1080x1920.mp4 (the phone cut) and one-drop-bumper-6s-1920x1080.mp4 (the short one). (4) Tell Claude anything to change, especially the sound, which nobody has listened to yet.
+
+- [x] US-074 ink waveforms, live-verified 2026-10-01 on the test build: every style, look, and state worked as it should. (Original steps kept for the record.) As the founder you have all four unlocked. (1) Open Settings, Look, Waveform, and pick ink dabs. (2) Hold your hotkey and talk for a few seconds: brush dabs should pour in from the right, bright amber at the front and drying to gold as they scroll left; let go and they should cool to gold once, then sink flat as your words land. (3) Do the same with ink flecks (paint flecks that shiver and fling a drop on loud syllables), ink rings (brush arcs rippling out from the dot), and ink ribbon (one stroke, thick when loud, thin when quiet). (4) Under Overlay look, try Compact and Bare with one of them, once over a dark app and once over a white page: in Bare each mark should have a faint dark edge so it reads on white. (5) Tell Claude which, if any, look off.
 
 - [x] US-071 the pill and Settings come back by themselves, live-verified 2026-10-01 on the test build (dictation, Settings, and both pkill checks passed). Merged to main 2026-10-01.
 
@@ -91,6 +146,8 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 - [x] US-020 recap, two quick steps in the installed app: (1) click the recap Test button once more now that notifications are allowed; a murmur recap banner with today's numbers should appear instantly. (2) For the full loop: turn Daily recap on, set a time two minutes out, wait for the banner, click it, confirm you land on the wrap-up tab.
 
 ## Known follow-ups (not blocking)
+
+- [ ] Seen in the US-091 review (2026-10-04), not new: nothing watches the processing phase in main, so an unexpected throw after it starts would leave the pill processing until the next press. The sheen now stops after two minutes so it never animates forever; a main-side watchdog that ends such a take in an error would close the gap.
 
 - [x] Windows CI red since 2026-09-22 (the brain dump merge), found 2026-10-01: every main run failed one smoke check on Windows, notesFallback. Cause found on the Windows runner: the check demanded the Mac's error wording for a folder under a file (Windows says not found); the notes fallback itself works on Windows. Fixed by US-081; CI green on both platforms 2026-10-01 (run 36959520101).
 

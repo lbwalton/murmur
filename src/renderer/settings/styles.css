@@ -25,7 +25,14 @@ body {
   gap: 18px;
 }
 
+/* The header stays at the top while the page scrolls under it (US-097):
+   solid ink, so nothing shows through, over everything on the page but
+   dialogs, and the same height stuck or not, so nothing jumps. App.tsx
+   keeps --masthead-h at its height. */
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   width: 100%;
   max-width: 856px;
   margin: 0 auto;
@@ -35,6 +42,9 @@ body {
   gap: 16px;
   padding: 20px 0 14px;
   border-bottom: 1px solid var(--panel-edge);
+  background: var(--ink);
+  /* A narrow window wraps the tabs under the wordmark, never mid-name. */
+  flex-wrap: wrap;
 }
 
 .masthead .wordmark {
@@ -52,8 +62,163 @@ body {
   gap: 18px;
 }
 
-.hero {
+/* The waveform tiles (US-084): each a mini pill drawn by the overlay's
+   own renderer. The wave box matches the overlay's (40 px tall, bars
+   3 px wide with 3 px gaps; overlay/styles.css) so a tile is the pill. */
+.wave-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
+  gap: 10px;
+}
+
+.wave-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wave-tile:hover {
+  border-color: var(--cream-22);
+}
+
+.wave-tile:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.wave-tile[aria-checked='true'] {
+  border-color: var(--brand);
+}
+
+.wave-tile[aria-disabled='true'] {
+  cursor: default;
+}
+
+.wave-tile[aria-disabled='true']:hover {
+  border-color: var(--panel-edge);
+}
+
+.wave-tile[aria-disabled='true'] .mini-pill,
+.wave-tile[aria-disabled='true'] .tile-name {
+  opacity: 0.4;
+}
+
+.mini-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  margin-bottom: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 1px solid var(--panel-edge);
+}
+
+.mini-pill .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cream-25);
+}
+
+.mini-pill .wave {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  overflow: hidden;
+}
+
+.mini-pill .bar {
+  flex: none;
+  width: 3px;
+  min-height: 6px;
+  border-radius: 2px;
+  background: var(--wave-accent, var(--amber));
+  transition: height 90ms linear;
+}
+
+.mini-pill .speckle,
+.mini-pill .wave-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tile-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tile-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.wave-tile[aria-checked='true'] .tile-status {
+  color: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-pill .bar {
+    transition: none;
+  }
+}
+
+/* Today against a typical day (US-085): the gold stroke and its line. */
+.day-stroke {
+  display: block;
+  width: 100%;
+  height: 24px;
+  margin-top: 6px;
+}
+
+.timeback-typical {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* An empty tab's invitation (US-089): the dry scrape and one sentence. */
+.empty-state {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.dry-mark {
+  flex: none;
+  width: 120px;
+  height: 40px;
+}
+
+.empty-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Each tab's own title (US-086). */
+.page-title {
   padding-top: 6px;
+}
+
+.page-title h1 {
+  margin-bottom: 4px;
 }
 
 .nav {
@@ -74,14 +239,34 @@ body {
   cursor: pointer;
 }
 
+.nav-btn {
+  position: relative;
+  white-space: nowrap;
+}
+
 .nav-btn:hover {
   color: var(--text);
 }
 
+.nav-btn:focus-visible {
+  /* Cream, so focus never merges with the current tab's gold stroke. */
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* The tab you are on (US-090): its label in brand gold over a short
+   painted stroke, in place of a pill. */
 .nav-active {
   color: var(--brand);
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
+}
+
+.tab-stroke {
+  position: absolute;
+  left: 8px;
+  bottom: -5px;
+  width: calc(100% - 16px);
+  height: 7px;
+  pointer-events: none;
 }
 
 .nav-alert {
@@ -94,10 +279,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 18px;
-}
-
-.empty-log .dim {
-  padding-bottom: 12px;
 }
 
 .log-list {
@@ -130,6 +311,26 @@ body {
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The note receipt's Home row (US-082). */
+.last-note-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.last-note-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.last-note-line {
+  overflow-wrap: anywhere;
+}
+
+.last-note-said {
+  margin-top: 6px;
 }
 
 /* Takes waiting to retry (US-068): the log's own rows, with the reason
@@ -167,6 +368,73 @@ body {
 .waiting-reason {
   margin: 0;
   font-size: 12px;
+}
+
+.waiting-head .waiting-actions {
+  margin-left: 0;
+}
+
+/* Discard all while its question is open. */
+.waiting-head .btn[aria-expanded='true'] {
+  color: var(--text);
+  border-color: var(--cream-25);
+}
+
+/* Discard all asks in place (US-096): the count in words, keep them
+   first and focused, and the deleting button styled like every other
+   remove in the window (red only on hover). */
+.waiting-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  background: var(--ink);
+  animation: confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.waiting-confirm p {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.waiting-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.waiting-confirm .btn {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.waiting-message:focus {
+  outline: none;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes confirm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-confirm {
+    animation-name: confirm-fade;
+  }
 }
 
 .stat-row {
@@ -230,19 +498,6 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-}
-
-.chart-bar {
-  width: 100%;
-  max-width: 26px;
-  border-radius: 3px 3px 0 0;
-  background: var(--cream-14);
-}
-
-.chart-bar-live {
-  /* Data emphasis, not a live state: amber stays reserved. The chosen
-     accent recolors it via --gui-accent; cream is the quiet default. */
-  background: var(--gui-accent, var(--cream-60));
 }
 
 .wizard-panel {
@@ -641,32 +896,312 @@ select.field {
   padding: 10px 0 8px;
 }
 
-.belt {
+/* The Journey, painted (US-076). The belt is fabric paint at 560 by
+   120; the road scrolls sideways, painted to where you are; the gates
+   are a stroke and tally marks; achievements are ink stamps. */
+.belt-paint {
   position: relative;
-  width: 170px;
-  height: 34px;
-  border-radius: 6px;
   flex: none;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  width: min(100%, 300px);
+  aspect-ratio: 560 / 120;
 }
 
-.belt-bar {
+.belt-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.road-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 2px -4px 6px;
+  padding: 0 4px;
+}
+
+.road-canvas {
+  display: block;
+}
+
+.road-inner {
+  position: relative;
+  width: max-content;
+}
+
+/* A rank's name and what it takes, over the mark you hover. */
+.road-tip {
   position: absolute;
-  right: 18px;
-  top: 0;
-  bottom: 0;
-  width: 44px;
-  background: rgba(0, 0, 0, 0.45);
+  top: 8px;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-lift);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.road-tip-start {
+  transform: translateX(-12px);
+}
+
+.road-tip-end {
+  transform: translateX(calc(-100% + 12px));
+}
+
+.road-note {
+  margin-bottom: 8px;
+}
+
+.gate-canvas {
+  display: block;
+  width: 100%;
+  height: 36px;
+}
+
+.gate-closed .gate-head .mono-inline {
+  color: var(--brand);
+}
+
+.stamps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 16px 10px;
+  padding: 8px 0 14px;
+}
+
+.stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  min-width: 0;
+}
+
+.stamp-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stamp:not(.stamp-earned) .stamp-name {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.stamp-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+/* Today, wrapped, as a painting (US-088): the day's strokes fill the
+   card and the summary sits over the fade at its foot. */
+.day-card {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.day-canvas {
+  display: block;
+  width: 100%;
+  height: 230px;
+}
+
+.day-summary {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.day-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.day-headline {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.day-detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.day-note {
+  font-size: 12px;
+}
+
+/* The share card's preview (US-078): the card at full resolution,
+   shown as it will save. */
+.share-dialog {
+  width: min(760px, calc(100vw - 48px));
+  max-width: none;
+  margin: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.share-dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.share-head h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.share-head .dim {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.share-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 840 / 440;
+  margin: 14px 0;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+}
+
+.share-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.belt-stripe {
-  width: 3px;
-  height: 22px;
-  background: var(--text);
+.share-actions .dim {
+  margin-right: auto;
+  font-size: 13px;
+}
+
+/* The belt promotion ceremony (US-077): the whole window, inside
+   murmur's own window only. */
+.ceremony {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--ink) 95%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  animation: ceremony-in 300ms ease-out;
+}
+
+.ceremony::backdrop {
+  background: transparent;
+}
+
+.ceremony:focus {
+  outline: none;
+}
+
+@keyframes ceremony-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.ceremony-paint {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ceremony-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 54%;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.ceremony-text > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ceremony-shown .ceremony-text > * {
+  opacity: 1;
+  transform: none;
+}
+
+.ceremony-text h2 {
+  font-size: clamp(44px, 9vw, 110px);
+  font-weight: 800;
+  font-stretch: condensed;
+  line-height: 0.95;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.ceremony-title {
+  margin-top: 14px;
+  font-size: 20px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.ceremony-earned {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.ceremony-hint {
+  margin-top: 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.ceremony-shown .ceremony-title {
+  transition-delay: 180ms;
+}
+
+.ceremony-shown .ceremony-earned {
+  transition-delay: 300ms;
+}
+
+.ceremony-shown .ceremony-hint {
+  transition-delay: 900ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ceremony {
+    animation: none;
+  }
+
+  .ceremony-text > * {
+    transition: none;
+  }
 }
 
 .belt-crown {
@@ -695,14 +1230,67 @@ select.field {
   white-space: nowrap;
 }
 
-.journey-rank {
-  font-size: 22px;
-  font-weight: 650;
+.journey-rank .level-chip {
+  margin-left: 0;
 }
 
-.journey-title {
-  font-style: italic;
-  margin-top: 3px;
+/* The founder's practice belt (US-095): the rank words and days have
+   earned, small under the level, where the tape moment lands. */
+.practice-belt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.belt-paint.belt-mini {
+  width: 96px;
+}
+
+.practice-name {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* A note that opens after a moment of hovering, or on focus (US-093). */
+.hover-note {
+  position: relative;
+  display: inline-block;
+}
+
+.hover-note-trigger {
+  background: none;
+  cursor: help;
+}
+
+.hover-note-trigger:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.hover-note-left {
+  left: auto;
+  right: 0;
+}
+
+.hover-note-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-lift);
+  box-shadow: 0 10px 28px var(--ink-edge);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  white-space: normal;
+  text-align: left;
 }
 
 .journey-line {
@@ -717,60 +1305,6 @@ select.field {
   display: flex;
   justify-content: space-between;
   margin-bottom: 5px;
-}
-
-.gate-track {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--cream-06);
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.gate-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--gui-accent, var(--cream-55));
-}
-
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
-  padding: 6px 0 14px;
-}
-
-.badge {
-  border: 1px solid var(--panel-edge);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.badge-earned {
-  border-color: var(--ok-edge);
-}
-
-.badge-mark {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.badge-earned .badge-mark {
-  color: var(--ok);
-}
-
-.badge-name {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.badge-hint {
-  font-size: 11px;
-  color: var(--text-dim);
 }
 
 .promo-row {
@@ -832,23 +1366,22 @@ details[open] > .ladder-summary::after {
 }
 
 .insignia {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 12px;
-  border-radius: 3px;
-  padding: 0 6px;
   margin-left: 10px;
-  vertical-align: 2px;
 }
 
-.insignia-stripe {
-  width: 2px;
-  height: 7px;
-  background: rgba(0, 0, 0, 0.5);
+.insignia-canvas {
+  display: block;
 }
 
+/* The founder mark, worn on the painted fabric like the Journey's. */
 .insignia-crown {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -54%);
   font-size: 10px;
   line-height: 1;
   color: var(--founder-gold);
@@ -920,17 +1453,20 @@ details[open] > .ladder-summary::after {
 }
 
 /* The default scrollbar paints a bright track on ink; keep it quiet. */
-.heat-scroll::-webkit-scrollbar {
+.heat-scroll::-webkit-scrollbar,
+.road-scroll::-webkit-scrollbar {
   height: 7px;
   background: transparent;
 }
 
-.heat-scroll::-webkit-scrollbar-thumb {
+.heat-scroll::-webkit-scrollbar-thumb,
+.road-scroll::-webkit-scrollbar-thumb {
   background: var(--cream-14);
   border-radius: 4px;
 }
 
-.heat-scroll::-webkit-scrollbar-track {
+.heat-scroll::-webkit-scrollbar-track,
+.road-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
@@ -965,6 +1501,39 @@ details[open] > .ladder-summary::after {
 
 .heat-pad {
   background: transparent;
+}
+
+/* The wall in ink (US-087): a canvas of blots over the cells, which
+   keep their layout, hover titles, and today's outline. */
+.heat-ink {
+  position: relative;
+}
+
+.heat-paint {
+  position: absolute;
+  /* The cells' top padding, less the 2 px bleed the canvas paints in. */
+  top: 2px;
+  left: -2px;
+  pointer-events: none;
+}
+
+.heat-legend-ink {
+  position: relative;
+  display: inline-flex;
+  gap: 3px;
+}
+
+.heat-legend-ink .heat-paint {
+  top: -2px;
+}
+
+/* The fourteen days in ink (US-087): one dab per day, as tall as its
+   bar was. */
+.chart-dab {
+  display: block;
+  width: 100%;
+  max-width: 26px;
+  height: 76px;
 }
 
 .heat-today {
@@ -1072,6 +1641,8 @@ textarea.entry-field {
    gutter is kept on every tab so the nav stays put. */
 html {
   scrollbar-gutter: stable;
+  /* Jumps and focus stop below the pinned header (US-097). */
+  scroll-padding-top: calc(var(--masthead-h, 0px) + 8px);
 }
 
 .visually-hidden {
@@ -1095,8 +1666,8 @@ html {
 
 .rail {
   position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 32px);
+  top: calc(var(--masthead-h, 0px) + 16px);
+  max-height: calc(100vh - var(--masthead-h, 0px) - 32px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1255,7 +1826,7 @@ html {
 }
 
 .sec {
-  scroll-margin-top: 16px;
+  scroll-margin-top: 8px;
 }
 
 /* Focused by the rail for keyboard and screen reader users; the
@@ -1668,7 +2239,7 @@ textarea.well-multiline {
 /* Finish setup: only what is missing, each fix beside its line. The
    meter is a row of lamps, one per check. */
 .finish {
-  scroll-margin-top: 16px;
+  scroll-margin-top: 8px;
   padding: 16px 20px 12px;
   background: var(--panel);
   border: 1px solid var(--red-edge);

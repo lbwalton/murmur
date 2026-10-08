@@ -22,6 +22,10 @@ If a retry fails again, the take stays with the new reason. A take that turns ou
 
 The audio never leaves your computer except to your own provider when you retry, exactly as for a live dictation. It lives in the recovery folder inside murmur's data folder, and murmur keeps the 20 most recent takes.
 
+## How do I clear every recording waiting to retry?
+
+Click **discard all** at the top of **waiting to retry** on the home tab (it shows when two or more are waiting). murmur asks first, in place, with the count: for example, Discard all 8 recordings waiting to retry? **keep them** is selected, so pressing Enter or Escape leaves everything as it was; click **discard 8** to delete them. The audio is deleted from your computer and those takes can no longer be retried, so retry any you still want first. Only the recordings counted when the question opened are deleted, so one that fails while the question is open is kept. The home tab then says how many were discarded, and names any that could not be deleted (they stay listed).
+
 ## Why did murmur hear nothing even though my mic works everywhere else?
 
 Audio software that manages your microphone (Wave Link, Loopback, VoiceMeeter and friends) can reconfigure the device underneath murmur's always-warm capture stream without any signal the OS passes along, leaving murmur receiving pure digital silence while every meter elsewhere moves. murmur catches this in two places. A dictation that measures dead-zero input (a `nospeech` log line with a peak near 0.000) triggers an immediate capture rebuild, so your very next press records normally. And every freshly built capture stream, that rebuild included, has to prove itself: if it flows for a few seconds without ever carrying sound (a quiet room's noise floor counts), it is rebuilt again on its own, up to five times, so a device that hands back a dead stream more than once is still fixed before you press again. No relaunch needed either way.

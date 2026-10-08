@@ -11,6 +11,24 @@ The ladder follows the adult BJJ system: white, blue, purple, brown, black, each
 
 A monster weekend cannot skip you up the ladder; only showing up can. The journey tab shows both gates, your dated promotion history, and how your lifetime words compare to famous books (a rotating line: today it might be The Hobbit, tomorrow War and Peace).
 
+## What does the journey tab show?
+
+Your belt is also worn at the top of the window: a small painted belt beside the murmur wordmark, with your stripes and, for the founder, the crown. It updates the moment you are promoted.
+
+Your belt, painted: the fabric in your belt's color, the black rank bar (red on a black belt, none on the coral and red belts), and a strip of white tape for each stripe or degree, the way stripes go on in a gym. Next to it, the level chip (lvl.): hover it for a second, or tab to it, and a note says how levels work and how many more words reach the next one. Under it, the road: every rank from white to red as one long line, painted in each belt's color as far as your words and days have taken you, with a gold dot marking you (and your lifetime words) and a gold ring on the next rank. Scroll it sideways to see the whole ladder, and hover any mark to see its rank and what it takes. The founder's belt is an identity rather than a rank on the way, so the founder also has a practice belt: the rank the founder's own words and days have earned, painted small under the level chip. The founder's road, gates, and promotions follow the practice belt, so the founder earns stripes and belts, with the tape and the ceremony, like anyone, and the crown sits at the far end of the road.
+
+The two gates to the next rank are painted too. Words is a brush stroke that fills from your current rank's total toward the next one's, and your place on the road counts the same way, by whichever gate is further behind. Days on the mat is tally marks in fives since your current rank: painted for the days you have, pencil for the days you still need (on the long gates near the top, each mark stands for a few days, and the label says how many). When a gate closes its numbers turn gold. With an accent color chosen under Settings, Look, the gate paint takes your accent; otherwise it is your belt's color.
+
+### Why do the gates draw themselves when I open the tab?
+
+The gates show what you just added. What you had the last time you looked is already there, and only the progress since then draws on: the words stroke stretches by the new words, and any new tally marks are painted in. If murmur's window is open on the journey tab while you dictate, the new progress draws on as it lands; if the window is closed, it waits and draws on when you open the window again. After a promotion the gates start over toward the next rank and draw on from the start. With reduced motion turned on in your system settings, they appear finished.
+
+Achievements are ink stamps: pressed in ember when earned, a faint dashed outline with the way to earn it when not. Everything on the tab is drawn by code from your progress, so the same progress always paints the same picture, and it paints itself in only when your progress moved since you last looked; otherwise, and always with reduced motion turned on in your system settings, it appears finished.
+
+## What happens when I earn a new belt?
+
+A notification tells you the moment it happens. Then, the next time you open the journey tab (or right away, if murmur's window is already showing it), murmur holds a small ceremony inside its own window: one big brush stroke in your new belt's color sweeps across with a splash of paint, and the rank is set large with its title and the words and days that earned it. Click anywhere, or press Escape, Enter, or Space, to carry on; it also ends on its own after a few seconds, and it never appears over the app you are dictating into. A new stripe or degree gets a smaller moment: the new strip of tape slaps onto your belt. Each promotion is celebrated once, and only the newest if several arrived since you last looked. With reduced motion turned on in your system settings, the ceremony shows the finished painting with no movement.
+
 ## What are the exact requirements for each belt and stripe?
 
 Every promotion requires BOTH numbers: lifetime words dictated AND distinct days on which you dictated at least once. The full ladder, straight from the file the promotion engine reads (`shared/ranks.json`), is also visible in the app on the journey tab under "the full ladder":
@@ -63,11 +81,11 @@ Named badges for moments belts do not measure: your first dictation, streaks (th
 
 ## What do unlocks actually give me?
 
-Cosmetics only, visible proof of practice: new waveform styles for the pill (pulse arrives with your white belt), accent colors for the waveform (your belt's color always among them once you have a belt; special accents come from specific achievements), and window themes (morning mist arrives at blue belt). Locked items stay visible with exactly how to earn them.
+Cosmetics only, visible proof of practice: new waveform styles for the pill (pulse and ink dabs arrive with your white belt, ink flecks with blue, ink rings with purple, and the ink ribbon with brown), accent colors for the waveform (your belt's color always among them once you have a belt; special accents come from specific achievements), and window themes (morning mist arrives at blue belt). Locked items stay visible with exactly how to earn them.
 
 ## What is the share card?
 
-A button on the journey tab renders your belt, title, totals, and badge count into a PNG, drawn and saved entirely on your machine. Post it wherever you like: the point of a belt is that people can see it.
+Share card on the journey tab paints a card from your own last 30 days: one brush stroke for each day you dictated, longer for more words and heavier for more sessions, with your three biggest days in ember. Your painted belt, your rank (set in murmur's display face), its title, your words and days on the mat for those 30 days, and your level sit over it. Two people at the same belt get different cards, and the same history always paints the same card. A preview shows the card exactly as it will save; Save card writes it to a PNG wherever you choose. Everything is drawn and saved on your machine and nothing is sent anywhere. Post it wherever you like: the point of a belt is that people can see it.
 
 ## Can I cheat?
 

@@ -71,6 +71,22 @@ for (const pkg of SHIPPED) {
   )
 }
 
+// The display face is not an npm package: the build fetches it (scripts/
+// lib/display-face.js) and ships its license beside it in fonts/OFL.txt.
+sections.push(
+  [
+    '## Bricolage Grotesque (font)',
+    '',
+    'License: SIL Open Font License 1.1',
+    'Homepage: https://github.com/ateliertriay/bricolage',
+    '',
+    'Fetched at build time and used only to set the rank on the share card.',
+    'The full license text ships beside the font in the built app, at',
+    'out/renderer/fonts/OFL.txt.',
+    ''
+  ].join('\n')
+)
+
 const out = [
   '# Third-party notices',
   '',
