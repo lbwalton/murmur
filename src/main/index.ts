@@ -618,12 +618,13 @@ app.whenReady().then(async () => {
     }
     // MURMUR_SETTINGS_CLICK=selector focuses and clicks that element last
     // (opening a dialog such as the share card, or a hover note), then
-    // waits for it to paint.
+    // waits for it to paint. Several selectors joined by || are clicked
+    // in turn, each after the last has painted (a confirm, then its yes).
     const clickOn = process.env.MURMUR_SETTINGS_CLICK
-    if (clickOn) {
+    for (const selector of clickOn ? clickOn.split('||').map((x) => x.trim()).filter(Boolean) : []) {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
-          const el = document.querySelector(${JSON.stringify(clickOn)})
+          const el = document.querySelector(${JSON.stringify(selector)})
           // Focus first, as a real click would, so focus-driven notes open.
           if (el) {
             el.focus()

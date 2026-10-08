@@ -359,6 +359,73 @@ body {
   font-size: 12px;
 }
 
+.waiting-head .waiting-actions {
+  margin-left: 0;
+}
+
+/* Discard all while its question is open. */
+.waiting-head .btn[aria-expanded='true'] {
+  color: var(--text);
+  border-color: var(--cream-25);
+}
+
+/* Discard all asks in place (US-096): the count in words, keep them
+   first and focused, and the deleting button styled like every other
+   remove in the window (red only on hover). */
+.waiting-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  background: var(--ink);
+  animation: confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.waiting-confirm p {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.waiting-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.waiting-confirm .btn {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.waiting-message:focus {
+  outline: none;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes confirm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-confirm {
+    animation-name: confirm-fade;
+  }
+}
+
 .stat-row {
   display: flex;
   gap: 28px;

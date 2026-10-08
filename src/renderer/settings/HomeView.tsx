@@ -2,7 +2,7 @@
 // The home view: takes waiting to retry, today's time back, then your
 // transcription log, grouped by day, newest first, updating live as
 // dictations land.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
@@ -171,17 +171,43 @@ function rememberHowToDone(): void {
   }
 }
 
+/** What Discard all asks before it deletes (US-096). */
+export function discardAllQuestion(count: number): string {
+  return `Discard all ${count} recordings waiting to retry? Their audio is deleted from this computer, and they cannot be retried.`
+}
+
+/** What Home says once Discard all is done: how many went, and how many
+ *  could not be deleted and are still listed. */
+export function discardedMessage(gone: number, asked: number): string {
+  const recordings = (n: number): string => (n === 1 ? '1 recording' : `${n} recordings`)
+  if (gone === asked) return `Discarded ${recordings(gone)}.`
+  if (gone === 0) return `Could not discard ${recordings(asked)}. They are still listed below; try again in a moment.`
+  return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
+}
+
 /**
  * Takes that were recorded but not transcribed (US-068). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, and a dictation also on the clipboard, where
  * paste-last finds it. Discard asks once, then deletes the audio.
+ * Discard all (US-096) asks in place, with the count, before deleting:
+ * the question counts the takes listed when it opened, and only those
+ * are deleted, so a take that fails while it is open is kept. Keep them
+ * has focus, so a double press never deletes. One question at a time.
  */
 function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | null {
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
+  // The takes Discard all asked about, fixed when the question opened.
+  const [counted, setCounted] = useState<string[] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const discardAllRef = useRef<HTMLButtonElement>(null)
+  const keepRef = useRef<HTMLButtonElement>(null)
+  const messageRef = useRef<HTMLParagraphElement>(null)
+  // Focus moves to the message once Discard all is done, so keyboard and
+  // screen reader users are not dropped at the window's top.
+  const focusMessage = useRef(false)
 
   useEffect(() => {
     const load = (): void => {
@@ -191,9 +217,34 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
     return bridge().onWaitingTakesChanged(load)
   }, [])
 
+  // The counted takes still listed: the count can shrink (one retried or
+  // gone), never grow.
+  const asked = counted ? counted.filter((id) => takes.some((t) => t.id === id)) : []
+  const deleting = busy === 'all'
+  const questionOpen = counted !== null && (deleting || asked.length >= 2)
+  // While deleting, the question holds its count rather than counting down.
+  const shownCount = deleting && counted ? counted.length : asked.length
+
+  useEffect(() => {
+    if (questionOpen) keepRef.current?.focus()
+  }, [questionOpen])
+
+  useEffect(() => {
+    if (focusMessage.current && message) {
+      focusMessage.current = false
+      messageRef.current?.focus()
+    }
+  }, [message])
+
+  // Nothing left to ask about (the counted ones were retried or gone).
+  useEffect(() => {
+    if (counted !== null && !questionOpen) setCounted(null)
+  }, [counted, questionOpen])
+
   const retry = async (ids: string[]): Promise<void> => {
     setMessage(null)
     setConfirming(null)
+    setCounted(null)
     const done: Array<{ kind: WaitingTake['kind']; location: string }> = []
     let failed = 0
     for (const id of ids) {
@@ -226,11 +277,51 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
 
   const discard = async (id: string): Promise<void> => {
     if (confirming !== id) {
+      setCounted(null)
       setConfirming(id)
       return
     }
     setConfirming(null)
     setTakes(await bridge().discardTake(id))
+  }
+
+  const openAll = (): void => {
+    if (questionOpen) {
+      setCounted(null)
+      return
+    }
+    setMessage(null)
+    setConfirming(null)
+    setCounted(takes.map((t) => t.id))
+  }
+
+  const keepAll = (): void => {
+    setCounted(null)
+    discardAllRef.current?.focus()
+  }
+
+  // Deletes exactly the takes the question counted, one by one, and says
+  // how many went; a delete that fails leaves its take listed.
+  const discardAll = async (ids: string[]): Promise<void> => {
+    setBusy('all')
+    let gone = 0
+    try {
+      for (const id of ids) {
+        const left = await bridge().discardTake(id)
+        if (!left.some((t) => t.id === id)) gone += 1
+      }
+    } catch (error) {
+      console.error('[murmur] discard all stopped:', error)
+    } finally {
+      const left = await bridge()
+        .listWaitingTakes()
+        .catch(() => null)
+      if (left) setTakes(left)
+      setBusy(null)
+      setCounted(null)
+      focusMessage.current = true
+      setMessage(discardedMessage(gone, ids.length))
+    }
   }
 
   if (takes.length === 0 && !message) return null
@@ -240,17 +331,56 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
       <div className="waiting-head">
         <p className="micro-label">waiting to retry</p>
         {takes.length > 1 && (
-          <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
-            retry all
-          </button>
+          <span className="waiting-actions">
+            <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
+              retry all
+            </button>
+            <button
+              ref={discardAllRef}
+              className="btn quiet-btn"
+              disabled={busy !== null}
+              aria-expanded={questionOpen}
+              aria-controls={questionOpen ? 'discard-all-confirm' : undefined}
+              onClick={openAll}
+            >
+              discard all
+            </button>
+          </span>
         )}
       </div>
+      {questionOpen && counted && (
+        <div
+          className="waiting-confirm"
+          id="discard-all-confirm"
+          role="group"
+          aria-labelledby="discard-all-question"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !deleting) {
+              e.stopPropagation()
+              keepAll()
+            }
+          }}
+        >
+          <p id="discard-all-question">{discardAllQuestion(shownCount)}</p>
+          <span className="waiting-confirm-actions">
+            <button ref={keepRef} className="btn quiet-btn" disabled={busy !== null} onClick={keepAll}>
+              keep them
+            </button>
+            <button className="btn btn-remove" disabled={busy !== null} onClick={() => void discardAll(asked)}>
+              {deleting ? 'discarding' : `discard ${shownCount}`}
+            </button>
+          </span>
+        </div>
+      )}
       {takes.length > 0 && (
         <p className="dim waiting-intro">
           Recorded but not transcribed. The audio stays on this computer until you retry or discard it.
         </p>
       )}
-      {message && <p className="waiting-message">{message}</p>}
+      {/* Always mounted, so screen readers hear a new message. */}
+      <p className={message ? 'waiting-message' : 'visually-hidden'} ref={messageRef} tabIndex={-1} role="status">
+        {message}
+      </p>
       <div className="log-list">
         {takes.map((take) => (
           <div className="log-entry" key={take.id}>

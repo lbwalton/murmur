@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (74/95 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (74/96 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -107,3 +107,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-093** The level chip explains the next level
 - [ ] **US-094** The activity wall remembers its period
 - [ ] **US-095** The founder practices: gates, practice belt, and promotions
+- [ ] **US-096** Discard all, with the count, after asking
