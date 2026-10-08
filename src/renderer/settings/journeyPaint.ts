@@ -208,21 +208,6 @@ export function youX(roadIndex: number, toNext: number, count: number): number {
   return lerp(rankX(roadIndex, count), rankX(roadIndex + 1, count), clamp(toNext, 0, 1))
 }
 
-/**
- * The index on the road of the highest rank your words and days have
- * earned (both gates), or -1 before the white belt. The founder's belt is
- * an identity, never earned this way, so the founder-only rank never
- * counts: the founder's road shows practice like anyone's.
- */
-export function earnedIndex(road: readonly RankSpec[], words: number, days: number): number {
-  let best = -1
-  road.forEach((rank, i) => {
-    if (rank.founderOnly || rank.words === null || rank.activeDays === null) return
-    if (words >= rank.words && days >= rank.activeDays) best = i
-  })
-  return best
-}
-
 /** The name a stretch of the road wears: both coral belts are coral. */
 const groupName = (belt: string): string => (belt.startsWith('coral') ? 'coral' : belt)
 
@@ -373,8 +358,18 @@ export function daysPerMark(need: number): number {
 }
 
 /**
+ * Where a gate draws on from (US-095): what you saw last time on this
+ * same rank, so only the progress since then draws on; the rank's start
+ * with no record or on a new rank. Never past where the gate now ends.
+ */
+export function drawFrom(seen: number | null, start: number, have: number): number {
+  return seen === null ? start : clamp(seen, start, Math.max(start, have))
+}
+
+/**
  * The days gate: tally marks in fives, painted for days you have and
- * pencil for days you need. k paints the newest marks in.
+ * pencil for days you need. k paints in the marks past fromDays, one
+ * after another; the marks before it are already there.
  */
 export function paintTallies(
   ctx: CanvasRenderingContext2D,
@@ -384,11 +379,13 @@ export function paintTallies(
   haveDays: number,
   col: Rgb,
   c: JourneyColors,
-  k = 1
+  k = 1,
+  fromDays = 0
 ): void {
   const per = daysPerMark(needDays)
   const need = Math.ceil(needDays / per)
   const have = Math.min(need, Math.floor(haveDays / per))
+  const from = clamp(Math.floor(fromDays / per), 0, have)
   const unit = Math.min(14, (w - 16) / (need + Math.ceil(need / 5) * 1.2 + 1))
   const top = h * 0.18
   const bot = h * 0.82
@@ -407,7 +404,7 @@ export function paintTallies(
           [x, bot],
           [x + 0.8, top]
         ]
-    const prog = i < have ? clamp(k * have - i, 0, 1) : 0
+    const prog = i < from ? 1 : i < have ? clamp(k * (have - from) - (i - from), 0, 1) : 0
     if (prog > 0) {
       const P = path(pts, 1.3)
       stroke(ctx, P, cachedBrush(950 + (i % 40), 10), {

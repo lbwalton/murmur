@@ -283,11 +283,28 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const events = log?.readAll() ?? []
     const report = computeProgress(events, ranksSpec as never)
     const founderReport = computeProgress(events, ranksSpec as never, { founder: true })
+    // The founder practices like anyone (US-095): four days and 6,300
+    // words earn white belt, two stripes, whatever the flag says.
+    const practiced: SessionEvent[] = [150, 3000, 3000, 150].map((words, i) => ({
+      at: Date.UTC(2026, 0, 5 + i, 12),
+      durationMs: 60_000,
+      rawText: 'p',
+      finalText: 'p',
+      words,
+      wpm: 100,
+      day: `2026-01-0${5 + i}`,
+      hour: 12
+    }))
+    const founderPractice = computeProgress(practiced, ranksSpec as never, { founder: true })
     return (
       report.rank.id !== 'red-10' &&
       report.totals.words >= 0 &&
       founderReport.rank.id === 'red-10' &&
-      founderReport.next === null
+      founderReport.next === null &&
+      founderReport.practice.rank.id === report.rank.id &&
+      founderPractice.rank.id === 'red-10' &&
+      founderPractice.practice.rank.id === 'white-2' &&
+      founderPractice.practice.next?.id === 'white-3'
     )
   })
 

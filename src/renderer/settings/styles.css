@@ -1156,6 +1156,24 @@ select.field {
   margin-left: 0;
 }
 
+/* The founder's practice belt (US-095): the rank words and days have
+   earned, small under the level, where the tape moment lands. */
+.practice-belt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.belt-paint.belt-mini {
+  width: 96px;
+}
+
+.practice-name {
+  margin: 0;
+  font-size: 13px;
+}
+
 /* A note that opens after a moment of hovering, or on focus (US-093). */
 .hover-note {
   position: relative;

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import ranksFile from '../../../shared/ranks.json'
-import type { RankSpec } from '../../shared/ranks'
-import { ROAD, daysPerMark, earnedIndex, rankX, youX } from './journeyPaint'
+import { ROAD, daysPerMark, drawFrom, rankX, youX } from './journeyPaint'
 
 describe('the road', () => {
   const n = 31
@@ -36,15 +34,19 @@ describe('tally marks', () => {
   })
 })
 
-describe('earned rank on the road', () => {
-  const road = (ranksFile as { ranks: RankSpec[] }).ranks.filter((r) => r.id !== 'none')
-  const at = (id: string): number => road.findIndex((r) => r.id === id)
+describe('gates drawing on', () => {
+  it('start where you last saw them on the same rank', () => {
+    expect(drawFrom(9_000, 6_000, 11_017)).toBe(9_000)
+  })
 
-  it('is the highest rank both gates have reached, never the founder belt', () => {
-    expect(earnedIndex(road, 0, 0)).toBe(-1)
-    expect(earnedIndex(road, 11017, 7)).toBe(at('white-2'))
-    expect(earnedIndex(road, 11017, 3)).toBe(at('white-1'))
-    expect(earnedIndex(road, 99_000_000, 99_999)).toBe(at('red-9'))
+  it('start at the rank with no record, or on a new rank', () => {
+    expect(drawFrom(null, 6_000, 11_017)).toBe(6_000)
+  })
+
+  it('never run backwards or start before the rank', () => {
+    // After Clear all or a retention cut you may have less than you saw.
+    expect(drawFrom(14_000, 6_000, 11_017)).toBe(11_017)
+    expect(drawFrom(2_000, 6_000, 11_017)).toBe(6_000)
   })
 })
 

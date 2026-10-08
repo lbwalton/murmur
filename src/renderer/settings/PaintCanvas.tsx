@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // A canvas that paints itself (US-076): sized to its box at the screen's
 // pixel density, repainted when the box or the density changes, and,
-// when asked, painted in over a moment the first time. Reduced motion
-// always gets the finished painting at once.
+// when asked, painted in over a moment the first time (or, with replay,
+// each time its data changes). Reduced motion always gets the finished
+// painting at once.
 import { useEffect, useRef } from 'react'
 
 export type Paint = (ctx: CanvasRenderingContext2D, w: number, h: number, k: number) => void
@@ -13,6 +14,9 @@ export function PaintCanvas(props: {
   paintKey: string
   /** Paint in over this many milliseconds the first time; 0 paints at once. */
   paintInMs?: number
+  /** Paint in again whenever paintKey changes, not only the first time
+   *  (a gate drawing on progress made while it is open, US-095). */
+  replay?: boolean
   /** A fixed drawing size in CSS pixels; otherwise the element's own box. */
   width?: number
   height?: number
@@ -21,6 +25,7 @@ export function PaintCanvas(props: {
 }): React.JSX.Element {
   const ref = useRef<HTMLCanvasElement>(null)
   const painted = useRef(false)
+  const lastKey = useRef<string | null>(null)
   const paintRef = useRef(props.paint)
   paintRef.current = props.paint
 
@@ -46,10 +51,14 @@ export function PaintCanvas(props: {
       paintRef.current(ctx, w, h, k)
     }
     const ms = props.paintInMs ?? 0
-    if (!painted.current && ms > 0 && !reduced && canvas.clientWidth > 0) {
-      const t0 = performance.now()
+    const fresh = !painted.current || (props.replay === true && lastKey.current !== props.paintKey)
+    if (fresh && ms > 0 && !reduced && canvas.clientWidth > 0) {
+      // The clock starts on the first frame, not now: a hidden window
+      // runs no frames, and the paint-in waits for it to be seen.
+      let t0 = -1
       running = true
       const tick = (now: number): void => {
+        if (t0 < 0) t0 = now
         const k = Math.min(1, (now - t0) / ms)
         draw(k)
         if (k < 1) raf = requestAnimationFrame(tick)
@@ -59,7 +68,10 @@ export function PaintCanvas(props: {
     } else {
       draw(1)
     }
-    if (canvas.clientWidth > 0) painted.current = true
+    if (canvas.clientWidth > 0) {
+      painted.current = true
+      lastKey.current = props.paintKey
+    }
     // Repaint finished when the box changes size or the window moves to a
     // screen of another density.
     const watch = new ResizeObserver(() => {
@@ -82,7 +94,7 @@ export function PaintCanvas(props: {
       watch.disconnect()
       density?.removeEventListener('change', onDensity)
     }
-  }, [props.paintKey, props.width, props.height, props.paintInMs])
+  }, [props.paintKey, props.width, props.height, props.paintInMs, props.replay])
 
   const style = props.width !== undefined ? { width: props.width, height: props.height } : undefined
   return (
