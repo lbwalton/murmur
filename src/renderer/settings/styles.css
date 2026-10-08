@@ -25,7 +25,14 @@ body {
   gap: 18px;
 }
 
+/* The header stays at the top while the page scrolls under it (US-097):
+   solid ink, so nothing shows through, over everything on the page but
+   dialogs, and the same height stuck or not, so nothing jumps. App.tsx
+   keeps --masthead-h at its height. */
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   width: 100%;
   max-width: 856px;
   margin: 0 auto;
@@ -35,6 +42,9 @@ body {
   gap: 16px;
   padding: 20px 0 14px;
   border-bottom: 1px solid var(--panel-edge);
+  background: var(--ink);
+  /* A narrow window wraps the tabs under the wordmark, never mid-name. */
+  flex-wrap: wrap;
 }
 
 .masthead .wordmark {
@@ -231,6 +241,7 @@ body {
 
 .nav-btn {
   position: relative;
+  white-space: nowrap;
 }
 
 .nav-btn:hover {
@@ -1630,6 +1641,8 @@ textarea.entry-field {
    gutter is kept on every tab so the nav stays put. */
 html {
   scrollbar-gutter: stable;
+  /* Jumps and focus stop below the pinned header (US-097). */
+  scroll-padding-top: calc(var(--masthead-h, 0px) + 8px);
 }
 
 .visually-hidden {
@@ -1653,8 +1666,8 @@ html {
 
 .rail {
   position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 32px);
+  top: calc(var(--masthead-h, 0px) + 16px);
+  max-height: calc(100vh - var(--masthead-h, 0px) - 32px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1813,7 +1826,7 @@ html {
 }
 
 .sec {
-  scroll-margin-top: 16px;
+  scroll-margin-top: 8px;
 }
 
 /* Focused by the rail for keyboard and screen reader users; the
@@ -2226,7 +2239,7 @@ textarea.well-multiline {
 /* Finish setup: only what is missing, each fix beside its line. The
    meter is a row of lamps, one per check. */
 .finish {
-  scroll-margin-top: 16px;
+  scroll-margin-top: 8px;
   padding: 16px 20px 12px;
   background: var(--panel);
   border: 1px solid var(--red-edge);

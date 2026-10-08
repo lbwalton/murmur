@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (74/96 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (74/98 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -88,6 +88,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-063** Download links that never go stale
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
+- [ ] **US-093** The level chip explains the next level
+- [ ] **US-094** The activity wall remembers its period
+- [ ] **US-095** The founder practices: gates, practice belt, and promotions
+- [ ] **US-096** Discard all, with the count, after asking
+- [ ] **US-097** The window's header stays at the top while you scroll
 
 ## To do
 
@@ -104,7 +109,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-089** Empty states that say what to do
 - [ ] **US-091** A long wait still reads as working
 - [ ] **US-092** One header on every page, the docs on the site, and a Wispr Flow comparison
-- [ ] **US-093** The level chip explains the next level
-- [ ] **US-094** The activity wall remembers its period
-- [ ] **US-095** The founder practices: gates, practice belt, and promotions
-- [ ] **US-096** Discard all, with the count, after asking
+- [ ] **US-098** A painting a day

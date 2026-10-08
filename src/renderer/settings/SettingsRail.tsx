@@ -106,8 +106,10 @@ export function SettingsRail(props: {
       const secs = Array.from(document.querySelectorAll<HTMLElement>('.settings-content .sec[data-sec]'))
       if (secs.length === 0) return
       let next = secs[0].dataset.sec ?? null
+      // The band starts under the pinned header (US-097), whatever its height.
+      const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--masthead-h')) || 56
       for (const s of secs) {
-        if (s.getBoundingClientRect().top <= 140) next = s.dataset.sec ?? next
+        if (s.getBoundingClientRect().top <= header + 84) next = s.dataset.sec ?? next
       }
       const doc = document.documentElement
       if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4) {

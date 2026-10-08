@@ -2,6 +2,10 @@
 
 Everything the settings window can do. For provider setup (base URL, keys, model ids per provider) see [connecting a provider](./providers.md).
 
+## How do I get between the tabs?
+
+The bar at the top of the window (the murmur wordmark with your belt, then home, analytics, wrap-up, journey, and settings) stays put while you scroll, so any tab is one click away from anywhere on a long page. The tab you are on has a short gold brush stroke under its name.
+
 ## What is the home view?
 
 The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. A red ✗ next to the settings tab means setup needs attention.

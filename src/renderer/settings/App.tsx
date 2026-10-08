@@ -58,6 +58,27 @@ const RAIL_GROUPS = [
   { id: 'app', label: 'app' }
 ] as const
 
+/**
+ * The header stays at the top while the page scrolls (US-097). This
+ * keeps --masthead-h in step with its height (it grows if the tabs wrap
+ * in a narrow window), so the settings rail sits below it and every
+ * jump to a section, row, or focused control stops below it too.
+ */
+function watchMasthead(el: HTMLElement | null): (() => void) | undefined {
+  if (!el) return undefined
+  const root = document.documentElement
+  const measure = (): void => {
+    root.style.setProperty('--masthead-h', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+  }
+  measure()
+  const watch = new ResizeObserver(measure)
+  watch.observe(el)
+  return () => {
+    watch.disconnect()
+    root.style.removeProperty('--masthead-h')
+  }
+}
+
 const FORMAT_DESC: Record<Settings['formatting']['level'], string> = {
   off: 'Raw transcript, exactly as heard.',
   light: 'Removes fillers and fixes capitals.',
@@ -444,7 +465,7 @@ export function App(): React.JSX.Element {
   if (wizardOpen) {
     return (
       <main className="shell">
-        <header className="masthead">
+        <header className="masthead" ref={watchMasthead}>
           <p className="micro-label wordmark">murmur</p>
         </header>
         <div className="page">
@@ -610,7 +631,7 @@ export function App(): React.JSX.Element {
       className="shell"
       style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
     >
-      <header className="masthead">
+      <header className="masthead" ref={watchMasthead}>
         <p className="micro-label wordmark">
           murmur
           {insignia && (
