@@ -618,19 +618,34 @@ export function initOverlay(): void {
   // the renderer's own clock (procMs), so a loaded machine slows the
   // check down instead of failing it.
   //
-  // The nap between sheens wakes itself with a renderer setTimeout
-  // (InkWave.tsx); in real use the window is already showInactive() from
-  // setOverlayPhase('recording') above it, so that timer is running in a
-  // visible (if unfocused) page. In smoke, isSmoke skips every show/hide
-  // call, so the window stays in its initial show:false state and that
-  // same timer runs in a genuinely hidden page instead, which is where
-  // both CI runners (Mac and Windows, 2026-10-08) stalled it for good
-  // right at the first settle point. Showing the window for real here,
-  // the one spot that leans on the nap, matches production and avoids
-  // asserting on a scenario a real user never hits.
+  // The actual root cause (found with the reduced-motion diagnostic
+  // logged above, 2026-10-08): both the macOS and Windows hosted GitHub
+  // runners report prefers-reduced-motion: reduce by default (no user
+  // has ever opened an accessibility pane on them), and sheenFor is
+  // designed to never animate a sheen under reduced motion. That is the
+  // product working exactly as specified; the check needs to exercise
+  // the non-reduced path it actually exists to verify, regardless of
+  // the CI browser's default. The two fixes before this one (window
+  // visibility, then removing the renderer's nap timer) were both real
+  // improvements but neither could have mattered here.
   registerSmokeCheck('overlayInkSheen', async () => {
     const win = aliveOverlay()
     if (!win) return false
+    // Force prefers-reduced-motion: reduce to read as false for the
+    // rest of this check, restored in the finally block below. Scoped
+    // to one query string so anything else that ever calls matchMedia
+    // on this page is unaffected.
+    await win.webContents.executeJavaScript(
+      `(() => {
+        if (!window.__murmurRealMatchMedia) {
+          window.__murmurRealMatchMedia = window.matchMedia.bind(window)
+          window.matchMedia = (q) =>
+            typeof q === 'string' && q.includes('prefers-reduced-motion')
+              ? { matches: false, media: q, addListener(){}, removeListener(){}, addEventListener(){}, removeEventListener(){}, onchange: null, dispatchEvent(){ return true } }
+              : window.__murmurRealMatchMedia(q)
+        }
+      })()`
+    )
     const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
     try {
       updateSettings({ overlay: { style: 'dabs', look: 'pill' } })
@@ -674,6 +689,14 @@ export function initOverlay(): void {
       // Back to the hidden state every other smoke check expects.
       if (isSmoke) win.hide()
       updateSettings({ overlay: original })
+      await win.webContents.executeJavaScript(
+        `(() => {
+          if (window.__murmurRealMatchMedia) {
+            window.matchMedia = window.__murmurRealMatchMedia
+            delete window.__murmurRealMatchMedia
+          }
+        })()`
+      )
       await inkWait(100)
     }
   })
