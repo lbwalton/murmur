@@ -558,7 +558,13 @@ export function initOverlay(): void {
     registerSmokeCheck(`overlayInk-${style}`, async () => {
       const win = aliveOverlay()
       if (!win) return false
-      const deadline = Date.now() + 8_000
+      // Each look gets its own fresh budget below: bare costs more to
+      // paint than pill or compact (it composites through an offscreen
+      // buffer), and it runs last. A single deadline shared across all
+      // three looks let pill and compact spend it down on a loaded or
+      // GPU-less CI runner, starving bare before it ever got a turn
+      // (caught on the Windows CI runner, 2026-10-08).
+      let deadline = Date.now() + 8_000
       const until = async (ready: (ink: Ink) => boolean, voice = false): Promise<Ink> => {
         let ink = await readInk(win)
         while (!ready(ink) && Date.now() < deadline) {
@@ -572,6 +578,7 @@ export function initOverlay(): void {
       const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
       try {
         for (const look of OVERLAY_LOOKS) {
+          deadline = Date.now() + 8_000
           updateSettings({ overlay: { style, look } })
           await until((ink) => ink.look === look && ink.ink === style)
           if (!setOverlayPhase('recording')) return false
@@ -618,7 +625,13 @@ export function initOverlay(): void {
         await inkWait(40)
       }
       setOverlayPhase('processing')
-      const deadline = Date.now() + 8_000
+      // Still and moved each get their own fresh budget: a loaded or
+      // GPU-less CI runner can legitimately spend most of one window
+      // just reaching the first still frame, and sharing a single
+      // deadline between the two phases left the repeat with almost
+      // nothing to prove itself in (caught on the macOS CI runner,
+      // 2026-10-08).
+      let deadline = Date.now() + 8_000
       // Still: drying (600 ms) and the first sheen (about 800 ms) are done.
       let still = await readInk(win)
       while (!(still.mode === 'proc' && (still.procMs ?? 0) >= 1000) && Date.now() < deadline) {
@@ -627,6 +640,7 @@ export function initOverlay(): void {
       }
       let moved = false
       let last = still
+      deadline = Date.now() + 8_000
       while (!moved && Date.now() < deadline) {
         await inkWait(40)
         last = await readInk(win)
