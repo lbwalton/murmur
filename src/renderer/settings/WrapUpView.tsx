@@ -169,7 +169,7 @@ function shortDay(day: string): string {
 }
 
 /**
- * Saves the week's scroll (US-102, 3968 by 824): the seven days ending on
+ * Saves the week's scroll (US-102, 3968 by 864): the seven days ending on
  * `last` side by side, each painting as it stands with its seal and
  * light, a day without takes as one dry mark, and the week's numbers.
  * Drawn and saved here, nothing sent. True when it was saved.
@@ -373,6 +373,7 @@ export function WrapUpView(props: {
   // The week's scroll needs two paintings in the seven days ending today.
   const weekPaintings = weekOf(today).filter((day) => Object.hasOwn(book, day)).length
   const [weekNote, setWeekNote] = useState('')
+  const weekTimer = useRef<number | undefined>(undefined)
 
   const copySummary = async (): Promise<void> => {
     await bridge().copyText(said.text)
@@ -381,10 +382,11 @@ export function WrapUpView(props: {
   }
 
   const saveWeek = async (): Promise<void> => {
+    window.clearTimeout(weekTimer.current)
     setWeekNote('Saving…')
     const saved = await saveWeekScroll(today, book, colors).catch(() => false)
     setWeekNote(saved ? 'Saved.' : '')
-    if (saved) window.setTimeout(() => setWeekNote(''), 1500)
+    if (saved) weekTimer.current = window.setTimeout(() => setWeekNote(''), 1500)
   }
 
   const saveCard = async (): Promise<void> => {
@@ -469,7 +471,7 @@ export function WrapUpView(props: {
                 <span className="dim day-note" aria-live="polite">
                   {weekNote}
                 </span>
-                <button className="btn quiet-btn" onClick={() => void saveWeek()}>
+                <button className="btn quiet-btn" onClick={() => void saveWeek()} disabled={weekNote === 'Saving…'}>
                   Save the week
                 </button>
               </span>

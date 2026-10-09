@@ -508,7 +508,7 @@ export function paintPaintingCard(
 }
 
 /** The week's scroll in CSS pixels (US-102); it saves at twice this. */
-export const SCROLL = { W: 1984, H: 412, PAD: 40, PANEL_W: 260, PANEL_H: 195, GAP: 14, TOP: 124 }
+export const SCROLL = { W: 1984, H: 432, PAD: 40, PANEL_W: 260, PANEL_H: 195, GAP: 14, TOP: 124 }
 
 /** One day on the week's scroll: its short name, a caption, and its
  *  painting as it stands, or null for a day without takes. */

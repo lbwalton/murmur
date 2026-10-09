@@ -144,7 +144,7 @@ A painting a day. Each day murmur sets out a painting, and every take you make a
 
 ## How do I save a week of paintings?
 
-On the wrap-up tab, click **Save the week** beside your paintings. It saves the seven days ending today as one long image, 3968 by 824 pixels, like a handscroll unrolled: the days side by side with the oldest on the left, each painting as it stands with its seal and light, its weekday and name under it (a day with no takes shows one dry mark and says a day off), the week's numbers (for example, 5 paintings finished from 84 takes and 7,412 words), and the murmur wordmark. The button shows once those seven days hold two paintings or more. Like the day's card, it is drawn and saved on your machine and sent nowhere.
+On the wrap-up tab, click **Save the week** beside your paintings. It saves the seven days ending today as one long image, 3968 by 864 pixels, like a handscroll unrolled: the week's title (for example, the week of October 3) and its numbers (5 paintings finished from 84 takes and 7,412 words) along the top; the days side by side with the oldest on the left, each painting as it stands (a finished one with its seal and light), with its weekday under it and its name, or how far it got (4 of 8), under that; a day with no takes shows one dry mark and says a day off; and the murmur wordmark. The button shows once those seven days hold two paintings or more. Like the day's card, it is drawn and saved on your machine and sent nowhere.
 
 ## What is the time back milestone notification, and how do I turn it off?
 

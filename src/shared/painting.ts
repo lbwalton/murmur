@@ -332,7 +332,7 @@ export function weekLine(book: Readonly<PaintingBook>, last: string): string {
   const takes = records.reduce((n, r) => n + r.words.length, 0)
   const words = records.reduce((n, r) => n + r.words.reduce((a, b) => a + b, 0), 0)
   const finished = records.filter((r) => r.words.length >= r.target).length
-  const said = `${takes} ${takes === 1 ? 'take' : 'takes'} and ${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`
+  const said = `${takes.toLocaleString()} ${takes === 1 ? 'take' : 'takes'} and ${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`
   return finished > 0 ? `${finished} ${finished === 1 ? 'painting' : 'paintings'} finished from ${said}` : said
 }
 

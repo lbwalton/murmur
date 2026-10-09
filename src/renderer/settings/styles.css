@@ -1067,10 +1067,11 @@ select.field {
   font-size: 12px;
 }
 
-/* Save the week (US-102), beside the strip's label. */
+/* Save the week (US-102), beside the strip's label. Baseline, like the
+   head it sits in, so the label never moves when the note comes and goes. */
 .week-save {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
 }
 
