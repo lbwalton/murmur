@@ -2,6 +2,21 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.9 (2026-10-08)
+
+- Ink waveforms: four new brush styles for the pill (ink dabs, flecks, rings, and one long ribbon), each earned at a belt. Settings, Look, Waveform now shows every style as a live preview of the pill moving to a made-up voice, so you can pick one by watching it.
+- A new icon: an open brush loop with an amber dot inside, on the app, in the menu bar, and on the website.
+- The Journey, painted: your belt as painted fabric with tape for each stripe, the road from white belt to red painted as far as you have come, the words and days still needed for your next rank (only what is new since you last looked draws itself in), and achievements as ink stamps. Point at a mark on the road, or at the level, to see what it takes.
+- Promotions you can see: a new belt gets a short ceremony the next time you open the journey tab, a new stripe drops its tape onto your belt, and Share card paints a card from your last 30 days to save and post.
+- Note receipts: after a note lands, a notification says where it went, and clicking it opens the note. Open last note sits in the menu bar menu, and Home shows your last note.
+- Home draws today's time back as one gold stroke against a typical day, and wrap-up paints your day as a small painting, one stroke per dictation, with Save card.
+- Analytics in ink: the last 14 days as brush dabs and the activity wall as blots of paint, and the wall keeps the period you picked.
+- Every tab has its own title, an empty tab says how to fill it with your real hotkey, and the bar with the tabs stays at the top while you scroll.
+- Deleting asks first: Clear all and a new discard all for recordings waiting to retry both name how many will go before anything is deleted, with keep them selected and the delete button in red.
+- A long wait for your words keeps the pill shimmering, so it never looks frozen.
+- If one of murmur's helper processes is ever stopped, the pill and the window rebuild themselves.
+- Safer by design: murmur's windows load only murmur's own pages, and on Windows, code planted beside murmur can no longer run as murmur.
+
 ## 0.1.8 (2026-09-27)
 
 - Time back: the home tab shows how many minutes dictating saved you today compared with typing, with this month and lifetime beneath, and the wrap-up and analytics carry the same number. It uses your typing speed, 40 words a minute unless you set your own in the recap settings.
