@@ -2,6 +2,10 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.10 (unreleased)
+
+- A painting a day: the wrap-up tab sets out a painting each day, one of fourteen subjects (bamboo, a lotus pond, a waterfall, a breaking wave, snowfall, and more), and every take adds its next brush stroke. It is sized to your typical day, finishes with murmur's seal in the color of your belt and the light of the hours you painted it in (a rising sun, a pale sun, a setting sun, or a crescent moon and stars), keeps growing with every take after, grows richer with your belt, keeps the days before in a strip you can open, and saves as a portrait card to post; Save the week strings the last seven days into one long scroll.
+
 ## 0.1.9 (2026-10-08)
 
 - Ink waveforms: four new brush styles for the pill (ink dabs, flecks, rings, and one long ribbon), each earned at a belt. Settings, Look, Waveform now shows every style as a live preview of the pill moving to a made-up voice, so you can pick one by watching it.

@@ -12,13 +12,13 @@ const bridge = (): SettingsApi => window.murmur
 const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
 
 /** The display face's family name in this window. */
-const DISPLAY = 'murmur display'
+export const DISPLAY = 'murmur display'
 let faceLoad: Promise<boolean> | null = null
 
 /** Loads Bricolage Grotesque from the build's fonts folder once; false
  *  when it is not there (a build made offline), and the system face
  *  stands in. */
-function loadDisplayFace(): Promise<boolean> {
+export function loadDisplayFace(): Promise<boolean> {
   faceLoad ??= (async () => {
     try {
       const url = new URL('../fonts/bricolage-grotesque-display.woff2', window.location.href).href

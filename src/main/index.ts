@@ -307,10 +307,12 @@ app.whenReady().then(async () => {
   // the save dialog and writes bytes. Nothing leaves the machine.
   ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown, kind: unknown, day: unknown) => {
     if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return false
-    // The wrap-up's day card (US-088) is named for the day it shows, a
-    // plain YYYY-MM-DD and nothing else; anything else is the belt card.
-    const dated = kind === 'day' && typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
-    const name = dated ? `murmur-day-${day}.png` : kind === 'day' ? 'murmur-day.png' : 'murmur-belt.png'
+    // The wrap-up's day card (US-088) is named for the day it shows and
+    // the week's scroll (US-102) for the day it ends on, a plain
+    // YYYY-MM-DD and nothing else; anything else is the belt card.
+    const shape = kind === 'day' || kind === 'week' ? kind : 'belt'
+    const dated = shape !== 'belt' && typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+    const name = dated ? `murmur-${shape}-${day}.png` : `murmur-${shape}.png`
     const { dialog } = await import('electron')
     const { writeFile } = await import('node:fs/promises')
     const target = settingsWindow

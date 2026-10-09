@@ -53,7 +53,7 @@ Quality gates: `npm run typecheck`, `npm run test`, and `npm run smoke` (boots t
 
 Packaging: `npm run dist:mac` or `npm run dist:win`.
 
-What `npm install` makes, none of it tracked in the repo: the app and tray icons, drawn by `scripts/gen-icons.js`, and the share card's display face, Bricolage Grotesque (SIL Open Font License 1.1), fetched by `scripts/fetch-display-face.js` into `src/renderer/public/fonts` with its license beside it. Offline, or with `MURMUR_OFFLINE=1`, the fetch is skipped and the share card sets its rank in the system face; everything else works. Release builds (`dist:mac`, `dist:win`) require the face and stop without it.
+What `npm install` makes, none of it tracked in the repo: the app and tray icons, drawn by `scripts/gen-icons.js`, and the share cards' display face, Bricolage Grotesque (SIL Open Font License 1.1), fetched by `scripts/fetch-display-face.js` into `src/renderer/public/fonts` with its license beside it. Offline, or with `MURMUR_OFFLINE=1`, the fetch is skipped and the share card sets its rank in the system face; everything else works. Release builds (`dist:mac`, `dist:win`) require the face and stop without it.
 
 ## Project process
 

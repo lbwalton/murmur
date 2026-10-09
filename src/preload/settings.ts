@@ -139,6 +139,8 @@ const api = {
   /** Empties the log; answers with how many entries it removed. */
   clearHistory: (): Promise<number> => ipcRenderer.invoke('history:clear'),
   countHistory: (): Promise<number> => ipcRenderer.invoke('history:count'),
+  /** Today's painting and the four weeks before it (US-098). */
+  listPaintings: (): Promise<import('../shared/painting').PaintingBook> => ipcRenderer.invoke('paintings:list'),
   onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {
     const handler = (_e: unknown, event: SessionEvent): void => cb(event)
     ipcRenderer.on('history:appended', handler)
@@ -184,7 +186,7 @@ const api = {
   getEquivalentLine: (pick: number): Promise<string> => {
     return ipcRenderer.invoke('equivalents:line', pick)
   },
-  saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' = 'belt', day?: string): Promise<boolean> => {
+  saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' | 'week' = 'belt', day?: string): Promise<boolean> => {
     return ipcRenderer.invoke('sharecard:save', pngDataUrl, kind, day)
   },
   onNavigate: (cb: (page: string) => void): (() => void) => {

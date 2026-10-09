@@ -24,6 +24,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [x] US-100 the light of the hours you painted in: live-verified by LaBroi 2026-10-09 on the test build. Ships with 0.1.10.
+- [x] US-101 the seal in your belt's color: live-verified by LaBroi 2026-10-09 on the test build. Ships with 0.1.10.
+- [x] US-102 Save the week: live-verified by LaBroi 2026-10-09 on the test build. Ships with 0.1.10.
+- [x] US-098 a painting a day: live-verified by LaBroi 2026-10-09 on the test build (a painting finished on a real day, kept growing, its card saved, earlier paintings opened large). Ships with 0.1.10.
 - [ ] US-099 deleting asks first, in red (built 2026-10-08; ships in v0.1.9). (1) On the home tab, scroll to the bottom and click Clear all. (2) A question appears with your real count, for example Clear all 1,204 entries from your history?, keep them selected, and a red clear button. (3) Press Escape (or click keep them): nothing is deleted. Do not click the red button unless you want your history gone. (4) If recordings are waiting to retry, click discard on one: it turns red and says delete audio?; a quick double click never deletes.
 - [x] US-097 the header stays at the top: live-verified 2026-10-08 (LaBroi: everything is great here).
 - [x] US-096 discard all: live-verified 2026-10-08 (LaBroi: everything is great here).
@@ -154,6 +158,8 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 - [x] Windows CI red since 2026-09-22 (the brain dump merge), found 2026-10-01: every main run failed one smoke check on Windows, notesFallback. Cause found on the Windows runner: the check demanded the Mac's error wording for a folder under a file (Windows says not found); the notes fallback itself works on Windows. Fixed by US-081; CI green on both platforms 2026-10-01 (run 36959520101).
 
 - [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows gets them in US-083 (built and proven on the PC 2026-10-02).
+
+- [ ] Your call (from the US-102 review, 2026-10-09): the big titles on the share cards (the belt card, the painting card, and the new week scroll) are meant to be the display face pressed narrow, but the narrowing never takes effect, so they draw at the face's normal width. Fixing it makes every card title about 10 percent narrower than the cards you already approved. Say keep as is, or narrow them.
 
 - [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
 
