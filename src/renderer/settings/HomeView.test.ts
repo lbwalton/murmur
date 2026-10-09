@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { discardAllQuestion, discardedMessage } from './HomeView'
+import { clearAllQuestion, discardAllQuestion, discardedMessage } from './HomeView'
+
+describe('clear all', () => {
+  it('asks with the whole log count and says what starts over', () => {
+    expect(clearAllQuestion(1204)).toBe(
+      'Clear all 1,204 entries from your history? This cannot be undone. Your stats, time back, and belt progress are counted from your history, so they start over. Note files stay in your notes folder.'
+    )
+    expect(clearAllQuestion(1)).toMatch(/^Clear the 1 entry in your history\? /)
+  })
+})
 
 describe('discard all', () => {
   it('asks with the count before deleting', () => {

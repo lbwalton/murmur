@@ -136,7 +136,9 @@ const api = {
   },
   previewOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:preview'),
   listHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:list'),
-  clearHistory: (): Promise<SessionEvent[]> => ipcRenderer.invoke('history:clear'),
+  /** Empties the log; answers with how many entries it removed. */
+  clearHistory: (): Promise<number> => ipcRenderer.invoke('history:clear'),
+  countHistory: (): Promise<number> => ipcRenderer.invoke('history:count'),
   onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {
     const handler = (_e: unknown, event: SessionEvent): void => cb(event)
     ipcRenderer.on('history:appended', handler)

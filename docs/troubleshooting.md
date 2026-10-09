@@ -18,13 +18,13 @@ What a retry does: it sends the saved audio to your provider with your current s
 - **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
 - **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
 
-If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?) and then deletes it. A retried dictation counts toward your stats on the day you spoke it.
+If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?, in red) and then deletes it on a second click (a quick double click counts as one click, so it never deletes by accident). A retried dictation counts toward your stats on the day you spoke it.
 
 The audio never leaves your computer except to your own provider when you retry, exactly as for a live dictation. It lives in the recovery folder inside murmur's data folder, and murmur keeps the 20 most recent takes.
 
 ## How do I clear every recording waiting to retry?
 
-Click **discard all** at the top of **waiting to retry** on the home tab (it shows when two or more are waiting). murmur asks first, in place, with the count: for example, Discard all 8 recordings waiting to retry? **keep them** is selected, so pressing Enter or Escape leaves everything as it was; click **discard 8** to delete them. The audio is deleted from your computer and those takes can no longer be retried, so retry any you still want first. Only the recordings counted when the question opened are deleted, so one that fails while the question is open is kept. The home tab then says how many were discarded, and names any that could not be deleted (they stay listed).
+Click **discard all** at the top of **waiting to retry** on the home tab (it shows when two or more are waiting). murmur asks first, in place, with the count: for example, Discard all 8 recordings waiting to retry? **keep them** is selected, so pressing Enter or Escape leaves everything as it was; click the red **discard 8** to delete them. The audio is deleted from your computer and those takes can no longer be retried, so retry any you still want first. Only the recordings counted when the question opened are deleted, so one that fails while the question is open is kept. The home tab then says how many were discarded, and names any that could not be deleted (they stay listed).
 
 ## Why did murmur hear nothing even though my mic works everywhere else?
 

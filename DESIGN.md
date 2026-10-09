@@ -13,7 +13,7 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | text, text-dim | Words, and quieter words. |
 | brand (gold) | Headlines, micro-labels, static highlights, and dried paint. |
 | amber | Live only: the pill while you speak, wet paint. Always brighter than gold. |
-| red | Record and error. Never decorative. |
+| red | Record, error, and the button that confirms a delete (LaBroi, 2026-10-08). Never decorative. |
 | ok | Success states. |
 | founder-gold | Founder identity marks only. |
 | smoke | Background brushwork. |

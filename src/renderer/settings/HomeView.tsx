@@ -15,6 +15,7 @@ import type { Settings } from '../../shared/settings'
 import { PageTitle, useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
+import { AskFirst } from './AskFirst'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -171,6 +172,15 @@ function rememberHowToDone(): void {
   }
 }
 
+/** What Clear all asks before it empties the log (US-099). */
+export function clearAllQuestion(count: number): string {
+  const what = count === 1 ? 'Clear the 1 entry in your history?' : `Clear all ${count.toLocaleString()} entries from your history?`
+  return `${what} This cannot be undone. Your stats, time back, and belt progress are counted from your history, so they start over. Note files stay in your notes folder.`
+}
+
+/** Two clicks closer together than this are one double click. */
+const DOUBLE_CLICK_MS = 500
+
 /** What Discard all asks before it deletes (US-096). */
 export function discardAllQuestion(count: number): string {
   return `Discard all ${count} recordings waiting to retry? Their audio is deleted from this computer, and they cannot be retried.`
@@ -203,8 +213,10 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
   const [counted, setCounted] = useState<string[] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const discardAllRef = useRef<HTMLButtonElement>(null)
-  const keepRef = useRef<HTMLButtonElement>(null)
   const messageRef = useRef<HTMLParagraphElement>(null)
+  // When a take's discard was armed: a second click this soon is the
+  // same double click, not an answer to delete audio? (US-099).
+  const armedAt = useRef(0)
   // Focus moves to the message once Discard all is done, so keyboard and
   // screen reader users are not dropped at the window's top.
   const focusMessage = useRef(false)
@@ -224,10 +236,6 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
   const questionOpen = counted !== null && (deleting || asked.length >= 2)
   // While deleting, the question holds its count rather than counting down.
   const shownCount = deleting && counted ? counted.length : asked.length
-
-  useEffect(() => {
-    if (questionOpen) keepRef.current?.focus()
-  }, [questionOpen])
 
   useEffect(() => {
     if (focusMessage.current && message) {
@@ -279,8 +287,10 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
     if (confirming !== id) {
       setCounted(null)
       setConfirming(id)
+      armedAt.current = performance.now()
       return
     }
+    if (performance.now() - armedAt.current < DOUBLE_CLICK_MS) return
     setConfirming(null)
     setTakes(await bridge().discardTake(id))
   }
@@ -349,28 +359,14 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
         )}
       </div>
       {questionOpen && counted && (
-        <div
-          className="waiting-confirm"
+        <AskFirst
           id="discard-all-confirm"
-          role="group"
-          aria-labelledby="discard-all-question"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' && !deleting) {
-              e.stopPropagation()
-              keepAll()
-            }
-          }}
-        >
-          <p id="discard-all-question">{discardAllQuestion(shownCount)}</p>
-          <span className="waiting-confirm-actions">
-            <button ref={keepRef} className="btn quiet-btn" disabled={busy !== null} onClick={keepAll}>
-              keep them
-            </button>
-            <button className="btn btn-remove" disabled={busy !== null} onClick={() => void discardAll(asked)}>
-              {deleting ? 'discarding' : `discard ${shownCount}`}
-            </button>
-          </span>
-        </div>
+          question={discardAllQuestion(shownCount)}
+          confirm={deleting ? 'discarding' : `discard ${shownCount}`}
+          busy={busy !== null}
+          onConfirm={() => void discardAll(asked)}
+          onKeep={keepAll}
+        />
       )}
       {takes.length > 0 && (
         <p className="dim waiting-intro">
@@ -392,7 +388,19 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
                 <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry([take.id])}>
                   {busy === take.id ? 'retrying' : 'retry'}
                 </button>
-                <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void discard(take.id)}>
+                <button
+                  className={`btn ${confirming === take.id ? 'danger-btn' : 'quiet-btn'}`}
+                  disabled={busy !== null}
+                  // The second click of a double click never answers
+                  // delete audio?, and neither does a held Enter.
+                  onClick={(e) => {
+                    if (e.detail > 1 && confirming === take.id) return
+                    void discard(take.id)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.repeat) e.preventDefault()
+                  }}
+                >
                   {confirming === take.id ? 'delete audio?' : 'discard'}
                 </button>
               </span>
@@ -415,6 +423,63 @@ export function HomeView(props: {
   const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  // Clear all asks first (US-099): the whole log's count while the
+  // question is open, null while it is closed.
+  const [clearAsk, setClearAsk] = useState<number | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const [cleared, setCleared] = useState<string | null>(null)
+  const clearRef = useRef<HTMLButtonElement>(null)
+  const clearedRef = useRef<HTMLParagraphElement>(null)
+  // While the count is on its way, and when the question opened: a
+  // second click of a double click never closes it again.
+  const counting = useRef(false)
+  const askedAt = useRef(0)
+  useEffect(() => {
+    if (cleared) clearedRef.current?.focus()
+  }, [cleared])
+  const askClear = (): void => {
+    if (counting.current) return
+    if (clearAsk !== null) {
+      if (performance.now() - askedAt.current >= DOUBLE_CLICK_MS) setClearAsk(null)
+      return
+    }
+    setCleared(null)
+    counting.current = true
+    void bridge()
+      .countHistory()
+      .then(async (count) => {
+        if (count > 0) {
+          askedAt.current = performance.now()
+          setClearAsk(count)
+          return
+        }
+        // Retention already emptied it: show that instead of asking.
+        setEvents(await bridge().listHistory())
+      })
+      .catch((error: unknown) => console.error('[murmur] could not count history:', error))
+      .finally(() => {
+        counting.current = false
+      })
+  }
+  const keepHistory = (): void => {
+    setClearAsk(null)
+    clearRef.current?.focus()
+  }
+  const clearAll = async (): Promise<void> => {
+    setClearing(true)
+    try {
+      const removed = await bridge().clearHistory()
+      setEvents([])
+      window.dispatchEvent(new Event(HISTORY_CLEARED))
+      setCleared(removed === 1 ? 'Cleared 1 entry.' : `Cleared ${removed.toLocaleString()} entries.`)
+    } catch (error) {
+      console.error('[murmur] clear all failed:', error)
+      setCleared('Could not clear your history. Try again in a moment.')
+    } finally {
+      setClearing(false)
+      setClearAsk(null)
+    }
+  }
   const typingWpm = props.settings.timeBack.typingWpm
   const today = useToday()
 
@@ -429,6 +494,9 @@ export function HomeView(props: {
     // handler so a long-running hidden window never accumulates state.
     return bridge().onHistoryAppended((event) => {
       setEvents((prev) => [...prev, event].slice(-500))
+      // Clear all clears what lands while it asks too, so it counts it.
+      setClearAsk((count) => (count === null ? count : count + 1))
+      setCleared(null)
     })
   }, [])
 
@@ -540,7 +608,7 @@ export function HomeView(props: {
         </section>
       ))}
 
-      {events.length > 0 && (
+      {(events.length > 0 || cleared) && (
         <section className="panel">
           <p className="micro-label">retention</p>
           <div className="row">
@@ -564,20 +632,32 @@ export function HomeView(props: {
                 <option value={0}>forever</option>
               </select>
               <button
+                ref={clearRef}
                 className="btn quiet-btn"
-                onClick={() =>
-                  void bridge()
-                    .clearHistory()
-                    .then((list) => {
-                      setEvents(list)
-                      window.dispatchEvent(new Event(HISTORY_CLEARED))
-                    })
-                }
+                disabled={clearing || events.length === 0}
+                aria-expanded={clearAsk !== null}
+                aria-controls={clearAsk !== null ? 'clear-all-confirm' : undefined}
+                onClick={askClear}
               >
                 Clear all
               </button>
             </div>
           </div>
+          {clearAsk !== null && (
+            <AskFirst
+              id="clear-all-confirm"
+              question={clearAllQuestion(clearAsk)}
+              confirm={clearing ? 'clearing' : `clear ${clearAsk.toLocaleString()}`}
+              keep={clearAsk === 1 ? 'keep it' : undefined}
+              busy={clearing}
+              onConfirm={() => void clearAll()}
+              onKeep={keepHistory}
+            />
+          )}
+          {/* Always mounted, so screen readers hear the result. */}
+          <p className={cleared ? 'waiting-message' : 'visually-hidden'} ref={clearedRef} tabIndex={-1} role="status">
+            {cleared}
+          </p>
         </section>
       )}
     </div>

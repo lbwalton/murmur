@@ -20,7 +20,7 @@ Settings most people never touch sit under a fold at the bottom of their section
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. Clear all wipes the log instantly. Nothing about your history is ever uploaded anywhere.
+History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. **Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
 
 ## What happens on first launch?
 

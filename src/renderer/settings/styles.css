@@ -374,16 +374,16 @@ body {
   margin-left: 0;
 }
 
-/* Discard all while its question is open. */
-.waiting-head .btn[aria-expanded='true'] {
+/* Discard all and Clear all while their question is open. */
+.btn.quiet-btn[aria-controls$='-confirm'][aria-expanded='true'] {
   color: var(--text);
   border-color: var(--cream-25);
 }
 
-/* Discard all asks in place (US-096): the count in words, keep them
-   first and focused, and the deleting button styled like every other
-   remove in the window (red only on hover). */
-.waiting-confirm {
+/* Asking before a delete (US-096, US-099): the count in words, keep
+   them first and focused, and the deleting button in red, the one use
+   of red beside recording and errors (LaBroi, 2026-10-08). */
+.ask-first {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -397,21 +397,31 @@ body {
   animation: confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-.waiting-confirm p {
+.ask-first p {
   flex: 1 1 260px;
   margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
 }
 
-.waiting-confirm-actions {
+.ask-first-actions {
   display: flex;
   gap: 8px;
 }
 
-.waiting-confirm .btn {
+.ask-first .btn {
   padding: 3px 10px;
   font-size: 11px;
+}
+
+.btn.danger-btn {
+  color: var(--red);
+  border-color: var(--red-edge);
+}
+
+.btn.danger-btn:hover:not(:disabled) {
+  border-color: var(--red-soft);
+  background: var(--red-wash);
 }
 
 .waiting-message:focus {
@@ -432,7 +442,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .waiting-confirm {
+  .ask-first {
     animation-name: confirm-fade;
   }
 }

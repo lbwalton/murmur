@@ -23,9 +23,10 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
+- [ ] US-099 deleting asks first, in red (built 2026-10-08; ships in v0.1.9). (1) On the home tab, scroll to the bottom and click Clear all. (2) A question appears with your real count, for example Clear all 1,204 entries from your history?, keep them selected, and a red clear button. (3) Press Escape (or click keep them): nothing is deleted. Do not click the red button unless you want your history gone. (4) If recordings are waiting to retry, click discard on one: it turns red and says delete audio?; a quick double click never deletes.
 - [x] US-097 the header stays at the top: live-verified 2026-10-08 (LaBroi: everything is great here).
 - [x] US-096 discard all: live-verified 2026-10-08 (LaBroi: everything is great here).
-- [ ] Decide (US-096 review, 2026-10-07): (a) the discard button in that question is grey until you point at it, like every remove button in murmur, because the design rules keep red for recording and errors; say if you want it red all the time. (b) Clear all at the bottom of Home empties your whole history with no question at all; Claude recommends giving it the same ask-first question with the count.
+- [x] Decided 2026-10-08 (US-096 review): the button that confirms a delete is red all the time, and Clear all asks first with the count. Built as US-099.
 - [ ] US-095 the founder practices (built 2026-10-07; practice belt, gates, and draw-on confirmed 2026-10-08; only step 5, a real promotion, remains). (1) Open murmur and click journey. (2) Under lvl. 1 at the top, a small white belt with stripes and the words practice white belt, then your stripes: that is the belt your words and days have earned. (3) Below the road: words and days on the mat, each with a painted bar, counting toward your next stripe. (4) Dictate a few sentences, then open journey again: only the new part of the words bar draws itself on. (5) When you earn your next stripe, the new tape drops onto the small practice belt; at blue belt, the big blue ceremony plays.
 - [x] US-093 level note: live-verified 2026-10-08 (LaBroi: everything is great here).
 - [x] US-094 the wall remembers its period: live-verified 2026-10-08 (LaBroi: everything is great here).

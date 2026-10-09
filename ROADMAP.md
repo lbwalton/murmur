@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (79/98 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (79/99 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -94,6 +94,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-065** One Mac download for every Mac, Intel included
 - [ ] **US-067** murmur's permissions cannot be borrowed by launching it as Node
 - [ ] **US-095** The founder practices: gates, practice belt, and promotions
+- [ ] **US-099** Deleting asks first, in red
 
 ## To do
 

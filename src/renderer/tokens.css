@@ -2,7 +2,8 @@
 /* Night studio, the single source of color and type. Every renderer
    stylesheet consumes these tokens; raw hex anywhere else fails the
    design lint (scripts/check-design.js). Amber is reserved for live and
-   active states, red for record and error. The waveform pill is the one
+   active states, red for record, error, and the button that confirms a
+   delete. The waveform pill is the one
    loud element; everything else stays quiet. */
 :root {
   /* ground */

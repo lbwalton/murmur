@@ -200,14 +200,25 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
 
   ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
+  // Every entry in the log, for Clear all's question (US-099): the list
+  // above stops at the newest 500.
+  const historyCount = (): number => log?.readAll().length ?? 0
+  ipcMain.handle('history:count', () => historyCount())
+  // Answers with how many entries it removed, for Home's Cleared N line.
   ipcMain.handle('history:clear', async () => {
+    const removed = historyCount()
     log?.clear()
     memoryOnly = null
     // Clear all forgets the last note's record too (LaBroi, 2026-10-02);
-    // the note file itself stays where it landed.
-    const { forgetLastNote } = await import('../notes/receipt')
-    forgetLastNote()
-    return []
+    // the note file itself stays where it landed. The log is already
+    // empty here, so a failure to forget is logged, not reported.
+    try {
+      const { forgetLastNote } = await import('../notes/receipt')
+      forgetLastNote()
+    } catch (error) {
+      console.error('[murmur] clear all could not forget the last note:', error)
+    }
+    return removed
   })
 
   // Belt progression: computed in main from the log. The founder marker
@@ -351,9 +362,12 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       words: 3,
       wpm: 45
     }
+    // Clear all's question counts the whole log, past the list's 500,
+    // and the count grows with each entry.
+    const before = historyCount()
     log.append(probe)
     const events = log.readAll()
-    return events.some((e) => e.rawText === 'smoke history probe')
+    return events.some((e) => e.rawText === 'smoke history probe') && historyCount() === before + 1
   })
 
   registerSmokeCheck('analytics', async () => {
