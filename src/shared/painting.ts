@@ -67,7 +67,7 @@ export interface PaintingRecord {
   target: number
   /** How rich the brushwork is (0 white belt to 4 black belt and up). */
   tier: number
-  /** The level, which adds a small flourish or two. */
+  /** The level, which adds a bird or two. */
   level: number
   /** Each take's word count, in the order spoken. Never its text. */
   words: number[]

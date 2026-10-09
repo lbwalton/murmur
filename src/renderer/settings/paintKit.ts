@@ -10,12 +10,12 @@ export type Tone = 'ink' | 'soft' | 'wash' | 'accent' | 'gold'
 export type Pt = [number, number]
 
 export type Mark =
-  | { kind: 'stroke'; pts: Pt[]; w: number; tone: Tone; dry: number; shape?: 'leaf' | 'stalk'; alpha?: number }
+  | { kind: 'stroke'; pts: Pt[]; w: number; tone: Tone; dry: number; shape?: 'leaf' | 'stalk'; alpha?: number; bird?: true }
   | { kind: 'blossom'; x: number; y: number; r: number }
   | { kind: 'bud'; x: number; y: number; r: number; tone?: Tone }
   | { kind: 'fill'; pts: Pt[]; depth: number; tone: Tone; alpha: number }
   /** A closed shape filled flat: a lotus pad, a rock, a cliff. */
-  | { kind: 'blot'; pts: Pt[]; tone: Tone; alpha: number }
+  | { kind: 'blot'; pts: Pt[]; tone: Tone; alpha: number; fade?: boolean }
   | { kind: 'needles'; x: number; y: number; r: number; lean: number }
   | { kind: 'splat'; x: number; y: number; r: number; dir: number | null; tone: Tone; count: number }
 

@@ -4,7 +4,7 @@ All user-facing changes, newest first, in plain language. Each release's section
 
 ## 0.1.10 (unreleased)
 
-- A painting a day: the wrap-up tab sets out a painting each day, one of fourteen subjects (bamboo, a lotus pond, a waterfall, a breaking wave, snowfall, and more), and every take adds its next brush stroke. It is sized to your typical day, finishes with murmur's seal, grows richer with your belt, keeps the days before in a strip, and saves as a portrait card to post.
+- A painting a day: the wrap-up tab sets out a painting each day, one of fourteen subjects (bamboo, a lotus pond, a waterfall, a breaking wave, snowfall, and more), and every take adds its next brush stroke. It is sized to your typical day, finishes with murmur's seal and keeps taking a small stroke with every take after, grows richer with your belt, keeps the days before in a strip you can open, and saves as a portrait card to post.
 
 ## 0.1.9 (2026-10-08)
 

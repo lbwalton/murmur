@@ -19,6 +19,9 @@ import { formatDuration } from '../../shared/time'
 import { type Gesture, type Mark, type Pt, type Tone, TAU, allocate, clusterFor } from './paintKit'
 import { LAYERS } from './paintSubjects'
 
+/** The margin a painting keeps inside its frame, as a share of each side. */
+const MAT_SHARE = 0.05
+
 export { allocate, clusterFor } from './paintKit'
 export type { Gesture, Mark, Tone } from './paintKit'
 
@@ -40,7 +43,7 @@ export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | '
     tier >= 2 ? [{ kind: 'splat', x, y, r: 0.008 + tier * 0.004, dir: rng() * TAU, tone, count: 4 + (tier - 2) * 6 }] : []
   const layers = LAYERS[record.subject]({ rng, rnd, tier, c, wash, spatter, target: record.target })
   const counts = allocate(record.target, layers)
-  const plan = layers.flatMap((layer, i) => (counts[i] > 0 ? layer.make(counts[i]) : []))
+  const plan = layers.flatMap((layer, i) => (counts[i] > 0 ? layer.make(counts[i]) : [])).map((g) => g.map(settle))
   // Levels add birds to the last stroke: one at level two, two from three.
   const birds = Math.min(2, Math.max(0, record.level - 1))
   if (plan.length > 0 && birds > 0) {
@@ -57,11 +60,57 @@ export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | '
         ],
         w: 0.0035,
         tone: 'ink',
-        dry: 0.3
+        dry: 0.3,
+        bird: true
       })
     }
   }
   return plan
+}
+
+/** Points at or past these lines are anchored to the frame's edge: the
+ *  sides, and the ground along the bottom (stalks and reeds rise from it). */
+const EDGE_LO = 0.005
+const EDGE_HI = 0.995
+const GROUND = 0.985
+/** How far an anchored point moves out so it reaches through the margin
+ *  to the canvas edge (the margin scales the ground by 1 - 2 MAT). */
+const BLEED = MAT_SHARE / (1 - 2 * MAT_SHARE)
+
+/**
+ * Settles a mark in the frame. Ground, cliffs, and limbs that start at
+ * the frame's edge are pushed out through the margin, so they still run
+ * off the painting; plants and other marks that poke past the frame are
+ * slid back inside it, so a leaf or a blossom is never lost off the
+ * edge and every take paints something you can see.
+ */
+function settle(m: Mark): Mark {
+  if (m.kind === 'splat') return m
+  if ('pts' in m) {
+    const anchored = m.pts.some(([x, y]) => x <= EDGE_LO || x >= EDGE_HI || y >= GROUND)
+    if (anchored || (m.kind === 'stroke' && m.tone === 'wash')) {
+      return {
+        ...m,
+        pts: m.pts.map(([x, y]): Pt => [x <= EDGE_LO ? x - BLEED : x >= EDGE_HI ? x + BLEED : x, y >= GROUND ? y + BLEED : y])
+      }
+    }
+    const xs = m.pts.map((p) => p[0])
+    const ys = m.pts.map((p) => p[1])
+    const dx = inside(Math.min(...xs), Math.max(...xs))
+    const dy = inside(Math.min(...ys), Math.max(...ys))
+    return dx === 0 && dy === 0 ? m : { ...m, pts: m.pts.map(([x, y]): Pt => [x + dx, y + dy]) }
+  }
+  const pad = m.kind === 'needles' ? m.r : m.r * 1.6
+  return { ...m, x: m.x + inside(m.x - pad, m.x + pad), y: m.y + inside(m.y - pad, m.y + pad) }
+}
+
+/** The shift that brings the span lo to hi inside 0.03 to 0.97 (none if
+ *  it already fits, or cannot). */
+function inside(lo: number, hi: number): number {
+  if (hi - lo > 0.94) return 0
+  if (lo < 0.03) return 0.03 - lo
+  if (hi > 0.97) return 0.97 - hi
+  return 0
 }
 
 // ------------------------------------------------------------ paint ---
@@ -127,7 +176,17 @@ function paintMark(ctx: CanvasRenderingContext2D, m: Mark, w: number, h: number,
     return
   }
   if (m.kind === 'blot') {
-    ctx.fillStyle = rgba(toneColor(m.tone, c), m.alpha * k)
+    if (m.fade) {
+      // A wash that thins downward, like ink on a rock face.
+      const top = Math.min(...m.pts.map((p) => p[1])) * h
+      const bottom = Math.max(...m.pts.map((p) => p[1])) * h
+      const grad = ctx.createLinearGradient(0, top, 0, bottom)
+      grad.addColorStop(0, rgba(toneColor(m.tone, c), m.alpha * k))
+      grad.addColorStop(1, rgba(toneColor(m.tone, c), m.alpha * k * 0.2))
+      ctx.fillStyle = grad
+    } else {
+      ctx.fillStyle = rgba(toneColor(m.tone, c), m.alpha * k)
+    }
     ctx.beginPath()
     m.pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x * w, y * h) : ctx.lineTo(x * w, y * h)))
     ctx.closePath()
@@ -136,8 +195,11 @@ function paintMark(ctx: CanvasRenderingContext2D, m: Mark, w: number, h: number,
   }
   if (m.kind === 'fill') {
     // A wash under a ridgeline, fading down: the body of a range of hills.
+    // It thins to nothing at both ends, so a range never ends in a box.
+    const n = m.pts.length
+    const under = m.pts.map(([x, y], i): Pt => [x, y + m.depth * Math.sin((Math.PI * i) / Math.max(1, n - 1))])
     const top = Math.min(...m.pts.map((p) => p[1])) * h
-    const bottom = (Math.max(...m.pts.map((p) => p[1])) + m.depth) * h
+    const bottom = Math.max(...under.map((p) => p[1])) * h
     const grad = ctx.createLinearGradient(0, top, 0, bottom)
     const rgb = toneColor(m.tone, c)
     grad.addColorStop(0, rgba(rgb, m.alpha * k))
@@ -145,8 +207,7 @@ function paintMark(ctx: CanvasRenderingContext2D, m: Mark, w: number, h: number,
     ctx.fillStyle = grad
     ctx.beginPath()
     m.pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x * w, y * h) : ctx.lineTo(x * w, y * h)))
-    ctx.lineTo(m.pts[m.pts.length - 1][0] * w, bottom)
-    ctx.lineTo(m.pts[0][0] * w, bottom)
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(under[i][0] * w, under[i][1] * h)
     ctx.closePath()
     ctx.fill()
     return
@@ -232,19 +293,78 @@ export function paintPainting(
 ): void {
   ctx.fillStyle = rgba(c.ground)
   ctx.fillRect(0, 0, w, h)
-  const done = Math.min(opts.done, plan.length)
+  // The painting keeps a margin inside its frame, like paper on a mat,
+  // so a leaf or a ridge never runs off the edge.
+  ctx.save()
+  ctx.translate(w * MAT, h * MAT)
+  ctx.scale(1 - MAT * 2, 1 - MAT * 2)
+  const done = Math.min(opts.done, plan.length + MAX_FLOURISHES)
   for (let g = 0; g < done; g++) {
     const k = g === done - 1 && opts.live !== undefined ? opts.live : 1
-    const marks = plan[g]
+    const marks = g < plan.length ? plan[g] : flourish(plan, opts.seed, g - plan.length)
     const weight = strokeWeight(words[g])
     marks.forEach((m, j) => paintMark(ctx, m, w, h, weight, clamp(k * marks.length - j, 0, 1), c, opts.seed + g * 13 + j))
   }
+  ctx.restore()
   if (opts.seal && opts.seal > 0) paintSeal(ctx, w, h, opts.seal, c)
+}
+
+/** The margin a painting keeps inside its frame, as a share of each side. */
+const MAT = MAT_SHARE
+
+/** Past its size, a finished painting keeps taking strokes, up to this
+ *  many: every take still adds something (LaBroi, 2026-10-09). */
+export const MAX_FLOURISHES = 24
+
+/** A small mark worth echoing: a leaf, a petal, a ripple, a dot; never a
+ *  wash, a big shape, or a level's bird. */
+function isSmall(m: Mark): boolean {
+  if (m.kind === 'stroke') {
+    if (m.tone === 'wash' || m.bird) return false
+    const xs = m.pts.map((p) => p[0])
+    const ys = m.pts.map((p) => p[1])
+    return Math.max(...xs) - Math.min(...xs) < 0.2 && Math.max(...ys) - Math.min(...ys) < 0.2
+  }
+  return m.kind === 'blossom' || m.kind === 'bud' || m.kind === 'needles'
+}
+
+/** A mark nudged by (dx, dy), kept inside the frame. */
+function nudge(m: Mark, dx: number, dy: number): Mark {
+  const x = (v: number): number => clamp(v + dx, 0.02, 0.98)
+  const y = (v: number): number => clamp(v + dy, 0.02, 0.98)
+  if ('pts' in m) return { ...m, pts: m.pts.map(([px, py]): Pt => [x(px), y(py)]) }
+  return { ...m, x: x(m.x), y: y(m.y) }
+}
+
+/**
+ * The stroke a finished painting takes past its size: a near copy of one
+ * of its small marks from the later half (its leaves, petals, ripples,
+ * needles, snow), nudged a little. Seeded by its place, so it stays put.
+ */
+export function flourish(plan: readonly Gesture[], seed: number, index: number): Gesture {
+  const rng = mulberry((seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0)
+  const small = plan.slice(Math.floor(plan.length / 2)).flat().filter(isSmall)
+  if (small.length === 0) return [{ kind: 'bud', x: 0.2 + rng() * 0.6, y: 0.2 + rng() * 0.6, r: 0.004, tone: 'soft' }]
+  const echo = small[Math.floor(rng() * small.length)]
+  const at: [number, number] = [(rng() - 0.5) * 0.1, (rng() - 0.5) * 0.08]
+  // A mark too small to see alone (a flake, a dot) comes as a little cluster.
+  const tiny = echo.kind === 'bud' || ('pts' in echo && spanOf(echo.pts) < 0.012)
+  if (!tiny) return [nudge(echo, at[0], at[1])]
+  return Array.from({ length: 3 + Math.floor(rng() * 3) }, () => nudge(echo, at[0] + (rng() - 0.5) * 0.05, at[1] + (rng() - 0.5) * 0.04))
+}
+
+/** The larger of a point list's width and height. */
+function spanOf(pts: readonly Pt[]): number {
+  const xs = pts.map((p) => p[0])
+  const ys = pts.map((p) => p[1])
+  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
 }
 
 /** What the painting is called so far: the subject stays a surprise
  *  for its first two strokes. */
 export function paintingCaption(subject: SubjectId, done: number, target: number): string {
+  const more = done - target
+  if (more > 0) return `${SUBJECT_NAMES[subject]}, finished, and ${more} ${more === 1 ? 'stroke' : 'strokes'} more`
   if (done >= target) return `${SUBJECT_NAMES[subject]}, finished`
   const so = `${done} of ${target} strokes`
   return done < 3 ? `a painting, ${so}` : `${SUBJECT_NAMES[subject]}, ${so}`

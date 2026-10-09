@@ -111,7 +111,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
     const stalks = k.target <= 8 ? 1 : 1 + Math.floor(k.rng() * 3)
     const left = k.rnd(0.18, 0.45)
     const xs = Array.from({ length: stalks }, (_, i) => (stalks === 1 ? k.rnd(0.3, 0.7) : left + i * k.rnd(0.12, 0.22)))
-    const tops = xs.map(() => k.rnd(0.04, 0.24))
+    const tops = xs.map(() => k.rnd(0.16, 0.3))
     const leans = xs.map(() => k.rnd(-0.03, 0.03))
     /** Joints painted so far, bottom to top, where branches start. */
     const joints: Pt[] = []
@@ -212,7 +212,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
             const a = Math.floor((i * (limb.length - 1)) / n)
             const b = Math.max(a + 1, Math.floor(((i + 1) * (limb.length - 1)) / n))
             const pts = limb.slice(a, b + 1)
-            along.push(...pts)
+            along.push(...pts.filter(([x]) => x > 0.06 && x < 0.94))
             return [
               ...(k.tier >= 1 ? [k.wash(pts.map(([x, y]): Pt => [x, y + 0.02]), 0.04)] : []),
               { kind: 'stroke', pts, w: 0.046 - i * 0.008, tone: 'ink', dry: 0.58 }
@@ -470,7 +470,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           Array.from({ length: n }, (_, i): Gesture => {
             if (i === 0) {
               return [
-                { kind: 'blot', pts: cliff, tone: 'soft', alpha: 0.32 + k.tier * 0.06 },
+                { kind: 'blot', pts: cliff, tone: 'soft', alpha: 0.32 + k.tier * 0.06, fade: true },
                 ...(k.tier >= 1 ? [k.wash(cliff.slice(0, 4), 0.03)] : []),
                 { kind: 'stroke', pts: cliff.slice(0, 4), w: 0.02, tone: 'ink', dry: 0.6 }
               ]
@@ -829,7 +829,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
             const side = i % 2 === 0 ? left : right
             if (i < 2) {
               return [
-                { kind: 'blot', pts: side, tone: 'soft', alpha: 0.26 + k.tier * 0.06 },
+                { kind: 'blot', pts: side, tone: 'soft', alpha: 0.3 + k.tier * 0.06, fade: true },
                 ...(k.tier >= 1 ? [k.wash(side.slice(1, 8), 0.03)] : []),
                 { kind: 'stroke', pts: side.slice(1, 8), w: 0.016, tone: 'ink', dry: 0.65 }
               ]

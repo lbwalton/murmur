@@ -2,7 +2,7 @@
 // The wrap-up: today's dictation in one quiet page. The recap
 // notification lands here. The day is a painting (US-098): every take
 // adds its next stroke, and the newest paints itself in.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
 import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, shiftDay } from '../../shared/painting'
@@ -18,6 +18,7 @@ import { EmptyState } from './EmptyState'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
   CARD,
+  MAX_FLOURISHES,
   type PaintingColors,
   paintPainting,
   paintPaintingCard,
@@ -53,33 +54,153 @@ function colorsNow(): PaintingColors {
   return paintingColors(tokenColor('--panel', [23, 22, 27]), c.rice, c.ember, c.gold)
 }
 
-/** An earlier day's painting in the strip, finished or not, still. */
-function PastPainting(props: { day: string; today: string; record: PaintingRecord; colors: PaintingColors }): React.JSX.Element {
+/** How far a painting has got: its strokes so far (past its size, the
+ *  small strokes a finished painting keeps taking) and whether it is
+ *  finished. */
+function progressOf(record: PaintingRecord): { done: number; finished: boolean } {
+  return { done: Math.min(record.words.length, record.target + MAX_FLOURISHES), finished: record.words.length >= record.target }
+}
+
+/** A day's key as words: Friday, October 9. */
+function longDate(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+/**
+ * Saves a day's portrait card (1080 by 1350): the painting as it stands,
+ * its name, how far it got, the date, and the wordmark. Drawn and saved
+ * here, nothing sent. True when it was saved.
+ */
+async function saveDayCard(day: string, record: PaintingRecord, colors: PaintingColors, longestMs: number | null): Promise<boolean> {
+  const { subject, seed, target, tier, level } = record
+  const plan = planPainting({ subject, seed, target, tier, level })
+  const { done, finished } = progressOf(record)
+  const hasFace = await loadDisplayFace()
+  const canvas = document.createElement('canvas')
+  canvas.width = CARD.W * 2
+  canvas.height = CARD.H * 2
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return false
+  ctx.setTransform(2, 0, 0, 2, 0, 0)
+  const css = getComputedStyle(document.documentElement)
+  const body = css.getPropertyValue('--font-body').trim() || 'sans-serif'
+  const fonts = {
+    display: hasFace ? `"${DISPLAY}", ${body}` : `"Arial Narrow", "Helvetica Neue", ${body}`,
+    body,
+    mono: css.getPropertyValue('--font-mono').trim() || 'monospace'
+  }
+  const c = journeyColors(BELT_HEX)
+  const more = done - target
+  paintPaintingCard(
+    ctx,
+    plan,
+    record.words,
+    colors,
+    { text: c.text, dim: c.dim },
+    fonts,
+    {
+      date: longDate(day),
+      // The subject stays a surprise until its third stroke here too.
+      title: done < 3 ? 'a painting' : SUBJECT_NAMES[subject],
+      caption: finished
+        ? `finished in ${target} strokes${more > 0 ? `, and ${more} more` : ''}`
+        : `${done} of ${target} strokes so far`,
+      line: finished ? paintingLine(record.words, longestMs) : null
+    },
+    { done, finished, seed }
+  )
+  return bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', day)
+}
+
+/** An earlier day's painting, opened large from the strip, with its own
+ *  Save card. A modal dialog: Escape or Close returns to the strip. */
+function PaintingViewer(props: { day: string; record: PaintingRecord; colors: PaintingColors; onClose: () => void }): React.JSX.Element {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const [returnTo] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null))
+  const [status, setStatus] = useState('')
   const { subject, seed, target, tier, level } = props.record
   const plan = useMemo(() => planPainting({ subject, seed, target, tier, level }), [subject, seed, target, tier, level])
-  const done = Math.min(props.record.words.length, props.record.target)
+  const { done, finished } = progressOf(props.record)
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+    // Close takes focus, so Enter right after opening never saves.
+    closeRef.current?.focus()
+  }, [])
+  const close = (): void => {
+    dialogRef.current?.close()
+    returnTo?.focus({ preventScroll: true })
+    props.onClose()
+  }
+  const save = async (): Promise<void> => {
+    setStatus('Saving…')
+    const saved = await saveDayCard(props.day, props.record, props.colors, null).catch(() => false)
+    setStatus(saved ? 'Saved.' : '')
+  }
+  return (
+    <dialog
+      ref={dialogRef}
+      className="share-dialog painting-viewer"
+      aria-labelledby="viewer-title"
+      onCancel={(e) => {
+        e.preventDefault()
+        close()
+      }}
+    >
+      <div className="share-head">
+        <h2 id="viewer-title">{longDate(props.day)}</h2>
+        <p className="dim">
+          {paintingCaption(subject, done, target)}. {finished ? paintingLine(props.record.words, null) : 'Kept as it stood that day.'}
+        </p>
+      </div>
+      <PaintCanvas
+        className="viewer-canvas"
+        label={`${longDate(props.day)}: ${paintingCaption(subject, done, target)}`}
+        paintKey={`${props.day}|${done}`}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed })}
+      />
+      <div className="share-actions">
+        <span className="dim" aria-live="polite">
+          {status}
+        </span>
+        <button className="btn" onClick={() => void save()}>
+          Save card
+        </button>
+        <button className="btn quiet-btn" onClick={close} ref={closeRef}>
+          Close
+        </button>
+      </div>
+    </dialog>
+  )
+}
+
+/** An earlier day's painting in the strip, finished or not, still. A
+ *  button: clicking it opens the painting large. */
+function PastPainting(props: { day: string; today: string; record: PaintingRecord; colors: PaintingColors; onOpen: () => void }): React.JSX.Element {
+  const { subject, seed, target, tier, level } = props.record
+  const plan = useMemo(() => planPainting({ subject, seed, target, tier, level }), [subject, seed, target, tier, level])
+  const { done, finished } = progressOf(props.record)
   const [y, m, d] = props.day.split('-').map(Number)
   const date = new Date(y, m - 1, d)
   // Weekdays name the last week; older days get their date, so two
   // Mondays never look alike.
   const recent = props.day >= shiftDay(props.today, -6)
   const weekday = date.toLocaleDateString([], recent ? { weekday: 'short' } : { month: 'short', day: 'numeric' })
-  const caption = done >= props.record.target ? SUBJECT_NAMES[props.record.subject] : `${done} of ${props.record.target}`
+  const caption = finished ? SUBJECT_NAMES[props.record.subject] : `${done} of ${props.record.target}`
   return (
-    <div className="past-painting">
+    <button type="button" className="past-painting" onClick={props.onOpen} aria-label={`${weekday}: ${paintingCaption(subject, done, target)}. Open it large.`}>
       <PaintCanvas
         className="past-canvas"
-        label={`${weekday}: ${paintingCaption(props.record.subject, done, props.record.target)}`}
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) =>
-          paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: done >= props.record.target ? 1 : 0, seed: props.record.seed })
-        }
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed })}
       />
       <span className="past-day">{weekday}</span>
       <span className="past-caption dim" title={caption}>
         {caption}
       </span>
-    </div>
+    </button>
   )
 }
 
@@ -131,13 +252,20 @@ export function WrapUpView(props: {
 
   const record: PaintingRecord | null = book[today] ?? null
   const plan = useMemo(() => (record ? planPainting(record) : []), [record?.subject, record?.seed, record?.target, record?.tier, record?.level])
-  const done = record ? Math.min(record.words.length, record.target) : 0
-  const finished = record !== null && done >= record.target
+  const { done, finished } = record ? progressOf(record) : { done: 0, finished: false }
+  // The painting open in the viewer, kept as it was opened, so a reload
+  // underneath never pulls it away.
+  const [viewing, setViewing] = useState<{ day: string; record: PaintingRecord } | null>(null)
   const longest = events.reduce((ms, e) => Math.max(ms, e.durationMs), 0)
   // The newest stroke paints in when it is new since the last look; the
   // seal stamps in with the stroke that finishes the painting.
   const seenNow = `${today}|${done}`
-  const fresh = useMemo(() => record !== null && readSeen() !== seenNow, [seenNow, record !== null])
+  // What the last look showed today, read before this look is remembered:
+  // the newest stroke paints in when it is new, and the seal stamps in
+  // when the painting finished since then, however many strokes ago.
+  const before = useMemo(() => readSeen(), [seenNow, record !== null])
+  const fresh = record !== null && before !== seenNow
+  const doneBefore = before?.startsWith(`${today}|`) ? Number(before.split('|')[1]) || 0 : 0
   useEffect(() => {
     if (record) rememberSeen(seenNow)
   }, [seenNow, record !== null])
@@ -152,45 +280,9 @@ export function WrapUpView(props: {
     window.setTimeout(() => setNote(''), 1500)
   }
 
-  // The saved card: the painting as it stands, portrait, 1080 by 1350,
-  // with its name, the date, and the wordmark. Drawn and saved here.
   const saveCard = async (): Promise<void> => {
     if (!record) return
-    const hasFace = await loadDisplayFace()
-    const canvas = document.createElement('canvas')
-    canvas.width = CARD.W * 2
-    canvas.height = CARD.H * 2
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.setTransform(2, 0, 0, 2, 0, 0)
-    const css = getComputedStyle(document.documentElement)
-    const body = css.getPropertyValue('--font-body').trim() || 'sans-serif'
-    const fonts = {
-      display: hasFace ? `"${DISPLAY}", ${body}` : `"Arial Narrow", "Helvetica Neue", ${body}`,
-      body,
-      mono: css.getPropertyValue('--font-mono').trim() || 'monospace'
-    }
-    const [y, m, d] = today.split('-').map(Number)
-    const date = new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
-    const c = journeyColors(BELT_HEX)
-    paintPaintingCard(
-      ctx,
-      plan,
-      record.words,
-      colors,
-      { text: c.text, dim: c.dim },
-      fonts,
-      {
-        date,
-        // The subject stays a surprise until its third stroke here too.
-        title: done < 3 ? 'a painting' : SUBJECT_NAMES[record.subject],
-        caption: finished ? `finished in ${record.target} strokes` : `${done} of ${record.target} strokes so far`,
-        line: finished ? paintingLine(record.words, longest) : null
-      },
-      { done, finished, seed: record.seed }
-    )
-    const saved = await bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', today)
-    if (saved) {
+    if (await saveDayCard(today, record, colors, longest).catch(() => false)) {
       setNote('Saved.')
       window.setTimeout(() => setNote(''), 1500)
     }
@@ -214,7 +306,8 @@ export function WrapUpView(props: {
               paintPainting(ctx, w, h, plan, record.words, colors, {
                 done,
                 live: fresh ? Math.min(1, k * 1.25) : undefined,
-                seal: finished ? (fresh ? Math.max(0, k * 4 - 3) : 1) : 0,
+                // The seal stamps in with the stroke that finishes it.
+                seal: finished ? (fresh && doneBefore < record.target ? Math.max(0, k * 4 - 3) : 1) : 0,
                 seed: record.seed
               })
             }
@@ -223,7 +316,7 @@ export function WrapUpView(props: {
             <p className="painting-caption">{paintingCaption(record.subject, done, record.target)}</p>
             <p className="painting-line dim">
               {finished
-                ? paintingLine(record.words, longest)
+                ? `${paintingLine(record.words, longest)}${done < record.target + MAX_FLOURISHES ? ' Every take from here adds one more small stroke.' : ''}`
                 : `Every take adds the next stroke. ${record.target - done} more to finish it.`}
             </p>
           </div>
@@ -256,12 +349,13 @@ export function WrapUpView(props: {
         </p>
       )}
 
+      {viewing && <PaintingViewer day={viewing.day} record={viewing.record} colors={colors} onClose={() => setViewing(null)} />}
       {past.length > 0 && (
         <section className="panel">
           <p className="micro-label">your paintings</p>
           <div className="past-paintings">
             {past.map((day) => (
-              <PastPainting key={day} day={day} today={today} record={book[day]} colors={colors} />
+              <PastPainting key={day} day={day} today={today} record={book[day]} colors={colors} onOpen={() => setViewing({ day, record: book[day] })} />
             ))}
           </div>
         </section>
