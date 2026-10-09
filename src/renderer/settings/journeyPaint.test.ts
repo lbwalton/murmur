@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { ROAD, daysPerMark, drawFrom, rankX, youX } from './journeyPaint'
+import cosmetics from '../../../shared/cosmetics.json'
+import { ROAD, daysPerMark, drawFrom, journeyColors, rankX, sealPaint, youX } from './journeyPaint'
 
 describe('the road', () => {
   const n = 31
@@ -57,5 +58,23 @@ describe('the level note', () => {
       'Level 1. You gain a level for every 100,000 words you dictate, with no days needed. 88,983 more words to reach level 2.'
     )
     expect(levelNote(3, 299_999)).toContain('1 more word to reach level 4.')
+  })
+})
+
+describe('the seal in a belt', () => {
+  const c = journeyColors((cosmetics as { beltColors: Record<string, string> }).beltColors)
+
+  it('is the belt as it reads on the ink: white as rice paper, black lifted off the ink', () => {
+    expect(sealPaint('white', c)).toEqual(c.rice)
+    expect(sealPaint('blue', c)).toEqual(c.belts.blue)
+    expect(sealPaint('red', c)).toEqual(c.belts.red)
+    const black = sealPaint('black', c) as number[]
+    expect(black).not.toEqual(c.belts.black)
+    expect(black[0] + black[1] + black[2]).toBeGreaterThan(c.belts.black[0] + c.belts.black[1] + c.belts.black[2])
+  })
+
+  it('splits the coral belts into their two colors', () => {
+    expect(sealPaint('coral-black', c)).toEqual([c.belts['coral-black'], sealPaint('black', c)])
+    expect(sealPaint('coral-white', c)).toEqual([c.belts['coral-black'], c.rice])
   })
 })

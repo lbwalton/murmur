@@ -179,6 +179,18 @@ describe('the book', () => {
     expect(syncPaintings({}, [take('2026-10-01', 40)], 1, LADDER)['2026-10-01'].rank).toBe('none')
   })
 
+  it('a record from before ranks were kept gets its rank from the log', () => {
+    const big = [take('2026-10-01', 30_000, 9), ...Array.from({ length: 14 }, (_, i) => take(shiftDay('2026-10-02', i), 10, 9))]
+    const book = syncPaintings({}, big, 1, LADDER)
+    const { rank: _a, ...old1 } = book['2026-10-01']
+    const { rank: _b, ...old15 } = book['2026-10-15']
+    const later = syncPaintings({ ...book, '2026-10-01': old1, '2026-10-15': old15 }, big, 1, LADDER)
+    expect(later['2026-10-01'].rank).toBe('white')
+    expect(later['2026-10-15'].rank).toBe('blue')
+    // Without its day in the log, it stays as it was: the ember seal.
+    expect(syncPaintings({ '2026-10-01': old1 }, [], 1, LADDER)['2026-10-01'].rank).toBeUndefined()
+  })
+
   it('keeps KEEP_DAYS calendar days back from the newest, however sparse', () => {
     const many = Array.from({ length: KEEP_DAYS + 20 }, (_, i) => take(shiftDay('2025-01-01', i), 10))
     const book = syncPaintings({}, many, 3, LADDER)

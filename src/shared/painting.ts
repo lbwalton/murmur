@@ -248,21 +248,25 @@ export function syncPaintings(
   days.forEach((day, i) => {
     const logged = byDay.get(day)
     const kept = own(day)
+    const first = firstWords.get(day) ?? 0
+    const rankThen = (): string => practiceRank(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))?.id ?? 'none'
     if (kept) {
-      next.set(day, logged && logged.length >= kept.words.length ? { ...kept, words: [...logged] } : kept)
+      // A record from before ranks were kept gets one while the log still
+      // has its day, so its seal can take the belt's color.
+      const ranked = kept.rank === undefined && logged ? { ...kept, rank: rankThen() } : kept
+      next.set(day, logged && logged.length >= ranked.words.length ? { ...ranked, words: [...logged] } : ranked)
     } else if (logged) {
       const seed = paintingSeed(install, day)
       const target = paintingSize(typicalTakes(byDay, day))
       // A day filled in between kept days (a retried take) is unlike both.
       const after = days.slice(i + 1).map(own).find((r) => r !== null)?.subject ?? null
-      const first = firstWords.get(day) ?? 0
       next.set(day, {
         subject: pickSubject(seed, [before, after], target),
         seed,
         target,
         tier: tierFor(practiceBelt(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))),
         level: levelFor(words + first),
-        rank: practiceRank(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))?.id ?? 'none',
+        rank: rankThen(),
         words: [...logged]
       })
     }

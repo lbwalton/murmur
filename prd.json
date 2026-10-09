@@ -1562,7 +1562,7 @@
       "description": "LaBroi picked it from Claude's ideas for making each painting uniquely yours, 2026-10-09: a finished painting's seal is stamped in the color of the belt it was painted at, so a collection shows how far its painter has come.",
       "acceptance": [
         "A finished painting's seal takes the color of the belt of the rank recorded at the day's first take, as that belt reads on the night ground (white as rice paper, black lifted toward grey so it never vanishes); the ensō stays carved out of it",
-        "Before the first belt, and on records from before ranks were kept, the seal stays ember",
+        "Before the first belt the seal stays ember; a record from before ranks were kept gets its rank from the history log while the log still has its day, and keeps the ember seal after that",
         "The coral belts split the seal in two halves, red and black or red and white, like their alternating blocks",
         "The same seal shows on today's painting, the strip of earlier paintings, the large viewer, and the saved card",
         "docs/settings.md, CHANGELOG.md, DESIGN.md, and CLAUDE.md say it",
@@ -1570,7 +1570,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-10-09 on feature/painting-a-day. sealBelt(rank, ladder) in shared/painting.ts maps a record's rank to its belt (null for none, unknown, or missing); WrapUpView's sealOf maps that to paint with journeyPaint's beltOnInk (coral as two halves); paintSeal takes a SealColor (one color, or two halves clipped to the seal) through paintPainting and paintPaintingCard. Verified: typecheck, tests (sealBelt for every belt on the ladder, ember before the first belt and for older records), lab render of a seal in every belt color including both coral splits."
+      "notes": "Built 2026-10-09 on feature/painting-a-day. sealBelt(rank, ladder) in shared/painting.ts maps a record's rank to its belt (null for none, unknown, or missing); WrapUpView's sealOf maps that to paint with journeyPaint's beltOnInk (coral as two halves); paintSeal takes a SealColor (one color, or two halves clipped to the seal) through paintPainting and paintPaintingCard. Verified: typecheck, tests (sealBelt for every belt on the ladder, ember before the first belt and for older records), lab render of a seal in every belt color including both coral splits. Review gate 2026-10-09: no blockers. Fixed: (1) records made by the earlier test builds had no rank, so every one of LaBroi's paintings would have kept the ember seal; syncPaintings now gives a rankless record the rank its first take was made at while the log has its day (test: two rankless records get white and blue back, and one without its day stays rankless). (2) The HANDOFF step names the practice belt by where it lives, since the founder's header belt is red. (3) The coral seal fills each half side by side under one clip, so neither shows through the other during the stamp. (4) The belt to seal paint mapping moved to journeyPaint's sealPaint, tested: white as rice, black lifted off the ink, red as the red belt, coral as two halves. Verified criterion 4 by the four call sites (today's painting, the strip, the viewer, and saveDayCard into paintPaintingCard all pass sealColor) and by a scratch-profile capture (seeded history, blue at the time) showing blue seals on the strip's finished paintings and in the opened viewer."
     }
   ]
 }

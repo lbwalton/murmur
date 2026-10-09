@@ -44,6 +44,15 @@ export function journeyColors(beltHex: Record<string, string>): JourneyColors {
   }
 }
 
+/** A painting's seal in a belt's paint (US-101): the belt on the ink
+ *  ground, the coral belts as two halves, red and black or red and white,
+ *  like their alternating blocks. */
+export function sealPaint(belt: string, c: JourneyColors): Rgb | readonly [Rgb, Rgb] {
+  if (belt === 'coral-black') return [beltOnInk('coral-black', c), beltOnInk('black', c)]
+  if (belt === 'coral-white') return [beltOnInk('coral-black', c), beltOnInk('white', c)]
+  return beltOnInk(belt, c)
+}
+
 /** A belt's color as paint on the ink ground: the black belt lifts
  *  toward grey so it never vanishes, white reads as rice paper. */
 export function beltOnInk(belt: string, c: JourneyColors): Rgb {

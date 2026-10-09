@@ -274,16 +274,21 @@ export function paintSeal(ctx: CanvasRenderingContext2D, w: number, h: number, k
   const halves = Array.isArray(color[0]) ? (color as readonly [Rgb, Rgb]) : null
   ctx.save()
   ctx.globalAlpha = Math.min(1, k * 1.4)
-  ctx.fillStyle = rgba(halves ? halves[0] : (color as Rgb))
   ctx.beginPath()
   ctx.roundRect(x, y, s, s, s * 0.12)
-  ctx.fill()
   if (halves) {
+    // Each half in its own color, side by side, so neither shows through
+    // the other while the seal stamps in.
     ctx.save()
     ctx.clip()
+    ctx.fillStyle = rgba(halves[0])
+    ctx.fillRect(x, y, s / 2 + 0.5, s)
     ctx.fillStyle = rgba(halves[1])
-    ctx.fillRect(x + s / 2, y, s / 2, s)
+    ctx.fillRect(x + s / 2 + 0.5, y, s / 2, s)
     ctx.restore()
+  } else {
+    ctx.fillStyle = rgba(color as Rgb)
+    ctx.fill()
   }
   ctx.strokeStyle = rgba(c.ground)
   ctx.lineWidth = s * 0.08

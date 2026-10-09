@@ -15,7 +15,7 @@ import type { RankSpec } from '../../shared/ranks'
 import { tokenColor } from '../brush'
 import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
-import { beltOnInk, journeyColors } from './journeyPaint'
+import { journeyColors, sealPaint } from './journeyPaint'
 import { EmptyState } from './EmptyState'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
@@ -87,11 +87,7 @@ function painterOf(record: PaintingRecord): string {
  *  ranks were kept). */
 function sealOf(record: PaintingRecord): SealColor | undefined {
   const belt = sealBelt(record.rank, LADDER)
-  if (!belt) return undefined
-  const c = journeyColors(BELT_HEX)
-  if (belt === 'coral-black') return [beltOnInk('coral-black', c), beltOnInk('black', c)]
-  if (belt === 'coral-white') return [beltOnInk('coral-black', c), beltOnInk('white', c)]
-  return beltOnInk(belt, c)
+  return belt ? sealPaint(belt, journeyColors(BELT_HEX)) : undefined
 }
 
 /** A day's key as words: Friday, October 9. */
