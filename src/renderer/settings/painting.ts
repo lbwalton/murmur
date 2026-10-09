@@ -259,19 +259,32 @@ function paintMark(ctx: CanvasRenderingContext2D, m: Mark, w: number, h: number,
   drawSplat(ctx, sp, toneColor(m.tone, c), k)
 }
 
-/** The seal a finished painting gets: an ember square, the ensō pill
- *  carved out of it. k stamps it in. */
-export function paintSeal(ctx: CanvasRenderingContext2D, w: number, h: number, k: number, c: PaintingColors): void {
+/** A seal's color: one, or two halves for the coral belts, whose blocks
+ *  alternate. */
+export type SealColor = Rgb | readonly [Rgb, Rgb]
+
+/** The seal a finished painting gets: a square in the color of the belt
+ *  it was painted at (ember before the first belt), the ensō pill carved
+ *  out of it. k stamps it in. */
+export function paintSeal(ctx: CanvasRenderingContext2D, w: number, h: number, k: number, c: PaintingColors, color: SealColor = c.accent): void {
   if (k <= 0) return
   const s = w * 0.07 * (0.6 + 0.4 * Math.min(1, k))
   const x = w * 0.9 - s / 2
   const y = h * 0.86 - s / 2
+  const halves = Array.isArray(color[0]) ? (color as readonly [Rgb, Rgb]) : null
   ctx.save()
   ctx.globalAlpha = Math.min(1, k * 1.4)
-  ctx.fillStyle = rgba(c.accent)
+  ctx.fillStyle = rgba(halves ? halves[0] : (color as Rgb))
   ctx.beginPath()
   ctx.roundRect(x, y, s, s, s * 0.12)
   ctx.fill()
+  if (halves) {
+    ctx.save()
+    ctx.clip()
+    ctx.fillStyle = rgba(halves[1])
+    ctx.fillRect(x + s / 2, y, s / 2, s)
+    ctx.restore()
+  }
   ctx.strokeStyle = rgba(c.ground)
   ctx.lineWidth = s * 0.08
   ctx.lineCap = 'round'
@@ -305,7 +318,7 @@ export function paintPainting(
   plan: readonly Gesture[],
   words: readonly number[],
   c: PaintingColors,
-  opts: { done: number; live?: number; seal?: number; seed: number; ground?: boolean }
+  opts: { done: number; live?: number; seal?: number; seed: number; ground?: boolean; sealColor?: SealColor }
 ): void {
   // On screen the card's own color shows through (a canvas fill of the
   // same color can render a shade off); a saved card paints its ground.
@@ -331,7 +344,7 @@ export function paintPainting(
     marks.forEach((m, j) => paintMark(ctx, m, w, h, weight, clamp(k * marks.length - j, 0, 1), c, opts.seed + g * 13 + j))
   }
   ctx.restore()
-  if (opts.seal && opts.seal > 0) paintSeal(ctx, w, h, opts.seal, c)
+  if (opts.seal && opts.seal > 0) paintSeal(ctx, w, h, opts.seal, c, opts.sealColor)
 }
 
 /** The margin a painting keeps inside its frame, as a share of each side. */
@@ -412,7 +425,7 @@ export function paintPaintingCard(
   ink: { text: Rgb; dim: Rgb },
   fonts: { display: string; body: string; mono: string },
   says: { date: string; title: string; caption: string; line: string | null; painter: string },
-  opts: { done: number; finished: boolean; seed: number }
+  opts: { done: number; finished: boolean; seed: number; sealColor?: SealColor }
 ): void {
   const { W, H } = CARD
   const pad = 36
@@ -434,7 +447,7 @@ export function paintPaintingCard(
   ctx.beginPath()
   ctx.roundRect(0, 0, pw, ph, 10)
   ctx.clip()
-  paintPainting(ctx, pw, ph, plan, words, c, { done: opts.done, seal: opts.finished ? 1 : 0, seed: opts.seed })
+  paintPainting(ctx, pw, ph, plan, words, c, { done: opts.done, seal: opts.finished ? 1 : 0, seed: opts.seed, sealColor: opts.sealColor })
   ctx.restore()
   let y = 70 + ph + 64
   ctx.fillStyle = rgba(ink.text)

@@ -13,6 +13,7 @@ import {
   paintingSize,
   pickSubject,
   practiceBelt,
+  sealBelt,
   shiftDay,
   syncPaintings,
   takesByDay,
@@ -116,6 +117,19 @@ describe('tiers', () => {
     expect(practiceBelt(LADDER, 0, 0)).toBe('none')
     expect(practiceBelt(LADDER, 30_000, 20)).toBe('blue')
     expect(practiceBelt(LADDER, 99_000_000, 99_999)).toBe('red')
+  })
+})
+
+describe('the seal', () => {
+  it('takes the belt of the rank the painting was made at', () => {
+    for (const rank of LADDER.filter((r) => r.belt !== 'none' && !r.founderOnly)) expect(sealBelt(rank.id, LADDER)).toBe(rank.belt)
+    expect(sealBelt('blue', LADDER)).toBe('blue')
+  })
+
+  it('stays ember before the first belt and for older records', () => {
+    expect(sealBelt('none', LADDER)).toBeNull()
+    expect(sealBelt(undefined, LADDER)).toBeNull()
+    expect(sealBelt('not-a-rank', LADDER)).toBeNull()
   })
 })
 

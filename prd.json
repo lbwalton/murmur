@@ -1555,6 +1555,22 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-10-08 on main (one story). src/renderer/settings/AskFirst.tsx: the shared question (labeled group, keep them focused on mount, Escape keeps unless busy, the deleting button .btn.danger-btn on the red tokens). HomeView: Discard all moved onto it; a take's armed delete audio? turns red and ignores a click within DOUBLE_CLICK_MS (500) of arming; Clear all opens AskFirst with the count from a new history:count IPC (main history/index.ts, the whole log; preload countHistory), raised by one for each entry appended while open, then clears, announces Cleared N entries in an always-mounted status line that takes focus, and reports a failure without locking; clearAllQuestion is unit tested. The history smoke check now also proves the count equals the whole log. Verified: typecheck, test (716), smoke green (history now also exercises the count); captures in a scratch profile (seed-founder.js, seed-takes.js): Clear all's question names the whole log (6 entries) with keep them focused and clear 6 in red, and clicking through empties history.jsonl and focuses Cleared 6 entries while the waiting takes stay; Discard all's discard 3 is red at rest, and opening it disarms a take's armed delete audio?, which is red on its own. All automated criteria verified; the live check is in HANDOFF. Review gate 2026-10-08: no blockers. Should-fix fixed: HANDOFF's US-096 decision item is checked off as decided and built here. Nits fixed: a double click on Clear all no longer opens and shuts the question (a close within 500 ms of opening is ignored, and clicks while the count is on its way are ignored); a take's discard guard uses a steady clock, treats a click's second tap (detail above 1) as a double click, and ignores a held Enter; the smoke check now proves the count grows with an entry instead of comparing a value with itself; a count of 0 (retention already emptied the log) reloads the list instead of asking to clear 0; history:clear answers with the number it removed (so Cleared N counts an entry that landed at the last moment) and no longer reports failure when only forgetting the last note fails; the Cleared line goes away when a new entry lands; tokens.css's header says red's new use; docs bold the labels and say waiting recordings are untouched; the question says keep it for one entry. Left as is: the two questions (Discard all and Clear all) live in different panels and can both be open. Re-verified: typecheck, test, smoke green; captures as before."
+    },
+    {
+      "id": "US-101",
+      "title": "The seal in your belt's color",
+      "description": "LaBroi picked it from Claude's ideas for making each painting uniquely yours, 2026-10-09: a finished painting's seal is stamped in the color of the belt it was painted at, so a collection shows how far its painter has come.",
+      "acceptance": [
+        "A finished painting's seal takes the color of the belt of the rank recorded at the day's first take, as that belt reads on the night ground (white as rice paper, black lifted toward grey so it never vanishes); the ensō stays carved out of it",
+        "Before the first belt, and on records from before ranks were kept, the seal stays ember",
+        "The coral belts split the seal in two halves, red and black or red and white, like their alternating blocks",
+        "The same seal shows on today's painting, the strip of earlier paintings, the large viewer, and the saved card",
+        "docs/settings.md, CHANGELOG.md, DESIGN.md, and CLAUDE.md say it",
+        "Live: LaBroi sees his belt's color on a finished painting's seal"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-09 on feature/painting-a-day. sealBelt(rank, ladder) in shared/painting.ts maps a record's rank to its belt (null for none, unknown, or missing); WrapUpView's sealOf maps that to paint with journeyPaint's beltOnInk (coral as two halves); paintSeal takes a SealColor (one color, or two halves clipped to the seal) through paintPainting and paintPaintingCard. Verified: typecheck, tests (sealBelt for every belt on the ladder, ember before the first belt and for older records), lab render of a seal in every belt color including both coral splits."
     }
   ]
 }

@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
-import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, shiftDay } from '../../shared/painting'
+import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, sealBelt, shiftDay } from '../../shared/painting'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, useToday } from './PageTitle'
@@ -15,7 +15,7 @@ import type { RankSpec } from '../../shared/ranks'
 import { tokenColor } from '../brush'
 import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
-import { journeyColors } from './journeyPaint'
+import { beltOnInk, journeyColors } from './journeyPaint'
 import { EmptyState } from './EmptyState'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
@@ -23,6 +23,7 @@ import {
   type Gesture,
   MAX_EXTRA,
   type PaintingColors,
+  type SealColor,
   paintPainting,
   paintPaintingCard,
   paintingCaption,
@@ -80,6 +81,19 @@ function painterOf(record: PaintingRecord): string {
   return rank ? `painted at ${rank.label}, level ${record.level}` : `painted at level ${record.level}`
 }
 
+/** The seal's color (US-101): the belt the day was painted at, as paint
+ *  on the night ground, the coral belts in their two colors; undefined
+ *  keeps the ember seal (before the first belt, or a record from before
+ *  ranks were kept). */
+function sealOf(record: PaintingRecord): SealColor | undefined {
+  const belt = sealBelt(record.rank, LADDER)
+  if (!belt) return undefined
+  const c = journeyColors(BELT_HEX)
+  if (belt === 'coral-black') return [beltOnInk('coral-black', c), beltOnInk('black', c)]
+  if (belt === 'coral-white') return [beltOnInk('coral-black', c), beltOnInk('white', c)]
+  return beltOnInk(belt, c)
+}
+
 /** A day's key as words: Friday, October 9. */
 function longDate(day: string): string {
   const [y, m, d] = day.split('-').map(Number)
@@ -128,7 +142,7 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
       line: finished ? paintingLine(record.words, longestMs) : null,
       painter: painterOf(record)
     },
-    { done, finished, seed }
+    { done, finished, seed, sealColor: sealOf(record) }
   )
   return bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', day)
 }
@@ -142,6 +156,7 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
   const [status, setStatus] = useState('')
   const { subject, seed, target } = props.record
   const plan = useMemo(() => planFor(props.record), [props.record])
+  const sealColor = useMemo(() => sealOf(props.record), [props.record])
   const { done, finished } = progressOf(props.record)
   useEffect(() => {
     const dialog = dialogRef.current
@@ -179,7 +194,7 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
         className="viewer-canvas"
         label={`${longDate(props.day)}: ${paintingCaption(subject, done, target)}`}
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor })}
       />
       <div className="share-actions">
         <span className="dim" aria-live="polite">
@@ -202,6 +217,7 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
   const { subject, seed, target, tier, level } = props.record
   const extraKey = props.record.words.slice(target, target + MAX_EXTRA).join(',')
   const plan = useMemo(() => planFor(props.record), [subject, seed, target, tier, level, extraKey])
+  const sealColor = useMemo(() => sealOf(props.record), [props.record.rank])
   const { done, finished } = progressOf(props.record)
   const [y, m, d] = props.day.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -215,7 +231,7 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
       <PaintCanvas
         className="past-canvas"
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor })}
       />
       <span className="past-day">{weekday}</span>
       <span className="past-caption dim" title={caption}>
@@ -275,6 +291,7 @@ export function WrapUpView(props: {
   const extraKey = record ? record.words.slice(record.target, record.target + MAX_EXTRA).join(',') : ''
   const plan = useMemo(() => (record ? planFor(record) : []), [record?.subject, record?.seed, record?.target, record?.tier, record?.level, extraKey])
   const { done, finished } = record ? progressOf(record) : { done: 0, finished: false }
+  const sealColor = useMemo(() => (record ? sealOf(record) : undefined), [record?.rank])
   // The painting open in the viewer, kept as it was opened, so a reload
   // underneath never pulls it away.
   const [viewing, setViewing] = useState<{ day: string; record: PaintingRecord } | null>(null)
@@ -331,7 +348,8 @@ export function WrapUpView(props: {
                 // The seal stamps in with the stroke that finishes it.
                 seal: finished ? (fresh && doneBefore < record.target ? Math.max(0, k * 4 - 3) : 1) : 0,
                 seed: record.seed,
-                ground: false
+                ground: false,
+                sealColor
               })
             }
           />

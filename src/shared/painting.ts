@@ -197,6 +197,15 @@ export function practiceRank(ladder: readonly RankSpec[], words: number, days: n
   return best
 }
 
+/** The belt a painting's seal is colored in (US-101): the belt of the
+ *  rank its first take was made at. Null before the first belt, and for
+ *  records from before ranks were kept: those keep the ember seal. */
+export function sealBelt(rank: string | undefined, ladder: readonly RankSpec[]): string | null {
+  if (!rank || rank === 'none') return null
+  const belt = ladder.find((r) => r.id === rank)?.belt
+  return belt && belt !== 'none' ? belt : null
+}
+
 /** The belt words and days alone have earned. */
 export function practiceBelt(ladder: readonly RankSpec[], words: number, days: number): string {
   return practiceRank(ladder, words, days)?.belt ?? 'none'
