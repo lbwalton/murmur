@@ -11,14 +11,39 @@ import { TYPICAL_MIN_DAYS, TYPICAL_WINDOW_DAYS } from './analytics'
 import { type SessionEvent, countWords, countsTowardStats, dayKey, eventDay } from './history'
 import { type RankSpec, levelFor } from './ranks'
 
-export const SUBJECTS = ['moon', 'bamboo', 'plum', 'mountains'] as const
+export const SUBJECTS = [
+  'moon',
+  'bamboo',
+  'plum',
+  'mountains',
+  'pine',
+  'orchid',
+  'chrysanthemum',
+  'lotus',
+  'waterfall',
+  'willow',
+  'boat',
+  'wave',
+  'maple',
+  'snow'
+] as const
 export type SubjectId = (typeof SUBJECTS)[number]
 
 export const SUBJECT_NAMES: Record<SubjectId, string> = {
   moon: 'moon over water',
   bamboo: 'bamboo',
   plum: 'plum branch',
-  mountains: 'mountains'
+  mountains: 'mountains',
+  pine: 'pine on a cliff',
+  orchid: 'orchid',
+  chrysanthemum: 'chrysanthemum',
+  lotus: 'lotus pond',
+  waterfall: 'waterfall',
+  willow: 'willow by the water',
+  boat: 'boat on the river',
+  wave: 'breaking wave',
+  maple: 'maple branch',
+  snow: 'snowfall'
 }
 
 /** The smallest painting (also the size before there is a typical day). */
@@ -129,14 +154,25 @@ export function paintingSeed(install: number, day: string): number {
   return (h ^ (h >>> 12)) >>> 0
 }
 
-/** The sizes each subject paints well at. Every subject fits every size
- *  but the moon, which stops at 24 strokes (past that its water fills
- *  with reeds), so every size has three subjects or four. */
+/** The sizes each subject paints well at: most fit every size; a few
+ *  quiet ones (the moon, the boat, the orchid, the wave) stop before
+ *  their water or leaves crowd, and the waterfall needs a few strokes
+ *  for its two cliffs. Every size has ten subjects or more. */
 export const SUBJECT_RANGE: Record<SubjectId, readonly [number, number]> = {
   moon: [6, 24],
   bamboo: [6, 36],
   plum: [6, 36],
-  mountains: [6, 36]
+  mountains: [6, 36],
+  pine: [6, 36],
+  orchid: [6, 30],
+  chrysanthemum: [6, 36],
+  lotus: [6, 36],
+  waterfall: [8, 36],
+  willow: [6, 36],
+  boat: [6, 24],
+  wave: [6, 30],
+  maple: [6, 36],
+  snow: [6, 36]
 }
 
 /** The day's subject: picked by its seed among those that suit its size,

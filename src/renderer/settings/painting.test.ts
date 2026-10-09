@@ -27,26 +27,27 @@ describe('sharing strokes across layers', () => {
 })
 
 describe('the plan', () => {
-  it('is one gesture per stroke, for every subject, tier, and size', () => {
+  it('is one gesture per stroke, for every subject, tier, size, and a few seeds', () => {
+    const bad: string[] = []
     for (const subject of SUBJECTS) {
       for (let tier = 0; tier <= 4; tier++) {
-        for (const target of [6, 7, 8, 12, 18, 24, 36]) {
-          const plan = planPainting({ subject, seed: 1234 + target, target, tier, level: 1 })
-          expect(plan).toHaveLength(target)
-          for (const gesture of plan) {
-            expect(gesture.length).toBeGreaterThan(0)
-            for (const mark of gesture) {
-              const xs = mark.kind === 'stroke' || mark.kind === 'fill' ? mark.pts.map((p) => p[0]) : [mark.x]
-              const ys = mark.kind === 'stroke' || mark.kind === 'fill' ? mark.pts.map((p) => p[1]) : [mark.y]
-              for (const v of [...xs, ...ys]) {
-                expect(v, `${subject} tier ${tier} size ${target}`).toBeGreaterThan(-0.3)
-                expect(v, `${subject} tier ${tier} size ${target}`).toBeLessThan(1.3)
+        for (let target = 6; target <= 36; target++) {
+          for (const seed of [1234 + target, 99 * target + tier]) {
+            const plan = planPainting({ subject, seed, target, tier, level: 1 })
+            const at = `${subject} tier ${tier} size ${target} seed ${seed}`
+            if (plan.length !== target) bad.push(`${at}: ${plan.length} gestures`)
+            for (const gesture of plan) {
+              if (gesture.length === 0) bad.push(`${at}: an empty gesture`)
+              for (const mark of gesture) {
+                const vs = 'pts' in mark ? mark.pts.flat() : [mark.x, mark.y]
+                if (vs.some((v) => !Number.isFinite(v) || v < -0.3 || v > 1.3)) bad.push(`${at}: ${mark.kind} outside the frame`)
               }
             }
           }
         }
       }
     }
+    expect(bad.slice(0, 10)).toEqual([])
   })
 
   it('the same day paints the same plan; another seed another', () => {
@@ -58,15 +59,33 @@ describe('the plan', () => {
   it('richer from rank: more marks per stroke, washes from blue, splatter from purple', () => {
     const marks = (tier: number): number =>
       planPainting({ subject: 'plum', seed: 99, target: 18, tier, level: 1 }).reduce((n, g) => n + g.length, 0)
-    expect(clusterFor(0)).toBe(1)
-    expect(clusterFor(2)).toBe(2)
-    expect(clusterFor(4)).toBe(3)
+    expect([0, 1, 2, 3, 4].map(clusterFor)).toEqual([1, 1, 2, 3, 4])
     expect(marks(1)).toBeGreaterThan(marks(0))
     expect(marks(4)).toBeGreaterThan(marks(2))
     const kinds = (tier: number): Set<string> =>
       new Set(planPainting({ subject: 'plum', seed: 99, target: 18, tier, level: 1 }).flat().map((m) => (m.kind === 'stroke' ? `stroke:${m.tone}` : m.kind)))
     expect(kinds(0).has('splat')).toBe(false)
     expect(kinds(2).has('splat')).toBe(true)
+  })
+
+  it('every subject climbs with rank: washes from blue, splatter from purple, more marks from purple on', () => {
+    const plan = (subject: (typeof SUBJECTS)[number], tier: number, target: number) => planPainting({ subject, seed: 4242, target, tier, level: 1 })
+    // A belt wash: the kit's wash, faint (its alpha stays under a third).
+    const washes = (g: ReturnType<typeof plan>): number =>
+      g.flat().filter((m) => m.kind === 'stroke' && m.tone === 'wash' && m.dry === 0.92 && m.alpha !== undefined && m.alpha < 0.33).length
+    const marks = (g: ReturnType<typeof plan>): number => g.reduce((n, x) => n + x.length, 0)
+    for (const subject of SUBJECTS) {
+      for (const target of [8, 16, 30]) {
+        expect(washes(plan(subject, 0, target)), `${subject} ${target}`).toBe(0)
+        expect(washes(plan(subject, 1, target)), `${subject} ${target}`).toBeGreaterThan(0)
+        expect(plan(subject, 2, target).flat().some((m) => m.kind === 'splat'), `${subject} ${target}`).toBe(true)
+        expect(marks(plan(subject, 4, target)), `${subject} ${target}`).toBeGreaterThan(marks(plan(subject, 2, target)))
+        expect(marks(plan(subject, 2, target)), `${subject} ${target}`).toBeGreaterThan(marks(plan(subject, 0, target)))
+      }
+      for (let target = 6; target <= 36; target++) {
+        expect(plan(subject, 2, target).flat().some((m) => m.kind === 'splat'), `${subject} splatter at ${target}`).toBe(true)
+      }
+    }
   })
 
   it('levels add birds to the last stroke', () => {

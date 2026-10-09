@@ -76,7 +76,9 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
         }
       />
       <span className="past-day">{weekday}</span>
-      <span className="past-caption dim">{caption}</span>
+      <span className="past-caption dim" title={caption}>
+        {caption}
+      </span>
     </div>
   )
 }

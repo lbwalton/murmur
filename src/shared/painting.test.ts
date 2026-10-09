@@ -68,22 +68,24 @@ describe('the subject', () => {
     }
   })
 
-  it('suits the size: every size has three subjects or more, so the seed always has a choice', () => {
+  it('suits the size: every size has ten subjects or more, so the seed always has a choice', () => {
     for (let size = MIN_STROKES; size <= MAX_STROKES; size++) {
       const fits = SUBJECTS.filter((s) => size >= SUBJECT_RANGE[s][0] && size <= SUBJECT_RANGE[s][1])
-      expect(fits.length).toBeGreaterThanOrEqual(3)
+      expect(fits.length).toBeGreaterThanOrEqual(10)
       for (let seed = 0; seed < 40; seed++) expect(fits).toContain(pickSubject(seed, [null], size))
     }
   })
 
-  it('a new user at the smallest size still sees all four subjects over time', () => {
+  it('a new user at the smallest size still sees every subject that fits it over time', () => {
     let before: (typeof SUBJECTS)[number] | null = null
     const seen = new Set<string>()
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 120; i++) {
       before = pickSubject(paintingSeed(11, shiftDay('2026-10-01', i)), [before], MIN_STROKES)
       seen.add(before)
     }
-    expect(seen.size).toBe(SUBJECTS.length)
+    const fits = SUBJECTS.filter((s) => MIN_STROKES >= SUBJECT_RANGE[s][0])
+    expect(fits.length).toBeGreaterThanOrEqual(12)
+    expect(seen.size).toBe(fits.length)
   })
 
   it('is unlike the painted days on both sides', () => {
@@ -95,7 +97,7 @@ describe('the subject', () => {
   })
 
   it('every subject comes up at a size they all suit', () => {
-    const seen = new Set(Array.from({ length: 64 }, (_, i) => pickSubject(paintingSeed(7, `2026-10-${String((i % 28) + 1).padStart(2, '0')}`) + i, [null], 15)))
+    const seen = new Set(Array.from({ length: 200 }, (_, i) => pickSubject(paintingSeed(7, `2026-10-${String((i % 28) + 1).padStart(2, '0')}`) + i, [null], 15)))
     expect(seen.size).toBe(SUBJECTS.length)
   })
 
