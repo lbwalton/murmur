@@ -5,6 +5,7 @@ import { type BrowserWindow, app, ipcMain } from 'electron'
 import { type SessionEvent, countWords, countsTowardStats, dayKey, wordsPerMinute } from '../../shared/history'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
+import { clearPaintings, initPaintings, syncPaintingsWith } from '../paintings'
 import { HistoryLog } from './log'
 
 let log: HistoryLog | null = null
@@ -189,12 +190,17 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   log = new HistoryLog(app.getPath('userData'))
   let lastRetention = getSettings().history.retentionDays
+  // The day's paintings are recorded before retention prunes the takes
+  // they came from, so the collection outlives the log (US-098).
+  syncPaintingsWith(log.readAll())
   log.prune(lastRetention)
+  initPaintings(() => log?.readAll() ?? [])
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
   onSettingsChanged((settings) => {
     if (settings.history.retentionDays !== lastRetention) {
       lastRetention = settings.history.retentionDays
+      if (log) syncPaintingsWith(log.readAll())
       log?.prune(lastRetention)
     }
   })
@@ -209,6 +215,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const removed = historyCount()
     log?.clear()
     memoryOnly = null
+    // The paintings were drawn from it, so they go with it (US-098).
+    clearPaintings()
     // Clear all forgets the last note's record too (LaBroi, 2026-10-02);
     // the note file itself stays where it landed. The log is already
     // empty here, so a failure to forget is logged, not reported.

@@ -46,10 +46,10 @@ murmur has its own brand and is exempt from LaBroi's global Deep Green defaults 
 On top of night studio, murmur is adding a painterly motion layer, modeled on expressive digital brush paintings LaBroi picked: dry-brush streaks with visible bristles, explosive paint splatter, vermilion and orange on charcoal or off-white paper, a sharp subject at the center with chaos at the edges. The idea: your voice is the brush. Sound paints a stroke, and the stroke lands where your cursor is.
 
 - Decided (LaBroi's picks from the preview artifact, 2026-10-01):
-  - Paint level: brushwork (the middle of ink wash, brushwork, full splatter).
+  - Paint level: brushwork (the middle of ink wash, brushwork, full splatter). The one exception is a painting a day, which grows heavier with rank: LaBroi asked for heavier ink washes and splatter at the higher belts (2026-10-08, US-098).
   - The mark: the ensō pill, the pill drawn as one open brush loop with the amber live dot inside. At 32 px and below (tray, small icons) it is a clean drawn version, never brushed.
   - Belt promotions get the full ceremony: one big stroke in the new belt's color, splatter, the rank set large.
-  - Display face: Bricolage Grotesque, condensed and heavy, on the website, the film, and the share card only. The app keeps system fonts because a font file is a binary.
+  - Display face: Bricolage Grotesque, condensed and heavy, on the website, the film, and the share cards only (the belt card and the painting card, as the painting preview showed). The app keeps system fonts because a font file is a binary.
   - The film: "One drop", 15 seconds, no voiceover. Drop hits the key, splash ring becomes the pill, the stroke writes the first letter of the dictated sentence and settles into the typeface, the splatter gathers into a ball that bounces through apps, the ball bounces into the logo and cools from ember to amber.
   - Paint is code-drawn only. No painted figure illustrations.
   - Ink overlay styles: all four ship, one per belt: dabs (ink bars) at white, flecks (ink speckle) at blue, rings (ink pulse) at purple, ribbon (new, one continuous stroke) at brown. They work in the pill, compact, and bare looks.
@@ -60,7 +60,7 @@ On top of night studio, murmur is adding a painterly motion layer, modeled on ex
   - Home: one gold stroke under back today, today against a typical day (US-085).
   - Every tab gets its own title; the how-to block stays on Home only until the first few dictations (US-086).
   - Analytics in ink: the fourteen days as brush dabs, the activity wall as blots, numbers unchanged (US-087).
-  - Wrap-up: the day as a small painting, one stroke per dictation, with Save card (US-088).
+  - Wrap-up: a painting a day (US-098, replacing US-088's abstract card): every take adds the next stroke of the day's painting, sized to a typical day, its subject seeded and new each day, with the ember seal when it finishes and a portrait Save card. Higher belts paint it richer (washes from blue, splatter from purple, a second motif from brown, the heaviest from black); LaBroi asked for heavier ink washes and splatter at the higher belts (2026-10-08), and the steps between are a design call he can change.
   - Empty states: one dry grey mark and a sentence with the real hotkey (US-089).
   - A painted belt insignia and a gold brush tab marker (US-090).
   - The Journey, painted, builds as shown (US-076).

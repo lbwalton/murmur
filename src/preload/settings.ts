@@ -139,6 +139,8 @@ const api = {
   /** Empties the log; answers with how many entries it removed. */
   clearHistory: (): Promise<number> => ipcRenderer.invoke('history:clear'),
   countHistory: (): Promise<number> => ipcRenderer.invoke('history:count'),
+  /** Today's painting and the four weeks before it (US-098). */
+  listPaintings: (): Promise<import('../shared/painting').PaintingBook> => ipcRenderer.invoke('paintings:list'),
   onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {
     const handler = (_e: unknown, event: SessionEvent): void => cb(event)
     ipcRenderer.on('history:appended', handler)

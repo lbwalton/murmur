@@ -20,7 +20,7 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | rice | Chalky strokes and paper grounds. |
 | ember | Splatter and celebration. Never an error. |
 
-Type in the app: the system UI face (Inter where present) and a mono face for equipment-style micro-labels. Bricolage Grotesque, condensed and heavy, appears only on the website, in the film, and on the share card, because a font file is a binary and the repo carries none.
+Type in the app: the system UI face (Inter where present) and a mono face for equipment-style micro-labels. Bricolage Grotesque, condensed and heavy, appears only on the website, in the film, and on the share cards (the belt card and the painting card), because a font file is a binary and the repo carries none.
 
 ## Brushwork
 
@@ -57,7 +57,7 @@ The settings window is where people work, so paint appears only where something 
 | Home | One gold stroke under back today, today against a typical day; the last note row. | US-085, US-082 |
 | Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-086 |
 | Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-087 |
-| Wrap-up | The day as a small painting, one stroke per dictation, with Save card. | US-088 |
+| Wrap-up | A painting a day: each take adds the next stroke of a seeded subject (moon over water, bamboo, plum branch, mountains) sized to a typical day; the seal when finished; richer brushwork with rank; the paintings of the days before in a strip; a portrait Save card. | US-098 (replaced US-088's card) |
 | Empty states | One dry grey scrape and a sentence with the real hotkey. | US-089 |
 | Header | A painted belt insignia and a short gold stroke under the current tab. | US-090 |
 | Journey | Painted belt, road, gates, and ink stamps. | US-076 |
