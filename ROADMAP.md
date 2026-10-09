@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (79/99 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (80/99 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -83,6 +83,7 @@
 - [x] **US-094** The activity wall remembers its period
 - [x] **US-096** Discard all, with the count, after asking
 - [x] **US-097** The window's header stays at the top while you scroll
+- [x] **US-098** A painting a day
 
 ## Built, awaiting live verification
 
@@ -110,4 +111,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-089** Empty states that say what to do
 - [ ] **US-091** A long wait still reads as working
 - [ ] **US-092** One header on every page, the docs on the site, and a Wispr Flow comparison
-- [ ] **US-098** A painting a day
