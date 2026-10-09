@@ -153,12 +153,16 @@ describe('the book', () => {
     expect(trimmed['2026-10-05'].words).toEqual(book['2026-10-05'].words)
   })
 
-  it('a day keeps the tier and level its first take saw', () => {
+  it('a day keeps the tier, level, and rank its first take saw', () => {
     const big = [take('2026-10-01', 30_000, 9), ...Array.from({ length: 14 }, (_, i) => take(shiftDay('2026-10-02', i), 10, 9))]
     const book = syncPaintings({}, big, 1, LADDER)
     expect(book['2026-10-01'].tier).toBe(0)
+    expect(book['2026-10-01'].rank).toBe('white')
     expect(book['2026-10-15'].tier).toBe(1)
+    expect(book['2026-10-15'].rank).toBe('blue')
     expect(book['2026-10-01'].level).toBe(1)
+    // A first take too short for the white belt is painted before it.
+    expect(syncPaintings({}, [take('2026-10-01', 40)], 1, LADDER)['2026-10-01'].rank).toBe('none')
   })
 
   it('keeps KEEP_DAYS calendar days back from the newest, however sparse', () => {

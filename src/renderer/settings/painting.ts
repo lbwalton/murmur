@@ -16,7 +16,7 @@
 import { type Rgb, cachedBrush, clamp, drawSplat, mix, mulberry, path, rgba, splat, stroke } from '../brush'
 import { type PaintingRecord, SUBJECT_NAMES, type SubjectId } from '../../shared/painting'
 import { formatDuration } from '../../shared/time'
-import { type Gesture, type Mark, type Pt, type Tone, TAU, allocate, clusterFor } from './paintKit'
+import { type Gesture, type Mark, type Pt, type Tone, SIGNATURES, SIGNATURE_WORDS, TAU, allocate, clusterFor } from './paintKit'
 import { LAYERS } from './paintSubjects'
 
 /** The margin a painting keeps inside its frame, as a share of each side. */
@@ -25,8 +25,12 @@ const MAT_SHARE = 0.05
 export { allocate, clusterFor } from './paintKit'
 export type { Gesture, Mark, Tone } from './paintKit'
 
-/** The painting's plan: one gesture per stroke of its size, in order. */
-export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | 'target' | 'tier' | 'level'>): Gesture[] {
+/**
+ * The painting's plan: one gesture per stroke of its size, in order, then
+ * one more for each take past it (up to MAX_EXTRA), each made by the
+ * subject from that take's word count, so it keeps growing the scene.
+ */
+export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | 'target' | 'tier' | 'level'>, extras: readonly number[] = []): Gesture[] {
   const rng = mulberry(record.seed)
   const rnd = (a: number, b: number): number => a + (b - a) * rng()
   const tier = clamp(record.tier, 0, 4)
@@ -41,7 +45,8 @@ export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | '
   })
   const spatter = (x: number, y: number, tone: Tone = 'accent'): Mark[] =>
     tier >= 2 ? [{ kind: 'splat', x, y, r: 0.008 + tier * 0.004, dir: rng() * TAU, tone, count: 4 + (tier - 2) * 6 }] : []
-  const layers = LAYERS[record.subject]({ rng, rnd, tier, c, wash, spatter, target: record.target })
+  const subject = LAYERS[record.subject]({ rng, rnd, tier, c, wash, spatter, target: record.target })
+  const layers = subject.layers
   const counts = allocate(record.target, layers)
   const plan = layers.flatMap((layer, i) => (counts[i] > 0 ? layer.make(counts[i]) : [])).map((g) => g.map(settle))
   // Levels add birds to the last stroke: one at level two, two from three.
@@ -65,6 +70,17 @@ export function planPainting(record: Pick<PaintingRecord, 'subject' | 'seed' | '
       })
     }
   }
+  // Past its size, each take grows the scene on the subject's schedule.
+  // Each has its own random stream, so a later take never moves an earlier
+  // stroke; a long take earns a signature mark, up to SIGNATURES a day.
+  let signatures = 0
+  extras.slice(0, MAX_EXTRA).forEach((words, i) => {
+    const r = mulberry((record.seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0)
+    const signature = words >= SIGNATURE_WORDS && signatures < SIGNATURES
+    if (signature) signatures += 1
+    const s = 0.85 + 0.4 * Math.min(1, Math.max(0, words) / 120)
+    plan.push(subject.grow({ i, words, signature, r, s }).map(settle))
+  })
   return plan
 }
 
@@ -289,19 +305,28 @@ export function paintPainting(
   plan: readonly Gesture[],
   words: readonly number[],
   c: PaintingColors,
-  opts: { done: number; live?: number; seal?: number; seed: number }
+  opts: { done: number; live?: number; seal?: number; seed: number; ground?: boolean }
 ): void {
-  ctx.fillStyle = rgba(c.ground)
-  ctx.fillRect(0, 0, w, h)
+  // On screen the card's own color shows through (a canvas fill of the
+  // same color can render a shade off); a saved card paints its ground.
+  if (opts.ground !== false) {
+    ctx.fillStyle = rgba(c.ground)
+    ctx.fillRect(0, 0, w, h)
+  }
+  const done = Math.min(opts.done, plan.length)
+  // While the newest stroke paints in, the strokes under it are drawn
+  // once into a cached image, not again on every frame.
+  const live = opts.live !== undefined && opts.live < 1 && done > 1
+  const under = live ? settled(ctx, w, h, plan, words, c, done - 1, opts.seed) : null
+  if (under) ctx.drawImage(under, 0, 0, w, h)
   // The painting keeps a margin inside its frame, like paper on a mat,
   // so a leaf or a ridge never runs off the edge.
   ctx.save()
   ctx.translate(w * MAT, h * MAT)
   ctx.scale(1 - MAT * 2, 1 - MAT * 2)
-  const done = Math.min(opts.done, plan.length + MAX_FLOURISHES)
-  for (let g = 0; g < done; g++) {
+  for (let g = under ? done - 1 : 0; g < done; g++) {
     const k = g === done - 1 && opts.live !== undefined ? opts.live : 1
-    const marks = g < plan.length ? plan[g] : flourish(plan, opts.seed, g - plan.length)
+    const marks = plan[g]
     const weight = strokeWeight(words[g])
     marks.forEach((m, j) => paintMark(ctx, m, w, h, weight, clamp(k * marks.length - j, 0, 1), c, opts.seed + g * 13 + j))
   }
@@ -312,53 +337,45 @@ export function paintPainting(
 /** The margin a painting keeps inside its frame, as a share of each side. */
 const MAT = MAT_SHARE
 
-/** Past its size, a finished painting keeps taking strokes, up to this
- *  many: every take still adds something (LaBroi, 2026-10-09). */
-export const MAX_FLOURISHES = 24
+const underCache = new WeakMap<readonly Gesture[], { key: string; image: HTMLCanvasElement }>()
 
-/** A small mark worth echoing: a leaf, a petal, a ripple, a dot; never a
- *  wash, a big shape, or a level's bird. */
-function isSmall(m: Mark): boolean {
-  if (m.kind === 'stroke') {
-    if (m.tone === 'wash' || m.bird) return false
-    const xs = m.pts.map((p) => p[0])
-    const ys = m.pts.map((p) => p[1])
-    return Math.max(...xs) - Math.min(...xs) < 0.2 && Math.max(...ys) - Math.min(...ys) < 0.2
+/** The first n strokes of a plan, finished, as an image the size of the
+ *  canvas being painted (kept per plan until its strokes or size change).
+ *  Null where there is no document (tests). */
+function settled(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  plan: readonly Gesture[],
+  words: readonly number[],
+  c: PaintingColors,
+  n: number,
+  seed: number
+): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null
+  const scale = ctx.getTransform().a || 1
+  const key = `${n}|${w}|${h}|${scale}|${seed}|${c.ink.join()}|${words.slice(0, n).join(',')}`
+  const kept = underCache.get(plan)
+  if (kept && kept.key === key) return kept.image
+  const image = document.createElement('canvas')
+  image.width = Math.max(1, Math.round(w * scale))
+  image.height = Math.max(1, Math.round(h * scale))
+  const g = image.getContext('2d')
+  if (!g) return null
+  g.setTransform(scale, 0, 0, scale, 0, 0)
+  g.translate(w * MAT, h * MAT)
+  g.scale(1 - MAT * 2, 1 - MAT * 2)
+  for (let i = 0; i < n; i++) {
+    const weight = strokeWeight(words[i])
+    plan[i].forEach((m, j) => paintMark(g, m, w, h, weight, 1, c, seed + i * 13 + j))
   }
-  return m.kind === 'blossom' || m.kind === 'bud' || m.kind === 'needles'
+  underCache.set(plan, { key, image })
+  return image
 }
 
-/** A mark nudged by (dx, dy), kept inside the frame. */
-function nudge(m: Mark, dx: number, dy: number): Mark {
-  const x = (v: number): number => clamp(v + dx, 0.02, 0.98)
-  const y = (v: number): number => clamp(v + dy, 0.02, 0.98)
-  if ('pts' in m) return { ...m, pts: m.pts.map(([px, py]): Pt => [x(px), y(py)]) }
-  return { ...m, x: x(m.x), y: y(m.y) }
-}
-
-/**
- * The stroke a finished painting takes past its size: a near copy of one
- * of its small marks from the later half (its leaves, petals, ripples,
- * needles, snow), nudged a little. Seeded by its place, so it stays put.
- */
-export function flourish(plan: readonly Gesture[], seed: number, index: number): Gesture {
-  const rng = mulberry((seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0)
-  const small = plan.slice(Math.floor(plan.length / 2)).flat().filter(isSmall)
-  if (small.length === 0) return [{ kind: 'bud', x: 0.2 + rng() * 0.6, y: 0.2 + rng() * 0.6, r: 0.004, tone: 'soft' }]
-  const echo = small[Math.floor(rng() * small.length)]
-  const at: [number, number] = [(rng() - 0.5) * 0.1, (rng() - 0.5) * 0.08]
-  // A mark too small to see alone (a flake, a dot) comes as a little cluster.
-  const tiny = echo.kind === 'bud' || ('pts' in echo && spanOf(echo.pts) < 0.012)
-  if (!tiny) return [nudge(echo, at[0], at[1])]
-  return Array.from({ length: 3 + Math.floor(rng() * 3) }, () => nudge(echo, at[0] + (rng() - 0.5) * 0.05, at[1] + (rng() - 0.5) * 0.04))
-}
-
-/** The larger of a point list's width and height. */
-function spanOf(pts: readonly Pt[]): number {
-  const xs = pts.map((p) => p[0])
-  const ys = pts.map((p) => p[1])
-  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
-}
+/** Past its size, a finished painting keeps growing, up to this many
+ *  more strokes: every take still adds something (LaBroi, 2026-10-09). */
+export const MAX_EXTRA = 60
 
 /** What the painting is called so far: the subject stays a surprise
  *  for its first two strokes. */
@@ -394,7 +411,7 @@ export function paintPaintingCard(
   c: PaintingColors,
   ink: { text: Rgb; dim: Rgb },
   fonts: { display: string; body: string; mono: string },
-  says: { date: string; title: string; caption: string; line: string | null },
+  says: { date: string; title: string; caption: string; line: string | null; painter: string },
   opts: { done: number; finished: boolean; seed: number }
 ): void {
   const { W, H } = CARD
@@ -441,8 +458,11 @@ export function paintPaintingCard(
     ctx.font = `17px ${fonts.body}`
     ctx.fillText(says.line, pad, y)
   }
-  ctx.font = `11px ${fonts.mono}`
+  y += 26
   ctx.fillStyle = rgba(ink.dim)
+  ctx.font = `14px ${fonts.body}`
+  ctx.fillText(says.painter, pad, y)
+  ctx.font = `11px ${fonts.mono}`
   ctx.fillText('painted one take at a time', pad, H - 34)
   ctx.textAlign = 'right'
   ctx.fillText('murmurapp.app', W - pad, H - 34)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import { SUBJECTS } from '../../shared/painting'
-import { MAX_FLOURISHES, allocate, clusterFor, flourish, paintingCaption, paintingLine, planPainting } from './painting'
+import { MAX_EXTRA, allocate, clusterFor, paintingCaption, paintingLine, planPainting } from './painting'
 
 describe('sharing strokes across layers', () => {
   it('always adds up to the size, minimums first, never past a maximum', () => {
@@ -33,9 +33,21 @@ describe('the plan', () => {
       for (let tier = 0; tier <= 4; tier++) {
         for (let target = 6; target <= 36; target++) {
           for (const seed of [1234 + target, 99 * target + tier]) {
-            const plan = planPainting({ subject, seed, target, tier, level: 1 })
+            // The second seed also grows 60 more takes of varied length.
+            const extras = seed === 1234 + target ? [] : Array.from({ length: MAX_EXTRA }, (_, i) => 10 + ((i * 47 + target) % 230))
+            const plan = planPainting({ subject, seed, target, tier, level: 1 }, extras)
             const at = `${subject} tier ${tier} size ${target} seed ${seed}`
-            if (plan.length !== target) bad.push(`${at}: ${plan.length} gestures`)
+            if (plan.length !== target + extras.length) bad.push(`${at}: ${plan.length} gestures`)
+            // Every extra is big enough to see: a real stroke, a blossom,
+            // needles, a shape, or a cluster of dots.
+            plan.slice(target).forEach((gesture, x) => {
+              // Measured over the whole addition (a maple leaf is five lobes).
+              const strokes = gesture.filter((m) => m.kind === 'stroke' && m.tone !== 'wash' && m.w >= 0.0035)
+              const pts = strokes.flatMap((m) => ('pts' in m ? m.pts : []))
+              const span = pts.length > 0 ? Math.max(Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])) - Math.min(...pts.map((p) => p[1]))) : 0
+              const big = span >= 0.025 || gesture.some((m) => m.kind === 'blossom' || m.kind === 'needles' || m.kind === 'blot' || (m.kind === 'stroke' && m.tone === 'wash'))
+              if (!big && gesture.filter((m) => m.kind === 'bud').length < 2) bad.push(`${at}: extra ${x + 1} too small to see`)
+            })
             plan.forEach((gesture, g) => {
               if (gesture.length === 0) bad.push(`${at}: an empty gesture`)
               // Every take paints something on the canvas.
@@ -102,21 +114,58 @@ describe('the plan', () => {
     }
   })
 
-  it('past its size a painting keeps taking small strokes: echoes of its own, in the frame, each in its place', () => {
-    expect(MAX_FLOURISHES).toBeGreaterThanOrEqual(20)
+  it('changing one take changes only what that take painted', () => {
+    const words = Array.from({ length: 40 }, (_, i) => 20 + ((i * 31) % 120))
     for (const subject of SUBJECTS) {
-      const plan = planPainting({ subject, seed: 31, target: 12, tier: 1, level: 1 })
-      for (let i = 0; i < MAX_FLOURISHES; i++) {
-        const extra = flourish(plan, 31, i)
-        expect(extra.length).toBeGreaterThan(0)
-        expect(flourish(plan, 31, i)).toEqual(extra)
-        for (const m of extra) {
-          expect(m.kind === 'fill' || m.kind === 'blot' || (m.kind === 'stroke' && m.tone === 'wash')).toBe(false)
-          const vs = 'pts' in m ? m.pts.flat() : [m.x, m.y]
-          for (const v of vs) expect(v >= 0.02 && v <= 0.98, `${subject} flourish ${i}`).toBe(true)
+      const record = { subject, seed: 77, target: 12, tier: 2, level: 1 }
+      const a = planPainting(record, words)
+      const changed = [...words]
+      changed[5] = changed[5] === 90 ? 95 : 90
+      const b = planPainting(record, changed)
+      a.forEach((g, i) => {
+        if (i === 12 + 5) return
+        expect(b[i], `${subject} stroke ${i}`).toEqual(g)
+      })
+    }
+  })
+
+  it('a long take earns a signature mark, up to three a day', () => {
+    const plain = Array.from({ length: 12 }, () => 40)
+    const long = plain.map((w, i) => (i % 2 === 0 ? 200 : w))
+    for (const subject of SUBJECTS) {
+      const record = { subject, seed: 9, target: 12, tier: 0, level: 1 }
+      const a = planPainting(record, plain).slice(12)
+      const b = planPainting(record, long).slice(12)
+      const changed = a.filter((g, i) => JSON.stringify(g) !== JSON.stringify(b[i])).length
+      expect(changed, subject).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('past its size every subject keeps growing, from each take, in the frame, never moving a stroke', () => {
+    expect(MAX_EXTRA).toBeGreaterThanOrEqual(48)
+    const record = (subject: (typeof SUBJECTS)[number]) => ({ subject, seed: 31, target: 12, tier: 1, level: 1 })
+    const words = Array.from({ length: MAX_EXTRA + 10 }, (_, i) => 20 + ((i * 37) % 180))
+    for (const subject of SUBJECTS) {
+      const base = planPainting(record(subject))
+      const full = planPainting(record(subject), words)
+      // One stroke per take past its size, up to the limit.
+      expect(full).toHaveLength(12 + MAX_EXTRA)
+      // The painting so far, and every earlier extra, stay exactly put.
+      expect(full.slice(0, 12)).toEqual(base)
+      expect(planPainting(record(subject), words.slice(0, 7))).toEqual(full.slice(0, 19))
+      // The same takes grow the same way; different takes grow differently.
+      expect(planPainting(record(subject), words)).toEqual(full)
+      const other = planPainting(record(subject), words.map((w) => w + 61))
+      expect(other.slice(12)).not.toEqual(full.slice(12))
+      for (const gesture of full.slice(12)) {
+        expect(gesture.length, subject).toBeGreaterThan(0)
+        for (const m of gesture) {
+          if (m.kind === 'stroke' && m.tone === 'wash') continue
+          const vs = 'pts' in m ? m.pts : [[m.x, m.y]]
+          const seen = vs.some(([x, y]) => x >= 0 && x <= 1 && y >= 0 && y <= 1)
+          expect(seen, `${subject} extra off the canvas`).toBe(true)
         }
       }
-      expect(flourish(plan, 31, 0)).not.toEqual(flourish(plan, 31, 1))
     }
   })
 

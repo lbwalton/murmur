@@ -10,6 +10,8 @@ import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, useToday } from './PageTitle'
 import cosmeticsFile from '../../../shared/cosmetics.json'
+import ranksFile from '../../../shared/ranks.json'
+import type { RankSpec } from '../../shared/ranks'
 import { tokenColor } from '../brush'
 import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
@@ -18,7 +20,8 @@ import { EmptyState } from './EmptyState'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
   CARD,
-  MAX_FLOURISHES,
+  type Gesture,
+  MAX_EXTRA,
   type PaintingColors,
   paintPainting,
   paintPaintingCard,
@@ -55,10 +58,26 @@ function colorsNow(): PaintingColors {
 }
 
 /** How far a painting has got: its strokes so far (past its size, the
- *  small strokes a finished painting keeps taking) and whether it is
- *  finished. */
+ *  strokes a finished painting keeps adding) and whether it is finished. */
 function progressOf(record: PaintingRecord): { done: number; finished: boolean } {
-  return { done: Math.min(record.words.length, record.target + MAX_FLOURISHES), finished: record.words.length >= record.target }
+  return { done: Math.min(record.words.length, record.target + MAX_EXTRA), finished: record.words.length >= record.target }
+}
+
+/** A day's whole plan: its strokes, then what each take past its size
+ *  added, from that take's words. */
+function planFor(record: PaintingRecord): Gesture[] {
+  const { subject, seed, target, tier, level } = record
+  return planPainting({ subject, seed, target, tier, level }, record.words.slice(target, target + MAX_EXTRA))
+}
+
+const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
+
+/** The rank and level a day was painted at, for its card: white belt,
+ *  one stripe, level 1. Records from before ranks were kept name the level. */
+function painterOf(record: PaintingRecord): string {
+  if (record.rank === 'none') return `painted before the first belt, level ${record.level}`
+  const rank = LADDER.find((r) => r.id === record.rank)
+  return rank ? `painted at ${rank.label}, level ${record.level}` : `painted at level ${record.level}`
 }
 
 /** A day's key as words: Friday, October 9. */
@@ -73,8 +92,8 @@ function longDate(day: string): string {
  * here, nothing sent. True when it was saved.
  */
 async function saveDayCard(day: string, record: PaintingRecord, colors: PaintingColors, longestMs: number | null): Promise<boolean> {
-  const { subject, seed, target, tier, level } = record
-  const plan = planPainting({ subject, seed, target, tier, level })
+  const { subject, seed, target } = record
+  const plan = planFor(record)
   const { done, finished } = progressOf(record)
   const hasFace = await loadDisplayFace()
   const canvas = document.createElement('canvas')
@@ -106,7 +125,8 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
       caption: finished
         ? `finished in ${target} strokes${more > 0 ? `, and ${more} more` : ''}`
         : `${done} of ${target} strokes so far`,
-      line: finished ? paintingLine(record.words, longestMs) : null
+      line: finished ? paintingLine(record.words, longestMs) : null,
+      painter: painterOf(record)
     },
     { done, finished, seed }
   )
@@ -120,8 +140,8 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
   const closeRef = useRef<HTMLButtonElement>(null)
   const [returnTo] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null))
   const [status, setStatus] = useState('')
-  const { subject, seed, target, tier, level } = props.record
-  const plan = useMemo(() => planPainting({ subject, seed, target, tier, level }), [subject, seed, target, tier, level])
+  const { subject, seed, target } = props.record
+  const plan = useMemo(() => planFor(props.record), [props.record])
   const { done, finished } = progressOf(props.record)
   useEffect(() => {
     const dialog = dialogRef.current
@@ -159,7 +179,7 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
         className="viewer-canvas"
         label={`${longDate(props.day)}: ${paintingCaption(subject, done, target)}`}
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false })}
       />
       <div className="share-actions">
         <span className="dim" aria-live="polite">
@@ -180,7 +200,8 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
  *  button: clicking it opens the painting large. */
 function PastPainting(props: { day: string; today: string; record: PaintingRecord; colors: PaintingColors; onOpen: () => void }): React.JSX.Element {
   const { subject, seed, target, tier, level } = props.record
-  const plan = useMemo(() => planPainting({ subject, seed, target, tier, level }), [subject, seed, target, tier, level])
+  const extraKey = props.record.words.slice(target, target + MAX_EXTRA).join(',')
+  const plan = useMemo(() => planFor(props.record), [subject, seed, target, tier, level, extraKey])
   const { done, finished } = progressOf(props.record)
   const [y, m, d] = props.day.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -194,7 +215,7 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
       <PaintCanvas
         className="past-canvas"
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false })}
       />
       <span className="past-day">{weekday}</span>
       <span className="past-caption dim" title={caption}>
@@ -251,7 +272,8 @@ export function WrapUpView(props: {
   const colors = useMemo(colorsNow, [])
 
   const record: PaintingRecord | null = book[today] ?? null
-  const plan = useMemo(() => (record ? planPainting(record) : []), [record?.subject, record?.seed, record?.target, record?.tier, record?.level])
+  const extraKey = record ? record.words.slice(record.target, record.target + MAX_EXTRA).join(',') : ''
+  const plan = useMemo(() => (record ? planFor(record) : []), [record?.subject, record?.seed, record?.target, record?.tier, record?.level, extraKey])
   const { done, finished } = record ? progressOf(record) : { done: 0, finished: false }
   // The painting open in the viewer, kept as it was opened, so a reload
   // underneath never pulls it away.
@@ -308,7 +330,8 @@ export function WrapUpView(props: {
                 live: fresh ? Math.min(1, k * 1.25) : undefined,
                 // The seal stamps in with the stroke that finishes it.
                 seal: finished ? (fresh && doneBefore < record.target ? Math.max(0, k * 4 - 3) : 1) : 0,
-                seed: record.seed
+                seed: record.seed,
+                ground: false
               })
             }
           />
@@ -316,7 +339,7 @@ export function WrapUpView(props: {
             <p className="painting-caption">{paintingCaption(record.subject, done, record.target)}</p>
             <p className="painting-line dim">
               {finished
-                ? `${paintingLine(record.words, longest)}${done < record.target + MAX_FLOURISHES ? ' Every take from here adds one more small stroke.' : ''}`
+                ? `${paintingLine(record.words, longest)}${done < record.target + MAX_EXTRA ? ' Every take from here adds to it.' : ''}`
                 : `Every take adds the next stroke. ${record.target - done} more to finish it.`}
             </p>
           </div>

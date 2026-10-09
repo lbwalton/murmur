@@ -69,6 +69,9 @@ export interface PaintingRecord {
   tier: number
   /** The level, which adds a bird or two. */
   level: number
+  /** The practice rank's id at the day's first take (ranks.json), for the
+   *  card; missing on records made before it was kept. */
+  rank?: string
   /** Each take's word count, in the order spoken. Never its text. */
   words: number[]
 }
@@ -185,13 +188,18 @@ export function pickSubject(seed: number, neighbours: ReadonlyArray<SubjectId | 
 }
 
 /** The rank words and days alone have earned (the founder's included). */
-export function practiceBelt(ladder: readonly RankSpec[], words: number, days: number): string {
-  let belt = 'none'
+export function practiceRank(ladder: readonly RankSpec[], words: number, days: number): RankSpec | null {
+  let best: RankSpec | null = null
   for (const rank of ladder) {
     if (rank.founderOnly || rank.words === null || rank.activeDays === null) continue
-    if (words >= rank.words && days >= rank.activeDays) belt = rank.belt
+    if (words >= rank.words && days >= rank.activeDays) best = rank
   }
-  return belt
+  return best
+}
+
+/** The belt words and days alone have earned. */
+export function practiceBelt(ladder: readonly RankSpec[], words: number, days: number): string {
+  return practiceRank(ladder, words, days)?.belt ?? 'none'
 }
 
 /**
@@ -245,6 +253,7 @@ export function syncPaintings(
         target,
         tier: tierFor(practiceBelt(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))),
         level: levelFor(words + first),
+        rank: practiceRank(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))?.id ?? 'none',
         words: [...logged]
       })
     }
@@ -269,5 +278,14 @@ export function asRecord(value: unknown): PaintingRecord | null {
   if (!SUBJECTS.includes(r.subject as SubjectId)) return null
   if (!int(r.seed, 0, 0xffffffff) || !int(r.target, MIN_STROKES, MAX_STROKES) || !int(r.tier, 0, 4) || !int(r.level, 1, 100000)) return null
   if (!Array.isArray(r.words) || r.words.length > MAX_TAKES || !r.words.every((w) => int(w, 0, 1_000_000))) return null
-  return { subject: r.subject as SubjectId, seed: r.seed as number, target: r.target as number, tier: r.tier as number, level: r.level as number, words: [...(r.words as number[])] }
+  const rank = typeof r.rank === 'string' && /^[a-z0-9-]{1,32}$/.test(r.rank) ? r.rank : undefined
+  return {
+    subject: r.subject as SubjectId,
+    seed: r.seed as number,
+    target: r.target as number,
+    tier: r.tier as number,
+    level: r.level as number,
+    ...(rank ? { rank } : {}),
+    words: [...(r.words as number[])]
+  }
 }

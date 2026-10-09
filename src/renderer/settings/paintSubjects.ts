@@ -7,9 +7,9 @@
 // only by code: landscapes, plants, water, and marks, never figures.
 import { clamp, lerp } from '../brush'
 import type { SubjectId } from '../../shared/painting'
-import { type Gesture, type Kit, type Layer, type Mark, type Pt, TAU, allocate, farHills, faintMoon, leaf, mirrored, ridge, ring } from './paintKit'
+import { type Gesture, type Grow, type Kit, type Layer, type Mark, type Pt, type Subject, TAU, allocate, farHills, faintMoon, leaf, mirrorMark, mirrored, ridge, ring, spread, spreadY } from './paintKit'
 
-export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
+export const LAYERS: Record<SubjectId, (k: Kit) => Subject> = {
   moon: (k) => {
     // The moon high on one side, reeds rising on the other.
     const moonLeft = k.rng() < 0.45
@@ -104,13 +104,44 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: ripples spread over the water, a few more reeds, mist
+    // twice; a long take earns a new clump of reeds.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const reedAt = (x: number): Mark[] =>
+        [0, 1, 2].map((j): Mark => {
+          const top = b(0.55, 0.72)
+          return { kind: 'stroke', pts: [[x + j * 0.02, 0.99], [x + j * 0.02 + b(-0.01, 0.01), (0.99 + top) / 2], [x + j * 0.02 + b(-0.04, 0.04), top]], w: 0.009 * s, tone: 'ink', dry: 0.4, shape: 'leaf' }
+        })
+      if (g.signature) return reedAt(lerp(0.3, 0.62, spread(i, 0.4)))
+      if (i === 3 || i === 19) {
+        const y = lerp(0.34, h - 0.06, spreadY(i, 0.2))
+        return [{ kind: 'stroke', pts: [[0.1, y], [0.35, y - 0.006], [0.55, y + 0.004]], w: 0.008, tone: 'wash', dry: 0.88, alpha: 0.6 }]
+      }
+      if (i % 4 === 2 && i < 24) {
+        const x = moonLeft ? lerp(0.74, 0.96, spread(i, 0.3)) : lerp(0.04, 0.26, spread(i, 0.3))
+        const top = b(0.58, 0.75)
+        return [{ kind: 'stroke', pts: [[x, 0.99], [x + b(-0.02, 0.02), (0.99 + top) / 2], [x + b(-0.04, 0.04), top]], w: 0.009 * s, tone: 'ink', dry: 0.4, shape: 'leaf' }]
+      }
+      const y = lerp(h + 0.06, 0.93, spreadY(i, 0.1))
+      const len = b(0.06, 0.12) * s
+      const x = clamp(cx + (spread(i, 0.7) - 0.5) * 0.8 - len / 2, 0.04, 0.96 - len)
+      return [{ kind: 'stroke', pts: [[x, y], [x + len * 0.5, y - 0.003], [x + len, y + 0.002]], w: 0.008, tone: 'soft', dry: 0.82 }]
+    }
+    return { layers, grow }
   },
 
   bamboo: (k) => {
     const stalks = k.target <= 8 ? 1 : 1 + Math.floor(k.rng() * 3)
     const left = k.rnd(0.18, 0.45)
-    const xs = Array.from({ length: stalks }, (_, i) => (stalks === 1 ? k.rnd(0.3, 0.7) : left + i * k.rnd(0.12, 0.22)))
+    const xs = Array.from({ length: stalks }, (_, i) => (stalks === 1 ? k.rnd(0.4, 0.52) : left + i * k.rnd(0.12, 0.22)))
+    // A group of stalks stands a little left of center, balancing the seal.
+    if (stalks > 1) {
+      const mid = (Math.min(...xs) + Math.max(...xs)) / 2
+      const at = 0.46 + (left - 0.315) * 0.3
+      xs.forEach((x, i) => (xs[i] = x + at - mid))
+    }
     const tops = xs.map(() => k.rnd(0.16, 0.3))
     const leans = xs.map(() => k.rnd(-0.03, 0.03))
     /** Joints painted so far, bottom to top, where branches start. */
@@ -183,7 +214,44 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: leaf sprigs spread down the stalks (a few per stalk),
+    // grass along the foot, then leaves drifting down; a long take earns a
+    // young stalk of its own.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const stalkX = (st: number, y: number): number => xs[st] + leans[st] * (1 - y)
+      if (g.signature) {
+        const x = clamp(lerp(0.12, 0.88, spread(i, 0.55)), 0.08, 0.92)
+        const top = b(0.42, 0.6)
+        return [
+          { kind: 'stroke', pts: [[x, 0.99], [x + 0.004, (0.99 + top) / 2 + 0.01]], w: 0.016, tone: 'ink', dry: 0.35, shape: 'stalk' },
+          { kind: 'stroke', pts: [[x + 0.004, (0.99 + top) / 2 - 0.01], [x + 0.008, top]], w: 0.014, tone: 'ink', dry: 0.35, shape: 'stalk' },
+          ...[0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: leaf(x + 0.008, top + 0.01, -Math.PI / 2 + (j - 1) * 0.9, b(0.06, 0.09)), w: 0.018, tone: 'ink', dry: 0.25, shape: 'leaf' }))
+        ]
+      }
+      const kind = i % 5
+      if ((kind === 0 || kind === 2 || kind === 4) && i < 8 * xs.length) {
+        // A sprig of two leaves, partway down a stalk, sides alternating.
+        const st = (i * 7 + kind) % xs.length
+        const y = lerp(tops[st] + 0.12, 0.72, spreadY(i, 0.37))
+        const side = i % 2 === 0 ? 1 : -1
+        const x = stalkX(st, y)
+        return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: leaf(x, y, side > 0 ? 0.55 + j * 0.45 : Math.PI - 0.55 - j * 0.45, b(0.07, 0.11) * s), w: 0.018, tone: 'ink', dry: 0.25, shape: 'leaf' }))
+      }
+      if (kind === 1) {
+        const x = lerp(0.08, 0.92, spread(i, 0.11))
+        return [0, 1, 2].map((j): Mark => {
+          const top = 0.99 - b(0.035, 0.07) * s
+          return { kind: 'stroke', pts: [[x + j * 0.009, 0.99], [x + j * 0.009 + b(-0.015, 0.015), top]], w: 0.005, tone: 'soft', dry: 0.5, shape: 'leaf' }
+        })
+      }
+      // A leaf drifting down through the air.
+      const x = lerp(0.08, 0.92, spread(i, 0.73))
+      const y = lerp(0.35, 0.9, spreadY(i, 0.29))
+      return [{ kind: 'stroke', pts: leaf(x, y, b(0, TAU), 0.055 * s), w: 0.016, tone: 'ink', dry: 0.3, shape: 'leaf' }]
+    }
+    return { layers, grow }
   },
 
   plum: (k) => {
@@ -276,7 +344,31 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           )
       }
     )
-    return layers
+    // Past its size: blossoms opening along the branches, bud clusters,
+    // petals falling; a long take earns a new twig in flower.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const spots = along.length > 0 ? along : limb.slice(1, 5)
+      const at = spots[Math.floor(spread(i, 0.21) * spots.length)]
+      // Off the branch to one side, so a new blossom never lands on an old one.
+      const off = (i % 2 === 0 ? 1 : -1) * b(0.025, 0.045)
+      if (g.signature) {
+        const ang = -Math.PI / 2 + b(-0.7, 0.7)
+        const end: Pt = [at[0] + Math.cos(ang) * 0.12, at[1] + Math.sin(ang) * 0.12]
+        return [
+          { kind: 'stroke', pts: [at, [(at[0] + end[0]) / 2 + 0.01, (at[1] + end[1]) / 2], end], w: 0.008, tone: 'ink', dry: 0.6 },
+          ...[0.45, 0.75, 1].map((t): Mark => ({ kind: 'blossom', x: lerp(at[0], end[0], t), y: lerp(at[1], end[1], t), r: 0.014 }))
+        ]
+      }
+      const kind = i % 4
+      if ((kind === 0 || kind === 3) && i < 36) return [{ kind: 'blossom', x: at[0] + off * 0.6, y: at[1] + off, r: 0.015 * s }]
+      if (kind === 1 || kind === 3) return [0, 1, 2].map((j): Mark => ({ kind: 'bud', x: at[0] + off * 0.5 + j * 0.012, y: at[1] - off * 0.5 - j * 0.008, r: 0.007 * s }))
+      const x = lerp(0.1, 0.9, spread(i, 0.64))
+      const y = lerp(0.62, 0.93, spreadY(i, 0.17))
+      return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: leaf(x + j * 0.03, y + j * 0.015, b(0, TAU), 0.042 * s), w: 0.014, tone: 'accent', dry: 0.3, shape: 'leaf' }))
+    }
+    return { layers, grow }
   },
 
   mountains: (k) => {
@@ -422,7 +514,45 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
         }
       }
     )
-    return layers
+    // Past its size: moss along the ridges, texture down the faces, birds
+    // now and then, mist twice; a long take earns a new pine on the ground.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      // Only peaks and ridge points well inside the frame, so nothing lands off it.
+      const inner = apexes.filter((a) => a.x > 0.08 && a.x < 0.92)
+      const ridgePts = lines.flat().filter(([x]) => x > 0.08 && x < 0.92)
+      if (g.signature) {
+        const x = lerp(0.1, 0.9, spread(i, 0.42))
+        const y = b(0.86, 0.92)
+        return [
+          { kind: 'stroke', pts: [[x, y], [x + 0.004, y - 0.12]], w: 0.012, tone: 'ink', dry: 0.35 },
+          { kind: 'needles', x: x + 0.004, y: y - 0.11, r: 0.026, lean: 0 },
+          { kind: 'needles', x: x - 0.01, y: y - 0.07, r: 0.024, lean: -1 }
+        ]
+      }
+      if (i === 7 || i === 29) {
+        const y = lerp(0.48, 0.62, spreadY(i, 0.5))
+        const x = lerp(0.02, 0.4, spread(i, 0.8))
+        return [{ kind: 'stroke', pts: [[x, y], [x + 0.25, y - 0.008], [x + 0.48, y + 0.004]], w: 0.016, tone: 'wash', dry: 0.9, alpha: 0.6 }]
+      }
+      if (i % 6 === 5 && i < 36) {
+        const x = lerp(0.15, 0.85, spread(i, 0.9))
+        const y = lerp(0.1, 0.26, spreadY(i, 0.35))
+        return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.045 - 0.016, y + j * 0.02 - 0.007], [x + j * 0.045, y + j * 0.02 + 0.004], [x + j * 0.045 + 0.016, y + j * 0.02 - 0.008]], w: 0.0042, tone: 'ink', dry: 0.3 }))
+      }
+      if (i % 2 === 1 && inner.length > 0) {
+        const a = inner[Math.floor(spread(i, 0.27) * inner.length)]
+        return [0, 1, 2].map((j): Mark => {
+          const x = a.x + a.side * (0.025 + j * 0.022)
+          const y = a.y + 0.02 + j * 0.018
+          return { kind: 'stroke', pts: [[x, y], [x + a.side * 0.025, y + 0.045 * s]], w: 0.006, tone: 'soft', dry: 0.88 }
+        })
+      }
+      const [px, py] = ridgePts[Math.floor(spread(i, 0.61) * ridgePts.length)] ?? [0.5, 0.6]
+      return Array.from({ length: 4 }, (_, j): Mark => ({ kind: 'bud', x: px + (j - 1.5) * 0.014 + b(-0.005, 0.005), y: py + b(-0.006, 0.012), r: 0.005 * s, tone: 'soft' }))
+    }
+    return { layers, grow }
   },
 
   pine: (k) => {
@@ -526,7 +656,44 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: new short branches with needles, moss and texture on
+    // the rock, mist twice; a long take earns a young pine on the cliff.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const x = X(lerp(0.08, tipX * 0.8, spread(i, 0.33)))
+        const y = tipY - b(0.03, 0.1)
+        return [
+          { kind: 'stroke', pts: [[x, y + 0.02], [x + dir * 0.02, y - 0.09]], w: 0.01, tone: 'ink', dry: 0.4 },
+          { kind: 'needles', x: x + dir * 0.02, y: y - 0.085, r: 0.024, lean: dir },
+          { kind: 'needles', x: x + dir * 0.012, y: y - 0.05, r: 0.022, lean: dir }
+        ]
+      }
+      if (i === 5 || i === 21) {
+        const y = lerp(0.62, 0.84, spreadY(i, 0.4))
+        const x = X(lerp(0.45, 0.6, spread(i, 0.7)))
+        return [{ kind: 'stroke', pts: [[x, y], [x + dir * 0.15, y - 0.006], [x + dir * 0.32, y + 0.004]], w: 0.016, tone: 'wash', dry: 0.9, alpha: 0.6 }]
+      }
+      const kind = i % 4
+      if (kind === 0 || kind === 2) {
+        const [sx, sy] = trunk[1 + Math.floor(spread(i, 0.19) * 3)]
+        const end: Pt = [sx + dir * b(0.06, 0.12), sy + lerp(-0.08, 0.04, spread(i, 0.58))]
+        return [
+          { kind: 'stroke', pts: [[sx, sy], [(sx + end[0]) / 2, Math.min(sy, end[1]) - 0.01], end], w: 0.007, tone: 'ink', dry: 0.5 },
+          { kind: 'needles', x: end[0], y: end[1], r: 0.026 * s, lean: dir }
+        ]
+      }
+      if (kind === 1) {
+        const x = X(lerp(0.06, tipX * 0.9, spread(i, 0.44)))
+        const y = tipY - lerp(0.0, 0.1, spreadY(i, 0.12))
+        return Array.from({ length: 4 }, (_, j): Mark => ({ kind: 'bud', x: x + (j - 1.5) * 0.013, y: y + b(-0.006, 0.01), r: 0.005 * s, tone: 'soft' }))
+      }
+      const x = X(lerp(0.04, tipX * 0.6, spread(i, 0.86)))
+      const y = lerp(tipY + 0.08, 0.92, spreadY(i, 0.31))
+      return [0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.02 * dir, y + j * 0.012], [x + j * 0.02 * dir + dir * 0.012, y + j * 0.012 + 0.05]], w: 0.006, tone: 'soft', dry: 0.88 }))
+    }
+    return { layers, grow }
   },
 
   orchid: (k) => {
@@ -614,7 +781,39 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: grass by the rock, bud clusters, a handful of new
+    // leaves, fallen petals; a long take earns a second flower stem.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const lean = lerp(-0.18, 0.18, spread(i, 0.5))
+        const top: Pt = [bx + lean, b(0.36, 0.5)]
+        return [
+          { kind: 'stroke', pts: [[bx, by - 0.02], [bx + lean * 0.5, (top[1] + by) / 2], top], w: 0.006, tone: 'ink', dry: 0.5 },
+          ...[0, 1, 2, 3, 4].map((p): Mark => ({ kind: 'stroke', pts: leaf(top[0], top[1], -Math.PI / 2 + (p - 2) * 0.7, b(0.03, 0.045)), w: 0.011, tone: 'ink', dry: 0.2, shape: 'leaf' })),
+          { kind: 'bud', x: top[0], y: top[1], r: 0.006, tone: 'accent' }
+        ]
+      }
+      const kind = i % 4
+      if (kind === 2 && i < 22) {
+        const side = i % 8 < 4 ? -1 : 1
+        const reach = lerp(0.15, 0.36, spread(i, 0.3)) * side
+        const rise = lerp(0.18, 0.42, spread(i, 0.7)) * s
+        return [{ kind: 'stroke', pts: [[bx, by], [bx + reach * 0.4, by - rise * 0.8], [bx + reach, by - rise + b(0.02, 0.12)]], w: 0.011, tone: 'ink', dry: 0.3, shape: 'leaf' }]
+      }
+      if (kind === 1 && tips.length > 0) {
+        const [x, y] = tips[Math.floor(spread(i, 0.15) * tips.length)]
+        return [0, 1, 2].map((j): Mark => ({ kind: 'bud', x: x + (j - 1) * 0.014, y: y + 0.025 + j * 0.012, r: 0.006 * s, tone: 'accent' }))
+      }
+      if (kind === 3) {
+        const x = lerp(0.15, 0.85, spread(i, 0.62))
+        return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: leaf(x + j * 0.03, b(0.9, 0.96), b(0, TAU), 0.042 * s), w: 0.013, tone: 'soft', dry: 0.3, shape: 'leaf' }))
+      }
+      const x = bx + (i % 2 === 0 ? -1 : 1) * lerp(0.13, 0.3, spread(i, 0.08))
+      return [0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.009, 0.98], [x + j * 0.009 + b(-0.02, 0.02), 0.98 - b(0.04, 0.08) * s]], w: 0.005, tone: 'soft', dry: 0.5, shape: 'leaf' }))
+    }
+    return { layers, grow }
   },
 
   chrysanthemum: (k) => {
@@ -695,7 +894,45 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           )
       }
     )
-    return layers
+    // Past its size: fallen petals gathering, leaves on the stems, buds by
+    // the flowers, grass at the foot; a long take earns a small new flower.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const [cx, cy] = centers[i % centers.length]
+      if (g.signature) {
+        const x = lerp(0.15, 0.85, spread(i, 0.47))
+        const y = b(0.5, 0.66)
+        return [
+          { kind: 'stroke', pts: [[x + b(-0.04, 0.04), 0.99], [x, y + 0.03]], w: 0.007, tone: 'ink', dry: 0.5 },
+          ...Array.from({ length: 10 }, (_, p): Mark => {
+            const ang = (p / 10) * TAU
+            return { kind: 'stroke', pts: [[x + Math.cos(ang) * 0.008, y + Math.sin(ang) * 0.007], [x + Math.cos(ang) * 0.038, y + Math.sin(ang) * 0.032]], w: 0.006, tone: p % 2 === 0 ? 'gold' : 'accent', dry: 0.25 }
+          })
+        ]
+      }
+      const kind = i % 4
+      if (kind === 0) {
+        const x = lerp(0.1, 0.9, spread(i, 0.23))
+        return [0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: leaf(x + j * 0.025, b(0.9, 0.96), b(0, TAU), 0.04 * s), w: 0.01, tone: j === 1 ? 'accent' : 'gold', dry: 0.3, shape: 'leaf' }))
+      }
+      if (kind === 1 && i < 30) {
+        const y = lerp(cy + 0.16, 0.86, spreadY(i, 0.39))
+        const side = i % 8 < 4 ? 1 : -1
+        return [{ kind: 'stroke', pts: leaf(cx, y, side > 0 ? b(0.1, 0.5) : Math.PI - b(0.1, 0.5), b(0.06, 0.09) * s), w: 0.026, tone: 'wash', dry: 0.35, shape: 'leaf' }]
+      }
+      if (kind === 2) {
+        const ang = spread(i, 0.66) * TAU
+        return [0, 1].map((j): Mark => ({ kind: 'bud', x: cx + Math.cos(ang + j * 0.5) * 0.09, y: cy + Math.sin(ang + j * 0.5) * 0.07 + 0.03, r: 0.008 * s, tone: 'gold' }))
+      }
+      const x = lerp(0.1, 0.9, spread(i, 0.81))
+      if (i >= 28) {
+        const y = lerp(0.3, 0.85, spreadY(i, 0.4))
+        return [{ kind: 'stroke', pts: leaf(x, y, b(0, TAU), 0.04 * s), w: 0.01, tone: 'gold', dry: 0.3, shape: 'leaf' }]
+      }
+      return [0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.009, 0.99], [x + j * 0.009 + b(-0.015, 0.015), 0.99 - b(0.035, 0.065) * s]], w: 0.005, tone: 'soft', dry: 0.5, shape: 'leaf' }))
+    }
+    return { layers, grow }
   },
 
   lotus: (k) => {
@@ -789,7 +1026,45 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           )
       }
     )
-    return layers
+    // Past its size: ripples spread over the pond, a few small pads, buds
+    // on short stems; a long take earns a new bloom.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const x = lerp(0.12, 0.88, spread(i, 0.5))
+        const top = b(0.3, 0.42)
+        return [
+          { kind: 'stroke', pts: [[x, h + 0.015], [x + 0.008, (h + top) / 2], [x, top]], w: 0.006, tone: 'ink', dry: 0.5 },
+          ...[0, 1, 2, 3, 4].map((p): Mark => ({ kind: 'stroke', pts: leaf(x, top + 0.02, -Math.PI / 2 + (p - 2) * 0.45, b(0.045, 0.06)), w: 0.02, tone: 'accent', dry: 0.25, shape: 'leaf', alpha: 0.85 })),
+          { kind: 'bud', x, y: top + 0.006, r: 0.006, tone: 'gold' }
+        ]
+      }
+      const kind = i % 4
+      if (kind === 1 && i < 40) {
+        const x = lerp(0.08, 0.92, spread(i, 0.31))
+        const y = lerp(h + 0.06, 0.92, spreadY(i, 0.77))
+        const rx = b(0.04, 0.065) * s
+        const a0 = b(0, TAU)
+        return [
+          { kind: 'blot', pts: ring(x, y, rx, rx * 0.28, a0, a0 + TAU * 0.92, 18), tone: 'wash', alpha: 0.5 },
+          { kind: 'stroke', pts: ring(x, y, rx, rx * 0.28, a0, a0 + TAU * 0.92, 18), w: 0.005, tone: 'soft', dry: 0.6 }
+        ]
+      }
+      if (kind === 2 && i < 26) {
+        const x = lerp(0.1, 0.9, spread(i, 0.13))
+        const top = h - b(0.04, 0.08)
+        return [
+          { kind: 'stroke', pts: [[x, h + 0.015], [x + 0.003, top]], w: 0.005, tone: 'ink', dry: 0.5 },
+          { kind: 'stroke', pts: leaf(x + 0.003, top + 0.016, -Math.PI / 2, 0.034 * s), w: 0.022, tone: 'accent', dry: 0.25, shape: 'leaf', alpha: 0.8 }
+        ]
+      }
+      const y = lerp(h + 0.04, 0.95, spreadY(i, 0.58))
+      const len = b(0.06, 0.13) * s
+      const x = lerp(0.03, 0.97 - len, spread(i, 0.92))
+      return [{ kind: 'stroke', pts: [[x, y], [x + len, y + 0.003]], w: 0.007, tone: 'soft', dry: 0.85 }]
+    }
+    return { layers, grow }
   },
 
   waterfall: (k) => {
@@ -829,7 +1104,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
             const side = i % 2 === 0 ? left : right
             if (i < 2) {
               return [
-                { kind: 'blot', pts: side, tone: 'soft', alpha: 0.3 + k.tier * 0.06, fade: true },
+                { kind: 'blot', pts: side, tone: 'soft', alpha: 0.22 + k.tier * 0.05, fade: true },
                 ...(k.tier >= 1 ? [k.wash(side.slice(1, 8), 0.03)] : []),
                 { kind: 'stroke', pts: side.slice(1, 8), w: 0.016, tone: 'ink', dry: 0.65 }
               ]
@@ -908,7 +1183,47 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: more streaks in the falls, ripples spread in the pool,
+    // texture and moss on the cliffs, mist twice; a long take earns a
+    // small pine on a ledge.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const side = i % 2 === 0 ? left : right
+      const sgn = side === left ? -1 : 1
+      if (g.signature) {
+        const [ex, ey] = side[4]
+        const x = ex + sgn * b(0.04, 0.1)
+        const y = lerp(top + 0.1, ey, 0.5)
+        return [
+          { kind: 'stroke', pts: [[x, y + 0.01], [x + 0.003, y - 0.07]], w: 0.008, tone: 'ink', dry: 0.4 },
+          { kind: 'needles', x, y: y - 0.065, r: 0.022, lean: sgn },
+          { kind: 'needles', x, y: y - 0.035, r: 0.02, lean: -sgn }
+        ]
+      }
+      if (i === 6 || i === 26) {
+        const y = lerp(pool - 0.12, pool, spreadY(i, 0.4))
+        const half = lerp(0.14, 0.24, spread(i, 0.8))
+        return [{ kind: 'stroke', pts: [[gap - half, y], [gap, y - 0.008], [gap + half, y]], w: 0.02, tone: 'wash', dry: 0.92, alpha: 0.5 }]
+      }
+      const kind = i % 4
+      if (kind === 0) {
+        const x = gap + (spread(i, 0.27) - 0.5) * (width - 0.02)
+        return [{ kind: 'stroke', pts: [[x, top + b(0, 0.06)], [x + b(-0.008, 0.008), (top + pool) / 2], [x + b(-0.01, 0.01), pool - b(0, 0.05)]], w: 0.007 * s, tone: 'ink', dry: 0.88 }]
+      }
+      if (kind === 1) {
+        const y = lerp(pool + 0.06, 0.96, spreadY(i, 0.61))
+        const len = b(0.07, 0.15) * s
+        const x = clamp(gap + (spread(i, 0.15) - 0.5) * 0.7 - len / 2, 0.04, 0.96 - len)
+        return [{ kind: 'stroke', pts: [[x, y], [x + len, y + 0.003]], w: 0.007, tone: 'soft', dry: 0.85 }]
+      }
+      const [ax, ay] = side[5]
+      const x = ax + sgn * lerp(0.04, 0.16, spread(i, 0.36))
+      const y = lerp(top + 0.06, ay, spreadY(i, 0.74))
+      if (kind === 2) return [0, 1, 2].map((j): Mark => ({ kind: 'stroke', pts: [[x + sgn * j * 0.018, y + j * 0.01], [x + sgn * j * 0.018 + sgn * 0.01, y + j * 0.01 + 0.05 * s]], w: 0.006, tone: 'soft', dry: 0.88 }))
+      return Array.from({ length: 4 }, (_, j): Mark => ({ kind: 'bud', x: x + (j - 1.5) * 0.013, y: y + b(-0.006, 0.01), r: 0.005 * s, tone: 'soft' }))
+    }
+    return { layers, grow }
   },
 
   willow: (k) => {
@@ -996,7 +1311,38 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           )
       }
     )
-    return layers
+    // Past its size: new strands spread across the branches, ripples and
+    // floating leaves on the water; a long take earns a full sweep of strands.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      const strand = (fx: number, fy: number, drop: number, sway: number): Mark[] => {
+        const d = Math.min(drop, 0.95 - fy)
+        return [
+          { kind: 'stroke', pts: [[fx, fy], [fx + sway * 0.5, fy + d * 0.5], [fx + sway, fy + d]], w: 0.004, tone: 'ink', dry: 0.6 },
+          ...[0.4, 0.62, 0.84].map((t, l): Mark => ({ kind: 'stroke', pts: leaf(lerp(fx, fx + sway, t), fy + d * t, Math.PI / 2 + (l % 2 === 0 ? 0.6 : -0.6), 0.022), w: 0.007, tone: 'ink', dry: 0.3, shape: 'leaf' }))
+        ]
+      }
+      if (g.signature) {
+        const [fx, fy] = forks[Math.floor(spread(i, 0.5) * forks.length)]
+        return [-0.03, 0, 0.03].flatMap((dx) => strand(fx + dx, fy, b(0.35, 0.5), b(-0.03, 0.03)))
+      }
+      const kind = i % 4
+      if ((kind === 0 || kind === 3) && i < 36) {
+        const [fx, fy] = forks[Math.floor(spread(i, 0.21) * forks.length)]
+        return strand(fx + (spread(i, 0.67) - 0.5) * 0.1, fy, b(0.25, 0.48) * s, b(-0.04, 0.04))
+      }
+      if (kind === 1 || kind === 0 || kind === 3) {
+        const y = lerp(bank + 0.05, 0.97, spreadY(i, 0.43))
+        const len = b(0.07, 0.15) * s
+        const x = X(lerp(0.32, 0.95 - len, spread(i, 0.88)))
+        return [{ kind: 'stroke', pts: [[x, y], [x + (fromLeft ? len : -len), y + 0.002]], w: 0.007, tone: 'soft', dry: 0.85 }]
+      }
+      const x = X(lerp(0.35, 0.92, spread(i, 0.29)))
+      const y = lerp(bank + 0.05, 0.95, spreadY(i, 0.71))
+      return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: leaf(x + j * 0.03, y + j * 0.01, b(-0.4, 0.4), 0.038 * s), w: 0.011, tone: 'ink', dry: 0.3, shape: 'leaf' }))
+    }
+    return { layers, grow }
   },
 
   boat: (k) => {
@@ -1090,7 +1436,41 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return layers
+    // Past its size: ripples spread from the boat, a few reeds, birds now
+    // and then, mist twice; a long take earns a second boat far off.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const x = lerp(0.15, 0.85, spread(i, 0.5))
+        const y = shore + b(0.06, 0.09)
+        return [
+          { kind: 'stroke', pts: [[x - 0.045, y - 0.006], [x, y + 0.006], [x + 0.05, y - 0.008]], w: 0.009, tone: 'ink', dry: 0.35 },
+          { kind: 'stroke', pts: ring(x, y - 0.003, 0.018, 0.014, Math.PI, TAU, 10), w: 0.006, tone: 'ink', dry: 0.4 }
+        ]
+      }
+      if (i === 5 || i === 25) {
+        const y = lerp(shore - 0.03, shore + 0.05, spreadY(i, 0.3))
+        const x = lerp(0.0, 0.45, spread(i, 0.7))
+        return [{ kind: 'stroke', pts: [[x, y], [x + 0.25, y - 0.005], [x + 0.5, y + 0.004]], w: 0.012, tone: 'wash', dry: 0.9, alpha: 0.55 }]
+      }
+      const kind = i % 4
+      if (kind === 2 && i < 30) {
+        const x = reedsLeft ? lerp(0.03, 0.22, spread(i, 0.4)) : lerp(0.78, 0.97, spread(i, 0.4))
+        const top = b(0.62, 0.8)
+        return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.018, 0.99], [x + j * 0.018 + b(-0.02, 0.02), (0.99 + top) / 2], [x + j * 0.018 + b(-0.04, 0.04), top]], w: 0.008 * s, tone: 'ink', dry: 0.4, shape: 'leaf' }))
+      }
+      if (kind === 3 && i < 24) {
+        const x = lerp(0.15, 0.85, spread(i, 0.9))
+        const y = lerp(0.1, shore - 0.12, spreadY(i, 0.35))
+        return [0, 1].map((j): Mark => ({ kind: 'stroke', pts: [[x + j * 0.045 - 0.016, y + j * 0.02 - 0.007], [x + j * 0.045, y + j * 0.02 + 0.004], [x + j * 0.045 + 0.016, y + j * 0.02 - 0.008]], w: 0.0042, tone: 'ink', dry: 0.3 }))
+      }
+      const y = lerp(by + 0.04, 0.95, spreadY(i, 0.12))
+      const len = lerp(0.07, 0.2, (y - by) / (1 - by)) * s
+      const x = clamp(bx + (spread(i, 0.63) - 0.5) * 0.85 - len / 2, 0.03, 0.97 - len)
+      return [{ kind: 'stroke', pts: [[x, y], [x + len * 0.5, y - 0.003], [x + len, y + 0.002]], w: 0.008, tone: 'soft', dry: 0.82 }]
+    }
+    return { layers, grow }
   },
 
   wave: (k) => {
@@ -1172,7 +1552,35 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           })
       }
     )
-    return flip ? mirrored(layers) : layers
+    // Past its size: foam claws along the lip, spray thrown into the open
+    // air, a few swells; a long take earns a smaller wave rising behind.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      let marks: Gesture
+      if (g.signature) {
+        const x = lerp(0.62, 0.9, spread(i, 0.5))
+        const y = b(0.56, 0.64)
+        marks = [{ kind: 'stroke', pts: [[x - 0.14, y + 0.08], [x - 0.04, y], ...ring(x, y + 0.035, 0.035, 0.03, -Math.PI * 0.9, Math.PI * 0.3, 8)], w: 0.016, tone: 'soft', dry: 0.5 }]
+      } else {
+        const kind = i % 3
+        const [lx, ly] = lip[Math.floor(spread(i, 0.27) * lip.length)]
+        if (kind === 0 && i < 30) {
+          marks = [0, 1].map((j): Mark => ({ kind: 'stroke', pts: [[lx + j * 0.03, ly], [lx + j * 0.03 + 0.016 * s, ly - 0.022 * s], [lx + j * 0.03 + 0.03 * s, ly - 0.006]], w: 0.007, tone: 'ink', dry: 0.25 }))
+        } else if (kind === 2 && i < 30) {
+          const y = lerp(0.82, 0.95, spreadY(i, 0.6))
+          marks = [{ kind: 'stroke', pts: [[0.05, y], [0.4, y - 0.025], [0.75, y + 0.01], [0.95, y - 0.01]], w: 0.009, tone: 'soft', dry: 0.75 }]
+        } else {
+          // Spray thrown up and out from the lip, into open air, spread
+          // along the crest so it never gathers in one place.
+          const sx = lerp(cx - 0.25, cx + 0.2, spread(i, 0.83))
+          const sy = crestY - lerp(0.02, 0.14, spreadY(i, 0.29))
+          marks = Array.from({ length: 3 }, (_, j): Mark => ({ kind: 'bud', x: sx + j * 0.018 + b(-0.006, 0.006), y: sy - j * 0.012 + b(-0.008, 0.008), r: 0.005 * s, tone: 'ink' }))
+        }
+      }
+      return flip ? marks.map(mirrorMark) : marks
+    }
+    return { layers: flip ? mirrored(layers) : layers, grow }
   },
 
   maple: (k) => {
@@ -1239,7 +1647,28 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           Array.from({ length: n }, () => mapleLeaf(X(k.rnd(0.2, 0.9)), k.rnd(0.6, 0.95), k.rnd(0.025, 0.035), k.rnd(0, TAU), k.rng() < 0.5 ? 'gold' : 'accent'))
       }
     )
-    return layers
+    // Past its size: leaves drifting down across the scene, a few more on
+    // the twigs; a long take earns a new twig of three leaves.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const [x, y] = hangs[Math.floor(spread(i, 0.5) * Math.max(1, hangs.length))] ?? limb[2]
+        const end: Pt = [x + b(-0.06, 0.06), y + b(0.08, 0.14)]
+        return [
+          { kind: 'stroke', pts: [[x, y], end], w: 0.005, tone: 'ink', dry: 0.6 },
+          ...[0, 1, 2].flatMap((j) => mapleLeaf(end[0] + (j - 1) * 0.04, end[1] + (j === 1 ? 0.03 : 0), 0.04, (j - 1) * 0.5, j === 1 ? 'gold' : 'accent'))
+        ]
+      }
+      if (i % 3 === 2 && i < 24 && hangs.length > 0) {
+        const [x, y] = hangs[Math.floor(spread(i, 0.37) * hangs.length)]
+        return mapleLeaf(x + b(-0.04, 0.04), y + b(0.02, 0.06), b(0.032, 0.045) * s, b(-0.6, 0.6), i % 2 === 0 ? 'gold' : 'accent')
+      }
+      const x = X(lerp(0.08, 0.92, spread(i, 0.19)))
+      const y = lerp(0.48, 0.94, spreadY(i, 0.71))
+      return mapleLeaf(x, y, b(0.026, 0.036) * s, b(0, TAU), i % 3 === 0 ? 'gold' : 'accent')
+    }
+    return { layers, grow }
   },
 
   snow: (k) => {
@@ -1308,6 +1737,28 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Layer[]> = {
           ])
       }
     )
-    return layers
+    // Past its size: more snow falling, snow settling on the trees; a long
+    // take earns a new small pine.
+    const grow = (g: Grow): Gesture => {
+      const { i, r, s } = g
+      const b = (lo: number, hi: number): number => lo + (hi - lo) * r()
+      if (g.signature) {
+        const x = lerp(0.08, 0.92, spread(i, 0.5))
+        const tall = b(0.1, 0.16)
+        const y = ground + b(-0.01, 0.01)
+        return [
+          { kind: 'stroke', pts: [[x, y], [x + 0.003, y - tall]], w: 0.008, tone: 'ink', dry: 0.4 },
+          ...[0, 1, 2].map((j): Mark => ({ kind: 'needles', x: x + (j % 2 === 0 ? -1 : 1) * 0.008, y: y - tall * (0.35 + j * 0.22), r: 0.02 - j * 0.003, lean: 0 }))
+        ]
+      }
+      if (i % 3 === 2 && trees.length > 0 && i < 30) {
+        const [x, y] = trees[Math.floor(spread(i, 0.41) * trees.length)]
+        return [{ kind: 'stroke', pts: [[x - 0.02, y + b(0.03, 0.08)], [x, y + b(0.02, 0.07)], [x + 0.02, y + b(0.03, 0.08)]], w: 0.011, tone: 'ink', dry: 0.15 }]
+      }
+      const cx = lerp(0.1, 0.9, spread(i, 0.13))
+      const cy = lerp(0.08, ground - 0.1, spreadY(i, 0.57))
+      return Array.from({ length: 6 + Math.round(3 * s) }, (): Mark => ({ kind: 'bud', x: clamp(cx + b(-0.18, 0.18), 0.03, 0.97), y: clamp(cy + b(-0.12, 0.12), 0.04, ground - 0.03), r: b(0.003, 0.005), tone: 'ink' }))
+    }
+    return { layers, grow }
   }
 }

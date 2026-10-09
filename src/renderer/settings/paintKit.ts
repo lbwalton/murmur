@@ -150,3 +150,43 @@ export function mirrorMark(m: Mark): Mark {
 export function mirrored(layers: readonly Layer[]): Layer[] {
   return layers.map((layer) => ({ ...layer, make: (n: number) => layer.make(n).map((g) => g.map(mirrorMark)) }))
 }
+
+/**
+ * One take past a painting's size: its place in the day (i), its words,
+ * whether it earned a signature mark (a long take, up to three a day),
+ * its own random stream, and s, its size from its words (0.85 to 1.25).
+ */
+export interface Grow {
+  i: number
+  words: number
+  signature: boolean
+  r: () => number
+  s: number
+}
+
+/** A take of this many words or more earns a signature mark. */
+export const SIGNATURE_WORDS = 150
+/** At most this many signature marks a day. */
+export const SIGNATURES = 3
+
+/** Where the i-th extra goes along a span, 0 to 1: a golden-ratio walk,
+ *  so additions spread evenly and never clump. */
+export const spread = (i: number, salt: number): number => ((((i + 1) * 0.6180339887 + salt) % 1) + 1) % 1
+
+/** The same walk for heights, on a different step (the second axis of the
+ *  R2 sequence), so a pair of spread and spreadY never lines up. */
+export const spreadY = (i: number, salt: number): number => ((((i + 1) * 0.5698402910 + salt) % 1) + 1) % 1
+
+/**
+ * A subject: its layers, and how it keeps growing past its size. grow
+ * makes the i-th stroke after the painting finished on a schedule of its
+ * own (what grows when, with caps, so it composes instead of piling up),
+ * placed by the walk above, sized by the take's words, and a signature
+ * mark for a long take, using the subject's own geometry. An earlier
+ * stroke never moves, and two people's paintings grow apart (LaBroi,
+ * 2026-10-09: keep elaborating, and make it uniquely theirs).
+ */
+export interface Subject {
+  layers: Layer[]
+  grow: (g: Grow) => Gesture
+}
