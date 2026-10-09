@@ -506,3 +506,93 @@ export function paintPaintingCard(
   ctx.fillText('murmurapp.app', W - pad, H - 34)
   ctx.textAlign = 'left'
 }
+
+/** The week's scroll in CSS pixels (US-102); it saves at twice this. */
+export const SCROLL = { W: 1984, H: 412, PAD: 40, PANEL_W: 260, PANEL_H: 195, GAP: 14, TOP: 124 }
+
+/** One day on the week's scroll: its short name, a caption, and its
+ *  painting as it stands, or null for a day without takes. */
+export interface ScrollDay {
+  day: string
+  caption: string
+  painting: {
+    plan: readonly Gesture[]
+    words: readonly number[]
+    opts: { done: number; seal: number; seed: number; sealColor?: SealColor; light?: Gesture }
+  } | null
+}
+
+/** A day without takes on the scroll: one dry grey mark. */
+const DAY_OFF: Gesture[] = [[{ kind: 'stroke', pts: [[0.4, 0.52], [0.5, 0.5], [0.6, 0.53]], w: 0.012, tone: 'wash', dry: 0.8 }]]
+
+/** Text cut to fit a width, with an ellipsis. */
+function fitText(ctx: CanvasRenderingContext2D, text: string, width: number): string {
+  if (ctx.measureText(text).width <= width) return text
+  let cut = text
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > width) cut = cut.slice(0, -1)
+  return `${cut.trimEnd()}…`
+}
+
+/**
+ * The week's scroll (US-102): seven days of paintings side by side, the
+ * way a handscroll unrolls, the oldest on the left. The wordmark, the
+ * week, and its numbers above; each day's name and caption under its
+ * painting; the line and the address along the foot.
+ */
+export function paintWeekScroll(
+  ctx: CanvasRenderingContext2D,
+  days: readonly ScrollDay[],
+  c: PaintingColors,
+  ink: { text: Rgb; dim: Rgb },
+  fonts: { display: string; body: string; mono: string },
+  says: { title: string; numbers: string }
+): void {
+  const { W, H, PAD, PANEL_W, PANEL_H, GAP, TOP } = SCROLL
+  ctx.fillStyle = rgba(c.ground)
+  ctx.fillRect(0, 0, W, H)
+  ctx.textBaseline = 'alphabetic'
+  ctx.font = `13px ${fonts.mono}`
+  ctx.fillStyle = rgba(c.gold)
+  ctx.fillText('murmur', PAD, 46)
+  ctx.fillStyle = rgba(ink.text)
+  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'condensed'
+  ctx.font = `800 38px ${fonts.display}`
+  ctx.fillText(says.title, PAD, 98)
+  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'normal'
+  ctx.textAlign = 'right'
+  ctx.fillStyle = rgba(ink.dim)
+  ctx.font = `15px ${fonts.body}`
+  ctx.fillText(says.numbers, W - PAD, 98)
+  ctx.textAlign = 'left'
+  days.forEach((d, i) => {
+    const x = PAD + i * (PANEL_W + GAP)
+    ctx.save()
+    ctx.translate(x, TOP)
+    ctx.beginPath()
+    ctx.roundRect(0, 0, PANEL_W, PANEL_H, 8)
+    ctx.save()
+    ctx.clip()
+    if (d.painting) paintPainting(ctx, PANEL_W, PANEL_H, d.painting.plan, d.painting.words, c, d.painting.opts)
+    else paintPainting(ctx, PANEL_W, PANEL_H, DAY_OFF, [40], c, { done: 1, seed: 1 })
+    ctx.restore()
+    // The painting drew paths of its own, so the frame's edge is traced again.
+    ctx.beginPath()
+    ctx.roundRect(0, 0, PANEL_W, PANEL_H, 8)
+    ctx.strokeStyle = rgba(ink.dim, 0.22)
+    ctx.lineWidth = 1
+    ctx.stroke()
+    ctx.restore()
+    ctx.fillStyle = rgba(ink.text)
+    ctx.font = `600 14px ${fonts.body}`
+    ctx.fillText(d.day, x, TOP + PANEL_H + 24)
+    ctx.fillStyle = rgba(ink.dim)
+    ctx.font = `11px ${fonts.mono}`
+    ctx.fillText(fitText(ctx, d.caption, PANEL_W), x, TOP + PANEL_H + 42)
+  })
+  ctx.font = `11px ${fonts.mono}`
+  ctx.fillStyle = rgba(ink.dim)
+  ctx.fillText('painted one take at a time', PAD, H - 26)
+  ctx.textAlign = 'right'
+  ctx.fillText('murmurapp.app', W - PAD, H - 26)
+  ctx.textAlign = 'left'
+}

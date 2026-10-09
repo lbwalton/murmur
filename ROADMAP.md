@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (80/101 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (80/102 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -113,3 +113,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-092** One header on every page, the docs on the site, and a Wispr Flow comparison
 - [ ] **US-100** The light of the hours you painted in
 - [ ] **US-101** The seal in your belt's color
+- [ ] **US-102** Save the week

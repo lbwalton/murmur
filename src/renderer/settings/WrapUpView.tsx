@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
-import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, sealBelt, shiftDay } from '../../shared/painting'
+import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, sealBelt, shiftDay, weekLine, weekOf } from '../../shared/painting'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, useToday } from './PageTitle'
@@ -22,6 +22,8 @@ import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
   CARD,
   type Gesture,
+  type ScrollDay,
+  SCROLL,
   MAX_EXTRA,
   type PaintingColors,
   type SealColor,
@@ -30,6 +32,7 @@ import {
   paintingCaption,
   paintingColors,
   paintingLine,
+  paintWeekScroll,
   planPainting
 } from './painting'
 
@@ -106,6 +109,18 @@ function longDate(day: string): string {
   return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
+/** The fonts a saved card draws with: the display face when it loaded,
+ *  else a condensed system face. */
+function cardFonts(hasFace: boolean): { display: string; body: string; mono: string } {
+  const css = getComputedStyle(document.documentElement)
+  const body = css.getPropertyValue('--font-body').trim() || 'sans-serif'
+  return {
+    display: hasFace ? `"${DISPLAY}", ${body}` : `"Arial Narrow", "Helvetica Neue", ${body}`,
+    body,
+    mono: css.getPropertyValue('--font-mono').trim() || 'monospace'
+  }
+}
+
 /**
  * Saves a day's portrait card (1080 by 1350): the painting as it stands,
  * its name, how far it got, the date, and the wordmark. Drawn and saved
@@ -122,13 +137,7 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
   ctx.setTransform(2, 0, 0, 2, 0, 0)
-  const css = getComputedStyle(document.documentElement)
-  const body = css.getPropertyValue('--font-body').trim() || 'sans-serif'
-  const fonts = {
-    display: hasFace ? `"${DISPLAY}", ${body}` : `"Arial Narrow", "Helvetica Neue", ${body}`,
-    body,
-    mono: css.getPropertyValue('--font-mono').trim() || 'monospace'
-  }
+  const fonts = cardFonts(hasFace)
   const c = journeyColors(BELT_HEX)
   const more = done - target
   paintPaintingCard(
@@ -151,6 +160,46 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
     { done, finished, seed, sealColor: sealOf(record), light: lightOf(record, plan) }
   )
   return bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', day)
+}
+
+/** A day's key as its short weekday: Fri. */
+function shortDay(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short' })
+}
+
+/**
+ * Saves the week's scroll (US-102, 3968 by 824): the seven days ending on
+ * `last` side by side, each painting as it stands with its seal and
+ * light, a day without takes as one dry mark, and the week's numbers.
+ * Drawn and saved here, nothing sent. True when it was saved.
+ */
+async function saveWeekScroll(last: string, book: PaintingBook, colors: PaintingColors): Promise<boolean> {
+  const week = weekOf(last)
+  const days: ScrollDay[] = week.map((day) => {
+    const record = Object.hasOwn(book, day) ? book[day] : null
+    if (!record) return { day: shortDay(day), caption: 'a day off', painting: null }
+    const plan = planFor(record)
+    const { done, finished } = progressOf(record)
+    return {
+      day: shortDay(day),
+      caption: finished ? SUBJECT_NAMES[record.subject] : `${done} of ${record.target}`,
+      painting: { plan, words: record.words, opts: { done, seal: finished ? 1 : 0, seed: record.seed, sealColor: sealOf(record), light: lightOf(record, plan) } }
+    }
+  })
+  const numbers = weekLine(book, last)
+  const [y, m, d] = week[0].split('-').map(Number)
+  const title = `the week of ${new Date(y, m - 1, d).toLocaleDateString([], { month: 'long', day: 'numeric' })}`
+  const hasFace = await loadDisplayFace()
+  const canvas = document.createElement('canvas')
+  canvas.width = SCROLL.W * 2
+  canvas.height = SCROLL.H * 2
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return false
+  ctx.setTransform(2, 0, 0, 2, 0, 0)
+  const c = journeyColors(BELT_HEX)
+  paintWeekScroll(ctx, days, colors, { text: c.text, dim: c.dim }, cardFonts(hasFace), { title, numbers })
+  return bridge().saveShareCard(canvas.toDataURL('image/png'), 'week', last)
 }
 
 /** An earlier day's painting, opened large from the strip, with its own
@@ -321,11 +370,21 @@ export function WrapUpView(props: {
     .filter((day) => day < today)
     .sort()
     .slice(-6)
+  // The week's scroll needs two paintings in the seven days ending today.
+  const weekPaintings = weekOf(today).filter((day) => Object.hasOwn(book, day)).length
+  const [weekNote, setWeekNote] = useState('')
 
   const copySummary = async (): Promise<void> => {
     await bridge().copyText(said.text)
     setNote('Copied.')
     window.setTimeout(() => setNote(''), 1500)
+  }
+
+  const saveWeek = async (): Promise<void> => {
+    setWeekNote('Saving…')
+    const saved = await saveWeekScroll(today, book, colors).catch(() => false)
+    setWeekNote(saved ? 'Saved.' : '')
+    if (saved) window.setTimeout(() => setWeekNote(''), 1500)
   }
 
   const saveCard = async (): Promise<void> => {
@@ -403,7 +462,19 @@ export function WrapUpView(props: {
       {viewing && <PaintingViewer day={viewing.day} record={viewing.record} colors={colors} onClose={() => setViewing(null)} />}
       {past.length > 0 && (
         <section className="panel">
-          <p className="micro-label">your paintings</p>
+          <div className="panel-head">
+            <p className="micro-label">your paintings</p>
+            {weekPaintings >= 2 && (
+              <span className="week-save">
+                <span className="dim day-note" aria-live="polite">
+                  {weekNote}
+                </span>
+                <button className="btn quiet-btn" onClick={() => void saveWeek()}>
+                  Save the week
+                </button>
+              </span>
+            )}
+          </div>
           <div className="past-paintings">
             {past.map((day) => (
               <PastPainting key={day} day={day} today={today} record={book[day]} colors={colors} onOpen={() => setViewing({ day, record: book[day] })} />

@@ -1067,6 +1067,13 @@ select.field {
   font-size: 12px;
 }
 
+/* Save the week (US-102), beside the strip's label. */
+.week-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .past-paintings {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));

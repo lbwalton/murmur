@@ -20,7 +20,9 @@ import {
   syncPaintings,
   takesByDay,
   tierFor,
-  typicalTakes
+  typicalTakes,
+  weekLine,
+  weekOf
 } from './painting'
 import type { RankSpec } from './ranks'
 
@@ -256,5 +258,24 @@ describe('the book', () => {
     expect(asRecord(null)).toBeNull()
     expect(asRecord({ ...record, hour: 21 })?.hour).toBe(21)
     expect(asRecord({ ...record, hour: 24 })).not.toHaveProperty('hour')
+  })
+})
+
+describe('the week', () => {
+  it('is the seven days ending on a day, oldest first, across a month end', () => {
+    expect(weekOf('2026-10-02')).toEqual(['2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02'])
+  })
+
+  it('says what the week painted: paintings finished, takes, and words', () => {
+    const record = (target: number, words: number[]) => ({ subject: 'moon' as const, seed: 1, target, tier: 0, level: 1, words })
+    const book = {
+      '2026-10-02': record(6, [10, 20, 30, 40, 50, 60]),
+      '2026-10-03': record(6, [100, 200]),
+      // Outside the week ending Oct 8: never counted.
+      '2026-09-20': record(6, [999, 999, 999, 999, 999, 999])
+    }
+    expect(weekLine(book, '2026-10-08')).toBe('1 painting finished from 8 takes and 510 words')
+    expect(weekLine({ ...book, '2026-10-05': record(6, [1, 1, 1, 1, 1, 1]) }, '2026-10-08')).toBe('2 paintings finished from 14 takes and 516 words')
+    expect(weekLine({ '2026-10-03': record(6, [1]) }, '2026-10-08')).toBe('1 take and 1 word')
   })
 })

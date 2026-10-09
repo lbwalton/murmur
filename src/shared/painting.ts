@@ -320,6 +320,22 @@ export function syncPaintings(
   return out
 }
 
+/** The seven days ending on `last`, oldest first: a week's scroll (US-102). */
+export function weekOf(last: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftDay(last, i - 6))
+}
+
+/** A week's numbers for its scroll: the paintings it finished, from how
+ *  many takes and words. */
+export function weekLine(book: Readonly<PaintingBook>, last: string): string {
+  const records = weekOf(last).flatMap((day) => (Object.hasOwn(book, day) ? [book[day]] : []))
+  const takes = records.reduce((n, r) => n + r.words.length, 0)
+  const words = records.reduce((n, r) => n + r.words.reduce((a, b) => a + b, 0), 0)
+  const finished = records.filter((r) => r.words.length >= r.target).length
+  const said = `${takes} ${takes === 1 ? 'take' : 'takes'} and ${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`
+  return finished > 0 ? `${finished} ${finished === 1 ? 'painting' : 'paintings'} finished from ${said}` : said
+}
+
 /** A record read back from disk, or null when it is not one. */
 export function asRecord(value: unknown): PaintingRecord | null {
   if (!value || typeof value !== 'object') return null

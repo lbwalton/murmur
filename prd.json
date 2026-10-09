@@ -1588,6 +1588,21 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-10-09 on feature/painting-a-day. sealBelt(rank, ladder) in shared/painting.ts maps a record's rank to its belt (null for none, unknown, or missing); WrapUpView's sealOf maps that to paint with journeyPaint's beltOnInk (coral as two halves); paintSeal takes a SealColor (one color, or two halves clipped to the seal) through paintPainting and paintPaintingCard. Verified: typecheck, tests (sealBelt for every belt on the ladder, ember before the first belt and for older records), lab render of a seal in every belt color including both coral splits. Review gate 2026-10-09: no blockers. Fixed: (1) records made by the earlier test builds had no rank, so every one of LaBroi's paintings would have kept the ember seal; syncPaintings now gives a rankless record the rank its first take was made at while the log has its day (test: two rankless records get white and blue back, and one without its day stays rankless). (2) The HANDOFF step names the practice belt by where it lives, since the founder's header belt is red. (3) The coral seal fills each half side by side under one clip, so neither shows through the other during the stamp. (4) The belt to seal paint mapping moved to journeyPaint's sealPaint, tested: white as rice, black lifted off the ink, red as the red belt, coral as two halves. Verified criterion 4 by the four call sites (today's painting, the strip, the viewer, and saveDayCard into paintPaintingCard all pass sealColor) and by a scratch-profile capture (seeded history, blue at the time) showing blue seals on the strip's finished paintings and in the opened viewer."
+    },
+    {
+      "id": "US-102",
+      "title": "Save the week",
+      "description": "LaBroi picked it from Claude's ideas for making each painting uniquely yours and worth sharing, 2026-10-09: one long share card that strings the week's paintings together, like a handscroll unrolled.",
+      "acceptance": [
+        "On the wrap-up tab, Save the week sits beside the label of your paintings once the seven days ending today hold two paintings or more, with a Saving and Saved note",
+        "It saves a PNG of 3968 by 824 on the night ground: the wordmark, the week's title in the display face (the week of October 3), and its numbers (5 paintings finished from 84 takes and 7,412 words) above; the seven days side by side, oldest on the left, each painting as it stands with its seal and light in a hairline frame, its weekday and its name or how far it got under it; a day without takes as one dry mark that says a day off; the line and murmurapp.app along the foot",
+        "The file is named for the day the week ends on (murmur-week-YYYY-MM-DD.png); it is drawn and saved on the machine and sent nowhere",
+        "docs/settings.md answers How do I save a week of paintings?; CHANGELOG.md, DESIGN.md, and CLAUDE.md say it",
+        "Live: LaBroi saves a week and opens the image"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-10-09 on feature/painting-a-day. shared/painting.ts weekOf and weekLine; painting.ts SCROLL and paintWeekScroll (each panel clipped to a rounded frame, the frame traced again after the painting since it draws paths of its own, captions cut to fit); WrapUpView saveWeekScroll and the button in the paintings panel head; cardFonts shared with the day card; main names a week's file murmur-week-<day>.png (the same date check as the day card); the preload's saveShareCard accepts week. Verified: typecheck, tests (the week crosses a month end; its line counts only its own seven days, singular and plural), lab render of a sample week at full size (frames, a day off, seals, all four lights, an unfinished day). Smoke green after the main change. Scratch-profile capture shows Save the week in the paintings panel head beside the label (probe read its text)."
     }
   ]
 }
