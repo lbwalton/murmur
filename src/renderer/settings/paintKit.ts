@@ -6,11 +6,12 @@
 
 import { lerp } from '../brush'
 
-export type Tone = 'ink' | 'soft' | 'wash' | 'accent' | 'gold'
+/** 'glow' is ember warmed toward gold: the dawn sun (US-100). */
+export type Tone = 'ink' | 'soft' | 'wash' | 'accent' | 'gold' | 'glow'
 export type Pt = [number, number]
 
 export type Mark =
-  | { kind: 'stroke'; pts: Pt[]; w: number; tone: Tone; dry: number; shape?: 'leaf' | 'stalk'; alpha?: number; bird?: true }
+  | { kind: 'stroke'; pts: Pt[]; w: number; tone: Tone; dry: number; shape?: 'leaf' | 'stalk'; alpha?: number; bird?: true; moon?: true }
   | { kind: 'blossom'; x: number; y: number; r: number }
   | { kind: 'bud'; x: number; y: number; r: number; tone?: Tone }
   | { kind: 'fill'; pts: Pt[]; depth: number; tone: Tone; alpha: number }
@@ -116,7 +117,7 @@ export function faintMoon(k: Kit, cx: number, cy: number): Layer {
     weight: 0,
     min: 1,
     max: 1,
-    make: () => [[k.wash(ring(cx, cy, r * 1.3, r * 1.25, 0, TAU), 0.03), { kind: 'stroke', pts: ring(cx, cy, r, r, -2.3, -2.3 + 5.8), w: 0.014, tone: 'soft', dry: 0.6 }]]
+    make: () => [[k.wash(ring(cx, cy, r * 1.3, r * 1.25, 0, TAU), 0.03), { kind: 'stroke', pts: ring(cx, cy, r, r, -2.3, -2.3 + 5.8), w: 0.014, tone: 'soft', dry: 0.6, moon: true }]]
   }
 }
 

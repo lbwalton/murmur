@@ -17,6 +17,7 @@ import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
 import { journeyColors, sealPaint } from './journeyPaint'
 import { EmptyState } from './EmptyState'
+import { LIGHT_WORDS, lightFor, planLight } from './paintLight'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
   CARD,
@@ -73,12 +74,21 @@ function planFor(record: PaintingRecord): Gesture[] {
 
 const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
 
-/** The rank and level a day was painted at, for its card: white belt,
- *  one stripe, level 1. Records from before ranks were kept name the level. */
+/** The rank and level a day was painted at, for its card, and its light
+ *  once it has one: white belt, one stripe, level 1, by moonlight.
+ *  Records from before ranks were kept name the level. */
 function painterOf(record: PaintingRecord): string {
-  if (record.rank === 'none') return `painted before the first belt, level ${record.level}`
+  const light = record.hour !== undefined && record.words.length >= record.target ? `, ${LIGHT_WORDS[lightFor(record.hour)]}` : ''
+  if (record.rank === 'none') return `painted before the first belt, level ${record.level}${light}`
   const rank = LADDER.find((r) => r.id === record.rank)
-  return rank ? `painted at ${rank.label}, level ${record.level}` : `painted at level ${record.level}`
+  return `${rank ? `painted at ${rank.label}, level` : 'painted at level'} ${record.level}${light}`
+}
+
+/** A finished painting's light (US-100), from the hour its takes were
+ *  made in; none before it finishes. */
+function lightOf(record: PaintingRecord, plan: readonly Gesture[]): Gesture | undefined {
+  if (record.hour === undefined || record.words.length < record.target) return undefined
+  return planLight(plan, record.target, record.seed, record.tier, record.hour)
 }
 
 /** The seal's color (US-101): the belt the day was painted at, as paint
@@ -138,7 +148,7 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
       line: finished ? paintingLine(record.words, longestMs) : null,
       painter: painterOf(record)
     },
-    { done, finished, seed, sealColor: sealOf(record) }
+    { done, finished, seed, sealColor: sealOf(record), light: lightOf(record, plan) }
   )
   return bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', day)
 }
@@ -153,6 +163,7 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
   const { subject, seed, target } = props.record
   const plan = useMemo(() => planFor(props.record), [props.record])
   const sealColor = useMemo(() => sealOf(props.record), [props.record])
+  const light = useMemo(() => lightOf(props.record, plan), [props.record, plan])
   const { done, finished } = progressOf(props.record)
   useEffect(() => {
     const dialog = dialogRef.current
@@ -190,7 +201,7 @@ function PaintingViewer(props: { day: string; record: PaintingRecord; colors: Pa
         className="viewer-canvas"
         label={`${longDate(props.day)}: ${paintingCaption(subject, done, target)}`}
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor, light })}
       />
       <div className="share-actions">
         <span className="dim" aria-live="polite">
@@ -215,6 +226,7 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
   const plan = useMemo(() => planFor(props.record), [subject, seed, target, tier, level, extraKey])
   const sealColor = useMemo(() => sealOf(props.record), [props.record.rank])
   const { done, finished } = progressOf(props.record)
+  const light = useMemo(() => lightOf(props.record, plan), [plan, props.record.hour, finished])
   const [y, m, d] = props.day.split('-').map(Number)
   const date = new Date(y, m - 1, d)
   // Weekdays name the last week; older days get their date, so two
@@ -227,7 +239,7 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
       <PaintCanvas
         className="past-canvas"
         paintKey={`${props.day}|${done}`}
-        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor })}
+        paint={(ctx, w, h) => paintPainting(ctx, w, h, plan, props.record.words, props.colors, { done, seal: finished ? 1 : 0, seed, ground: false, sealColor, light })}
       />
       <span className="past-day">{weekday}</span>
       <span className="past-caption dim" title={caption}>
@@ -288,6 +300,7 @@ export function WrapUpView(props: {
   const plan = useMemo(() => (record ? planFor(record) : []), [record?.subject, record?.seed, record?.target, record?.tier, record?.level, extraKey])
   const { done, finished } = record ? progressOf(record) : { done: 0, finished: false }
   const sealColor = useMemo(() => (record ? sealOf(record) : undefined), [record?.rank])
+  const light = useMemo(() => (record ? lightOf(record, plan) : undefined), [plan, record?.hour, finished])
   // The painting open in the viewer, kept as it was opened, so a reload
   // underneath never pulls it away.
   const [viewing, setViewing] = useState<{ day: string; record: PaintingRecord } | null>(null)
@@ -345,7 +358,8 @@ export function WrapUpView(props: {
                 seal: finished ? (fresh && doneBefore < record.target ? Math.max(0, k * 4 - 3) : 1) : 0,
                 seed: record.seed,
                 ground: false,
-                sealColor
+                sealColor,
+                light
               })
             }
           />

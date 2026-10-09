@@ -146,7 +146,17 @@ export function paintingColors(ground: Rgb, rice: Rgb, ember: Rgb, gold: Rgb): P
 }
 
 const toneColor = (tone: Tone, c: PaintingColors): Rgb =>
-  tone === 'wash' ? c.wash : tone === 'soft' ? c.soft : tone === 'accent' ? c.accent : tone === 'gold' ? c.gold : c.ink
+  tone === 'wash'
+    ? c.wash
+    : tone === 'soft'
+      ? c.soft
+      : tone === 'accent'
+        ? c.accent
+        : tone === 'gold'
+          ? c.gold
+          : tone === 'glow'
+            ? mix(c.accent, c.gold, 0.5)
+            : c.ink
 
 /** Longer takes paint bolder strokes. */
 export const strokeWeight = (words: number | undefined): number => 0.75 + 0.5 * Math.min(1, (words ?? 80) / 160)
@@ -323,13 +333,23 @@ export function paintPainting(
   plan: readonly Gesture[],
   words: readonly number[],
   c: PaintingColors,
-  opts: { done: number; live?: number; seal?: number; seed: number; ground?: boolean; sealColor?: SealColor }
+  opts: { done: number; live?: number; seal?: number; seed: number; ground?: boolean; sealColor?: SealColor; light?: Gesture }
 ): void {
   // On screen the card's own color shows through (a canvas fill of the
   // same color can render a shade off); a saved card paints its ground.
   if (opts.ground !== false) {
     ctx.fillStyle = rgba(c.ground)
     ctx.fillRect(0, 0, w, h)
+  }
+  // The light of the hours it was painted in (US-100) comes in with the
+  // seal, under every stroke, the way a painter lays the sky first.
+  if (opts.light && opts.seal && opts.seal > 0) {
+    ctx.save()
+    ctx.translate(w * MAT, h * MAT)
+    ctx.scale(1 - MAT * 2, 1 - MAT * 2)
+    ctx.globalAlpha *= Math.min(1, opts.seal)
+    opts.light.forEach((m, j) => paintMark(ctx, m, w, h, 1, 1, c, opts.seed + 7001 + j))
+    ctx.restore()
   }
   const done = Math.min(opts.done, plan.length)
   // While the newest stroke paints in, the strokes under it are drawn
@@ -430,7 +450,7 @@ export function paintPaintingCard(
   ink: { text: Rgb; dim: Rgb },
   fonts: { display: string; body: string; mono: string },
   says: { date: string; title: string; caption: string; line: string | null; painter: string },
-  opts: { done: number; finished: boolean; seed: number; sealColor?: SealColor }
+  opts: { done: number; finished: boolean; seed: number; sealColor?: SealColor; light?: Gesture }
 ): void {
   const { W, H } = CARD
   const pad = 36
@@ -452,7 +472,7 @@ export function paintPaintingCard(
   ctx.beginPath()
   ctx.roundRect(0, 0, pw, ph, 10)
   ctx.clip()
-  paintPainting(ctx, pw, ph, plan, words, c, { done: opts.done, seal: opts.finished ? 1 : 0, seed: opts.seed, sealColor: opts.sealColor })
+  paintPainting(ctx, pw, ph, plan, words, c, { done: opts.done, seal: opts.finished ? 1 : 0, seed: opts.seed, sealColor: opts.sealColor, light: opts.light })
   ctx.restore()
   let y = 70 + ph + 64
   ctx.fillStyle = rgba(ink.text)

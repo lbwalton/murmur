@@ -9,6 +9,8 @@ import {
   SUBJECTS,
   SUBJECT_RANGE,
   asRecord,
+  hoursByDay,
+  paintingHour,
   paintingSeed,
   paintingSize,
   pickSubject,
@@ -191,6 +193,28 @@ describe('the book', () => {
     expect(syncPaintings({ '2026-10-01': old1 }, [], 1, LADDER)['2026-10-01'].rank).toBeUndefined()
   })
 
+  it('a painting gets its light hour once it reaches its size: the middle hour of the takes that made it', () => {
+    const day = '2026-10-02'
+    const takes = [8, 9, 9, 14, 20, 21, 22, 23].map((hour) => take(day, 30, hour))
+    const short = syncPaintings({}, takes.slice(0, 5), 1, LADDER)[day]
+    expect(short.target).toBe(MIN_STROKES)
+    expect(short.hour).toBeUndefined()
+    const full = syncPaintings({}, takes, 1, LADDER)[day]
+    // The first six takes (8, 9, 9, 14, 20, 21): the lower middle is 9.
+    expect(full.hour).toBe(9)
+    // Kept once the log is trimmed, refreshed while it has the day.
+    expect(syncPaintings({ [day]: full }, [], 1, LADDER)[day].hour).toBe(9)
+  })
+
+  it('the hour is the one kept with the take, or its time on older entries', () => {
+    const day = '2026-10-02'
+    const kept = { ...take(day, 10, 9), hour: 22 }
+    expect(hoursByDay([kept, take(day, 10, 11)]).get(day)).toEqual([22, 11])
+    expect(paintingHour([22, 11, 3], 3)).toBe(11)
+    expect(paintingHour([22, 11], 3)).toBeUndefined()
+    expect(paintingHour([1, 2, 3, 4], 4)).toBe(2)
+  })
+
   it('keeps KEEP_DAYS calendar days back from the newest, however sparse', () => {
     const many = Array.from({ length: KEEP_DAYS + 20 }, (_, i) => take(shiftDay('2025-01-01', i), 10))
     const book = syncPaintings({}, many, 3, LADDER)
@@ -230,5 +254,7 @@ describe('the book', () => {
     expect(asRecord({ ...record, words: ['x'] })).toBeNull()
     expect(asRecord({ ...record, target: 999 })).toBeNull()
     expect(asRecord(null)).toBeNull()
+    expect(asRecord({ ...record, hour: 21 })?.hour).toBe(21)
+    expect(asRecord({ ...record, hour: 24 })).not.toHaveProperty('hour')
   })
 })

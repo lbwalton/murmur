@@ -72,6 +72,10 @@ export interface PaintingRecord {
   /** The practice rank's id at the day's first take (ranks.json), for the
    *  card; missing on records made before it was kept. */
   rank?: string
+  /** The painting's light (US-100): the middle local hour (0 to 23) of
+   *  the takes that made it, its first `target`, once it has that many;
+   *  missing before. Kept as one number, never each take's time. */
+  hour?: number
   /** Each take's word count, in the order spoken. Never its text. */
   words: number[]
 }
@@ -125,6 +129,30 @@ export function takesByDay(events: readonly SessionEvent[]): Map<string, number[
     else byDay.set(day, [takeWords(event)])
   }
   return byDay
+}
+
+/** Each day's takes as local hours (0 to 23), in the order spoken: the
+ *  hour kept with the take, or its time's hour on older entries. */
+export function hoursByDay(events: readonly SessionEvent[]): Map<string, number[]> {
+  const byDay = new Map<string, number[]>()
+  for (const event of [...events].sort((a, b) => a.at - b.at)) {
+    const day = eventDay(event)
+    if (!isDayKey(day)) continue
+    const kept = event.hour
+    const hour = Number.isInteger(kept) && (kept as number) >= 0 && (kept as number) <= 23 ? (kept as number) : new Date(event.at).getHours()
+    const list = byDay.get(day)
+    if (list) list.push(hour)
+    else byDay.set(day, [hour])
+  }
+  return byDay
+}
+
+/** The middle hour of the first `target` takes (the lower of the two
+ *  middles on an even count), or undefined with fewer takes than that. */
+export function paintingHour(hours: readonly number[], target: number): number | undefined {
+  if (target < 1 || hours.length < target) return undefined
+  const sorted = hours.slice(0, target).sort((a, b) => a - b)
+  return sorted[(target - 1) >> 1]
 }
 
 /** The median number of takes on the active days in the window before
@@ -229,6 +257,14 @@ export function syncPaintings(
 ): PaintingBook {
   const own = (day: string): PaintingRecord | null => (Object.hasOwn(book, day) && isDayKey(day) ? book[day] : null)
   const byDay = takesByDay(events)
+  const hours = hoursByDay(events)
+  // The light's hour comes from the log, like the words.
+  const withHour = (record: PaintingRecord, day: string): PaintingRecord => {
+    const hour = paintingHour(hours.get(day) ?? [], record.target)
+    if (hour !== undefined) return { ...record, hour }
+    const { hour: _unset, ...rest } = record
+    return rest
+  }
   // What the belts count: words of dictations and notes, by day, and
   // each day's first such take.
   const rankWords = new Map<string, number>()
@@ -249,26 +285,27 @@ export function syncPaintings(
     const logged = byDay.get(day)
     const kept = own(day)
     const first = firstWords.get(day) ?? 0
-    const rankThen = (): string => practiceRank(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))?.id ?? 'none'
+    const rankThen = practiceRank(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))
     if (kept) {
       // A record from before ranks were kept gets one while the log still
       // has its day, so its seal can take the belt's color.
-      const ranked = kept.rank === undefined && logged ? { ...kept, rank: rankThen() } : kept
-      next.set(day, logged && logged.length >= ranked.words.length ? { ...ranked, words: [...logged] } : ranked)
+      const ranked = kept.rank === undefined && logged ? { ...kept, rank: rankThen?.id ?? 'none' } : kept
+      next.set(day, logged && logged.length >= ranked.words.length ? withHour({ ...ranked, words: [...logged] }, day) : ranked)
     } else if (logged) {
       const seed = paintingSeed(install, day)
       const target = paintingSize(typicalTakes(byDay, day))
       // A day filled in between kept days (a retried take) is unlike both.
       const after = days.slice(i + 1).map(own).find((r) => r !== null)?.subject ?? null
-      next.set(day, {
+      const record: PaintingRecord = {
         subject: pickSubject(seed, [before, after], target),
         seed,
         target,
-        tier: tierFor(practiceBelt(ladder, words + first, activeDays + (rankWords.has(day) ? 1 : 0))),
+        tier: tierFor(rankThen?.belt ?? 'none'),
         level: levelFor(words + first),
-        rank: rankThen(),
+        rank: rankThen?.id ?? 'none',
         words: [...logged]
-      })
+      }
+      next.set(day, withHour(record, day))
     }
     before = next.get(day)?.subject ?? before
     if (rankWords.has(day)) {
@@ -292,6 +329,7 @@ export function asRecord(value: unknown): PaintingRecord | null {
   if (!int(r.seed, 0, 0xffffffff) || !int(r.target, MIN_STROKES, MAX_STROKES) || !int(r.tier, 0, 4) || !int(r.level, 1, 100000)) return null
   if (!Array.isArray(r.words) || r.words.length > MAX_TAKES || !r.words.every((w) => int(w, 0, 1_000_000))) return null
   const rank = typeof r.rank === 'string' && /^[a-z0-9-]{1,32}$/.test(r.rank) ? r.rank : undefined
+  const hour = int(r.hour, 0, 23) ? (r.hour as number) : undefined
   return {
     subject: r.subject as SubjectId,
     seed: r.seed as number,
@@ -299,6 +337,7 @@ export function asRecord(value: unknown): PaintingRecord | null {
     tier: r.tier as number,
     level: r.level as number,
     ...(rank ? { rank } : {}),
+    ...(hour !== undefined ? { hour } : {}),
     words: [...(r.words as number[])]
   }
 }

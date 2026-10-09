@@ -27,7 +27,7 @@ export const LAYERS: Record<SubjectId, (k: Kit) => Subject> = {
           return [
             [
               ...(k.tier >= 1 ? [k.wash(ring(cx, cy, r * 1.35, r * 1.3, 0, TAU, 32), 0.04)] : []),
-              { kind: 'stroke', pts: ring(cx, cy, r, r * 0.96, a0, a0 + k.rnd(5.5, 5.95)), w: 0.028, tone: 'ink', dry: 0.45 }
+              { kind: 'stroke', pts: ring(cx, cy, r, r * 0.96, a0, a0 + k.rnd(5.5, 5.95)), w: 0.028, tone: 'ink', dry: 0.45, moon: true }
             ]
           ]
         }
