@@ -53,6 +53,57 @@ describe('the light', () => {
     expect(bad).toEqual([])
   })
 
+  it('a painting with its own moon gets its afterglow under that moon, low or high', () => {
+    const bad: string[] = []
+    for (const subject of SUBJECTS) {
+      for (const seed of [1, 5, 77, 808, 1234]) {
+        const plan = planPainting({ subject, seed, target: 14, tier: 3, level: 1 })
+        const moon = plan.flat().find((m) => m.kind === 'stroke' && m.moon === true)
+        if (!moon || !('pts' in moon)) continue
+        const lowest = Math.max(...moon.pts.map((p) => p[1]))
+        for (const hour of [HOURS.dawn, HOURS.day, HOURS.dusk]) {
+          for (const m of planLight(plan, 14, seed, 3, hour)) {
+            if (m.kind !== 'stroke') continue
+            if (Math.min(...m.pts.map((p) => p[1])) <= lowest) bad.push(`${subject} seed ${seed} hour ${hour}: a band above its moon`)
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([])
+  })
+
+  it('no star sits under an ink stroke, at any tier, size, or seed', () => {
+    const bad: string[] = []
+    for (const subject of SUBJECTS) {
+      for (const tier of [0, 2, 4]) {
+        for (const target of [6, 14, 24]) {
+          for (const seed of [5, 808]) {
+            const plan = planPainting({ subject, seed, target, tier, level: 1 })
+            const strokes = plan.flat().filter((m): m is Extract<Mark, { kind: 'stroke' }> => m.kind === 'stroke' && m.tone !== 'wash')
+            const stars = planLight(plan, target, seed, tier, HOURS.night).filter((m): m is Extract<Mark, { kind: 'bud' }> => m.kind === 'bud')
+            for (const star of stars) {
+              // In canvas proportions (4 wide, 3 tall), against the boldest stroke weight.
+              const hit = strokes.some((m) => {
+                const reach = (m.w * 4 * 1.25) / 2 + star.r * 4
+                return m.pts.some((p, i) => {
+                  if (i === 0) return false
+                  const [ax, ay] = [m.pts[i - 1][0] * 4, m.pts[i - 1][1] * 3]
+                  const [bx, by] = [p[0] * 4, p[1] * 3]
+                  const [px, py] = [star.x * 4, star.y * 3]
+                  const len = (bx - ax) ** 2 + (by - ay) ** 2
+                  const t = len === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len))
+                  return Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))) < reach
+                })
+              })
+              if (hit) bad.push(`${subject} tier ${tier} size ${target} seed ${seed}: a star at ${star.x.toFixed(3)}, ${star.y.toFixed(3)}`)
+            }
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([])
+  })
+
   it('the moon over water keeps its own moon in every light', () => {
     const plan = planPainting({ subject: 'moon', seed: 3, target: 10, tier: 0, level: 1 })
     for (const hour of Object.values(HOURS)) expect(planLight(plan, 10, 3, 0, hour).filter((m) => m.kind === 'blot')).toEqual([])

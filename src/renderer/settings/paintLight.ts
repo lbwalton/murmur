@@ -28,6 +28,17 @@ export const LIGHT_WORDS: Record<Light, string> = { dawn: 'at dawn', day: 'by da
 const ASPECT = 4 / 3
 const COLS = 20
 const ROWS = 16
+/** The eight directions around a stroke's centerline. */
+const BODY: ReadonlyArray<readonly [number, number]> = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1]
+]
 
 function insideShape(pts: readonly Pt[], x: number, y: number): boolean {
   let hit = false
@@ -55,11 +66,22 @@ export function occupancy(gestures: readonly Gesture[]): number[] {
     for (const m of gesture) {
       if (m.kind === 'stroke') {
         const v = m.tone === 'wash' ? 0.3 : 1
+        // An ink stroke has a body: the cells its width reaches (the
+        // boldest weight, plus the gap between samples and a star's size)
+        // get a trace too, so a star never hides under it. Washes are thin
+        // enough to shine through.
+        const hx = m.tone === 'wash' ? 0 : m.w * 0.65 + 0.012
+        const hy = hx * ASPECT
         for (let i = 1; i < m.pts.length; i++) {
           const [x0, y0] = m.pts[i - 1]
           const [x1, y1] = m.pts[i]
           const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.02))
-          for (let j = 0; j <= n; j++) add(x0 + ((x1 - x0) * j) / n, y0 + ((y1 - y0) * j) / n, v)
+          for (let j = 0; j <= n; j++) {
+            const x = x0 + ((x1 - x0) * j) / n
+            const y = y0 + ((y1 - y0) * j) / n
+            add(x, y, v)
+            if (hx > 0) for (const [dx, dy] of BODY) add(x + dx * hx, y + dy * hy, 0.01)
+          }
         }
       } else if (m.kind === 'blot' || m.kind === 'fill') {
         const body = m.kind === 'fill' ? [...m.pts, ...m.pts.map(([x, y]): Pt => [x, y + m.depth]).reverse()] : m.pts
@@ -173,7 +195,9 @@ export function planLight(plan: readonly Gesture[], target: number, seed: number
   if (moon) {
     // A moon by day: no second disc, an afterglow across the sky under it.
     const bottom = Math.max(...moon.pts.map((p) => p[1]))
-    const y = Math.min(bottom + 0.05 + rand() * 0.03, 0.48)
+    // Under the moon wherever it sits (the maple's hangs low), the second
+    // band at dusk still inside the frame.
+    const y = Math.min(bottom + 0.05 + rand() * 0.03, 0.9)
     const tone = light === 'day' ? 'gold' : light === 'dawn' ? 'glow' : 'accent'
     marks.push({ kind: 'stroke', pts: [[0.02, y], [0.4, y - 0.012], [0.98, y + 0.008]], w: 0.03, tone, dry: 0.9, alpha: light === 'day' ? 0.16 : 0.3 })
     if (light === 'dusk') marks.push({ kind: 'stroke', pts: [[0.1, y + 0.05], [0.5, y + 0.044], [0.9, y + 0.054]], w: 0.016, tone: 'accent', dry: 0.9, alpha: 0.22 })

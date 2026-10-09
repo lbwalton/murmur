@@ -2,10 +2,11 @@
 // A painting a day (US-098): the book of paintings, kept in userData as
 // paintings.json: this install's own seed and one small record per day
 // (subject, seed, size, tier, level, rank, the middle hour of the takes
-// that finished it, and each take's word count, never its text). It is brought up to date from the history log before
-// retention prunes it, so the collection outlives the log, and Clear all
-// empties it with the log. The settings window reads it to paint. A
-// failure here is logged and never stops history or dictation.
+// that finished it, and each take's word count, never its text). It is
+// brought up to date from the history log before retention prunes it, so
+// the collection outlives the log, and Clear all empties it with the log.
+// The settings window reads it to paint. A failure here is logged and
+// never stops history or dictation.
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { randomInt } from 'node:crypto'
 import { join } from 'node:path'
