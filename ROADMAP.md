@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (83/102 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (84/103 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -87,6 +87,7 @@
 - [x] **US-100** The light of the hours you painted in
 - [x] **US-101** The seal in your belt's color
 - [x] **US-102** Save the week
+- [x] **US-103** Narrow card titles
 
 ## Built, awaiting live verification
 

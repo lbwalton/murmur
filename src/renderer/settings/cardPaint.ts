@@ -33,6 +33,21 @@ export interface CardFonts {
   mono: string
 }
 
+/**
+ * Sets a card title's face: the display face, extra bold and condensed.
+ * Setting a canvas font resets its width to normal, so the width goes on
+ * after the font, every time the font is set.
+ */
+export function displayFont(ctx: CanvasRenderingContext2D, size: number, family: string): void {
+  ctx.font = `800 ${size}px ${family}`
+  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'condensed'
+}
+
+/** Back to the normal width for the plain lines under a title. */
+export function plainWidth(ctx: CanvasRenderingContext2D): void {
+  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'normal'
+}
+
 /** The card's seed: every day and its words, so any change repaints. */
 export function cardSeed(days: readonly CardDay[]): number {
   return daySeed(days.map((d) => `${d.day}:${d.words}:${d.sessions}`).join('|'))
@@ -104,15 +119,12 @@ export function paintShareCard(ctx: CanvasRenderingContext2D, data: CardData, c:
   ctx.fillStyle = fade
   ctx.fillRect(0, 0, 560, CARD_H)
 
-  const condensed = (on: boolean): void => {
-    if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = on ? 'condensed' : 'normal'
-  }
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
-  condensed(true)
   ctx.fillStyle = rgba(c.rice)
-  ctx.font = `800 26px ${fonts.display}`
+  displayFont(ctx, 26, fonts.display)
   ctx.fillText('murmur', 56, 76)
+  plainWidth(ctx)
 
   ctx.save()
   ctx.translate(50, 104)
@@ -128,14 +140,14 @@ export function paintShareCard(ctx: CanvasRenderingContext2D, data: CardData, c:
 
   ctx.fillStyle = rgba(c.text)
   let size = 40
-  ctx.font = `800 ${size}px ${fonts.display}`
+  displayFont(ctx, size, fonts.display)
   // Long ranks (the coral belts) shrink to fit beside the paint.
   while (ctx.measureText(data.rank.label).width > 470 && size > 24) {
     size -= 2
-    ctx.font = `800 ${size}px ${fonts.display}`
+    displayFont(ctx, size, fonts.display)
   }
   ctx.fillText(data.rank.label, 56, 232)
-  condensed(false)
+  plainWidth(ctx)
   ctx.fillStyle = rgba(c.dim)
   ctx.font = `italic 17px ${fonts.body}`
   ctx.fillText(`"${data.rank.title}"`, 56, 262)

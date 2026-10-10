@@ -20,7 +20,7 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | rice | Chalky strokes and paper grounds. |
 | ember | Splatter and celebration. Never an error. |
 
-Type in the app: the system UI face (Inter where present) and a mono face for equipment-style micro-labels. Bricolage Grotesque, condensed and heavy, appears only on the website, in the film, and on the share cards (the belt card and the painting card), because a font file is a binary and the repo carries none.
+Type in the app: the system UI face (Inter where present) and a mono face for equipment-style micro-labels. Bricolage Grotesque, condensed and heavy, appears only on the website, in the film, and on the share cards (the belt card, the painting card, and the week scroll), because a font file is a binary and the repo carries none. On a canvas the condensed width goes on after the font (cardPaint.ts displayFont), since setting the font resets it (US-103).
 
 ## Brushwork
 

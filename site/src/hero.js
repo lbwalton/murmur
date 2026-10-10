@@ -804,8 +804,9 @@ async function makePoster() {
   paintScene(ctx, ensoItems(S, mx - S * 0.12, H - 64 - S * 0.62 - S * 0.5 + 8))
   ctx.textAlign = 'left'
   ctx.fillStyle = rgba(C.rice)
-  if ('fontStretch' in ctx) ctx.fontStretch = 'condensed'
   ctx.font = "800 92px 'Bricolage Grotesque', 'Arial Narrow', sans-serif"
+  // After the font: setting a canvas font resets its width to normal.
+  if ('fontStretch' in ctx) ctx.fontStretch = 'condensed'
   ctx.fillText('murmur', mx + S * 0.92, H - 104)
   if ('fontStretch' in ctx) ctx.fontStretch = 'normal'
   ctx.fillStyle = rgba(C.dim)

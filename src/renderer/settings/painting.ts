@@ -16,6 +16,7 @@
 import { type Rgb, cachedBrush, clamp, drawSplat, mix, mulberry, path, rgba, splat, stroke } from '../brush'
 import { type PaintingRecord, SUBJECT_NAMES, type SubjectId } from '../../shared/painting'
 import { formatDuration } from '../../shared/time'
+import { displayFont, plainWidth } from './cardPaint'
 import { type Gesture, type Mark, type Pt, type Tone, SIGNATURES, SIGNATURE_WORDS, TAU, allocate, clusterFor } from './paintKit'
 import { LAYERS } from './paintSubjects'
 
@@ -476,16 +477,15 @@ export function paintPaintingCard(
   ctx.restore()
   let y = 70 + ph + 64
   ctx.fillStyle = rgba(ink.text)
-  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'condensed'
   // The longest names (willow by the water) shrink to fit the card.
   let size = 46
-  ctx.font = `800 ${size}px ${fonts.display}`
+  displayFont(ctx, size, fonts.display)
   while (size > 26 && ctx.measureText(says.title).width > W - pad * 2) {
     size -= 2
-    ctx.font = `800 ${size}px ${fonts.display}`
+    displayFont(ctx, size, fonts.display)
   }
   ctx.fillText(says.title, pad, y)
-  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'normal'
+  plainWidth(ctx)
   y += 32
   ctx.fillStyle = rgba(ink.dim)
   ctx.font = `15px ${fonts.body}`
@@ -555,10 +555,9 @@ export function paintWeekScroll(
   ctx.fillStyle = rgba(c.gold)
   ctx.fillText('murmur', PAD, 46)
   ctx.fillStyle = rgba(ink.text)
-  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'condensed'
-  ctx.font = `800 38px ${fonts.display}`
+  displayFont(ctx, 38, fonts.display)
   ctx.fillText(says.title, PAD, 98)
-  if ('fontStretch' in ctx) (ctx as CanvasRenderingContext2D & { fontStretch: string }).fontStretch = 'normal'
+  plainWidth(ctx)
   ctx.textAlign = 'right'
   ctx.fillStyle = rgba(ink.dim)
   ctx.font = `15px ${fonts.body}`

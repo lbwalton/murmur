@@ -159,7 +159,7 @@ The brain dump branch (US-050 to US-052 and US-055 to US-058) merged to main 202
 
 - [x] Security hardening (found 2026-09-26): run-as-node, NODE_OPTIONS, and inspect are now closed by US-067. Asar integrity and only-load-from-asar are on for the Mac as of US-072 (2026-10-01); Windows gets them in US-083 (built and proven on the PC 2026-10-02).
 
-- [ ] Your call (from the US-102 review, 2026-10-09): the big titles on the share cards (the belt card, the painting card, and the new week scroll) are meant to be the display face pressed narrow, but the narrowing never takes effect, so they draw at the face's normal width. Fixing it makes every card title about 10 percent narrower than the cards you already approved. Say keep as is, or narrow them.
+- [x] Your call (from the US-102 review, 2026-10-09): the big titles on the share cards (the belt card, the painting card, and the week scroll) were meant to be the display face pressed narrow, but the narrowing never took effect, so they drew at the face's widest cut. LaBroi picked narrowed from a side by side preview on 2026-10-10 (US-103): every card title is now about 10 percent narrower, and so is the website poster's wordmark in Chrome, Edge, and Firefox (Safari cannot narrow canvas text, so it keeps the wider cut there). The poster change goes live with the next site deploy.
 
 - [ ] Your call (from the US-072 review, 2026-10-01): setting MURMUR_DEBUG=1 before launch still opens developer tools on the settings window in the installed app. It is a support tool (it lets someone look at murmur live with you) and using it needs hands on the keyboard, so it stayed. Say if you would rather it only work in development builds.
 
