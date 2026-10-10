@@ -91,7 +91,7 @@
       "description": "The rules that make murmur's text murmur's, in Swift, proven against the same cases desktop runs.",
       "acceptance": [
         "MurmurCore runs every vector in shared/test-vectors.json through desktop's pipeline (the dictionary on raw input, formatting from shared/format-spec.json, dictionary casing, then expansions) and every one passes",
-        "The speech gate's numbers (window, loudness threshold, minimum voiced time) move into shared/ beside shared/hallucinations.json; desktop reads them from there with unchanged behavior",
+        "The speech gate's numbers (window, loudness threshold, minimum voiced time) and the hallucination list (today src/shared/hallucinations.json) move into shared/; desktop reads them from there with unchanged behavior",
         "A new shared vector file of generated tone and silence cases, plus hallucination phrases, passes on both platforms",
         "WAV encoding produces the same bytes as desktop's src/shared/wav.ts on shared sample cases",
         "shared/provider-catalog.json loads into Swift types (presets, models, key prefixes, key pages), and a test fails if a field desktop uses is missing",

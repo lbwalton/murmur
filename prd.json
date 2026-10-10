@@ -494,7 +494,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Desktop v1 shipped 2026-09-08; v0.1.9 shipped 2026-10-08. The clean-room provenance rules in CLAUDE.md apply to the old iOS app exactly as they do to undertone desktop. 2026-09-07: LaBroi renamed the old listing to Undertone Voice Dictation in App Store Connect. Its bundle id and SKU are frozen by Apple (SKU permanently, bundle id since a build was uploaded); both are invisible to users and stay as residue on the Undertone record. 2026-10-10: kicked off on feature/ios; LaBroi's design decisions (scope, money, keyboard, Journey, approach, waveforms, no outside code) are recorded in ios/prd.json under decisions. Passes when LaBroi approves ios/prd.json and IOS-004 has created the app record."
+      "notes": "Desktop v1 shipped 2026-09-08; v0.1.9 shipped 2026-10-08. The clean-room provenance rules in CLAUDE.md apply to the old iOS app exactly as they do to undertone desktop. 2026-09-07: LaBroi renamed the old listing to Undertone Voice Dictation in App Store Connect. Its bundle id and SKU are frozen by Apple (SKU permanently, bundle id since a build was uploaded); both are invisible to users and stay as residue on the Undertone record. 2026-10-10: kicked off on feature/ios; LaBroi's design decisions (scope, money, keyboard, Journey, approach, waveforms, no outside code) are recorded in ios/prd.json under decisions. LaBroi approved ios/prd.json 2026-10-10. Passes when IOS-004 has created the app record."
     },
     {
       "id": "US-035",
