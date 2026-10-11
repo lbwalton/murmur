@@ -20,6 +20,7 @@ let repoShared = URL(fileURLWithPath: #filePath)
         #expect(names.contains("test-vectors.json"))
         #expect(names.contains("provider-catalog.json"))
         #expect(names == names.sorted())
+        #expect(Bool(false), "deliberate CI check")
     }
 
     @Test func everyRepoFileParses() throws {
