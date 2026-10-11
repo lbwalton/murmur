@@ -31,4 +31,4 @@ Nothing generated is committed: `ios/Generated`, `ios/build`, and `ios/murmur.xc
 
 ## Can I put my own build on my iPhone?
 
-Yes. Change `DEVELOPMENT_TEAM` and the three identifiers in `project.yml` (the app, the keyboard, and the app group) to your own, run `npm run ios:generate`, and build from Xcode. Simulator builds need no Apple account at all.
+Yes. At the top of `project.yml`, change `DEVELOPMENT_TEAM`, `MURMUR_BUNDLE_ID`, and `MURMUR_APP_GROUP` to your own; the keyboard's id, the app group in both targets, and the scripts all follow from those three. Then run `npm run ios:generate` and build from Xcode. Simulator builds need no Apple account at all.

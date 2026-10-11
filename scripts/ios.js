@@ -87,16 +87,22 @@ async function test() {
   return 0
 }
 
-const BUNDLE_ID = 'com.lbwalton.murmur.ios'
+/** A value from a built bundle's Info.plist, so the ids live only in
+ *  project.yml (MURMUR_BUNDLE_ID and MURMUR_APP_GROUP). */
+function plistValue(bundle, key) {
+  return execFileSync('plutil', ['-extract', key, 'raw', join(bundle, 'Info.plist')], { encoding: 'utf8' }).trim()
+}
 
 async function smoke() {
   const count = await generateAll()
   const udid = simulator()
   try {
     run('xcodebuild', ['build', ...onSimulator(udid)])
-    run('xcrun', ['simctl', 'install', udid, join(derived, 'Build', 'Products', 'Debug-iphonesimulator', 'murmur.app')])
-    spawnSync('xcrun', ['simctl', 'terminate', udid, BUNDLE_ID], { stdio: 'ignore' })
-    const launched = spawnSync('xcrun', ['simctl', 'launch', '--console', udid, BUNDLE_ID, '--smoke', `--shared-count=${count}`], {
+    const app = join(derived, 'Build', 'Products', 'Debug-iphonesimulator', 'murmur.app')
+    const bundleId = plistValue(app, 'CFBundleIdentifier')
+    run('xcrun', ['simctl', 'install', udid, app])
+    spawnSync('xcrun', ['simctl', 'terminate', udid, bundleId], { stdio: 'ignore' })
+    const launched = spawnSync('xcrun', ['simctl', 'launch', '--console', udid, bundleId, '--smoke', `--shared-count=${count}`], {
       encoding: 'utf8',
       timeout: 120_000
     })
@@ -118,7 +124,8 @@ async function smoke() {
 }
 
 /** One device build with automatic provisioning: registers both bundle
- *  ids and the app group under Eze Media LLC, then proves the profiles
+ *  ids and the app group under the project's team (Eze Media LLC in
+ *  murmur's own builds), then proves the profiles
  *  carry the group. Uses the App Store Connect API key from the
  *  environment, or the account signed in to Xcode with --xcode-account. */
 async function register() {
@@ -131,11 +138,12 @@ async function register() {
   console.log(`ios: registering with ${useKey ? 'the App Store Connect API key' : 'the account signed in to Xcode'}`)
   run('xcodebuild', ['build', '-project', project, '-scheme', 'murmur', '-destination', 'generic/platform=iOS', '-derivedDataPath', derived, '-allowProvisioningUpdates', '-quiet', ...auth])
   const app = join(derived, 'Build', 'Products', 'Debug-iphoneos', 'murmur.app')
+  const group = plistValue(app, 'MurmurAppGroup')
   for (const bundle of [app, join(app, 'PlugIns', 'murmurKeyboard.appex')]) {
     const profile = execFileSync('security', ['cms', '-D', '-i', join(bundle, 'embedded.mobileprovision')], { encoding: 'utf8' })
-    if (!profile.includes('group.com.lbwalton.murmur')) throw new Error(`${bundle}: its provisioning profile lacks the app group`)
+    if (!profile.includes(group)) throw new Error(`${bundle}: its provisioning profile lacks the app group ${group}`)
   }
-  console.log('ios: both bundle ids and the app group are registered under Eze Media LLC')
+  console.log(`ios: both bundle ids and ${group} are registered under the project's team`)
   return 0
 }
 
