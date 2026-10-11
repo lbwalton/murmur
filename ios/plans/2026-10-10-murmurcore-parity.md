@@ -4,13 +4,13 @@
 
 **Goal:** MurmurCore gives desktop's exact answer for formatting, the dictionary, expansions, the speech gate, the hallucination filters, and WAV encoding, proven by vectors both platforms run, and loads the provider catalog into Swift types.
 
-**Architecture:** Desktop first, then Swift. Desktop moves the speech gate's numbers and the hallucination list into `shared/`, pins one formatter ordering rule, and gains three kinds of shared vectors (formatter edge cases, generated audio signals and transcripts, WAV bytes), all with unchanged behavior. Then MurmurCore ports the TypeScript in `src/shared/` to Swift on top of a small `JS` layer that gives ICU regular expressions JavaScript's meaning (ASCII word edges, JavaScript's whitespace, a strict `$`, UTF-16 positions, `Math.round`), and runs the same vector files.
+**Architecture:** Desktop first, then Swift. Desktop moves the speech gate's numbers and the hallucination list into `shared/`, writes down the order it already uses for equal-length spoken phrases, and gains three kinds of shared vectors (formatter edge cases, generated audio signals and transcripts, WAV bytes), all with unchanged behavior. Then MurmurCore ports the TypeScript in `src/shared/` to Swift on top of a small `JS` layer that gives ICU regular expressions JavaScript's meaning (ASCII word edges, JavaScript's whitespace and case matching, a strict `$`, UTF-16 positions, `Math.round`), and runs the same vector files.
 
 **Tech Stack:** Swift 6 with Swift Testing and Foundation's `NSRegularExpression`; TypeScript with vitest on desktop; JSON in `shared/`.
 
 **Spec:** `ios/prd.json` IOS-003 and `conventions.parity`, approved by LaBroi on 2026-10-10. Also `CLAUDE.md`. The TypeScript being ported: `src/shared/formatter.ts`, `dictionary.ts`, `expansions.ts`, `speech-gate.ts`, `wav.ts`, and `catalog.ts`.
 
-**Proven before writing:** every Swift and TypeScript block below ran before this plan was saved. A scratch copy of MurmurCore ran all 51 formatter vectors, 11 signals, 13 transcripts, 6 trailing strips, 6 WAV cases, and the catalog tests: 21 tests, all green. Two sabotage checks proved the vectors bite: Swift's default rounding failed the WAV halves case, and ICU's own `\b` failed the ASCII word edge vector. A scratch copy of desktop's shared code with the new tests failed exactly where each task says it fails, then passed (120 tests) after the changes, and `tsc` was clean. Every expected value in the new vector files was computed by desktop's own code.
+**Proven before writing:** every Swift and TypeScript block below ran before this plan was saved. A scratch copy of MurmurCore ran all 55 formatter vectors, 11 signals, 13 transcripts, 6 trailing strips, 6 WAV cases, and the catalog tests: 22 tests, all green. Four sabotage checks proved the vectors bite: Swift's default rounding failed the WAV halves case, ICU's own `\b` failed the ASCII word edge vector, ICU's case folding failed the sharp s vector, and plain alphabetical ties failed both comma and colon vectors. A scratch copy of desktop's shared code with the new tests failed exactly where each task says it fails, then passed (125 tests) after the changes, and `tsc` was clean. Every expected value in the new vector files was computed by desktop's own code. A review gate on the first draft found two parity gaps (ICU's case folding, and an ordering rule that would have changed desktop output); both are fixed here and pinned by vectors.
 
 ## Global Constraints
 
@@ -20,15 +20,16 @@
 - Every `.ts` and `.swift` file starts with `// SPDX-License-Identifier: GPL-3.0-only`.
 - JSON in `shared/` is written as `JSON.stringify(value, null, 2)` plus a newline, like the files already there.
 - The product name is always lowercase murmur. No em dashes or spaced hyphens as clause separators in copy, comments, test names, or commits.
-- Commits start with `IOS-003:`. Commit, then `git pull --rebase origin main` (git refuses a rebase pull while files are staged). Before every commit: `npm run typecheck`, `npm run test`, `npm run ios:test`, and `npm run ios:smoke`; `npm run smoke` too after any change under `src/main`. `swift test --package-path ios/MurmurCore` is the fast loop while working.
+- Commits start with `IOS-003:`. Commit, then `git pull --rebase` (git refuses a rebase pull while files are staged). That pulls `origin/feature/ios`, which is published as draft PR #11; never rebase onto main, which would rewrite pushed commits, and bring main in only with LaBroi's OK.
+- Before every commit: `npm run typecheck`, `npm run test`, `npm run ios:test`, and `npm run ios:smoke`, and `npm run smoke` whenever the task changes `shared/` or code desktop runs (`conventions.verify`). `swift test --package-path ios/MurmurCore` is the fast loop while working.
 - Clean room: never open `~/Projects/undertone`, `~/Projects/the-peoples-voice-flow`, or `~/Projects/OpenWhisp`.
 - Never push without LaBroi's OK, and run the review gate (an independent reviewer agent over the full diff) before any push.
 
 ## Review Focus
 
-1. **Non-ASCII text beside commands, dictionary terms, and expansions** (café, señor, emoji, curly apostrophes). The iPhone must give desktop's output, including JavaScript's ASCII-only word edges and UTF-16 positions. Pinned by the eight parity vectors in Task 2 and `JSTests.wordEdgesAreASCII` in Task 5.
+1. **Non-ASCII text beside commands, dictionary terms, and expansions** (café, señor, Straße, emoji, curly apostrophes). The iPhone must give desktop's output, including JavaScript's ASCII-only word edges, its narrower case matching (ß is never ss, the long s never s), and UTF-16 positions. Pinned by the parity vectors in Task 2 and `JSTests.wordEdgesAreASCII` and `JSTests.caselessFollowsJavaScript` in Task 5.
 2. **A dictionary value holding a dollar sign** (a price like `$5`, or `$&` typed by hand). JavaScript's string replace treats `$$`, `$&`, `` $` ``, and `$'` specially; the iPhone must too. Pinned by the `$5` vector in Task 2 and `JSTests.replacementStringsFollowJavaScript` in Task 5.
-3. **Two spoken phrases of the same length in a future `format-spec.json`.** JavaScript keeps the file's key order and Swift dictionaries keep none, so both platforms need one explicit order. Pinned by the desktop test in Task 2 and `equalLengthPhrasesGoInAlphabeticalOrder` in Task 6.
+3. **Two spoken phrases of the same length, said side by side.** JavaScript keeps the file's key order and Swift dictionaries keep none, so both platforms need one explicit order, and for the shipped map it must be today's ("comma colon" gives `,:` on desktop). Pinned by the desktop test and the comma and colon vectors in Task 2, and `equalLengthPhrasesGoBySymbolThenPhrase` in Task 6.
 4. **A take that is empty or shorter than one gate window.** Nothing voiced, nothing kept, no crash. Pinned by the first two signals in Task 3, run by Swift in Task 7.
 5. **WAV samples outside -1 to 1, at a half step, or NaN.** The same clamping and `Math.round` (halves up, so -16383.5 becomes -16383) as desktop, and a NaN writes 0 instead of crashing. Pinned by the WAV vectors in Task 4 and `WavVectorTests.aNaNSampleWritesZero` in Task 8.
 
@@ -170,59 +171,71 @@ npm run ios:test
 npm run ios:smoke
 git add shared/speech-gate.json shared/hallucinations.json src/shared/speech-gate.ts src/shared/speech-gate-shared.test.ts src/shared/speech-gate.test.ts src/main/dictation.ts src/main/formatter/llm.ts src/main/transform/index.ts
 git commit -m "IOS-003: the speech gate's numbers and the hallucination list move into shared/"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 `npm run ios:smoke` now bundles 10 shared files instead of 8; the smoke counts them itself.
 
 ---
 
-### Task 2: One order for equal-length phrases, and eight parity vectors
+### Task 2: One written order for equal-length phrases, and twelve parity vectors
 
 **Files:**
 - Modify: `src/shared/formatter.ts:61` (the phrase sort)
 - Modify: `shared/format-spec.json` (the `spokenPunctuation` comment)
-- Modify: `shared/test-vectors.json` (eight vectors appended)
-- Test: `src/shared/formatter.test.ts` (one new test)
+- Modify: `shared/test-vectors.json` (twelve vectors appended)
+- Test: `src/shared/formatter.test.ts` (two new tests)
 
 **Interfaces:**
-- Produces: the rule "longest phrase first; equal lengths in alphabetical order (UTF-16 code unit order)", which Task 6 implements in Swift as `phrasesLongestFirst`; and 51 vectors in `shared/test-vectors.json`.
+- Produces: the rule "longest phrase first; equal lengths by symbol, then by phrase, in UTF-16 code unit order", which Task 6 implements in Swift as `phrasesLongestFirst`; and 55 vectors in `shared/test-vectors.json`.
 
-- [ ] **Step 1: Write the failing test**
+Why this rule: today the file's key order breaks ties, and Swift dictionaries have no order, so the rule must be written down. It matters when two equal-length phrases are spoken side by side: "comma colon" gives `,:` and "colon comma" gives `:`. Plain alphabetical order would flip comma and colon, and reverse order would flip new paragraph and question mark. Symbol first keeps both shipped pairs exactly as they are today (`,` before `:`, a paragraph break before `?`).
 
-In `src/shared/formatter.test.ts`, add this test above `it('is a pure function...`:
+- [ ] **Step 1: Write the failing tests**
+
+In `src/shared/formatter.test.ts`, add these two tests above `it('is a pure function...`:
 
 ```ts
-  it('applies equal-length spoken phrases in alphabetical order', () => {
+  it('orders equal-length spoken phrases by symbol, then phrase', () => {
     // Every platform must agree on this order (format-spec.json). The map
-    // lists b c first, and a b must still go first.
-    const s = { ...(spec as unknown as FormatSpec), spokenPunctuation: { map: { 'b c': 'Y', 'a b': 'X' } } }
-    expect(formatTranscript('a b c', { level: 'full', numbers: 'auto' }, s)).toBe('X c')
+    // lists a b first, but b c's symbol X sorts before Y, so b c goes first.
+    const s = { ...(spec as unknown as FormatSpec), spokenPunctuation: { map: { 'a b': 'Y', 'b c': 'X' } } }
+    expect(formatTranscript('a b c', { level: 'full', numbers: 'auto' }, s)).toBe('AX')
+  })
+
+  it('gives every number unit its own value, so digits have one word each', () => {
+    const values = Object.values((spec as unknown as FormatSpec).numbers.units)
+    expect(new Set(values).size).toBe(values.length)
   })
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+The second test guards a rule both platforms rely on: Swift picks a value's word alphabetically, desktop by file order, and they agree only while every value has one word. A new unit like `"oh": 0` breaks both platforms at once.
+
+- [ ] **Step 2: Run them to make sure the first fails**
 
 Run: `npx vitest run src/shared/formatter.test.ts`
-Expected: FAIL, `expected 'AY' to be 'X c'` (today the file's key order decides, so `b c` goes first).
+Expected: FAIL, 1 test: `expected 'Y c' to be 'AX'` (today the file's key order decides, so `a b` goes first). The uniqueness test passes.
 
-- [ ] **Step 3: Pin the order**
+- [ ] **Step 3: Write the order down**
 
 In `src/shared/formatter.ts`, replace line 61:
 
 ```ts
-  // Longest first; equal lengths in alphabetical order, so every
-  // platform applies them the same way (format-spec.json).
-  const phrases = Object.keys(map).sort((a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0))
+  // Longest first. Equal lengths go by symbol, then by phrase, so every
+  // platform keeps one order (format-spec.json); for the shipped map that
+  // is the file's own order (comma before colon, new paragraph before
+  // question mark), and it matters when two of them are spoken side by side.
+  const order = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0)
+  const phrases = Object.keys(map).sort((a, b) => b.length - a.length || order(map[a], map[b]) || order(a, b))
 ```
 
-In `shared/format-spec.json`, in the `spokenPunctuation` comment, change `Longest phrase wins.` to `Longest phrase wins; phrases of equal length apply in alphabetical order.`
+In `shared/format-spec.json`, in the `spokenPunctuation` comment, change `Longest phrase wins.` to `Longest phrase wins; phrases of equal length go in order of their symbols, then of the phrases themselves (UTF-16 order), which for this map is the order listed here.`
 
-No shipped phrase shares a length with an overlapping one, so no output changes: every existing vector still passes.
+For the shipped map this is exactly today's order, so no output changes. Step 4's comma, colon, and new paragraph vectors pin that on both platforms.
 
 - [ ] **Step 4: Append the parity vectors**
 
-These record desktop's own output for the inputs most likely to trip a port (computed by desktop's code). They pass on desktop at once; they bite in Task 6.
+These record desktop's own output for the inputs most likely to trip a port (computed by desktop's code), including the two equal-length pairs and a sharp s that ICU would fold to ss. They pass on desktop at once; they bite in Task 6.
 
 ```bash
 node -e '
@@ -299,6 +312,34 @@ fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n")
     },
     "input": "année twenty two was good",
     "expected": "Année 22 was good."
+  },
+  {
+    "name": "colon then comma: equal-length phrases keep their order",
+    "input": "send it colon comma then go",
+    "expected": "Send it: then go."
+  },
+  {
+    "name": "comma then colon: equal-length phrases keep their order",
+    "input": "dear team comma colon here we go",
+    "expected": "Dear team,: here we go."
+  },
+  {
+    "name": "new paragraph then question mark: equal-length phrases keep their order",
+    "input": "is it ready new paragraph question mark",
+    "expected": "Is it ready\n\n?"
+  },
+  {
+    "name": "case matching follows JavaScript: a dictionary term spelled ss never matches a sharp s",
+    "settings": {
+      "dictionary": [
+        {
+          "from": "strasse",
+          "to": "Strasse"
+        }
+      ]
+    },
+    "input": "die straße ist lang",
+    "expected": "Die straße ist lang."
   }
 ]
 JSON
@@ -307,18 +348,19 @@ JSON
 - [ ] **Step 5: Run the tests to make sure they pass**
 
 Run: `npx vitest run src/shared/formatter.test.ts`
-Expected: PASS, 51 vectors plus the two named tests.
+Expected: PASS, 55 vectors plus the three named tests.
 
 - [ ] **Step 6: Gates and commit**
 
 ```bash
 npm run typecheck
 npm run test
+npm run smoke
 npm run ios:test
 npm run ios:smoke
 git add src/shared/formatter.ts src/shared/formatter.test.ts shared/format-spec.json shared/test-vectors.json
-git commit -m "IOS-003: equal-length spoken phrases apply in alphabetical order; eight parity vectors"
-git pull --rebase origin main
+git commit -m "IOS-003: the order for equal-length spoken phrases, written down; twelve parity vectors"
+git pull --rebase
 ```
 
 ---
@@ -415,7 +457,7 @@ Every expected value here came from desktop's `speech-gate.ts`.
 ```json
 {
   "version": 1,
-  "comment": "Shared cases for the speech gate and the hallucination filters (ios/prd.json IOS-003), run by desktop (src/shared/speech-vectors.test.ts) and by MurmurCore (SpeechVectorTests). Signals are built from segments, never from audio files: silence is that many zero samples; square is that many samples alternating between +amplitude and -amplitude every periodSamples / 2 samples, starting positive, each stored as a 32-bit float. Expected values use speech-gate.json. hallucinations check the whole-transcript filter against the phrases in hallucinations.json; trailing checks the end-of-transcript strip against its artifactTails.",
+  "comment": "Shared cases for the speech gate and the hallucination filters (ios/prd.json IOS-003), run by desktop (src/shared/speech-vectors.test.ts) and by MurmurCore (SpeechVectorTests). Signals are built from segments, never from audio files: silence is that many zero samples; square is that many samples alternating between +amplitude and -amplitude every periodSamples / 2 samples (periodSamples is always even), starting positive, each stored as a 32-bit float. Expected values use speech-gate.json. hallucinations check the whole-transcript filter against the phrases in hallucinations.json; trailing checks the end-of-transcript strip against its artifactTails.",
   "signals": [
     {
       "name": "an empty take",
@@ -753,11 +795,12 @@ Expected: PASS, 30 tests (11 signals, 13 transcripts, 6 trailing strips).
 ```bash
 npm run typecheck
 npm run test
+npm run smoke
 npm run ios:test
 npm run ios:smoke
 git add shared/speech-vectors.json src/shared/speech-vectors.test.ts
 git commit -m "IOS-003: shared speech vectors: generated tones and silence, and hallucination phrases"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -878,11 +921,12 @@ Expected: PASS, 6 tests.
 ```bash
 npm run typecheck
 npm run test
+npm run smoke
 npm run ios:test
 npm run ios:smoke
 git add shared/wav-vectors.json src/shared/wav-vectors.test.ts
 git commit -m "IOS-003: shared WAV vectors, byte for byte"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -896,7 +940,8 @@ git pull --rebase origin main
 **Interfaces:**
 - Produces (internal to MurmurCore, `@testable` in tests), all in `enum JS`:
   - pattern pieces `boundary`, `spaceMembers`, `space`, `nonSpace`, `end`, `lineEnd`, `lineStart` (String)
-  - `escape(_ text: String) -> String`, `regex(_ pattern: String, ignoreCase: Bool = false) -> NSRegularExpression`
+  - `escape(_ text: String) -> String`, `regex(_ pattern: String) -> NSRegularExpression` (always case sensitive)
+  - `caseless(_ literal: String) -> String` (a literal matched the way JavaScript's i flag matches) and `canonical(_ unit: UInt16) -> UInt16`
   - `isWord(_ unit: UInt16) -> Bool`, `isSpace(_ unit: UInt16) -> Bool`, `trim(_ text: String) -> String`, `wordCount(_ text: String) -> Int`, `round(_ x: Double) -> Double`
   - `replace(_ text: String, _ regex: NSRegularExpression, all: Bool = true, _ transform: (NSTextCheckingResult, NSString) -> String) -> String`
   - `replace(_ text: String, _ regex: NSRegularExpression, all: Bool = true, with replacement: String) -> String`
@@ -922,6 +967,18 @@ import Testing
         for (template, expected) in cases {
             #expect(JS.replace("five bucks now", bucks, with: template) == expected, "\(template)")
         }
+    }
+
+    /// What node prints for /strasse/i on "Straße", /stop/i on "ſtop",
+    /// /kart/i on the Kelvin sign's "Kart", /café/i on "CAFÉ", /σ/i on
+    /// "ς", /µ/i on "μ", and /ǆ/i on "ǅ": false three times, then true.
+    @Test(arguments: [
+        ("strasse", "Straße", false), ("stop", "ſtop", false), ("kart", "\u{212A}art", false),
+        ("café", "CAFÉ", true), ("σ", "ς", true), ("µ", "μ", true), ("ǆ", "ǅ", true)
+    ])
+    func caselessFollowsJavaScript(_ literal: String, _ text: String, _ matches: Bool) {
+        let found = JS.regex(JS.caseless(literal)).firstMatch(in: text, range: NSRange(location: 0, length: text.utf16.count))
+        #expect((found != nil) == matches)
     }
 
     @Test func mathRoundSendsHalvesUp() {
@@ -963,9 +1020,10 @@ Expected: FAIL to compile, with `cannot find 'JS' in scope`.
 // expressions and string methods; ICU (NSRegularExpression) reads most of
 // them the same way, but not all: in JavaScript \b and \w are ASCII only,
 // \s is a fixed set, $ without the m flag is the very end of the text,
-// indexes count UTF-16 units, and Math.round sends halves up. These pieces
-// close those gaps, so MurmurCore gives desktop's answer for any input,
-// not only the shared vectors (ios/prd.json conventions.parity).
+// the i flag matches fewer letters than ICU's case folding, indexes count
+// UTF-16 units, and Math.round sends halves up. These pieces close those
+// gaps, so MurmurCore gives desktop's answer beyond the shared vectors
+// too (ios/prd.json conventions.parity).
 import Foundation
 
 enum JS {
@@ -991,14 +1049,57 @@ enum JS {
     }
 
     /// Patterns here are built from escaped literals, so one that fails to
-    /// compile is a bug in this file, never bad input.
-    static func regex(_ pattern: String, ignoreCase: Bool = false) -> NSRegularExpression {
+    /// compile is a bug in this file, never bad input. Always case
+    /// sensitive: caseless(_:) gives JavaScript's i flag instead.
+    static func regex(_ pattern: String) -> NSRegularExpression {
         do {
-            return try NSRegularExpression(pattern: pattern, options: ignoreCase ? [.caseInsensitive] : [])
+            return try NSRegularExpression(pattern: pattern)
         } catch {
             preconditionFailure("MurmurCore pattern \(pattern) does not compile: \(error)")
         }
     }
+
+    /// A literal that matches the way JavaScript's i flag does (without
+    /// the u flag): two characters match when their uppercase forms are
+    /// the same single UTF-16 unit, and nothing outside ASCII ever matches
+    /// an ASCII letter. ICU's own case-insensitive mode folds further (ß as
+    /// ss, the long s as s, the Kelvin sign as k), so MurmurCore never uses it.
+    static func caseless(_ literal: String) -> String {
+        var out = ""
+        for scalar in literal.unicodeScalars {
+            guard scalar.value <= 0xFFFF, let members = caseClasses[canonical(UInt16(scalar.value))] else {
+                out += escape(String(scalar))
+                continue
+            }
+            out += "[" + members.map(unicodeEscape).joined() + "]"
+        }
+        return out
+    }
+
+    /// \uXXXX, which ICU reads inside a character class.
+    private static func unicodeEscape(_ unit: UInt16) -> String {
+        let hex = String(unit, radix: 16, uppercase: true)
+        return "\\u" + String(repeating: "0", count: 4 - hex.count) + hex
+    }
+
+    /// JavaScript's Canonicalize for the i flag without the u flag.
+    static func canonical(_ unit: UInt16) -> UInt16 {
+        guard let scalar = Unicode.Scalar(unit) else { return unit }
+        let upper = Array(String(scalar).uppercased().utf16)
+        guard upper.count == 1 else { return unit }
+        if unit >= 128 && upper[0] < 128 { return unit }
+        return upper[0]
+    }
+
+    /// Every UTF-16 unit that shares its canonical form with another,
+    /// grouped by that form. Built once, on first use.
+    private static let caseClasses: [UInt16: [UInt16]] = {
+        var groups: [UInt16: [UInt16]] = [:]
+        for value in 0...0xFFFF {
+            groups[canonical(UInt16(value)), default: []].append(UInt16(value))
+        }
+        return groups.filter { $0.value.count > 1 }
+    }()
 
     /// An ASCII word character, \w.
     static func isWord(_ unit: UInt16) -> Bool {
@@ -1119,7 +1220,7 @@ enum JS {
 - [ ] **Step 4: Run the tests to make sure they pass**
 
 Run: `swift test --package-path ios/MurmurCore`
-Expected: PASS, the 5 existing SharedData tests and the 4 JSTests (the word edge test runs 4 cases).
+Expected: PASS, the 5 existing SharedData tests and the 5 JSTests (the word edge test runs 4 cases, the case matching test 7). The first `caseless` call builds a table of every case pair, about 50 ms once per launch.
 
 - [ ] **Step 5: Gates and commit**
 
@@ -1130,7 +1231,7 @@ npm run ios:test
 npm run ios:smoke
 git add ios/MurmurCore/Sources/MurmurCore/JS.swift ios/MurmurCore/Tests/MurmurCoreTests/JSTests.swift
 git commit -m "IOS-003: JavaScript's regex and string meaning in Swift, for exact parity"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -1144,7 +1245,7 @@ git pull --rebase origin main
 - Test: `ios/MurmurCore/Tests/MurmurCoreTests/FormatterVectorTests.swift`
 
 **Interfaces:**
-- Consumes: `JS` (Task 5); `SharedData` and the test global `repoShared` (Foundation plan, `SharedDataTests.swift`); 51 vectors (Task 2).
+- Consumes: `JS` (Task 5); `SharedData` and the test global `repoShared` (Foundation plan, `SharedDataTests.swift`); 55 vectors (Task 2).
 - Produces (public, for the app in IOS-009 and IOS-010):
   - `struct FormatSpec: Decodable, Sendable` (`fillers.words`, `scratchThat.triggers`, `spokenPunctuation.map`, `listCommands.map`, `numbers.units`, `numbers.tens`, `terminalPunctuation.minWords`, `terminalPunctuation.append`)
   - `struct FormatOptions: Sendable, Equatable { var level: Level; var numbers: Numbers; var smartLists: Bool; init(level: .full, numbers: .auto, smartLists: false) }` with `enum Level: String, Codable { off, light, full }` and `enum Numbers: String, Codable { auto, words, digits }`
@@ -1216,12 +1317,14 @@ let formatSpec: FormatSpec = {
         #expect(result == vector.expected)
     }
 
-    @Test func equalLengthPhrasesGoInAlphabeticalOrder() throws {
+    /// Desktop's test of the same name: b c's symbol X sorts before a b's
+    /// Y, so b c goes first and leaves "aX".
+    @Test func equalLengthPhrasesGoBySymbolThenPhrase() throws {
         let data = try SharedData(directory: repoShared).data(named: "format-spec.json")
         var raw = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        raw["spokenPunctuation"] = ["map": ["b c": "Y", "a b": "X"]]
+        raw["spokenPunctuation"] = ["map": ["a b": "Y", "b c": "X"]]
         let spec = try JSONDecoder().decode(FormatSpec.self, from: JSONSerialization.data(withJSONObject: raw))
-        #expect(formatTranscript("a b c", options: FormatOptions(), spec: spec) == "X c")
+        #expect(formatTranscript("a b c", options: FormatOptions(), spec: spec) == "AX")
     }
 
     @Test func everyUnitHasItsOwnValue() {
@@ -1323,9 +1426,9 @@ public func formatTranscript(_ raw: String, options: FormatOptions, spec: Format
 
 func removeFillers(_ text: String, _ words: [String]) -> String {
     guard !words.isEmpty else { return text }
-    let names = words.map(JS.escape).joined(separator: "|")
+    let names = words.map(JS.caseless).joined(separator: "|")
     let pattern = "(?:^|\(JS.space))(?:\(names))(?=\(JS.space)|[.,!?;:]|\(JS.end))"
-    return JS.replace(text, JS.regex(pattern, ignoreCase: true), with: "")
+    return JS.replace(text, JS.regex(pattern), with: "")
 }
 
 func applyScratchThat(_ text: String, _ triggers: [String]) -> String {
@@ -1333,7 +1436,7 @@ func applyScratchThat(_ text: String, _ triggers: [String]) -> String {
     while true {
         var earliest: NSRange?
         for trigger in triggers {
-            let regex = JS.regex("\(JS.boundary)\(JS.escape(trigger))\(JS.boundary)[.,]?", ignoreCase: true)
+            let regex = JS.regex("\(JS.boundary)\(JS.caseless(trigger))\(JS.boundary)[.,]?")
             if let match = regex.firstMatch(in: out, range: NSRange(location: 0, length: out.utf16.count)),
                 earliest.map({ match.range.location < $0.location }) ?? true
             {
@@ -1351,21 +1454,25 @@ func applyScratchThat(_ text: String, _ triggers: [String]) -> String {
     }
 }
 
-/// Longest phrase first; equal lengths in alphabetical order, so every
-/// platform applies them the same way (format-spec.json).
+/// Longest phrase first. Equal lengths go by symbol, then by phrase, so
+/// every platform keeps one order (format-spec.json); for the shipped map
+/// that is the file's own order (comma before colon, new paragraph before
+/// question mark), and it matters when two of them are spoken side by side.
 func phrasesLongestFirst(_ map: [String: String]) -> [(phrase: String, symbol: String)] {
     map.map { (phrase: $0.key, symbol: $0.value) }.sorted { a, b in
         let la = a.phrase.utf16.count
         let lb = b.phrase.utf16.count
-        return la != lb ? la > lb : JS.less(a.phrase, b.phrase)
+        if la != lb { return la > lb }
+        if a.symbol != b.symbol { return JS.less(a.symbol, b.symbol) }
+        return JS.less(a.phrase, b.phrase)
     }
 }
 
 func applySpokenPunctuation(_ text: String, _ map: [String: String]) -> String {
     var out = text
     for (phrase, symbol) in phrasesLongestFirst(map) {
-        let pattern = "(?:^|\(JS.space))\(JS.escape(phrase))(?=\(JS.space)|[.,]|\(JS.end))[.,]?"
-        out = JS.replace(out, JS.regex(pattern, ignoreCase: true), with: symbol)
+        let pattern = "(?:^|\(JS.space))\(JS.caseless(phrase))(?=\(JS.space)|[.,]|\(JS.end))[.,]?"
+        out = JS.replace(out, JS.regex(pattern), with: symbol)
     }
     return out
 }
@@ -1386,9 +1493,9 @@ func fixWhitespace(_ text: String) -> String {
 }
 
 func wordsToDigits(_ text: String, units: [String: Int], tens: [String: Int]) -> String {
-    let tensNames = tens.keys.sorted(by: JS.less).map(JS.escape).joined(separator: "|")
-    let unitNames = units.filter { (1...9).contains($0.value) }.keys.sorted(by: JS.less).map(JS.escape).joined(separator: "|")
-    let pairs = JS.regex("\(JS.boundary)(\(tensNames))[ -](\(unitNames))\(JS.boundary)", ignoreCase: true)
+    let tensNames = tens.keys.sorted(by: JS.less).map(JS.caseless).joined(separator: "|")
+    let unitNames = units.filter { (1...9).contains($0.value) }.keys.sorted(by: JS.less).map(JS.caseless).joined(separator: "|")
+    let pairs = JS.regex("\(JS.boundary)(\(tensNames))[ -](\(unitNames))\(JS.boundary)")
     var out = JS.replace(text, pairs) { match, source in
         let ten = tens[source.substring(with: match.range(at: 1)).lowercased()]
         let unit = units[source.substring(with: match.range(at: 2)).lowercased()]
@@ -1397,8 +1504,8 @@ func wordsToDigits(_ text: String, units: [String: Int], tens: [String: Int]) ->
         guard let ten, let unit else { return source.substring(with: match.range) }
         return String(ten + unit)
     }
-    let allNames = Set(units.keys).union(tens.keys).sorted(by: JS.less).map(JS.escape).joined(separator: "|")
-    out = JS.replace(out, JS.regex("\(JS.boundary)(\(allNames))\(JS.boundary)", ignoreCase: true)) { match, source in
+    let allNames = Set(units.keys).union(tens.keys).sorted(by: JS.less).map(JS.caseless).joined(separator: "|")
+    out = JS.replace(out, JS.regex("\(JS.boundary)(\(allNames))\(JS.boundary)")) { match, source in
         let word = source.substring(with: match.range)
         guard let value = units[word.lowercased()] ?? tens[word.lowercased()] else { return word }
         return String(value)
@@ -1470,7 +1577,7 @@ public struct DictionaryEntry: Codable, Sendable, Equatable {
 func boundaryPattern(_ term: String) -> NSRegularExpression {
     let lead = term.utf16.first.map(JS.isWord) == true ? JS.boundary : "(?<!\(JS.nonSpace))"
     let tail = term.utf16.last.map(JS.isWord) == true ? JS.boundary : "(?!\(JS.nonSpace))"
-    return JS.regex(lead + JS.escape(term) + tail, ignoreCase: true)
+    return JS.regex(lead + JS.caseless(term) + tail)
 }
 
 private func isUsable(_ entry: DictionaryEntry) -> Bool {
@@ -1568,7 +1675,7 @@ public func applyExpansions(_ text: String, _ entries: [ExpansionEntry]) -> Stri
 - [ ] **Step 6: Run the tests to make sure they pass**
 
 Run: `swift test --package-path ios/MurmurCore`
-Expected: PASS, including `matchesDesktop` with 51 cases. A failing case names the vector; compare the Swift step against the matching TypeScript function line by line before touching anything else.
+Expected: PASS, including `matchesDesktop` with 55 cases. A failing case names the vector; compare the Swift step against the matching TypeScript function line by line before touching anything else.
 
 - [ ] **Step 7: Gates and commit**
 
@@ -1579,7 +1686,7 @@ npm run ios:test
 npm run ios:smoke
 git add ios/MurmurCore/Sources/MurmurCore/Formatter.swift ios/MurmurCore/Sources/MurmurCore/Dictionary.swift ios/MurmurCore/Sources/MurmurCore/Expansions.swift ios/MurmurCore/Tests/MurmurCoreTests/FormatterVectorTests.swift
 git commit -m "IOS-003: the formatter, dictionary, and expansions in MurmurCore pass every shared vector"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -1844,7 +1951,7 @@ npm run ios:test
 npm run ios:smoke
 git add ios/MurmurCore/Sources/MurmurCore/SpeechGate.swift ios/MurmurCore/Tests/MurmurCoreTests/SpeechVectorTests.swift
 git commit -m "IOS-003: the speech gate and hallucination filters in MurmurCore pass the shared speech vectors"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -1970,7 +2077,7 @@ npm run ios:test
 npm run ios:smoke
 git add ios/MurmurCore/Sources/MurmurCore/Wav.swift ios/MurmurCore/Tests/MurmurCoreTests/WavVectorTests.swift
 git commit -m "IOS-003: WAV encoding in MurmurCore writes desktop's bytes"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -1983,7 +2090,7 @@ git pull --rebase origin main
 
 **Interfaces:**
 - Consumes: `shared/provider-catalog.json` (unchanged).
-- Produces (public): `struct ProviderCatalog: Decodable, Sendable` with `catalogVersion`, `verifiedOn`, `estimate`, `providers`, and nested `Kind` (`stt`, `llm`, `decide`), `SttModel`, `LlmModel`, `Provider` (`id`, `name`, `kinds`, `baseUrl`, `llmBaseUrl?`, `keyUrl?`, `free?`, `verifiedOn`, `sources`, `nuances`, `sttModels`, `llmModels`, `keyPrefixes?`), and `Estimate`. Required and optional fields match desktop's `CatalogProvider` in `src/shared/catalog.ts`. IOS-005 builds the Provider screen on these.
+- Produces (public): `struct ProviderCatalog: Decodable, Sendable` with `catalogVersion`, `verifiedOn`, `estimate`, `providers`, and nested `Kind` (`stt`, `llm`, `decide`), `SttModel`, `LlmModel`, `Provider` (`id`, `name`, `kinds`, `baseUrl`, `llmBaseUrl?`, `keyUrl?`, `free?`, `verifiedOn`, `sources?`, `nuances`, `sttModels`, `llmModels`, `keyPrefixes?`), and `Estimate`. Required fields are the ones desktop's `validateCatalog` in `src/shared/catalog.ts` checks; `sources` is optional because desktop never reads it. IOS-005 builds the Provider screen on these.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2015,8 +2122,8 @@ import Testing
         #expect(groq.sttModels.first?.id == "whisper-large-v3-turbo")
     }
 
-    /// The fields desktop's CatalogProvider requires (src/shared/catalog.ts).
-    @Test(arguments: ["id", "name", "kinds", "baseUrl", "verifiedOn", "sources", "nuances", "sttModels", "llmModels"])
+    /// The fields desktop's validateCatalog requires (src/shared/catalog.ts).
+    @Test(arguments: ["id", "name", "kinds", "baseUrl", "verifiedOn", "nuances", "sttModels", "llmModels"])
     func aProviderMissingARequiredFieldFails(_ field: String) throws {
         var json = try catalogJSON()
         var providers = try #require(json["providers"] as? [[String: Any]])
@@ -2079,8 +2186,10 @@ Expected: FAIL to compile, with `cannot find 'ProviderCatalog' in scope`.
 // The provider catalog, shared/provider-catalog.json, as Swift types:
 // the presets, their models and rates, key prefixes, and key pages
 // (desktop's CatalogProvider in src/shared/catalog.ts). Every field
-// desktop requires is required here too, so a catalog missing one fails
-// to load on iPhone as it fails desktop's check.
+// desktop's validateCatalog requires is required here too, so a catalog
+// missing one fails to load. Desktop's further value checks (version 1,
+// at least one provider, no negative rates) belong to the refresh path,
+// which the iPhone does not have yet.
 import Foundation
 
 public struct ProviderCatalog: Decodable, Sendable {
@@ -2123,7 +2232,8 @@ public struct ProviderCatalog: Decodable, Sendable {
         /// Runs on the person's own machine at no cost.
         public let free: Bool?
         public let verifiedOn: String
-        public let sources: [String]
+        /// Where the rates were checked; desktop shows none of these.
+        public let sources: [String]?
         public let nuances: [String]
         public let sttModels: [SttModel]
         public let llmModels: [LlmModel]
@@ -2148,7 +2258,7 @@ public struct ProviderCatalog: Decodable, Sendable {
 - [ ] **Step 4: Run the tests to make sure they pass**
 
 Run: `swift test --package-path ios/MurmurCore`
-Expected: PASS, including 9 required provider fields, 4 catalog fields, and 4 estimate fields that each fail to load when removed.
+Expected: PASS, including 8 required provider fields, 4 catalog fields, and 4 estimate fields that each fail to load when removed.
 
 - [ ] **Step 5: Gates and commit**
 
@@ -2159,7 +2269,7 @@ npm run ios:test
 npm run ios:smoke
 git add ios/MurmurCore/Sources/MurmurCore/ProviderCatalog.swift ios/MurmurCore/Tests/MurmurCoreTests/ProviderCatalogTests.swift
 git commit -m "IOS-003: the provider catalog loads into MurmurCore types, and a missing desktop field fails the test"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 ---
@@ -2191,7 +2301,7 @@ Check every IOS-003 criterion against what ran. In `ios/prd.json`, set IOS-003 `
 ```bash
 git add ios/prd.json ios/ROADMAP.md
 git commit -m "IOS-003 passes: MurmurCore gives desktop's answers on every shared vector"
-git pull --rebase origin main
+git pull --rebase
 ```
 
 Push only with LaBroi's OK, after the review gate.
