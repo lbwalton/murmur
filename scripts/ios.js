@@ -2,18 +2,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The iPhone build's one entry point (ios/prd.json IOS-001):
 //   node scripts/ios.js generate   colors, icon, shared rules, Xcode project
+//   node scripts/ios.js test       MurmurCore on the Mac, then the app's tests on murmur's own simulator
 // Only the ios: commands need Xcode; npm install and the desktop gates never do.
-const { spawnSync } = require('node:child_process')
+const { execFileSync, spawnSync } = require('node:child_process')
 const { mkdirSync, readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { loadBrush } = require('./lib/enso')
 const { iosIconSet } = require('./lib/ios-icon')
 const { colorSetJson, parseRootTokens, toSwift } = require('./lib/ios-tokens')
-const { copySharedJson, findOnPath } = require('./lib/ios')
+const { SIM_SIGNING, copySharedJson, findOnPath, pickSmokeSimulator } = require('./lib/ios')
 
 const root = join(__dirname, '..')
 const iosDir = join(root, 'ios')
 const generated = join(iosDir, 'Generated')
+const project = join(iosDir, 'murmur.xcodeproj')
+const derived = join(iosDir, 'build', 'DerivedData')
 
 /** Runs a command with its output shown; throws on a non-zero exit. */
 function run(cmd, args, options = {}) {
@@ -53,11 +56,41 @@ async function generateAll() {
   return count
 }
 
+/** murmur's own simulator, created the first time, booted and ready. */
+function simulator() {
+  const list = JSON.parse(execFileSync('xcrun', ['simctl', 'list', '--json', 'devicetypes', 'runtimes', 'devices'], { encoding: 'utf8' }))
+  const pick = pickSmokeSimulator(list)
+  const udid =
+    pick.udid ?? execFileSync('xcrun', ['simctl', 'create', pick.create.name, pick.create.deviceType, pick.create.runtime], { encoding: 'utf8' }).trim()
+  run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { stdio: 'ignore' })
+  return udid
+}
+
+/** Shuts down murmur's simulator only; other simulators are left alone. */
+function shutdown(udid) {
+  spawnSync('xcrun', ['simctl', 'shutdown', udid], { stdio: 'ignore' })
+}
+
+const onSimulator = (udid) => ['-project', project, '-scheme', 'murmur', '-destination', `platform=iOS Simulator,id=${udid}`, '-derivedDataPath', derived, '-quiet', ...SIM_SIGNING]
+
+async function test() {
+  await generateAll()
+  run('swift', ['test', '--package-path', join(iosDir, 'MurmurCore')])
+  const udid = simulator()
+  try {
+    run('xcodebuild', ['test', ...onSimulator(udid)])
+  } finally {
+    shutdown(udid)
+  }
+  return 0
+}
+
 const COMMANDS = {
   generate: async () => {
     await generateAll()
     return 0
-  }
+  },
+  test
 }
 
 const command = COMMANDS[process.argv[2]]
