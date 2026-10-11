@@ -7,14 +7,17 @@ const { join, relative } = require('node:path')
 
 const root = join(__dirname, '..')
 const SPDX = 'SPDX-License-Identifier: GPL-3.0-only'
-const ROOTS = ['src', 'scripts', 'site']
-const EXTENSIONS = /\.(ts|tsx|js|css)$/
+const ROOTS = ['src', 'scripts', 'site', 'ios']
+const EXTENSIONS = /\.(ts|tsx|js|css|swift)$/
+// Generated and build output is skipped; ios/Generated carries the
+// header anyway because its generator writes one.
+const SKIP = new Set(['dist', 'node_modules', 'Generated', 'build', '.build', 'DerivedData'])
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
     if (statSync(full).isDirectory()) {
-      if (entry !== 'dist' && entry !== 'node_modules') walk(full, out)
+      if (!SKIP.has(entry) && !entry.endsWith('.xcodeproj')) walk(full, out)
     } else if (EXTENSIONS.test(entry)) out.push(full)
   }
   return out

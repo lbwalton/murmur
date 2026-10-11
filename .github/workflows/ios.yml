@@ -1,0 +1,42 @@
+# The iPhone gates (ios/prd.json IOS-002): MurmurCore's tests, the app's
+# tests, and the headless smoke on a Mac, whenever iPhone code, the
+# shared rules, or what the iPhone build generates from changes.
+# Desktop's gates stay in ci.yml. macos-26's default Xcode is 26.6 with
+# the iOS 26.5 simulator (runner image checked 2026-10-10).
+name: ios
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'src/renderer/tokens.css'
+      - 'src/renderer/brush.ts'
+      - 'package.json'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'src/renderer/tokens.css'
+      - 'src/renderer/brush.ts'
+      - 'package.json'
+      - '.github/workflows/ios.yml'
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: brew install xcodegen
+      - run: npm run ios:test
+      - run: npm run ios:smoke

@@ -1,0 +1,563 @@
+{
+  "project": "murmur for iPhone",
+  "version": "0.1.0",
+  "license": "GPL-3.0-only",
+  "tagline": "Talk instead of type, in any app on your iPhone.",
+  "description": "The clean-room iPhone app for murmur, kicked off by US-034 in the desktop prd.json and designed with LaBroi on 2026-10-10, while desktop stands at v0.1.10. A keyboard that is a dictation pad around the waveform pill, backed by the containing app, which holds the microphone, the key, the cleanup, and the history. Bring your own key (Groq by default, any OpenAI-compatible endpoint), the same formatter rules and test vectors as desktop, and a new App Store Connect record under Eze Media LLC. Copyright Eze Media LLC, GPLv3. Nothing from the old iOS app (now Undertone) or the other excluded repos ever enters this repo: concepts only.",
+  "stack": {
+    "language": "Swift 6 with strict concurrency. SwiftUI for screens; UIKit only where the keyboard extension needs it (UIInputViewController).",
+    "platform": "iOS 26 minimum, iPhone first; iPad in IOS-027.",
+    "project": "XcodeGen recipe at ios/project.yml. The generated .xcodeproj is git-ignored.",
+    "core": "MurmurCore, a local Swift package at ios/MurmurCore with no UI: formatter, dictionary, expansions, speech gate, WAV encoding, provider catalog, transcription and cleanup clients, history, and the mailbox protocol. Tested with swift test on the Mac, no simulator needed.",
+    "targets": "The app murmur (com.lbwalton.murmur.ios) and the keyboard extension murmur Keyboard (com.lbwalton.murmur.ios.keyboard), sharing the app group group.com.lbwalton.murmur. Team 4B55ZVBVKN (Eze Media LLC).",
+    "sharedData": "shared/*.json is copied into the app bundle at build time. Swift never keeps its own copy of a rule.",
+    "painting": "Screens that paint (the Journey, a painting a day, share cards) run desktop's brush engine, bundled at build time, in a web view with no network access. The keyboard pill is drawn in Swift, because keyboards get little memory.",
+    "dependencies": "No third-party Swift packages without LaBroi's OK.",
+    "toolchain": "Xcode 27 with the iOS 26.5 and 27.0 simulators on LaBroi's Mac (checked 2026-10-10)."
+  },
+  "decisions": {
+    "date": "2026-10-10, LaBroi, during US-034",
+    "scope": "The first TestFlight build is core dictation only: the keyboard, the hot mic session, your own key, the formatter with dictionary and expansions, and history. Belts, painting a day, notes, transform, and time back follow as later stories here.",
+    "money": "Free download, and the core is free with your own key. murmur Pro is a one-time Apple in-app purchase that never gates the core. Founding members get their ten percent through one-time-use offer codes (offer codes cover one-time purchases; codes expire within 6 months, so they are issued on request). A desktop license key can never unlock anything on iPhone: App Review 3.1.1 bans license keys for unlocking features, and 3.1.3(b) lets purchases carry across platforms only when the same item is also sold in the app (both checked 2026-10-10). Later, Pro adds a done-for-you key sold weekly or monthly, like Wispr Flow, which needs a murmur server (IOS-028).",
+    "keyboard": "A dictation pad: the pill, globe, space, delete, and return. Typing letters stays with the other keyboards.",
+    "journey": "The iPhone keeps its own Journey for now. One Journey across devices arrives with the murmur account (IOS-029).",
+    "approach": "Native Swift reading the same shared/*.json and passing shared/test-vectors.json. Painted screens use desktop's brush engine in a web view so a painting matches the Mac.",
+    "switchback": "Nothing public returns you to the app you came from, and since iOS 26.4 not even Wispr Flow does it (checked 2026-10-10). murmur shows you the swipe back instead. Opening murmur from the keyboard uses the responder-chain open that dictation keyboards ship, which needs Full Access; the Control Center and Action Button starts (IOS-016) are the fallback if Apple ever closes it. The auto-return private API stays out of scope (decided 2026-08-09).",
+    "waveforms": "The same seven pill styles as desktop, live while you talk: in the keyboard pill, large on the screen you land on after the first tap, on the Look grid, and in first-run practice. Lock Screen and Dynamic Island show a still, clean pill, because iOS redraws them only now and then. Only the pill look ships on iPhone, since the keyboard gives the pill a fixed home. Between takes the pill stays still, even while the session keeps the mic warm.",
+    "contributions": "The source is open so anyone can read it and build it. murmur accepts no outside code, so Eze Media LLC stays the sole copyright holder and can ship on the App Store. Issues and ideas are welcome."
+  },
+  "milestones": [
+    { "name": "Foundation", "stories": ["IOS-001", "IOS-002", "IOS-003", "IOS-004"] },
+    { "name": "Core, then TestFlight 1", "stories": ["IOS-005", "IOS-006", "IOS-007", "IOS-008", "IOS-009", "IOS-010", "IOS-011", "IOS-012", "IOS-013", "IOS-014", "IOS-015"] },
+    { "name": "Ways in", "stories": ["IOS-016"] },
+    { "name": "murmur on the phone", "stories": ["IOS-017", "IOS-018", "IOS-019", "IOS-020", "IOS-021", "IOS-022"] },
+    { "name": "More desktop features", "stories": ["IOS-023", "IOS-024"] },
+    { "name": "Money and launch", "stories": ["IOS-025", "IOS-026", "IOS-027"] },
+    { "name": "Later: the murmur account", "stories": ["IOS-028", "IOS-029"] }
+  ],
+  "conventions": {
+    "verify": "npm run ios:test and npm run ios:smoke must be green before any iOS commit, plus npm run typecheck and npm run test, since ios/ shares shared/ and scripts/ with desktop. Any change to shared/ or to code desktop runs also runs npm run smoke. ios:smoke builds the app for a simulator, runs it headless, and prints SMOKE_RESULT JSON; every subsystem adds a named check.",
+    "stories": "Work stories in order. Never set passes true until every acceptance criterion is verified; record how in notes. Stories with needs_human true get built and smoke-verified, then their human step goes into HANDOFF.md and into the chat reply as numbered plain-language steps, and work continues. Live checks run on LaBroi's iPhone from a TestFlight build, signed in to TestFlight as lbwalton@gmail.com (his phone's iCloud is a different Apple Account).",
+    "commits": "One commit per story minimum, prefixed with the story id (IOS-005: ...). git pull --rebase before every commit. iOS work lives on feature/ios until LaBroi says to merge. After changing ios/prd.json, run npm run roadmap, which writes both roadmaps.",
+    "review": "The review gate applies: before a story's push, an independent reviewer agent examines the full diff against CLAUDE.md, DESIGN.md, and these conventions. Confirmed findings get fixed and re-verified; disputed ones go to LaBroi.",
+    "cleanRoom": "Never open or copy from undertone (including the old iOS app), the-peoples-voice-flow, or OpenWhisp. Concepts yes, artifacts no. Porting murmur's own desktop code to Swift is fine: it is this repo.",
+    "parity": "Behavior lives in shared/ and nowhere else. When iOS needs a rule desktop keeps only in TypeScript (the cleanup and transform prompts and their checks, the speech gate's numbers), it moves into shared/ first, desktop reads it from there with unchanged behavior, and both platforms test against the same vectors.",
+    "design": "Night studio tokens only: a generator turns src/renderer/tokens.css into a Swift colors file at build time, and the design lint fails raw hex anywhere else in ios/. The pill is the one bold thing; everything around it stays quiet. Every screen uses the system font with Dynamic Type up to the largest accessibility size without clipping; gives every control a VoiceOver label; keeps tap targets at least 44 by 44 points and text contrast at WCAG AA or better; designs its loading, empty, and error states; and gives Reduce Motion still, finished frames. Interface motion settles without bounce; paint motion uses DESIGN.md's four verbs. Copy is plain, sentence case, with active verbs and lowercase murmur; errors say what happened and how to fix it, in clean red. Before building any screen, consult the frontend-design, elite-saas-designer, and ui-skills-root skills (CLAUDE.md). SwiftUI views stay small, own their state with @State and @Observable, load with .task, and ship a preview for each state.",
+    "privacy": "Your words and audio go only to the provider you chose, straight from your phone. The core app has no murmur server, no analytics, no tracking, and no ads. The keyboard extension makes no network requests; only the app talks to your provider. The key lives in the Keychain, readable only by the app, on this device only. Audio between takes is never kept or sent. History stays in the app's own container; the keyboard sees only the newest take. Logs never hold your words or any key.",
+    "docs": "iPhone docs are written as each story ships, in ios/docs/iphone.md: headings phrased as the questions people ask, short answers first, and a checked-on date for facts that drift. They move into docs/ and onto the website when the App Store page goes live (IOS-026), because the site publishes everything in docs/.",
+    "tooling": "No binary assets in the repo: the app icon and screenshots are generated by script, and the display face is fetched at build time as on desktop. npm install, typecheck, test, and smoke never need Xcode; only the ios: scripts do.",
+    "style": "No em dashes or spaced hyphens as clause separators anywhere. The product name is always lowercase murmur, on the home screen and in the keyboard list too."
+  },
+  "stories": [
+    {
+      "id": "IOS-001",
+      "title": "The ios/ scaffold",
+      "description": "The skeleton everything else hangs on: the app, the keyboard, the shared drawer between them, and the core package, all generated from text files.",
+      "acceptance": [
+        "ios/project.yml (XcodeGen) generates murmur.xcodeproj with the app murmur (com.lbwalton.murmur.ios) and the keyboard extension murmur Keyboard (com.lbwalton.murmur.ios.keyboard): team 4B55ZVBVKN, iOS 26 minimum, automatic signing; the generated project and build output are git-ignored",
+        "Both show as murmur on the home screen and in the keyboard list",
+        "ios/MurmurCore is a local Swift package with no UI code, linked by both targets; swift test runs it on the Mac without a simulator",
+        "Both targets share the app group group.com.lbwalton.murmur. The keyboard asks for Full Access (RequestsOpenAccess). The app declares the microphone purpose string, background audio, standard encryption only (ITSAppUsesNonExemptEncryption false), and a privacy manifest (PrivacyInfo.xcprivacy) listing every required-reason API it uses",
+        "A build step copies shared/*.json into the app bundle and MurmurCore loads them from there; ios/ holds no copy of any shared rule",
+        "The app icon is generated by script from the ensō geometry in scripts/lib/enso.js, with the dark and tinted versions iOS asks for; nothing binary is committed, and the generated files are git-ignored",
+        "A generator writes the night studio colors from src/renderer/tokens.css into a Swift file at build time. scripts/check-design.js fails raw hex anywhere else in ios/, and scripts/check-headers.js requires the SPDX GPL-3.0-only header in every Swift file",
+        "npm run ios:test runs swift test for MurmurCore and the app's unit tests on a simulator. npm run ios:smoke builds the app for a simulator, launches it headless with a smoke flag, and prints SMOKE_RESULT JSON with checks for the app group (write and read back), the Keychain (save, read, and delete a dummy item), and the bundled shared JSON (every file loads and parses)",
+        "npm install, npm run typecheck, npm run test, and npm run smoke still never need Xcode",
+        "One device build with automatic provisioning and the App Store Connect API key registers both bundle ids and the app group under Eze Media LLC",
+        "ios/README.md explains how to install XcodeGen, generate the project, run the tests, and run the smoke",
+        "README.md gains a short iPhone section. README.md and a new CONTRIBUTING.md say in plain words that murmur accepts no outside code, that issues and ideas are welcome, and how to build from source"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built on feature/ios 2026-10-10 (plan ios/plans/2026-10-10-foundation-scaffold.md); automated criteria verified except the registration, which waits on LaBroi signing in to Xcode once (HANDOFF). (1) npm run ios:generate writes murmur.xcodeproj from ios/project.yml with XcodeGen 2.46.0: app com.lbwalton.murmur.ios, keyboard com.lbwalton.murmur.ios.keyboard (target murmurKeyboard), team 4B55ZVBVKN, iOS 26.0, automatic signing; the ids live once, as MURMUR_BUNDLE_ID and MURMUR_APP_GROUP, and a build with example ids passed the smoke; git status shows nothing under ios/Generated, ios/build, or ios/murmur.xcodeproj. (2) plutil on the simulator build: CFBundleDisplayName is murmur for the app and for the keyboard. (3) swift test --package-path ios/MurmurCore: 5/5 on the Mac with no simulator; project.yml links MurmurCore into both targets. (4) plutil: RequestsOpenAccess true, UIBackgroundModes audio, ITSAppUsesNonExemptEncryption false, the microphone purpose string set; PrivacyInfo.xcprivacy lands in both bundles (no required-reason API is used yet); both targets carry group.com.lbwalton.murmur (simulator builds keep entitlements in the binary's __entitlements section, so codesign -d shows an empty dict there), and the smoke writes and reads the group container. (5) shared/*.json (8 files) is copied to ios/Generated/shared and bundled as murmur.app/shared; ios/ commits no copy; the smoke parses all 8 through MurmurCore's SharedData. (6) scripts/lib/ios-icon.js draws the icon from the enso geometry and brush: the default icon is opaque RGB (PNG color type 2) as App Store Connect requires, the dark and tinted ones keep alpha, all generated into ios/Generated. (7) scripts/lib/ios-tokens.js writes ios/Generated/Tokens.swift (32 colors) from tokens.css; a probe Swift file with Color(red:), #ff0000, and no header failed check-design and check-headers, then was removed. (8) npm run ios:test: MurmurCore 5/5 and the app 9/9 (xcresult) on the murmur smoke simulator (iPhone 17, iOS 27.0), created once and shut down after; another project's booted simulator stayed booted. npm run ios:smoke: SMOKE_RESULT with appGroup, keychain, and sharedJson all true and ok true; a hand-bundled broken.json made it print smoke sharedJson: shared rule broken.json is not valid JSON, with ok false. (9) package.json: only the ios: scripts mention iOS and postinstall is unchanged; scripts/lib/ios*.test.js never call xcrun or xcodebuild; npm run test 787/787. (10) Not yet: npm run ios:register with the App Store Connect API key fails inside xcodebuild with Authentication failed (bearer token), although the same key reads apps, bundle ids, devices, certificates, and profiles through the API (all 200), and it can even list the team's users (an Admin read) and the .p8 file is well formed, so the cause is not the key's role or format and is still unknown (to settle by IOS-015, which uploads with this key); node scripts/ios.js register --xcode-account then failed with No Accounts. Next: LaBroi signs in to Xcode, Claude runs node scripts/ios.js register --xcode-account. (11) ios/README.md covers XcodeGen, generate, test, and smoke. (12) README.md gains murmur on iPhone and Contributing sections; CONTRIBUTING.md says murmur accepts no outside code, welcomes issues and ideas, and points to both build guides."
+    },
+    {
+      "id": "IOS-002",
+      "title": "CI job on a Mac",
+      "description": "Machinery checks every iPhone change the way ci.yml checks desktop.",
+      "acceptance": [
+        ".github/workflows/ios.yml runs on pushes to main and on pull requests that touch ios/, shared/, or scripts/",
+        "It runs npm run ios:test and npm run ios:smoke on a GitHub macOS runner, with the newest Xcode the runner image offers that builds the project, and any red check fails the run",
+        "The existing ci.yml gates are unchanged",
+        "A deliberate break on a scratch branch (a failing MurmurCore test) turns the job red and the fix turns it green; the scratch branch is deleted afterward"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Verified 2026-10-10. (1) .github/workflows/ios.yml runs on pushes to main and on pull requests whose changes touch ios/, shared/, scripts/, tokens.css, brush.ts, package.json, or the workflow itself. (2) It runs npm ci, brew install xcodegen, npm run ios:test, and npm run ios:smoke on macos-26, whose default Xcode (26.6 with the iOS 26.5 simulator, per the runner image checked 2026-10-10) is the newest that image offers; Xcode 27 sits only on a separate preview label. Green on draft PR #11 (feature/ios into main): https://github.com/lbwalton/murmur/actions/runs/38106146633, about 10 minutes, ending SMOKE_RESULT with appGroup, keychain, and sharedJson true. (3) git diff origin/main -- .github/workflows/ci.yml is empty, and ci.yml's macOS and Windows gates passed on the same PR. (4) A deliberate #expect(Bool(false)) in MurmurCore's listsTheRepoRules on scratch/ios-ci-red (PR #12 into feature/ios) turned the job red at npm run ios:test: https://github.com/lbwalton/murmur/actions/runs/38106769182. After the revert the job did not run again, because GitHub filters pull request jobs by the pull request's changes and the reverted branch had none; its tree (a0016d9) is identical to PR #11's head, whose run above is the green one. PR #12 was closed and scratch/ios-ci-red deleted on GitHub and locally."
+    },
+    {
+      "id": "IOS-003",
+      "title": "MurmurCore passes desktop's answer key",
+      "description": "The rules that make murmur's text murmur's, in Swift, proven against the same cases desktop runs.",
+      "acceptance": [
+        "MurmurCore runs every vector in shared/test-vectors.json through desktop's pipeline (the dictionary on raw input, formatting from shared/format-spec.json, dictionary casing, then expansions) and every one passes",
+        "The speech gate's numbers (window, loudness threshold, minimum voiced time) and the hallucination list (today src/shared/hallucinations.json) move into shared/; desktop reads them from there with unchanged behavior",
+        "A new shared vector file of generated tone and silence cases, plus hallucination phrases, passes on both platforms",
+        "WAV encoding produces the same bytes as desktop's src/shared/wav.ts on shared sample cases",
+        "shared/provider-catalog.json loads into Swift types (presets, models, key prefixes, key pages), and a test fails if a field desktop uses is missing",
+        "Desktop's test suite runs the new shared vectors too, so a change in shared/ breaks both platforms or neither",
+        "npm run typecheck, npm run test, and npm run smoke stay green after desktop reads from shared/"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "IOS-004",
+      "title": "Bundle ids and the App Store Connect record",
+      "description": "murmur gets its own home in App Store Connect, separate from the old app's record (now Undertone). Apple only lets a person create an app record on the website, so this one is LaBroi's.",
+      "acceptance": [
+        "com.lbwalton.murmur.ios, com.lbwalton.murmur.ios.keyboard, and group.com.lbwalton.murmur are registered under Eze Media LLC (team 4B55ZVBVKN), by IOS-001's first device build",
+        "LaBroi creates a new app record in App Store Connect for com.lbwalton.murmur.ios: iOS, English (U.S.), a SKU of his choosing, and a store name that is free. The name under the icon stays murmur either way; if murmur alone is taken on the store, he picks a name that keeps murmur lowercase, for example murmur dictation",
+        "The record's internal TestFlight group includes lbwalton@gmail.com",
+        "The old record stays as Undertone Voice Dictation and shares nothing with this one",
+        "US-034 in prd.json gets passes true, with notes, once this record exists and LaBroi has approved this PRD"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-005",
+      "title": "Provider and key setup",
+      "description": "Bring your own key on the phone: pick a provider, paste a key, and know right away that it works.",
+      "acceptance": [
+        "A Provider screen offers the presets from shared/provider-catalog.json, with Groq first as the default, plus a custom OpenAI-compatible endpoint with base URL and model fields: the same choices desktop offers for transcription and for cleanup",
+        "A key ring keeps one saved key per provider, as on desktop, so switching providers never asks for a key twice",
+        "Keys are saved in the Keychain, readable only by the app, after first unlock, on this device only (never synced or restored to another device). Key items live in the app's own Keychain access group (its application identifier), never in the shared app group, which also counts as a Keychain access group for both targets; a test saves a key and confirms its access group is the app's own application identifier, never the app group, so the keyboard can never read it",
+        "Get a key opens the provider's key page from the catalog. A key with the wrong prefix for its provider gets a gentle inline note, never a block",
+        "Test connection makes one small real request and answers inline in plain words: Works, Key rejected (and how to fix it), No connection, or the provider's own message. A saved key only ever shows its last four characters",
+        "A key never appears in logs, diagnostics, crash reports, or the pasteboard",
+        "Meets conventions.design, with previews for no key, a saved key, testing, works, and each failure",
+        "Smoke: a check saves a dummy key, reads it back, and deletes it; another runs Test connection against a local stub for each answer",
+        "ios/docs/iphone.md answers How do I add my API key on iPhone? and Where does murmur keep my key?",
+        "Live: LaBroi pastes his Groq key and Test connection says Works"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-006",
+      "title": "Record and transcribe in the app",
+      "description": "The first real take: speak in the app, get your words back, and never get words for silence.",
+      "acceptance": [
+        "The app records mono audio through AVAudioSession and asks for the microphone, with a plain purpose string, the first time it needs it",
+        "A take sends one WAV to the chosen provider's transcription model from the catalog. The request has a timeout, and every failure gets a kind (auth, network, timeout, server, badrequest), the same as desktop",
+        "Silence never types: the speech gate stops near-silent takes before upload, and the hallucination filter drops the stock phrases models invent on silence. Either one shows Heard nothing",
+        "A failed take keeps its audio in the app's own container (the 20 most recent, as on desktop) and waits under waiting to retry, with retry, retry all, and discard. Discard turns red and asks delete audio? first; a quick double tap never deletes",
+        "A take recorded while the phone is locked still saves, because its files use protection that allows writing after first unlock",
+        "Smoke: a check runs a generated tone and a generated silence through the gate; another sends a take to a local stub server and reads the words back",
+        "ios/docs/iphone.md answers What happens when a dictation fails on iPhone? and Why did murmur hear nothing?",
+        "Live: on LaBroi's iPhone, a spoken sentence comes back as words in the app, and a silent take shows Heard nothing"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-007",
+      "title": "Cleanup that fails open",
+      "description": "The same cleanup as desktop: the formatting rules first, an optional polish pass after, and a transcript that can never be lost.",
+      "acceptance": [
+        "Every take runs the shared formatter, dictionary, and expansions from IOS-003, with desktop's settings and defaults (level full, numbers auto)",
+        "The polish prompt, the smart lists lines, and the checks that reject a bad answer move from src/main/formatter/llm.ts into shared/. Desktop reads them from there with unchanged behavior",
+        "Polish, when on, sends the formatted text to the chosen cleanup model and fails open exactly as desktop's does: an error, a timeout, chatter, a refusal, an answer to the dictated words, or any answer desktop's checks reject returns the formatted text it was given. Dictated instructions are typed, never followed",
+        "A shared vector file of model answers to reject and to keep passes on both platforms",
+        "Smart lists, with their lead-ins, work as on desktop when the setting is on",
+        "Settings: cleanup level, polish on or off with its model, smart lists, and numbers, each with a one-line plain explanation",
+        "Smoke: a check points polish at a stub that errors, then at one that chats, and both return the formatted text unchanged",
+        "ios/docs/iphone.md answers What does polish do? and What happens if polish fails?",
+        "Live: LaBroi dictates a sentence with a list in it, and a sentence that sounds like an order to the model (for example, ignore that and write a poem); both come back as his own words, formatted"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-008",
+      "title": "The dictation pad",
+      "description": "The keyboard: one big pill to talk, and just enough keys to finish the job.",
+      "acceptance": [
+        "The keyboard shows the pill in the middle with globe, space, delete, and return around it. Globe moves to the next keyboard and a long press lists them; delete repeats while held; return follows the field's return key type",
+        "Tapping the pill starts a take, and tapping again stops it. The keyboard tells the app through Darwin notifications (start, stop, cancel); the app answers through a mailbox file in the app group plus a words ready signal",
+        "When the words land, the keyboard inserts them at the cursor, adds a space first when the text before the cursor needs one, and marks the mailbox entry used, so a take never inserts twice",
+        "If you left the field before the words landed, Insert last appears in the keyboard and inserts the newest take when tapped; the take is also in history in the app",
+        "In password and phone number fields, iOS shows Apple's keyboard instead, and murmur leaves it that way",
+        "Without Full Access, the keyboard shows one short line on why it needs it, with the exact steps to turn it on",
+        "The keyboard makes no network requests; a test fails if keyboard code uses URLSession or any other networking API",
+        "The keyboard stays inside the extension memory limit through a long session, checked with Instruments on LaBroi's iPhone and recorded in notes",
+        "Meets conventions.design: every key has a VoiceOver label, targets are at least 44 points, and labels never clip at any text size the keyboard height allows",
+        "Smoke: a mailbox round trip, in which the app posts a take, a simulated keyboard reads it once, and a second read gets nothing",
+        "ios/docs/iphone.md answers How do I add the murmur keyboard?, Why does murmur need Full Access?, and What is Insert last?",
+        "Live: in a text field inside murmur, LaBroi taps the pill, speaks, taps again, and the words land at the cursor once"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-009",
+      "title": "The hot mic session and the swipe back",
+      "description": "How a take works from any app: the first tap opens murmur already listening, you swipe back, and the mic stays ready until you are done.",
+      "acceptance": [
+        "When no session is running, tapping the pill opens murmur through the responder-chain open (Full Access required), and murmur starts a session and a take at once",
+        "That screen shows the live waveform large, the word Recording, and an animated guide along the bottom edge showing the swipe right that returns to your app. Words spoken before you swipe back count. Reduce Motion shows the guide as a still arrow and one sentence",
+        "The session keeps the mic warm in the background (iOS shows its orange dot), so later taps start a take at once without leaving your app. Audio between takes is never kept, written, or sent",
+        "The session ends after the length you pick, counted from your last take: 5 minutes, 15 minutes (the default), or 1 hour. End session ends it at once, in the app and in the keyboard, where a long press on the pill opens a small menu that holds it (IOS-023 and IOS-024 add Note and Transform to the same menu)",
+        "A phone call, Siri, or another app taking the mic ends the session cleanly; a take in progress stops and is processed as if you tapped stop",
+        "Music or a podcast that is playing when a session starts keeps playing",
+        "If iOS ever refuses to open murmur from the keyboard, the pill says Open murmur to start, and the docs point to the other ways in (IOS-016)",
+        "Smoke: a check runs a session start, a take, and an idle timeout at a shortened length, and confirms no audio exists from between takes",
+        "ios/docs/iphone.md answers Why does murmur open when I first tap the pill?, How do I get back to my app?, Why is the orange dot on?, How long does murmur keep listening?, and How much battery does a session use? (measured on LaBroi's iPhone)",
+        "Live: in Messages, LaBroi taps the pill, lands in murmur, swipes back, keeps talking, and the words land in Messages; a second take starts without leaving Messages; the session ends by itself after the length he picked"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-010",
+      "title": "The pill on iPhone",
+      "description": "The signature, on the phone: the same waveforms as desktop, live while you talk.",
+      "acceptance": [
+        "One Swift drawing module paints the pill everywhere it appears: the keyboard, the large waveform on the screen you land on (IOS-009), first-run practice, and later the Look grid (IOS-020)",
+        "It follows DESIGN.md's stage table. Idle: small, dry, and still, with no amber, even while the session keeps the mic warm. Recording: wet amber at the voice level. Processing: cools with one sheen, then a softer sheen every 2 seconds. Inserted: sinks flat. No speech: a dry grey scrape. Error: plain red",
+        "The keyboard paints from loudness levels the app writes to a small file in the app group about 30 times a second, since keyboards cannot use the microphone. The keyboard reads nothing else about the audio",
+        "This story ships the two free styles, bars and speckle, in signal amber drying to brand gold; the other five arrive with belts (IOS-020)",
+        "A light haptic tap when a take starts and when it stops",
+        "VoiceOver reads the pill as a button with its state: Start dictation, Recording, Working, Words added, Heard nothing, or Failed, retry in murmur",
+        "Reduce Motion shows each stage as a still frame",
+        "It draws smoothly in the keyboard on LaBroi's iPhone; an Instruments trace in notes shows no hitches while recording",
+        "Previews for every stage in both styles, and a capture script saves each stage as images from the simulator, like desktop's ink shots",
+        "Live: LaBroi watches the pill follow his voice in the keyboard and on the landing screen, and sees each end state once"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-011",
+      "title": "First run",
+      "description": "From install to first words in a couple of minutes, with every permission explained in one sentence.",
+      "acceptance": [
+        "First run walks four steps in order, one screen and one action each: allow the microphone, add the murmur keyboard, turn on Full Access, and add a key (IOS-005)",
+        "Each step says in one sentence why murmur needs it. The Full Access step says plainly that the keyboard sends nothing anywhere and only types the words you dictate",
+        "Steps that need the Settings app open it at the closest place iOS allows and show the exact taps; back in murmur, the step checks itself and moves on when done",
+        "Practice: a text field inside murmur where the first take happens with the real pill, then a short preview of the swipe back used in other apps",
+        "Any step can be skipped; Home shows what is left as a short checklist until it is done",
+        "Meets conventions.design, including each step's error state (for example, the microphone was denied, and how to allow it in Settings)",
+        "Smoke: a check walks the first-run steps with each permission granted and denied",
+        "ios/docs/iphone.md answers How do I set up murmur on iPhone?",
+        "Live: LaBroi deletes the app, installs the TestFlight build, and reaches his first words without help; the time goes in notes"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-012",
+      "title": "Home and history",
+      "description": "The app's front page: the session, your latest words, anything waiting, and the way into settings.",
+      "acceptance": [
+        "Home shows the session state with Start session and End session; the newest takes with their words, time, and length; waiting to retry when anything failed; and what is left of setup",
+        "History stays in the app's own container and never leaves the phone. Tap a take to copy it; deleting one asks first, in red; Clear all asks with the real count",
+        "The empty state is one dry grey mark and a sentence saying how to make the first take",
+        "Settings holds Provider and keys, Cleanup, Session length, Dictionary and expansions (IOS-013), Diagnostics (IOS-014), and About (version, GPLv3, the source link, the no-outside-code note, and the licenses of anything bundled)",
+        "Meets conventions.design, with previews for empty, a few takes, many takes, and a failed take",
+        "Smoke: a check writes takes to history, reads them back, deletes one, and clears all",
+        "ios/docs/iphone.md answers Where is my history kept? and How do I delete it?",
+        "Live: LaBroi finds an earlier take on Home, copies it, and deletes another"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-013",
+      "title": "Dictionary and expansions",
+      "description": "Your words spelled your way, and short triggers that grow into longer text, the same as desktop.",
+      "acceptance": [
+        "Dictionary: words with the spelling and casing you want, applied exactly as desktop applies them (on the raw text, then casing enforced after formatting) and sent as a spelling hint to transcription and polish",
+        "Expansions: say a short trigger and get the longer text, applied last, as on desktop",
+        "Add, edit, search, and delete (deleting asks first, in red); each empty list says what it is for with one example",
+        "Meets conventions.design",
+        "Smoke: a check adds an entry to each list and runs a take's text through both",
+        "ios/docs/iphone.md answers How do I teach murmur a word on iPhone? and How do expansions work?",
+        "Live: LaBroi adds a name and an expansion, dictates both, and each comes out his way"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-014",
+      "title": "Diagnostics",
+      "description": "When something goes wrong, one plain report you can read before you send it.",
+      "acceptance": [
+        "The app keeps a small activity log in its own container: what happened to each take (captured, heard nothing with the measured level, a transcription failure with its kind and status, inserted, or waiting for Insert last). Never words and never keys",
+        "Settings, Diagnostics, Save report builds one plain text file: app and iOS version, device model, whether the keyboard is added and Full Access is on, session length, a summary of settings (counts, never contents), and the recent log. It opens a preview, then the share sheet; nothing is ever sent by itself",
+        "A test seeds a canary word and a canary key into a take and fails if either could reach a log line or the report",
+        "Smoke: a check builds a report after a take and confirms the canaries are absent",
+        "ios/docs/iphone.md answers How do I send diagnostics from my iPhone?"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": ""
+    },
+    {
+      "id": "IOS-015",
+      "title": "TestFlight 1",
+      "description": "Core dictation on LaBroi's own iPhone.",
+      "acceptance": [
+        "npm run ios:release archives the app with a build number from git and uploads it to App Store Connect with the existing App Store Connect API key, with no clicking in Xcode",
+        "ios/RELEASING.md is a fresh runbook: version and build numbers, archive, upload, the export compliance answer, the TestFlight test notes, and what to check before inviting anyone",
+        "The build passes App Store Connect processing and appears in TestFlight for the internal group",
+        "HANDOFF.md and the chat reply list the live checks as numbered plain steps",
+        "Live: on LaBroi's iPhone, signed in to TestFlight as lbwalton@gmail.com, he installs the build, finishes first run, and dictates into Messages, Notes, Mail, and Safari. Each take lands, a silent take inserts nothing, and a failed take retries",
+        "Problems found become fixes or stories before TestFlight 2"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-016",
+      "title": "Control Center, Action Button, and the Lock Screen",
+      "description": "Start a session without the keyboard opening murmur: quicker for some people, and the backup if Apple ever closes the keyboard's way in.",
+      "acceptance": [
+        "A Control Center control and an Action Button action start a session through an AudioRecordingIntent without opening murmur's screens",
+        "While a session runs, a Live Activity shows on the Lock Screen and in the Dynamic Island: the clean drawn pill (never brushed at that size), Ready or Recording, the time left in the session, and End",
+        "The Live Activity does not follow the voice; iOS redraws it only now and then, so it shows still states",
+        "Starting from the keyboard works as before",
+        "Smoke: a check runs the intent's start and stop on the simulator",
+        "ios/docs/iphone.md answers How do I start murmur from Control Center or the Action Button?",
+        "Live: LaBroi adds the control, starts a session from the Lock Screen, unlocks into Messages, and dictates without murmur opening"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-017",
+      "title": "Belts and stripes",
+      "description": "Practice earns rank on the phone too: the same belts, stripes, and gates as desktop, on the iPhone's own Journey for now.",
+      "acceptance": [
+        "Ranks, stripes, and their word and day gates come from shared/ranks.json, and the Swift math matches desktop's on shared cases",
+        "The iPhone counts only its own takes; the docs say one Journey across devices comes with the murmur account (IOS-029)",
+        "A Journey screen shows the current belt, its stripes, and the words and days toward the next one, in plain native views until IOS-018 paints it",
+        "Smoke: a check feeds a history through the rank math and compares the result with desktop's on the same history",
+        "ios/docs/iphone.md answers How do belts work on iPhone?",
+        "Live: LaBroi sees his iPhone belt and stripes after a few days of takes"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-018",
+      "title": "The painted Journey",
+      "description": "The Journey as desktop paints it: the belt, the road, the gates, the ink stamps, and the ceremony when you are promoted.",
+      "acceptance": [
+        "The Journey screen paints desktop's road, gates, belt, and ink stamps with desktop's brush engine (src/renderer/brush.ts and the Journey painter), bundled into the app at build time and run in a web view",
+        "The web view loads only files from the app bundle and can neither navigate nor fetch",
+        "The same seed paints the same marks as on the Mac; a side-by-side capture of one seed on both is in notes",
+        "Promotions get desktop's ceremony: one big stroke in the new belt's color, splatter, and the rank set large. A new stripe drops its tape",
+        "Text and controls are native views beside or over the painting, never inside the web view, so Dynamic Type and VoiceOver work as everywhere else",
+        "Reduce Motion shows the finished painting at once",
+        "Smoke: a check loads the painting bundle in the web view and confirms it reports ready",
+        "ios/docs/iphone.md answers What is the Journey on iPhone?",
+        "Live: LaBroi opens the Journey, and at his next stripe or belt sees the ceremony"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-019",
+      "title": "A painting a day",
+      "description": "Every take on the phone adds the next stroke of the day's painting, as on desktop.",
+      "acceptance": [
+        "Takes paint the day's subject with desktop's painting engine, subjects, and light (src/renderer/settings/paintSubjects.ts and paintLight.ts) in the IOS-018 web view, seeded by the date, so the same takes paint what the Mac would paint",
+        "The seal in the color of the belt it was painted at, the light of the hours it was painted in, the strip of earlier days, the portrait Save card, and Save the week all work as on desktop",
+        "Saving goes through the share sheet, including Save Image, with an add-only Photos purpose string",
+        "The display face for the cards is fetched at build time like desktop's and never committed",
+        "Reduce Motion shows the finished painting",
+        "Smoke: a check paints a day from a seeded history and confirms the image is not blank",
+        "ios/docs/iphone.md answers How does the painting a day work on iPhone?",
+        "Live: LaBroi finishes a day's painting on his iPhone and saves its card"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-020",
+      "title": "Every waveform style",
+      "description": "All seven pill styles and the accents, earned by belt as on desktop and chosen from a grid of live pills.",
+      "acceptance": [
+        "The Look screen shows each style from shared/cosmetics.json as a live mini pill. Locked ones are dimmed and name the belt that unlocks them: pulse and ink dabs at white, ink flecks at blue, ink rings at purple, ink ribbon at brown",
+        "The ink styles (dabs, flecks, rings, ribbon) are drawn in Swift to match desktop's look and stage table; a side-by-side capture against desktop's ink shots is in notes",
+        "The accents from shared/cosmetics.json work as on desktop: signal amber drying to gold, your belt color, and the rest; a custom accent dries to a darker shade of itself",
+        "Only the pill look ships on iPhone; desktop's compact and bare looks exist because the pill floats over other apps, and the keyboard gives the pill a fixed home",
+        "A new choice reaches the keyboard through the app group by the next take",
+        "VoiceOver reads each tile's name and, when locked, how to unlock it; Reduce Motion shows still tiles",
+        "Smoke: a check sets each style and accent and confirms the keyboard side reads it back",
+        "ios/docs/iphone.md answers How do I change the waveform on iPhone?",
+        "Live: LaBroi picks a style he has earned and dictates with it in Messages"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-021",
+      "title": "Achievements, cosmetics, and the share card",
+      "description": "The rest of what practice earns, and a card worth posting.",
+      "acceptance": [
+        "Achievements from shared/achievements.json unlock on the phone's own counts with desktop's rules",
+        "Cosmetics are earned, never bought, and never change what murmur does",
+        "The share card paints from your month as on desktop and saves or shares as an image",
+        "Meets conventions.design",
+        "Smoke: a check unlocks achievements from a seeded history and matches desktop's results on the same history",
+        "ios/docs/iphone.md answers What can I earn on iPhone?",
+        "Live: LaBroi shares a card from his iPhone"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-022",
+      "title": "Analytics, time back, and the recap",
+      "description": "How much you said and how much time it saved you, counted against typing with your thumbs.",
+      "acceptance": [
+        "Analytics shows the fourteen days as brush dabs and the activity wall as blots, with numbers from desktop's shared math",
+        "Time back counts against thumb typing, not desktop typing: a typing speed setting whose default comes from a cited source with a checked-on date",
+        "Home shows today against a typical day with its one gold stroke",
+        "An optional daily recap arrives as a local notification at a time you pick; it is off by default and asks for notification permission only when you turn it on",
+        "Smoke: a check runs the analytics and time back math on a seeded history",
+        "ios/docs/iphone.md answers How does murmur count time back on iPhone?",
+        "Live: LaBroi reads his week on the phone and gets one recap"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-023",
+      "title": "Notes",
+      "description": "Brain dump on the phone: a take kept as a note instead of typed.",
+      "acceptance": [
+        "The pill's long-press menu gains Note, which makes the next take a note instead of typing it; the app also has New note",
+        "Notes sort, lead in, find duplicates, and set reminders with desktop's shared rules; reminders arrive as local notifications",
+        "A note receipt: a short confirmation in the keyboard and the newest note on Home",
+        "Notes stay on the phone and share out as text",
+        "Smoke: a check saves notes from seeded takes and matches desktop's sorting on the same takes",
+        "ios/docs/iphone.md answers How do I take a note by voice on iPhone?",
+        "Live: LaBroi says a note from Messages and finds it sorted in murmur"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-024",
+      "title": "Transform selected text by voice",
+      "description": "Select text, say what to change, and murmur rewrites it in place.",
+      "acceptance": [
+        "With text selected, the pill's long-press menu offers Transform. The spoken instruction and the selection go to the cleanup model with desktop's transform prompt, moved from src/main/formatter/transform.ts into shared/, and the answer replaces the selection",
+        "On any failure the selection stays as it was and the pill shows plain red",
+        "Insert last brings back the original text",
+        "Where a field does not share its selection with keyboards, Transform is hidden",
+        "Smoke: a check transforms a sample through a stub and through a failing stub",
+        "ios/docs/iphone.md answers How do I rewrite text by voice on iPhone?",
+        "Live: in Notes, LaBroi selects a sentence, says make this shorter, and the shorter sentence replaces it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-025",
+      "title": "murmur Pro on iPhone",
+      "description": "A one-time purchase that supports murmur, sold the way Apple requires, and never in the way of the free app.",
+      "acceptance": [
+        "murmur Pro is a one-time in-app purchase (StoreKit 2) at a price LaBroi sets in App Store Connect. Core dictation, the Journey, and every provider stay free and never wait on it",
+        "Pro on iPhone carries desktop's promise from docs/pro.md: provider profiles, early access, and the supporter mark; belts and cosmetics are never for sale",
+        "Restore Purchases works on a new phone",
+        "Founding members get their ten percent through one-time-use offer codes. LaBroi issues a code on request after checking the founder's desktop license, since codes expire within 6 months. A purchase made with a founders code shows the founder mark, read from the purchase's offer details",
+        "A desktop license key never unlocks anything on iPhone",
+        "A StoreKit configuration file (text) drives the tests and the smoke: buy, restore, refund, and an offer code",
+        "ios/docs/iphone.md answers How do I get murmur Pro on iPhone? and Does my desktop Pro carry over? (it cannot, and why)",
+        "Live: LaBroi buys Pro in the sandbox and redeems a test offer code"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-026",
+      "title": "App Store launch",
+      "description": "murmur on the App Store, with a listing, a privacy story, and docs that answer people's questions before they ask.",
+      "acceptance": [
+        "The listing (name, subtitle, description, keywords, promotional text) is written in murmur's voice with lowercase murmur; screenshots in every size App Store Connect requires are generated by script from the simulator and are git-ignored",
+        "The privacy label is filed against Apple's definitions as checked on the day: murmur collects nothing; audio and words go only to the provider you chose",
+        "murmurapp.app gains the iPhone privacy details and a support page, both linked from the listing",
+        "App Review notes explain Full Access (the keyboard types only dictated words and makes no network requests), the background microphone (the orange dot and a session you control), and how to test with a review key that has a low spend limit, which LaBroi creates and revokes after review",
+        "ios/docs/iphone.md moves into docs/, joins the site's DOCS list, and the download page links to the App Store",
+        "README.md and CHANGELOG.md say murmur is on iPhone",
+        "Live: Apple approves the build and LaBroi releases it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-027",
+      "title": "iPad",
+      "description": "The same murmur on iPad, laid out for the bigger screen.",
+      "acceptance": [
+        "The app's screens adapt to every iPad size and to resizable windows, with no stretched phone layouts",
+        "The dictation pad works on iPad, including the floating keyboard",
+        "iPad screenshots are generated with the iPhone ones",
+        "Meets conventions.design at iPad sizes",
+        "ios/docs/iphone.md (or its docs/ successor) answers Does murmur work on iPad?",
+        "Live: LaBroi dictates on an iPad"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-028",
+      "title": "Done-for-you key subscription",
+      "description": "Pro, later: murmur supplies the transcription and cleanup so there is no key to paste, sold weekly or monthly, like Wispr Flow. It needs a murmur server and an account, so it gets its own design pass with LaBroi before anything is built.",
+      "acceptance": [
+        "A design pass with LaBroi covers the server, the account, prices, usage limits, abuse, privacy (what the server sees and keeps, which is nothing beyond what billing needs), and the desktop side, and lands as new stories here before any code",
+        "Weekly and monthly auto-renewing subscriptions in one subscription group, sold through Apple on iPhone",
+        "Your own key stays free and first-class; the subscription is a convenience",
+        "Founding members get their ten percent through offer codes, as docs/pro.md promises",
+        "The docs explain in plain words where audio goes with the done-for-you key"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "IOS-029",
+      "title": "One Journey across devices",
+      "description": "The murmur account joins your Mac and iPhone into one Journey and makes share cards verifiable.",
+      "acceptance": [
+        "Designed together with IOS-028's account, before any code",
+        "Counts merge across devices without double counting; only counts travel, never your words",
+        "Founder status is verified once, on the account",
+        "Share cards carry a check that proves the rank is real",
+        "Leaving the account keeps each device's own Journey"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    }
+  ]
+}

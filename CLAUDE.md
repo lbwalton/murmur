@@ -39,6 +39,10 @@ This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walt
 
 Night studio: ink `#0F0E11`, panels `#17161B`, warm text `#ECE9E4`, brand gold `#D9A441` for headlines, micro-labels, and static highlights (the icon's metal at label luminance; LaBroi direction 2026-09-07), signal amber `#F0A44B` reserved for live/active states only and always brighter than the brand gold, red `#E5484D` for record/error and the button that confirms a delete (LaBroi, 2026-10-08), founder gold `#E0B64F` for founder identity marks only, mono (Cascadia Mono / SF Mono) for equipment-style micro-labels. The waveform pill is the signature; keep everything else quiet.
 
+## Design skills (LaBroi directive, 2026-10-10)
+
+Before designing or building any screen, component, or visual change (desktop, site, or iOS), consult the `frontend-design:frontend-design`, `elite-saas-designer`, and `ui-skills-root` skills, and apply their guidance inside murmur's own system. Night studio, brushwork, and DESIGN.md stay the authority: the skills sharpen layout, hierarchy, interaction, and accessibility, and never override the tokens or the art direction.
+
 ## Art direction: brushwork (LaBroi direction 2026-10-01; full rules in DESIGN.md)
 
 murmur has its own brand and is exempt from LaBroi's global Deep Green defaults in `~/CLAUDE.md`. Never apply those here.
