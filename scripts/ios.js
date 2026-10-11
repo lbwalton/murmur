@@ -4,6 +4,7 @@
 //   node scripts/ios.js generate   colors, icon, shared rules, Xcode project
 //   node scripts/ios.js test       MurmurCore on the Mac, then the app's tests on murmur's own simulator
 //   node scripts/ios.js smoke      boots the app headless and relays its SMOKE_RESULT
+//   node scripts/ios.js register   one device build that registers the bundle ids and app group
 // Only the ios: commands need Xcode; npm install and the desktop gates never do.
 const { execFileSync, spawnSync } = require('node:child_process')
 const { mkdirSync, readFileSync, writeFileSync } = require('node:fs')
@@ -116,13 +117,36 @@ async function smoke() {
   }
 }
 
+/** One device build with automatic provisioning: registers both bundle
+ *  ids and the app group under Eze Media LLC, then proves the profiles
+ *  carry the group. Uses the App Store Connect API key from the
+ *  environment, or the account signed in to Xcode with --xcode-account. */
+async function register() {
+  await generateAll()
+  const { APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER } = process.env
+  const useKey = !process.argv.includes('--xcode-account') && APPLE_API_KEY && APPLE_API_KEY_ID && APPLE_API_ISSUER
+  const auth = useKey
+    ? ['-authenticationKeyPath', APPLE_API_KEY, '-authenticationKeyID', APPLE_API_KEY_ID, '-authenticationKeyIssuerID', APPLE_API_ISSUER]
+    : []
+  console.log(`ios: registering with ${useKey ? 'the App Store Connect API key' : 'the account signed in to Xcode'}`)
+  run('xcodebuild', ['build', '-project', project, '-scheme', 'murmur', '-destination', 'generic/platform=iOS', '-derivedDataPath', derived, '-allowProvisioningUpdates', '-quiet', ...auth])
+  const app = join(derived, 'Build', 'Products', 'Debug-iphoneos', 'murmur.app')
+  for (const bundle of [app, join(app, 'PlugIns', 'murmurKeyboard.appex')]) {
+    const profile = execFileSync('security', ['cms', '-D', '-i', join(bundle, 'embedded.mobileprovision')], { encoding: 'utf8' })
+    if (!profile.includes('group.com.lbwalton.murmur')) throw new Error(`${bundle}: its provisioning profile lacks the app group`)
+  }
+  console.log('ios: both bundle ids and the app group are registered under Eze Media LLC')
+  return 0
+}
+
 const COMMANDS = {
   generate: async () => {
     await generateAll()
     return 0
   },
   test,
-  smoke
+  smoke,
+  register
 }
 
 const command = COMMANDS[process.argv[2]]

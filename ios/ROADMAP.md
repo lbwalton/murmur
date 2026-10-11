@@ -10,11 +10,10 @@
 
 Automated criteria pass; the remaining step is a human loop noted in ios/prd.json and HANDOFF.md.
 
-(none yet)
+- [ ] **IOS-001** The ios/ scaffold
 
 ## To do
 
-- [ ] **IOS-001** The ios/ scaffold
 - [ ] **IOS-002** CI job on a Mac
 - [ ] **IOS-003** MurmurCore passes desktop's answer key
 - [ ] **IOS-004** Bundle ids and the App Store Connect record
