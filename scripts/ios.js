@@ -3,6 +3,7 @@
 // The iPhone build's one entry point (ios/prd.json IOS-001):
 //   node scripts/ios.js generate   colors, icon, shared rules, Xcode project
 //   node scripts/ios.js test       MurmurCore on the Mac, then the app's tests on murmur's own simulator
+//   node scripts/ios.js smoke      boots the app headless and relays its SMOKE_RESULT
 // Only the ios: commands need Xcode; npm install and the desktop gates never do.
 const { execFileSync, spawnSync } = require('node:child_process')
 const { mkdirSync, readFileSync, writeFileSync } = require('node:fs')
@@ -10,7 +11,7 @@ const { join } = require('node:path')
 const { loadBrush } = require('./lib/enso')
 const { iosIconSet } = require('./lib/ios-icon')
 const { colorSetJson, parseRootTokens, toSwift } = require('./lib/ios-tokens')
-const { SIM_SIGNING, copySharedJson, findOnPath, pickSmokeSimulator } = require('./lib/ios')
+const { SIM_SIGNING, copySharedJson, findOnPath, parseSmokeLine, pickSmokeSimulator } = require('./lib/ios')
 
 const root = join(__dirname, '..')
 const iosDir = join(root, 'ios')
@@ -85,12 +86,43 @@ async function test() {
   return 0
 }
 
+const BUNDLE_ID = 'com.lbwalton.murmur.ios'
+
+async function smoke() {
+  const count = await generateAll()
+  const udid = simulator()
+  try {
+    run('xcodebuild', ['build', ...onSimulator(udid)])
+    run('xcrun', ['simctl', 'install', udid, join(derived, 'Build', 'Products', 'Debug-iphonesimulator', 'murmur.app')])
+    spawnSync('xcrun', ['simctl', 'terminate', udid, BUNDLE_ID], { stdio: 'ignore' })
+    const launched = spawnSync('xcrun', ['simctl', 'launch', '--console', udid, BUNDLE_ID, '--smoke', `--shared-count=${count}`], {
+      encoding: 'utf8',
+      timeout: 120_000
+    })
+    const output = `${launched.stdout ?? ''}${launched.stderr ?? ''}`
+    const result = parseSmokeLine(output)
+    if (!result) {
+      console.log(`SMOKE_RESULT ${JSON.stringify({ ok: false, checks: { appBooted: false } })}`)
+      console.error('the app never printed SMOKE_RESULT. output follows:')
+      console.error(output.slice(-2000))
+      return 1
+    }
+    const why = output.split(/\r?\n/).map((l) => l.trim()).filter((l) => /^smoke [A-Za-z]+:/.test(l))
+    if (why.length > 0) console.error(why.join('\n'))
+    console.log(`SMOKE_RESULT ${JSON.stringify(result)}`)
+    return result.ok ? 0 : 1
+  } finally {
+    shutdown(udid)
+  }
+}
+
 const COMMANDS = {
   generate: async () => {
     await generateAll()
     return 0
   },
-  test
+  test,
+  smoke
 }
 
 const command = COMMANDS[process.argv[2]]

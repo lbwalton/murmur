@@ -5,6 +5,12 @@ import SwiftUI
 
 @main
 struct MurmurApp: App {
+    init() {
+        if let request = SmokeRequest(arguments: ProcessInfo.processInfo.arguments) {
+            SmokeRunner.runAndExit(request)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

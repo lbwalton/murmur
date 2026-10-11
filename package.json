@@ -18,6 +18,7 @@
     "roadmap": "node scripts/roadmap.js",
     "ios:generate": "node scripts/ios.js generate",
     "ios:test": "node scripts/ios.js test",
+    "ios:smoke": "node scripts/ios.js smoke",
     "dist:mac": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --mac",
     "dist:win": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --win",
     "check:design": "node scripts/check-design.js",
