@@ -81,9 +81,9 @@
         "The existing ci.yml gates are unchanged",
         "A deliberate break on a scratch branch (a failing MurmurCore test) turns the job red and the fix turns it green; the scratch branch is deleted afterward"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-10-10. (1) .github/workflows/ios.yml runs on pushes to main and on pull requests whose changes touch ios/, shared/, scripts/, tokens.css, brush.ts, package.json, or the workflow itself. (2) It runs npm ci, brew install xcodegen, npm run ios:test, and npm run ios:smoke on macos-26, whose default Xcode (26.6 with the iOS 26.5 simulator, per the runner image checked 2026-10-10) is the newest that image offers; Xcode 27 sits only on a separate preview label. Green on draft PR #11 (feature/ios into main): https://github.com/lbwalton/murmur/actions/runs/38106146633, about 10 minutes, ending SMOKE_RESULT with appGroup, keychain, and sharedJson true. (3) git diff origin/main -- .github/workflows/ci.yml is empty, and ci.yml's macOS and Windows gates passed on the same PR. (4) A deliberate #expect(Bool(false)) in MurmurCore's listsTheRepoRules on scratch/ios-ci-red (PR #12 into feature/ios) turned the job red at npm run ios:test: https://github.com/lbwalton/murmur/actions/runs/38106769182. After the revert the job did not run again, because GitHub filters pull request jobs by the pull request's changes and the reverted branch had none; its tree (a0016d9) is identical to PR #11's head, whose run above is the green one. PR #12 was closed and scratch/ios-ci-red deleted on GitHub and locally."
     },
     {
       "id": "IOS-003",
