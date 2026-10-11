@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "GPL-3.0-only",
   "tagline": "Talk instead of type, in any app on your iPhone.",
-  "description": "The clean-room iPhone app for murmur, kicked off by US-034 in the desktop prd.json and designed with LaBroi on 2026-10-10, while desktop stands at v0.1.9. A keyboard that is a dictation pad around the waveform pill, backed by the containing app, which holds the microphone, the key, the cleanup, and the history. Bring your own key (Groq by default, any OpenAI-compatible endpoint), the same formatter rules and test vectors as desktop, and a new App Store Connect record under Eze Media LLC. Copyright Eze Media LLC, GPLv3. Nothing from the old iOS app (now Undertone) or the other excluded repos ever enters this repo: concepts only.",
+  "description": "The clean-room iPhone app for murmur, kicked off by US-034 in the desktop prd.json and designed with LaBroi on 2026-10-10, while desktop stands at v0.1.10. A keyboard that is a dictation pad around the waveform pill, backed by the containing app, which holds the microphone, the key, the cleanup, and the history. Bring your own key (Groq by default, any OpenAI-compatible endpoint), the same formatter rules and test vectors as desktop, and a new App Store Connect record under Eze Media LLC. Copyright Eze Media LLC, GPLv3. Nothing from the old iOS app (now Undertone) or the other excluded repos ever enters this repo: concepts only.",
   "stack": {
     "language": "Swift 6 with strict concurrency. SwiftUI for screens; UIKit only where the keyboard extension needs it (UIInputViewController).",
     "platform": "iOS 26 minimum, iPhone first; iPad in IOS-027.",
@@ -124,7 +124,7 @@
       "acceptance": [
         "A Provider screen offers the presets from shared/provider-catalog.json, with Groq first as the default, plus a custom OpenAI-compatible endpoint with base URL and model fields: the same choices desktop offers for transcription and for cleanup",
         "A key ring keeps one saved key per provider, as on desktop, so switching providers never asks for a key twice",
-        "Keys are saved in the Keychain, readable only by the app, after first unlock, on this device only (never synced or restored to another device). A test confirms the keyboard's entitlements share no Keychain access group with the app",
+        "Keys are saved in the Keychain, readable only by the app, after first unlock, on this device only (never synced or restored to another device). Key items live in the app's own Keychain access group (its application identifier), never in the shared app group, which also counts as a Keychain access group for both targets; a test saves a key and confirms its access group is not the app group, so the keyboard can never read it",
         "Get a key opens the provider's key page from the catalog. A key with the wrong prefix for its provider gets a gentle inline note, never a block",
         "Test connection makes one small real request and answers inline in plain words: Works, Key rejected (and how to fix it), No connection, or the provider's own message. A saved key only ever shows its last four characters",
         "A key never appears in logs, diagnostics, crash reports, or the pasteboard",
