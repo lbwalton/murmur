@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# murmur for iPhone as an XcodeGen recipe (ios/prd.json IOS-001).
+# npm run ios:generate turns this into murmur.xcodeproj, which is
+# git-ignored: change this file, never the project.
+name: murmur
+options:
+  bundleIdPrefix: com.lbwalton.murmur
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 4B55ZVBVKN
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+packages:
+  MurmurCore:
+    path: MurmurCore
+targets:
+  murmur:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+      - path: Generated/Tokens.swift
+      - path: Generated/Assets.xcassets
+      - path: Generated/shared
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - target: murmurKeyboard
+      - package: MurmurCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lbwalton.murmur.ios
+        PRODUCT_NAME: murmur
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Generated/App-Info.plist
+      properties:
+        CFBundleDisplayName: murmur
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        NSMicrophoneUsageDescription: murmur listens only while you dictate and sends what you say to the provider you chose.
+        UIBackgroundModes: [audio]
+        UILaunchScreen:
+          UIColorName: LaunchInk
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    entitlements:
+      path: Generated/murmur.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.lbwalton.murmur
+  murmurKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Keyboard
+      - path: Shared
+      - path: Generated/Tokens.swift
+    dependencies:
+      - package: MurmurCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lbwalton.murmur.ios.keyboard
+        PRODUCT_NAME: murmurKeyboard
+    info:
+      path: Generated/Keyboard-Info.plist
+      properties:
+        CFBundleDisplayName: murmur
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: true
+    entitlements:
+      path: Generated/murmurKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.lbwalton.murmur
+  murmurTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: murmur
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.lbwalton.murmur.ios.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/murmur.app/murmur
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  murmur:
+    build:
+      targets:
+        murmur: all
+        murmurTests: [test]
+    test:
+      targets:
+        - murmurTests

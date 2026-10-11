@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "smoke": "npm run build && node scripts/smoke.js",
     "roadmap": "node scripts/roadmap.js",
+    "ios:generate": "node scripts/ios.js generate",
     "dist:mac": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --mac",
     "dist:win": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --win",
     "check:design": "node scripts/check-design.js",
