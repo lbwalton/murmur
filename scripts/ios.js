@@ -80,7 +80,9 @@ async function test() {
   run('swift', ['test', '--package-path', join(iosDir, 'MurmurCore')])
   const udid = simulator()
   try {
-    run('xcodebuild', ['test', ...onSimulator(udid)])
+    // A failing test would otherwise collect simulator diagnostics, which
+    // can hang for ten minutes before the failure is reported.
+    run('xcodebuild', ['test', ...onSimulator(udid), '-collect-test-diagnostics', 'never'])
   } finally {
     shutdown(udid)
   }
