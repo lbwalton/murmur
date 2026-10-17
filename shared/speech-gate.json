@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "comment": "The speech gate's numbers, the single source for every platform (ios/prd.json IOS-003). Audio is cut into windowMs windows; a window whose RMS reaches rmsThreshold counts as voiced, and a take needs minVoicedMs of voiced time to be sent. Trimming keeps paddingMs of audio on each side of the first and last voiced window. A take whose loudest sample is under deadStreamPeak is a dead capture stream, not a quiet person. Samples are 32-bit floats from -1 to 1, and window and padding lengths round to whole samples the way JavaScript's Math.round does (halves round up). Change behavior here or nowhere.",
+  "windowMs": 30,
+  "rmsThreshold": 0.01,
+  "minVoicedMs": 200,
+  "paddingMs": 250,
+  "deadStreamPeak": 0.001
+}

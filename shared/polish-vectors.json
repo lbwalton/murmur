@@ -1,0 +1,345 @@
+{
+  "version": 1,
+  "comment": "Model answers the cleanup pass keeps or rejects, and the dictionary hint it sends, with desktop's answers (ios/prd.json IOS-007). Every platform runs these: validate gives input, the model's candidate answer, and whether smart lists is on, then ok with the text kept, or the reason it was rejected; hints gives dictionary entries and the hint line, or null for none.",
+  "validate": [
+    {
+      "name": "a faithful cleanup is kept",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow, and copy the whole team on it, please.",
+      "smartLists": false,
+      "ok": true,
+      "text": "Send the report tomorrow, and copy the whole team on it, please."
+    },
+    {
+      "name": "an empty answer",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "   ",
+      "smartLists": false,
+      "ok": false,
+      "reason": "empty"
+    },
+    {
+      "name": "a chatty preamble",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Here is the cleaned text: send it.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "an apology",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "I'm sorry, I can't help with that.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a label line before the text",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Cleaned text:\nSend the report tomorrow.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a refusal inside the answer",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Well, as an AI I would send the report tomorrow and copy the team.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "refusal"
+    },
+    {
+      "name": "an answer that shrank to almost nothing",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Sent.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "an answer that grew into an essay",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it please. extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation ",
+      "smartLists": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a quote wrapper the input did not have is removed",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "\"Send the report tomorrow and copy the whole team on it please.\"",
+      "smartLists": false,
+      "ok": true,
+      "text": "Send the report tomorrow and copy the whole team on it please."
+    },
+    {
+      "name": "curly quotes around the whole answer are removed",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "“Send the report tomorrow and copy the whole team on it please.”",
+      "smartLists": false,
+      "ok": true,
+      "text": "Send the report tomorrow and copy the whole team on it please."
+    },
+    {
+      "name": "a fabricated trailing filler may be dropped",
+      "input": "Are we going to use something else entirely in the meantime? Okay.",
+      "candidate": "Are we going to use something else entirely in the meantime?",
+      "smartLists": false,
+      "ok": true,
+      "text": "Are we going to use something else entirely in the meantime?"
+    },
+    {
+      "name": "real sentences deleted as filler",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a short dictation gets some room",
+      "input": "sounds good",
+      "candidate": "Sounds good!",
+      "smartLists": false,
+      "ok": true,
+      "text": "Sounds good!"
+    },
+    {
+      "name": "a short dictation is not unbounded",
+      "input": "sounds good",
+      "candidate": "Sounds good, and here are nine more words that were never spoken at all today",
+      "smartLists": false,
+      "ok": false,
+      "reason": "length delta"
+    },
+    {
+      "name": "a polite closing the speaker never said",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it, please. Thank you.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "appended chatter"
+    },
+    {
+      "name": "a colon intro over bullets with smart lists on",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones",
+      "smartLists": true,
+      "ok": true,
+      "text": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones"
+    },
+    {
+      "name": "the same shape with smart lists off is a preamble",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones",
+      "smartLists": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a numbered sequence, markers not counted as words",
+      "input": "first email the team then update the deck then send it to the client",
+      "candidate": "1. Email the team.\n2. Update the deck.\n3. Send it to the client.",
+      "smartLists": true,
+      "ok": true,
+      "text": "1. Email the team.\n2. Update the deck.\n3. Send it to the client."
+    },
+    {
+      "name": "chatter with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Here is the cleaned text: send it.",
+      "smartLists": true,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a colon intro over prose with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "The following:\nSend the report tomorrow and copy the team.",
+      "smartLists": true,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "an essay with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it please. extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation ",
+      "smartLists": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "scaffolding dissolved into a clean list",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\n1. eggs\n2. bacon\n3. toast",
+      "smartLists": true,
+      "ok": true,
+      "text": "I want to make a list:\n1. eggs\n2. bacon\n3. toast"
+    },
+    {
+      "name": "prose keeps the strict floor with smart lists on",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon.",
+      "smartLists": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a list that lost too much",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "Packing:\n- socks\n- shirts",
+      "smartLists": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "an intro comma and an Oxford comma do not overcount",
+      "input": "For my grocery list, I want eggs, bacon, and toast, and then sausage.",
+      "candidate": "For my grocery list:\n1. eggs\n2. bacon\n3. toast\n4. sausage",
+      "smartLists": true,
+      "ok": true,
+      "text": "For my grocery list:\n1. eggs\n2. bacon\n3. toast\n4. sausage"
+    },
+    {
+      "name": "a dropped entry in an Oxford comma run",
+      "input": "So today for my grocery list I definitely need to remember to grab apples, bananas, cherries, dates, and bread",
+      "candidate": "So today for my grocery list I definitely need to remember to grab:\n1. apples\n2. bananas\n3. cherries\n4. dates",
+      "smartLists": true,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "a dropped entry the enumeration implied",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\n1. eggs\n2. bacon",
+      "smartLists": true,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "prose restyled into a fake list",
+      "input": "Send the deck by noon and copy the whole team on it because I will follow up tomorrow",
+      "candidate": "Deck:\n- send by noon\n- copy the team",
+      "smartLists": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a label line before the text, with a Windows line end",
+      "input": "Send the report to the whole team today please",
+      "candidate": "Result:\r\nSend the report to the whole team today, please.",
+      "smartLists": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a dropped entry in a list with Windows line ends",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\r\n1. eggs\r\n2. bacon",
+      "smartLists": true,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "digits from another script are not list markers",
+      "input": "first email the team then update the deck then send it to the client",
+      "candidate": "To do:\n١. Email the team.\n٢. Update the deck.\n٣. Send it to the client.",
+      "smartLists": true,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a long s never counts as the enumerator first",
+      "input": "firſt eggs then bacon then toast",
+      "candidate": "1. eggs\n2. bacon",
+      "smartLists": true,
+      "ok": true,
+      "text": "1. eggs\n2. bacon"
+    },
+    {
+      "name": "the plain first does count, so an entry is missing",
+      "input": "first eggs then bacon then toast",
+      "candidate": "1. eggs\n2. bacon",
+      "smartLists": true,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "a colon in the input is found by code units",
+      "input": "Note:́ send the report to the whole team today",
+      "candidate": "Note:\nSend the report to the whole team today.",
+      "smartLists": false,
+      "ok": true,
+      "text": "Note:\nSend the report to the whole team today."
+    },
+    {
+      "name": "an answer that is only quote marks",
+      "input": "Send it. Thank you.",
+      "candidate": "\"\"",
+      "smartLists": false,
+      "ok": false,
+      "reason": "empty"
+    }
+  ],
+  "hints": [
+    {
+      "name": "one spelling",
+      "entries": [
+        {
+          "from": "labroy",
+          "to": "LaBroi"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"labroy\" is written \"LaBroi\"."
+    },
+    {
+      "name": "two spellings, trimmed",
+      "entries": [
+        {
+          "from": " labroy ",
+          "to": "LaBroi"
+        },
+        {
+          "from": "murmer",
+          "to": "murmur"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"labroy\" is written \"LaBroi\"; \"murmer\" is written \"murmur\"."
+    },
+    {
+      "name": "entries missing either side are skipped",
+      "entries": [
+        {
+          "from": "",
+          "to": "x"
+        },
+        {
+          "from": "y",
+          "to": "  "
+        },
+        {
+          "from": "eze",
+          "to": "Eze"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"eze\" is written \"Eze\"."
+    },
+    {
+      "name": "nothing usable gives no hint",
+      "entries": [
+        {
+          "from": "  ",
+          "to": "x"
+        }
+      ],
+      "hint": null
+    },
+    {
+      "name": "no entries gives no hint",
+      "entries": [],
+      "hint": null
+    }
+  ]
+}

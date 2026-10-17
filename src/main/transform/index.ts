@@ -8,7 +8,7 @@
 // model is called, and every failure leaves the selection untouched
 // with a reason in the log. Never the text itself in the log.
 import { applyDictionary } from '../../shared/dictionary'
-import hallucinations from '../../shared/hallucinations.json'
+import hallucinations from '../../../shared/hallucinations.json'
 import { isHallucination, stripTrailingHallucinations } from '../../shared/speech-gate'
 import { playCue } from '../audio'
 import type { PolishConfig } from '../formatter/llm'

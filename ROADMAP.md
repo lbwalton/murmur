@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (85/104 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (86/104 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -37,6 +37,7 @@
 - [x] **US-026** README and coworker docs
 - [x] **US-027** GPLv3 compliance pass
 - [x] **US-033** Notarized mac distribution
+- [x] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [x] **US-035** Levels: the infinite ladder
 - [x] **US-036** CI: every push proves the gates
 - [x] **US-037** Self-update from GitHub releases
@@ -104,7 +105,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 
 ## To do
 
-- [ ] **US-034** iOS phase kickoff: clean-room iOS PRD
 - [ ] **US-064** Windows installer signed as Eze Media LLC (on hold until sales)
 - [ ] **US-066** A one-page home for murmur with a single download button
 - [ ] **US-070** Go live, Mac first: the checklist between built and open for business

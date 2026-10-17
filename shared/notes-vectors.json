@@ -1,0 +1,1520 @@
+{
+  "version": 1,
+  "comment": "Desktop's pure note rules (src/shared/sorter.ts, todo.ts, receipt.ts, notes.ts) over these inputs, for every platform to give the same answers (ios/prd.json IOS-023). Seams are given as their two sides and the lead words they offer. Entries render at 10:32 on 2026-09-18 with the default entry template.",
+  "split": [
+    {
+      "text": "Call the dentist. Email Bob.",
+      "sentences": [
+        "Call the dentist.",
+        "Email Bob."
+      ],
+      "leads": [
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Call the dentist.  Email Bob!   Water the plants?",
+      "sentences": [
+        "Call the dentist.",
+        "Email Bob!",
+        "Water the plants?"
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "He said \"go now.\" Then he left.",
+      "sentences": [
+        "He said \"go now.\"",
+        "Then he left."
+      ],
+      "leads": [
+        null,
+        null
+      ]
+    },
+    {
+      "text": "See (the attached.) Then reply.",
+      "sentences": [
+        "See (the attached.)",
+        "Then reply."
+      ],
+      "leads": [
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Call Dr. Smith. Meet Mr. and Mrs. Lee at St. Mark’s. Bring snacks, etc. and drinks.",
+      "sentences": [
+        "Call Dr. Smith.",
+        "Meet Mr. and Mrs. Lee at St. Mark’s.",
+        "Bring snacks, etc. and drinks."
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Compare apples vs. oranges. Use e.g. a knife. That is, i.e. sharp.",
+      "sentences": [
+        "Compare apples vs. oranges.",
+        "Use e.g. a knife.",
+        "That is, i.e. sharp."
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "For the trip:\n- passport\n- [ ] charger\n1. tickets\nBook the hotel.",
+      "sentences": [
+        "- passport",
+        "- [ ] charger",
+        "1. tickets",
+        "Book the hotel."
+      ],
+      "leads": [
+        {
+          "text": "For the trip:",
+          "group": "heading-0"
+        },
+        {
+          "text": "For the trip:",
+          "group": "heading-0"
+        },
+        {
+          "text": "For the trip:",
+          "group": "heading-0"
+        },
+        null
+      ]
+    },
+    {
+      "text": "Shopping list:\n\n- milk\nNot a heading: really.\n- eggs",
+      "sentences": [
+        "- milk",
+        "Not a heading: really.",
+        "- eggs"
+      ],
+      "leads": [
+        {
+          "text": "Shopping list:",
+          "group": "heading-0"
+        },
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Line one\nLine two.\n\n   \nLine three",
+      "sentences": [
+        "Line one",
+        "Line two.",
+        "Line three"
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Wow!! Really?! Yes.",
+      "sentences": [
+        "Wow!!",
+        "Really?!",
+        "Yes."
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Ends with a quote: “done.” Next one.",
+      "sentences": [
+        "Ends with a quote: “done.”",
+        "Next one."
+      ],
+      "leads": [
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Price is 3.50 dollars. Done.",
+      "sentences": [
+        "Price is 3.50 dollars.",
+        "Done."
+      ],
+      "leads": [
+        null,
+        null
+      ]
+    },
+    {
+      "text": "Café crème. 🍎 apples. Zoë.",
+      "sentences": [
+        "Café crème.",
+        "🍎 apples.",
+        "Zoë."
+      ],
+      "leads": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "text": "",
+      "sentences": [],
+      "leads": []
+    }
+  ],
+  "seams": [
+    {
+      "sentence": "Buy milk, eggs, and bread.",
+      "sides": [
+        {
+          "left": "Buy milk",
+          "right": "eggs, and bread."
+        },
+        {
+          "left": "Buy milk, eggs",
+          "right": "bread."
+        }
+      ],
+      "leadWords": [
+        "Buy",
+        "milk",
+        "eggs"
+      ]
+    },
+    {
+      "sentence": "Buy milk and eggs and then bread, and also cheese; then call mom.",
+      "sides": [
+        {
+          "left": "Buy milk",
+          "right": "eggs and then bread, and also cheese; then call mom."
+        },
+        {
+          "left": "Buy milk and eggs",
+          "right": "bread, and also cheese; then call mom."
+        },
+        {
+          "left": "Buy milk and eggs and then bread",
+          "right": "cheese; then call mom."
+        },
+        {
+          "left": "Buy milk and eggs and then bread, and also cheese",
+          "right": "call mom."
+        }
+      ],
+      "leadWords": [
+        "Buy",
+        "milk",
+        "and",
+        "eggs",
+        "and",
+        "then",
+        "bread",
+        "and",
+        "also",
+        "cheese"
+      ]
+    },
+    {
+      "sentence": "I need to buy apples, rice, and coffee.",
+      "sides": [
+        {
+          "left": "I need to buy apples",
+          "right": "rice, and coffee."
+        },
+        {
+          "left": "I need to buy apples, rice",
+          "right": "coffee."
+        }
+      ],
+      "leadWords": [
+        "I",
+        "need",
+        "to",
+        "buy",
+        "apples",
+        "rice"
+      ]
+    },
+    {
+      "sentence": "For the party, I need chips, salsa, and lemons.",
+      "sides": [
+        {
+          "left": "For the party",
+          "right": "I need chips, salsa, and lemons."
+        },
+        {
+          "left": "For the party, I need chips",
+          "right": "salsa, and lemons."
+        },
+        {
+          "left": "For the party, I need chips, salsa",
+          "right": "lemons."
+        }
+      ],
+      "leadWords": [
+        "For",
+        "the",
+        "party",
+        "I",
+        "need",
+        "chips",
+        "salsa"
+      ]
+    },
+    {
+      "sentence": "Tell Sam \"bring chips, salsa, and cups\" today.",
+      "sides": [],
+      "leadWords": []
+    },
+    {
+      "sentence": "Get (red, blue) paint, and brushes.",
+      "sides": [
+        {
+          "left": "Get (red, blue) paint",
+          "right": "brushes."
+        }
+      ],
+      "leadWords": [
+        "Get",
+        "(red",
+        "blue)",
+        "paint"
+      ]
+    },
+    {
+      "sentence": "And then, and also.",
+      "sides": [],
+      "leadWords": []
+    },
+    {
+      "sentence": "Pay 1,000 dollars, then rest.",
+      "sides": [
+        {
+          "left": "Pay 1,000 dollars",
+          "right": "rest."
+        }
+      ],
+      "leadWords": [
+        "Pay",
+        "1,000",
+        "dollars"
+      ]
+    },
+    {
+      "sentence": "- [ ] milk, eggs, and bread",
+      "sides": [],
+      "leadWords": []
+    },
+    {
+      "sentence": "Buy café crème, 🍎 apples, and pears.",
+      "sides": [
+        {
+          "left": "Buy café crème",
+          "right": "🍎 apples, and pears."
+        },
+        {
+          "left": "Buy café crème, 🍎 apples",
+          "right": "pears."
+        }
+      ],
+      "leadWords": [
+        "Buy",
+        "café",
+        "crème",
+        "🍎",
+        "apples"
+      ]
+    },
+    {
+      "sentence": "Call Mom AND Dad, Then Rest.",
+      "sides": [
+        {
+          "left": "Call Mom",
+          "right": "Dad, Then Rest."
+        },
+        {
+          "left": "Call Mom AND Dad",
+          "right": "Rest."
+        }
+      ],
+      "leadWords": [
+        "Call",
+        "Mom",
+        "AND",
+        "Dad"
+      ]
+    },
+    {
+      "sentence": "One, two",
+      "sides": [
+        {
+          "left": "One",
+          "right": "two"
+        }
+      ],
+      "leadWords": []
+    },
+    {
+      "sentence": "Pack the tent, stove, etc.",
+      "sides": [
+        {
+          "left": "Pack the tent",
+          "right": "stove, etc."
+        },
+        {
+          "left": "Pack the tent, stove",
+          "right": "etc."
+        }
+      ],
+      "leadWords": [
+        "Pack",
+        "the",
+        "tent",
+        "stove"
+      ]
+    },
+    {
+      "sentence": "Wait... and then go, and then stop...",
+      "sides": [
+        {
+          "left": "Wait...",
+          "right": "go, and then stop..."
+        },
+        {
+          "left": "Wait... and then go",
+          "right": "stop..."
+        }
+      ],
+      "leadWords": [
+        "Wait...",
+        "and",
+        "then",
+        "go"
+      ]
+    }
+  ],
+  "cuts": [
+    {
+      "sentence": "Buy milk, eggs, and bread.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Buy milk",
+        "eggs",
+        "bread"
+      ]
+    },
+    {
+      "sentence": "Buy milk, eggs, and bread.",
+      "confirmed": [
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Buy milk, eggs",
+        "bread"
+      ]
+    },
+    {
+      "sentence": "Buy milk, eggs, and bread.",
+      "confirmed": [
+        3
+      ],
+      "lead": null,
+      "pieces": [
+        "Buy milk, eggs, and bread."
+      ]
+    },
+    {
+      "sentence": "Buy milk, eggs, and bread.",
+      "confirmed": [
+        2,
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Buy milk",
+        "eggs",
+        "bread"
+      ]
+    },
+    {
+      "sentence": "I need to buy apples, rice, and coffee.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "start": 5,
+      "lead": "I need to buy",
+      "pieces": [
+        "apples",
+        "rice",
+        "coffee"
+      ]
+    },
+    {
+      "sentence": "I need to buy apples, rice, and coffee.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "start": 1,
+      "lead": null,
+      "pieces": [
+        "I need to buy apples",
+        "rice",
+        "coffee"
+      ]
+    },
+    {
+      "sentence": "I need to buy apples, rice, and coffee.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "start": 7,
+      "lead": null,
+      "pieces": [
+        "I need to buy apples",
+        "rice",
+        "coffee"
+      ]
+    },
+    {
+      "sentence": "I need to buy apples, rice, and coffee.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "start": 6,
+      "lead": null,
+      "pieces": [
+        "I need to buy apples",
+        "rice",
+        "coffee"
+      ]
+    },
+    {
+      "sentence": "For the party, I need chips, salsa, and lemons.",
+      "confirmed": [
+        2,
+        3
+      ],
+      "start": 5,
+      "lead": "For the party, I",
+      "pieces": [
+        "need chips",
+        "salsa",
+        "lemons"
+      ]
+    },
+    {
+      "sentence": "Pack the tent, stove, etc.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Pack the tent",
+        "stove",
+        "etc."
+      ]
+    },
+    {
+      "sentence": "Wait... and then go, and then stop...",
+      "confirmed": [
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Wait...",
+        "go",
+        "stop..."
+      ]
+    },
+    {
+      "sentence": "Buy café crème, 🍎 apples, and pears.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "start": 2,
+      "lead": "Buy",
+      "pieces": [
+        "café crème",
+        "🍎 apples",
+        "pears"
+      ]
+    },
+    {
+      "sentence": "Buy milk and bread.",
+      "confirmed": [],
+      "lead": null,
+      "pieces": [
+        "Buy milk and bread."
+      ]
+    }
+  ],
+  "replies": [
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\"}",
+      "opts": {},
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "Here you go:\n```json\n{\"1\": \"Idea\", \"2\": \" NOTE \"}\n```\nHope that helps!",
+      "opts": {},
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "idea",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\",\"1\":\"idea\"}",
+      "opts": {},
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "idea",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\"} and {\"2\":\"note\"}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "not json"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"topic\":\"Errands\"}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"01\":\"task\"}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":5}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "bad label"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":null}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "bad label"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "null",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "not an object"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "\"task\"",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "not an object"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "missing sentences"
+      }
+    },
+    {
+      "count": 0,
+      "candidate": "{}",
+      "opts": {},
+      "verdict": {
+        "ok": true,
+        "labels": [],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"task\",\"seams\":{\"1\":[2,1,2],\"2\":[1]}}",
+      "opts": {
+        "seamCounts": [
+          2,
+          0
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "task"
+        ],
+        "topic": "",
+        "seams": {
+          "1": [
+            1,
+            2
+          ]
+        },
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"task\",\"seams\":{\"1\":[1.5],\"2\":[1],\" 1\":[1]}}",
+      "opts": {
+        "seamCounts": [
+          2,
+          1
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "task"
+        ],
+        "topic": "",
+        "seams": {
+          "1": [
+            1
+          ],
+          "2": [
+            1
+          ]
+        },
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":{\"1\":[3]}}",
+      "opts": {
+        "seamCounts": [
+          2
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":{\"1.0\":[1],\"0x1\":[2]}}",
+      "opts": {
+        "seamCounts": [
+          2
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {
+          "1": [
+            2
+          ]
+        },
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":[1]}",
+      "opts": {
+        "seamCounts": [
+          2
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":{\"1\":[]}}",
+      "opts": {
+        "seamCounts": [
+          2
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":{\"1\":[\"1\"]}}",
+      "opts": {
+        "seamCounts": [
+          2
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"seams\":{\"1\":[1]}}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"idea\",\"starts\":{\"1\":\"5\",\"2\":3}}",
+      "opts": {
+        "leadCounts": [
+          6,
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "idea"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "starts": {
+          "1": 5,
+          "2": 3
+        }
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"idea\",\"starts\":{\"1\":1,\"2\":5}}",
+      "opts": {
+        "leadCounts": [
+          6,
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "idea"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "starts": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"starts\":{\"1\":\" 4 \"}}",
+      "opts": {
+        "leadCounts": [
+          6
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "starts": {
+          "1": 4
+        }
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"starts\":{\"1\":\"4.0\"}}",
+      "opts": {
+        "leadCounts": [
+          6
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "starts": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"starts\":{\"1\":4.5}}",
+      "opts": {
+        "leadCounts": [
+          6
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "starts": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"starts\":{\"1\":2}}",
+      "opts": {
+        "leadCounts": [
+          0
+        ]
+      },
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\",\"relations\":{\"1\":[1,2],\"2\":[2,1]}}",
+      "opts": {
+        "items": 2
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {
+          "1": {
+            "relation": "same",
+            "item": 2
+          },
+          "2": {
+            "relation": "completes",
+            "item": 1
+          }
+        }
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\",\"relations\":{\"1\":[3,1],\"2\":[1,3]}}",
+      "opts": {
+        "items": 2
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\",\"relations\":{\"1\":[\"1\",1],\"2\":[1,1.5]}}",
+      "opts": {
+        "items": 2
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"note\",\"relations\":{\"1\":[1,1,1],\"3\":[1,1],\" 2\":[2,2]}}",
+      "opts": {
+        "items": 2
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "note"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {
+          "2": {
+            "relation": "completes",
+            "item": 2
+          }
+        }
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"relations\":{\"1\":[1,1]}}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"relations\":[[1,1]]}",
+      "opts": {
+        "items": 1
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {}
+      }
+    }
+  ],
+  "files": [
+    {
+      "text": "- [ ] Call the dentist. ([10:32](inbox/2026-09-18.md))\n- [x] Email Bob. ([10:32](inbox/2026-09-18.md))\n",
+      "todo": [
+        {
+          "text": "Call the dentist.",
+          "done": false,
+          "group": ""
+        },
+        {
+          "text": "Email Bob.",
+          "done": true,
+          "group": ""
+        }
+      ],
+      "list": [
+        {
+          "text": "Call the dentist.",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "Email Bob.",
+          "done": true,
+          "group": "",
+          "checkbox": true
+        }
+      ]
+    },
+    {
+      "text": "## Monday\n- [ ] one\n* [X] two\n+ [ ] three\n## Tuesday\n  - [ ]   four  \n- [ ]\n- [ ] ",
+      "todo": [
+        {
+          "text": "one",
+          "done": false,
+          "group": "Monday"
+        },
+        {
+          "text": "two",
+          "done": true,
+          "group": "Monday"
+        },
+        {
+          "text": "three",
+          "done": false,
+          "group": "Monday"
+        },
+        {
+          "text": "four",
+          "done": false,
+          "group": "Tuesday"
+        }
+      ],
+      "list": [
+        {
+          "text": "one",
+          "done": false,
+          "group": "Monday",
+          "checkbox": true
+        },
+        {
+          "text": "two",
+          "done": true,
+          "group": "Monday",
+          "checkbox": true
+        },
+        {
+          "text": "three",
+          "done": false,
+          "group": "Monday",
+          "checkbox": true
+        },
+        {
+          "text": "four",
+          "done": false,
+          "group": "Tuesday",
+          "checkbox": true
+        }
+      ]
+    },
+    {
+      "text": "```\n- [ ] not a task\n```\n- [ ] a task\n~~~\n- [x] fenced\n~~~\n",
+      "todo": [
+        {
+          "text": "a task",
+          "done": false,
+          "group": ""
+        }
+      ],
+      "list": [
+        {
+          "text": "a task",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        }
+      ]
+    },
+    {
+      "text": "- [ ] windows\r\n- [x] done\r\n\r\n- plain bullet\r\n",
+      "todo": [
+        {
+          "text": "windows",
+          "done": false,
+          "group": ""
+        },
+        {
+          "text": "done",
+          "done": true,
+          "group": ""
+        }
+      ],
+      "list": [
+        {
+          "text": "windows",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "done",
+          "done": true,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "plain bullet",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        }
+      ]
+    },
+    {
+      "text": "- I need to buy:\n  - [ ] apples ([10:32](inbox/2026-09-18.md))\n  - [ ] rice\n- Lead with nothing under:\n- Maybe a garden. ([09:00](inbox/2026-09-17.md))\n- Ends with colon:\n\n    - deeper after a blank\n",
+      "todo": [
+        {
+          "text": "apples",
+          "done": false,
+          "group": ""
+        },
+        {
+          "text": "rice",
+          "done": false,
+          "group": ""
+        }
+      ],
+      "list": [
+        {
+          "text": "apples",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "rice",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "Lead with nothing under:",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        },
+        {
+          "text": "Maybe a garden.",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        },
+        {
+          "text": "deeper after a blank",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        }
+      ]
+    },
+    {
+      "text": "- [ ] [x] odd\n- [] not a box\n- [ ]tight\n-[ ] no space\n1. numbered\n- [ ] link only ([10:32](x.md))\n",
+      "todo": [
+        {
+          "text": "[x] odd",
+          "done": false,
+          "group": ""
+        },
+        {
+          "text": "link only",
+          "done": false,
+          "group": ""
+        }
+      ],
+      "list": [
+        {
+          "text": "[x] odd",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        },
+        {
+          "text": "[] not a box",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        },
+        {
+          "text": "[ ]tight",
+          "done": false,
+          "group": "",
+          "checkbox": false
+        },
+        {
+          "text": "link only",
+          "done": false,
+          "group": "",
+          "checkbox": true
+        }
+      ]
+    },
+    {
+      "text": "",
+      "todo": [],
+      "list": []
+    }
+  ],
+  "ticks": [
+    {
+      "text": "- [ ] one\n- [ ] two\n",
+      "nth": 1,
+      "result": {
+        "ok": true,
+        "text": "- [ ] one\n- [x] two\n"
+      }
+    },
+    {
+      "text": "- [ ] one\r\n- [x] two\r\n- [ ] three",
+      "nth": 1,
+      "result": {
+        "ok": false,
+        "reason": "already done"
+      }
+    },
+    {
+      "text": "- [ ] one\r\n- [x] two\r\n- [ ] three",
+      "nth": 2,
+      "result": {
+        "ok": true,
+        "text": "- [ ] one\r\n- [x] two\r\n- [x] three"
+      }
+    },
+    {
+      "text": "```\n- [ ] fenced\n```\n- [ ]\n- [ ] real ([10:32](inbox/x.md))\n",
+      "nth": 0,
+      "result": {
+        "ok": true,
+        "text": "```\n- [ ] fenced\n```\n- [ ]\n- [x] real ([10:32](inbox/x.md))\n"
+      }
+    },
+    {
+      "text": "- [ ] one\n",
+      "nth": 3,
+      "result": {
+        "ok": false,
+        "reason": "not found"
+      }
+    },
+    {
+      "text": "  * [ ] indented",
+      "nth": 0,
+      "result": {
+        "ok": true,
+        "text": "  * [x] indented"
+      }
+    }
+  ],
+  "reminders": [
+    {
+      "text": "- [ ] Call the dentist.\n- [x] Email Bob.\n- [ ] Water the plants.\n",
+      "body": "2 open tasks: Call the dentist.; Water the plants."
+    },
+    {
+      "text": "- [x] all done\n",
+      "body": ""
+    },
+    {
+      "text": "- [ ] one\n",
+      "body": "1 open task: one"
+    },
+    {
+      "text": "- [ ] a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going \n",
+      "body": "1 open task: a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keeps going a long task that keep…"
+    },
+    {
+      "text": "- [ ] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n- [ ] yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n- [ ] z\n",
+      "maxChars": 60,
+      "body": "3 open tasks: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "text": "- [ ] abcdefghijklmnop\n",
+      "maxChars": 20,
+      "body": "1 open task"
+    },
+    {
+      "text": "- [ ] abcdefghijklmnop\n",
+      "maxChars": 12,
+      "body": "1 open task"
+    }
+  ],
+  "receipts": [
+    {
+      "text": "Call the dentist.",
+      "line": "Call the dentist."
+    },
+    {
+      "text": "\n\n  - [ ] Buy milk\nmore",
+      "line": "Buy milk"
+    },
+    {
+      "text": "## Heading here\nbody",
+      "line": "Heading here"
+    },
+    {
+      "text": "> quoted   line   with   spaces",
+      "line": "quoted line with spaces"
+    },
+    {
+      "text": "1) numbered first",
+      "line": "numbered first"
+    },
+    {
+      "text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word end",
+      "line": "word word word word word word word word word word word word word word word word…"
+    },
+    {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "line": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"
+    },
+    {
+      "text": "Sentence with words, Sentence with words, Sentence with words, Sentence with words, and more after the cut point here.",
+      "line": "Sentence with words, Sentence with words, Sentence with words, Sentence with…"
+    },
+    {
+      "text": "   \n\t\n",
+      "line": ""
+    },
+    {
+      "text": "Short: done.",
+      "line": "Short: done."
+    }
+  ],
+  "places": [
+    {
+      "relative": "murmur/inbox/2026-10-02.md",
+      "location": "folder",
+      "placeName": "inbox/2026-10-02.md",
+      "pillPlace": "inbox"
+    },
+    {
+      "relative": "murmur/todo.md",
+      "location": "folder",
+      "placeName": "todo.md",
+      "pillPlace": "todo"
+    },
+    {
+      "relative": "murmur/ideas.md",
+      "location": "fallback",
+      "placeName": "ideas.md",
+      "pillPlace": "murmur"
+    },
+    {
+      "relative": "2026-10-02.md",
+      "location": "folder",
+      "placeName": "2026-10-02.md",
+      "pillPlace": "2026-10-02"
+    },
+    {
+      "relative": "notes/a-very-long-file-name.txt",
+      "location": "folder",
+      "placeName": "a-very-long-file-name.txt",
+      "pillPlace": "a-very-lo…"
+    },
+    {
+      "relative": "journal\\2026_10_02.md",
+      "location": "folder",
+      "placeName": "journal/2026_10_02.md",
+      "pillPlace": "journal"
+    }
+  ],
+  "entries": [
+    {
+      "text": "Call the dentist.",
+      "entry": "## 10:32\n\nCall the dentist.\n\n"
+    },
+    {
+      "text": "Line one\nLine two\n\n\n",
+      "entry": "## 10:32\n\nLine one\nLine two\n\n"
+    },
+    {
+      "text": "{time} said aloud",
+      "entry": "## 10:32\n\n{time} said aloud\n\n"
+    },
+    {
+      "text": "",
+      "entry": "## 10:32\n\n"
+    }
+  ],
+  "separators": [
+    {
+      "tail": null,
+      "separator": ""
+    },
+    {
+      "tail": "",
+      "separator": ""
+    },
+    {
+      "tail": "x",
+      "separator": "\n"
+    },
+    {
+      "tail": "x\n",
+      "separator": ""
+    }
+  ]
+}

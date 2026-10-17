@@ -2,7 +2,9 @@
 // The two silence guards. Before upload: an energy gate that measures
 // voiced time. After transcription: a sanity filter for empty output and
 // the stock phrases Whisper-family models hallucinate on silence.
-// Either one firing means nothing is ever inserted.
+// Either one firing means nothing is ever inserted. The numbers live in
+// shared/speech-gate.json, which the iPhone app reads too.
+import gate from '../../shared/speech-gate.json'
 
 export interface GateOptions {
   windowMs?: number
@@ -16,7 +18,7 @@ export function voicedMs(
   sampleRate: number,
   options: GateOptions = {}
 ): number {
-  const { windowMs = 30, rmsThreshold = 0.01 } = options
+  const { windowMs = gate.windowMs, rmsThreshold = gate.rmsThreshold } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let voiced = 0
   for (let start = 0; start + windowSize <= samples.length; start += windowSize) {
@@ -33,7 +35,7 @@ export function hasSpeechEnergy(
   sampleRate: number,
   options: GateOptions = {}
 ): boolean {
-  const { minVoicedMs = 200 } = options
+  const { minVoicedMs = gate.minVoicedMs } = options
   return voicedMs(samples, sampleRate, options) >= minVoicedMs
 }
 
@@ -56,7 +58,7 @@ export function peakLevel(samples: Float32Array): number {
 /** An order of magnitude under any real room's noise floor (and 10x
  *  under the speech gate's own RMS threshold): a take peaking below
  *  this is a dead capture stream, not a quiet human. */
-export const DEAD_STREAM_PEAK = 0.001
+export const DEAD_STREAM_PEAK = gate.deadStreamPeak
 
 export function isDeadStream(peak: number): boolean {
   return peak < DEAD_STREAM_PEAK
@@ -67,7 +69,7 @@ export function trimSilence(
   sampleRate: number,
   options: GateOptions & { paddingMs?: number } = {}
 ): Float32Array {
-  const { windowMs = 30, rmsThreshold = 0.01, paddingMs = 250 } = options
+  const { windowMs = gate.windowMs, rmsThreshold = gate.rmsThreshold, paddingMs = gate.paddingMs } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let firstVoiced = -1
   let lastVoiced = -1

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "comment": "Shared WAV encoding cases (ios/prd.json IOS-003), run by desktop (src/shared/wav-vectors.test.ts) and by MurmurCore (WavVectorTests). Each samples list is read as 32-bit floats (each JSON number rounded to the nearest float, as a Float32Array does), encoded as 16-bit mono PCM at sampleRate, and must produce exactly expectedHex. Samples clamp to -1 and 1, and scale by 32767 with halves rounding up, as JavaScript's Math.round does.",
+  "cases": [
+    {
+      "name": "no samples is a bare header",
+      "sampleRate": 16000,
+      "samples": [],
+      "expectedHex": "524946462400000057415645666d74201000000001000100803e0000007d0000020010006461746100000000"
+    },
+    {
+      "name": "silence, full scale, and halves (Math.round sends -0.5 steps up)",
+      "sampleRate": 16000,
+      "samples": [
+        0,
+        0.5,
+        -0.5,
+        1,
+        -1
+      ],
+      "expectedHex": "524946462e00000057415645666d74201000000001000100803e0000007d000002001000646174610a0000000000004001c0ff7f0180"
+    },
+    {
+      "name": "samples outside -1 to 1 are clamped",
+      "sampleRate": 16000,
+      "samples": [
+        1.5,
+        -2,
+        1.0000001
+      ],
+      "expectedHex": "524946462a00000057415645666d74201000000001000100803e0000007d0000020010006461746106000000ff7f0180ff7f"
+    },
+    {
+      "name": "tiny samples round to zero",
+      "sampleRate": 16000,
+      "samples": [
+        0.000001,
+        -0.000001,
+        0.0000152,
+        -0.0000152
+      ],
+      "expectedHex": "524946462c00000057415645666d74201000000001000100803e0000007d00000200100064617461080000000000000000000000"
+    },
+    {
+      "name": "ordinary speech values",
+      "sampleRate": 16000,
+      "samples": [
+        0.1,
+        -0.2,
+        0.30000001,
+        -0.123456,
+        0.987654
+      ],
+      "expectedHex": "524946462e00000057415645666d74201000000001000100803e0000007d000002001000646174610a000000cd0c67e6662633f06a7e"
+    },
+    {
+      "name": "a 48 kHz header",
+      "sampleRate": 48000,
+      "samples": [
+        0.25
+      ],
+      "expectedHex": "524946462600000057415645666d7420100000000100010080bb0000007701000200100064617461020000000020"
+    }
+  ]
+}

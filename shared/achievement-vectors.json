@@ -1,0 +1,247 @@
+{
+  "note": "Takes run through desktop's evaluateAchievements (src/shared/achievements.ts) with shared/achievements.json: each take's time, words, length, and the local day and hour it was spoken in, as history keeps them; expect lists what was earned and when, oldest first. Both platforms run these (IOS-018).",
+  "cases": [
+    {
+      "name": "nothing yet earns nothing",
+      "events": [],
+      "expect": []
+    },
+    {
+      "name": "the first take earns first words",
+      "events": [
+        {"at":1767625200000,"words":12,"durationMs":60000,"day":"2026-01-05","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000}
+      ]
+    },
+    {
+      "name": "three days in a row earn a streak, a gap starts it over",
+      "events": [
+        {"at":1767625200000,"words":10,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":10,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767884400000,"words":10,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767970800000,"words":10,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1768057200000,"words":10,"durationMs":60000,"day":"2026-01-10","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"streak-3","at":1768057200000}
+      ]
+    },
+    {
+      "name": "seven days in a row",
+      "events": [
+        {"at":1767625200000,"words":5,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":5,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767798000000,"words":5,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767884400000,"words":5,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767970800000,"words":5,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1768057200000,"words":5,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768143600000,"words":5,"durationMs":60000,"day":"2026-01-11","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"streak-3","at":1767798000000},
+        {"id":"streak-7","at":1768143600000}
+      ]
+    },
+    {
+      "name": "a thousand words in one day, over several takes",
+      "events": [
+        {"at":1767625200000,"words":400,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767627000000,"words":400,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767628800000,"words":300,"durationMs":60000,"day":"2026-01-05","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"day-1k","at":1767628800000}
+      ]
+    },
+    {
+      "name": "five and ten thousand words in a day",
+      "events": [
+        {"at":1767625200000,"words":6000,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":10500,"durationMs":60000,"day":"2026-01-06","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"day-1k","at":1767625200000},
+        {"id":"day-5k","at":1767625200000},
+        {"id":"day-10k","at":1767711600000}
+      ]
+    },
+    {
+      "name": "a hundred takes",
+      "events": [
+        {"at":1767625200000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625260000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625320000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625380000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625440000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625500000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625560000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625620000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625680000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767625740000,"words":3,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711660000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711720000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711780000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711840000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711900000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767711960000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767712020000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767712080000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767712140000,"words":3,"durationMs":60000,"day":"2026-01-06","hour":15},
+        {"at":1767798000000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798060000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798120000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798180000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798240000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798300000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798360000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798420000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798480000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767798540000,"words":3,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767884400000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884460000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884520000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884580000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884640000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884700000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884760000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884820000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884880000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767884940000,"words":3,"durationMs":60000,"day":"2026-01-08","hour":15},
+        {"at":1767970800000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767970860000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767970920000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767970980000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971040000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971100000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971160000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971220000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971280000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1767971340000,"words":3,"durationMs":60000,"day":"2026-01-09","hour":15},
+        {"at":1768057200000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057260000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057320000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057380000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057440000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057500000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057560000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057620000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057680000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768057740000,"words":3,"durationMs":60000,"day":"2026-01-10","hour":15},
+        {"at":1768143600000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143660000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143720000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143780000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143840000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143900000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768143960000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768144020000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768144080000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768144140000,"words":3,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768230000000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230060000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230120000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230180000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230240000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230300000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230360000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230420000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230480000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768230540000,"words":3,"durationMs":60000,"day":"2026-01-12","hour":15},
+        {"at":1768316400000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316460000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316520000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316580000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316640000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316700000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316760000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316820000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316880000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768316940000,"words":3,"durationMs":60000,"day":"2026-01-13","hour":15},
+        {"at":1768402800000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768402860000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768402920000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768402980000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403040000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403100000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403160000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403220000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403280000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15},
+        {"at":1768403340000,"words":3,"durationMs":60000,"day":"2026-01-14","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"streak-3","at":1767798000000},
+        {"id":"streak-7","at":1768143600000},
+        {"id":"sessions-100","at":1768403340000}
+      ]
+    },
+    {
+      "name": "a five minute take is a marathon",
+      "events": [
+        {"at":1767625200000,"words":50,"durationMs":299999,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":50,"durationMs":300000,"day":"2026-01-06","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"marathon","at":1767711600000}
+      ]
+    },
+    {
+      "name": "after midnight and before dawn",
+      "events": [
+        {"at":1767625200000,"words":20,"durationMs":60000,"day":"2026-01-05","hour":23},
+        {"at":1767711600000,"words":20,"durationMs":60000,"day":"2026-01-06","hour":2},
+        {"at":1767798000000,"words":20,"durationMs":60000,"day":"2026-01-07","hour":5},
+        {"at":1767884400000,"words":20,"durationMs":60000,"day":"2026-01-08","hour":6}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"night-owl","at":1767711600000},
+        {"id":"streak-3","at":1767798000000},
+        {"id":"early-bird","at":1767798000000}
+      ]
+    },
+    {
+      "name": "a week away and back is a comeback",
+      "events": [
+        {"at":1767625200000,"words":30,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1768143600000,"words":30,"durationMs":60000,"day":"2026-01-11","hour":15},
+        {"at":1768834800000,"words":30,"durationMs":60000,"day":"2026-01-19","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"comeback","at":1768834800000}
+      ]
+    },
+    {
+      "name": "takes out of order are walked in time order",
+      "events": [
+        {"at":1767798000000,"words":10,"durationMs":60000,"day":"2026-01-07","hour":15},
+        {"at":1767625200000,"words":10,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767711600000,"words":10,"durationMs":60000,"day":"2026-01-06","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000},
+        {"id":"streak-3","at":1767798000000}
+      ]
+    },
+    {
+      "name": "a stored day that goes back keeps the streak as it is",
+      "events": [
+        {"at":1767625200000,"words":10,"durationMs":60000,"day":"2026-01-05","hour":15},
+        {"at":1767628800000,"words":10,"durationMs":60000,"day":"2026-01-04","hour":16},
+        {"at":1767711600000,"words":10,"durationMs":60000,"day":"2026-01-06","hour":15}
+      ],
+      "expect": [
+        {"id":"first-words","at":1767625200000}
+      ]
+    }
+  ]
+}

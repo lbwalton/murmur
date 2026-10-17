@@ -78,6 +78,7 @@ import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
 import type { SortLabel, SortVerdict } from '../../shared/sorter'
 import { resolvePolishConnection } from '../formatter'
 import type { PolishConfig } from '../formatter/llm'
+import rules from '../../../shared/sorter.json'
 import { askDecision } from './decide'
 import { getApiKeyFor, getSettings, ringClearKey, ringSetKey, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
@@ -400,7 +401,7 @@ async function askModel(
       headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: cfg.model,
-        temperature: 0,
+        temperature: rules.temperature,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
@@ -496,7 +497,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   }
   let { config, slot, protocol } = resolved
   const fetchImpl = options.fetchImpl ?? fetch
-  const timeoutMs = options.timeoutMs ?? 12_000
+  const timeoutMs = options.timeoutMs ?? rules.timeoutMs
   // Topics only mean something when a heading can carry them, and only
   // a chat model can write one.
   const wantsTopic =

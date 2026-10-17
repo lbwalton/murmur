@@ -1,0 +1,57 @@
+{
+  "appPolicies": {
+    "eula": "",
+    "policies": [
+      {
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
+      }
+    ]
+  },
+  "identifier": "6E3F1C2A",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "39.99",
+      "familyShareable": false,
+      "internalID": "6E3F1C2B",
+      "localizations": [
+        {
+          "description": "A one-time purchase that supports murmur.",
+          "displayName": "murmur Pro",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.lbwalton.murmur.ios.pro",
+      "referenceName": "murmur Pro",
+      "type": "NonConsumable",
+      "offerCodes": [
+        {
+          "billingPlanType": "BILLED_UPFRONT",
+          "displayPrice": "35.99",
+          "eligibility": [
+            "new",
+            "existing",
+            "expired"
+          ],
+          "internalID": "6E3F1C2C",
+          "isStackable": false,
+          "paymentMode": "payUpFront",
+          "referenceName": "founders"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}
