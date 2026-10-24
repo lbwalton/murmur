@@ -39,7 +39,16 @@ Once, quietly. 30 calendar days after you install murmur, Home shows one line un
 
 ## What is a founding member?
 
-Everyone who buys Pro during the founders window (the FOUNDERS code era) is a founding member forever. Founding members keep a permanent ten percent discount on every future paid product, including the cloud subscription and any paid iOS offering, and their license shows the founding member mark in settings.
+Everyone who buys Pro with the code FOUNDERS before the founders window ends, at the end of December 31, 2026, is a founding member forever. The code takes $10 off at the Stripe checkout, so Pro is $39 instead of $49; it works only there, never in the App Store, and stops working when the window ends. Founding members keep a permanent ten percent discount on every future paid product, including the cloud subscription and any paid iOS offering, and their license shows the founding member mark in settings.
+
+## Does murmur Pro cover my iPhone too?
+
+Yes, either way you buy it. Apple does not let an iPhone app unlock anything with a license key, so it works by email:
+
+- **Bought Pro on your Mac or PC?** Email support@murmurapp.app with your order id, from the address on your license. You get a one-time App Store code for murmur Pro on iPhone at no cost; on your iPhone, open murmur, tap the gear, then murmur Pro, and tap Redeem a code. Apple's codes last at most 6 months, so ask when you are ready. Founding members get a founders code, so their iPhone shows Founding member too.
+- **Bought Pro on your iPhone?** Email support@murmurapp.app with the order id from Apple's email receipt. Once Apple confirms the purchase, you get a license key for the Mac and Windows app.
+
+(Checked 2026-10-22 against Apple's App Review Guidelines, 3.1.1, and App Store Connect Help on offer codes.)
 
 ## How do license keys work?
 

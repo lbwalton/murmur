@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- The iPhone Journey's painter page (ios/prd.json IOS-018, and the
+     painting a day, IOS-019). npm run ios:generate fills in the tokens, the
+     display face (when it was fetched), and the bundled script; the page
+     loads nothing else and may fetch nothing. -->
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/*TOKENS*/
+/*FONT*/
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+canvas { position: fixed; inset: 0; }
+</style>
+</head>
+<body>
+<canvas id="base"></canvas>
+<canvas id="fx"></canvas>
+<script>
+/*SCRIPT*/
+</script>
+</body>
+</html>

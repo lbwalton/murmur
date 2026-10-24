@@ -11,7 +11,7 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | ink | The background. |
 | panel, panel-lift | Cards and raised surfaces. |
 | text, text-dim | Words, and quieter words. |
-| brand (gold) | Headlines, micro-labels, static highlights, and dried paint. |
+| brand (gold) | Headlines, micro-labels, static highlights, and dried paint. On iPhone, also tappable action rows, dimmed while they cannot run (LaBroi, 2026-10-12). |
 | amber | Live only: the pill while you speak, wet paint. Always brighter than gold. |
 | red | Record, error, and the button that confirms a delete (LaBroi, 2026-10-08). Never decorative. |
 | ok | Success states. |
@@ -117,6 +117,8 @@ One orchestrated moment beats scattered effects: the hero paints in once, a prom
 | error | Plain red, no bristles. |
 
 The default accent is signal amber drying to brand gold; a custom accent dries to a darker shade of itself. In the bare look the paint is laid down once per frame with the ink edge, then faded before the canvas edge.
+
+On iPhone (IOS-020), `ios/Shared/Ink.swift` paints dabs, flecks, rings, ribbon, and pulse in the keyboard and the app with MurmurCore's `Brush`, a Swift port of `brush.ts` held to it by `shared/brush-vectors.json`. It runs this table in points as desktop runs it in CSS pixels (a pill taller than desktop's 40 pixel wave, like the screen murmur opens to, paints desktop's pill magnified), with desktop's per frame updates at 60 a second whatever the screen's rate, and pulse follows the table too (cream at rest, red for an error), as the iPhone's pill does in every style. Only the pill look exists on iPhone; the keyboard gives the pill a fixed home.
 
 ## Design QA
 

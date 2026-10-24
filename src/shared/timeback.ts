@@ -113,6 +113,14 @@ export function milestoneToAnnounce(
   return mark
 }
 
+/** Today in words against a typical day (US-085), shared with the iPhone
+ *  (IOS-022). Past double, the percentage stops meaning much, so it says
+ *  so instead. */
+export function typicalLine(share: number, typical: number): string {
+  const of = `your typical day (${formatMinutesBack(typical)})`
+  return share > 2 ? `More than double ${of}` : `${Math.round(share * 100)}% of ${of}`
+}
+
 /** The milestone notification body. */
 export function milestoneBody(mark: number): string {
   return `${formatMinutesBackWords(mark)} earned back today.`

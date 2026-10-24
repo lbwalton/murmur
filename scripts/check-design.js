@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-only
-// Design lint: raw hex colors may live ONLY in src/renderer/tokens.css.
+// Design lint: raw colors may live ONLY in src/renderer/tokens.css (Swift
+// reads them from ios/Generated/Tokens.swift, generated from it).
 // Everything else in the renderer and the website (site/, which copies
 // tokens.css at build time) consumes tokens, so the night studio palette
 // cannot drift one file at a time.
@@ -33,8 +34,33 @@ for (const file of [...walk(rendererDir), ...walk(siteDir)]) {
   })
 }
 
+// The iPhone app: no hex, and no hand-built colors, outside the
+// generated Tokens.swift (ios/prd.json conventions.design).
+const iosDir = join(root, 'ios')
+const SWIFT_COLOR = /\b(?:UI|NS|CG)?Color\((?:\.\w+\s*,\s*)?(?:red|white|hue|displayP3Red|gray)\s*:/g
+const IOS_SKIP = new Set(['Generated', 'build', '.build', 'DerivedData'])
+
+function walkSwift(dir, out = []) {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      if (!IOS_SKIP.has(entry) && !entry.endsWith('.xcodeproj')) walkSwift(full, out)
+    } else if (entry.endsWith('.swift')) out.push(full)
+  }
+  return out
+}
+
+for (const file of walkSwift(iosDir)) {
+  readFileSync(file, 'utf8')
+    .split('\n')
+    .forEach((line, i) => {
+      const matches = [...(line.match(HEX) || []), ...(line.match(SWIFT_COLOR) || [])]
+      if (matches.length) violations.push(`${relative(root, file)}:${i + 1}  ${matches.join(' ')}`)
+    })
+}
+
 if (violations.length > 0) {
-  console.error('design lint: raw hex outside tokens.css')
+  console.error('design lint: raw color outside tokens.css')
   for (const v of violations) console.error(`  ${v}`)
   process.exit(1)
 }
