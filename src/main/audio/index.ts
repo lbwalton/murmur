@@ -566,7 +566,7 @@ export function isAudioReady(): boolean {
 
 /** Play a sound cue, honoring the sounds setting. Fire and forget. */
 export function playCue(
-  cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted'
+  cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted' | 'lock'
 ): void {
   void import('../settings').then(({ getSettings }) => {
     const sounds = getSettings().sounds
