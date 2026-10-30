@@ -33,7 +33,7 @@ Where paint goes:
 | Website hero | Full: paints in once, then the visitor can paint and save a poster. |
 | Logo and app icon | The ensō pill (US-075). Brushed at 64 px and up (the splat from 128 px); a clean drawn version below 64 px, in the tray, the favicon, and the site header. |
 | Journey, promotions, share card | Full. |
-| The pill | The ink waveform styles, earned one per belt. |
+| The pill | The ink waveform styles, earned one per belt. Hands-free (US-117, LaBroi's pick A from the Closing the loop preview, 2026-10-30): when a double-tap locks the mic, one signal amber brush stroke paints the pill's own outline all the way round and a little past its start, closing the loop the icon leaves open, so a locked pill is the logo, closed. Holding draws no loop. In bare the loop goes round the dot and the waveform together. In the last minute before the 12 minute stop it dries to brand gold; reduced motion draws it closed and still. |
 | Launch film | Full. |
 | Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles are the one exception, because each is a live preview of the pill. |
 | Errors | None. Clean red, never splatter. |
