@@ -169,3 +169,71 @@ describe('lead-in question (US-062)', () => {
     expect(read(undefined)).toMatchObject({ ok: true, starts: {} })
   })
 })
+
+describe('keep question (US-116)', () => {
+  const idea = 'Oh, and an idea: a rooftop launch party.'
+  const req = buildDecisionRequest('jev-latest', ['Call Sam.', idea, 'Ok.'], [[], findSeams(idea), []])
+
+  it('asks where the part worth filing begins and ends, over every word, only where keep is offered', () => {
+    const words = { '1': 'Oh,', '2': 'and', '3': 'an', '4': 'idea:', '5': 'a', '6': 'rooftop', '7': 'launch', '8': 'party.' }
+    for (const key of ['keep_first_2', 'keep_last_2']) {
+      const q = req.questions[key]
+      expect(q.type).toBe('choice')
+      expect(q.criteria).toEqual(words)
+      expect(q.instructions).toMatchObject({ sentence: 2, text: idea })
+    }
+    // Under 3 words: never offered, as on the chat path.
+    expect(req.questions.keep_first_1).toBeUndefined()
+    expect(req.questions.keep_first_3).toBeUndefined()
+  })
+
+  it('reads a first and last word number into the same keep spans the chat path produces', () => {
+    const labels = {
+      label_1: { type: 'choice', choice: 'task' },
+      label_2: { type: 'choice', choice: 'idea' }
+    }
+    const read = (first: unknown, last: unknown) =>
+      readDecisionAnswers({ ...labels, keep_first_2: first, keep_last_2: last }, 2, [0, 0], 0, [], [0, 8])
+    const pick = (n: string) => ({ type: 'choice', choice: n })
+    expect(read(pick('5'), pick('8'))).toMatchObject({ ok: true, keep: { 2: [5, 8] } })
+    // A missing or out-of-range end keeps that end whole.
+    expect(read(pick('5'), undefined)).toMatchObject({ ok: true, keep: { 2: [5, 8] } })
+    expect(read(pick('0'), pick('6'))).toMatchObject({ ok: true, keep: { 2: [1, 6] } })
+    expect(read(pick('5'), pick('9'))).toMatchObject({ ok: true, keep: { 2: [5, 8] } })
+    // Every word kept, crossed ends, or no answer: the sentence files whole.
+    expect(read(pick('1'), pick('8'))).toMatchObject({ ok: true, keep: {} })
+    expect(read(pick('6'), pick('5'))).toMatchObject({ ok: true, keep: {} })
+    expect(read(undefined, undefined)).toMatchObject({ ok: true, keep: {} })
+    expect(read({ type: 'noul', noul: 1 }, pick('x'))).toMatchObject({ ok: true, keep: {} })
+  })
+
+  it('keeps an end whole when the model is less sure of it than the threshold, and reports each end', () => {
+    const labels = { label_1: { type: 'choice', choice: 'idea' } }
+    const read = (first: unknown, last: unknown, threshold: number) =>
+      readDecisionAnswers({ ...labels, keep_first_1: first, keep_last_1: last }, 1, [0], 0, [], [8], threshold)
+    const pick = (n: string, confidence?: number) => ({ type: 'choice', choice: n, ...(confidence === undefined ? {} : { confidence }) })
+    expect(read(pick('5', 0.9), pick('7', 0.4), 0.5)).toMatchObject({
+      ok: true,
+      keep: { 1: [5, 8] },
+      keepConfidence: { 1: [0.9, 0.4] }
+    })
+    expect(read(pick('5', 0.3), pick('8', 0.9), 0.5)).toMatchObject({ ok: true, keep: {} })
+    // Exactly at the threshold trims, as a label files at it (US-058).
+    expect(read(pick('5', 0.5), pick('8', 0.5), 0.5)).toMatchObject({ ok: true, keep: { 1: [5, 8] } })
+    // A bare answer reads as sure, the same as a bare label.
+    expect(read(pick('5'), pick('8'), 0.9)).toMatchObject({ ok: true, keep: { 1: [5, 8] }, keepConfidence: { 1: [1, 1] } })
+    // A missing end reports no confidence.
+    expect(read(pick('5', 0.8), undefined, 0.5)).toMatchObject({ ok: true, keep: { 1: [5, 8] }, keepConfidence: { 1: [0.8, null] } })
+  })
+
+  it('asks no keep question for the pieces compare request, which reads relations only', () => {
+    const pieces = buildDecisionRequest('jev-latest', [idea], [[]], [], false)
+    expect(pieces.questions.keep_first_1).toBeUndefined()
+    expect(pieces.questions.keep_last_1).toBeUndefined()
+  })
+
+  it('leaves keep out of the verdict when no sentence offered it', () => {
+    const verdict = readDecisionAnswers({ label_1: { type: 'choice', choice: 'idea' } }, 1, [0], 0, [], [0])
+    expect(verdict).not.toHaveProperty('keep')
+  })
+})

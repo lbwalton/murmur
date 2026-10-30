@@ -112,6 +112,10 @@ export type SortVerdict =
       /** The words worth filing per task or idea sentence (US-115);
        *  absent or empty means every sentence files whole. */
       keep?: KeepSpans
+      /** How sure a decision model was of each keep end, first and
+       *  last, by sentence number; null where it gave no answer
+       *  (US-116). For the log only; the chat path has none. */
+      keepConfidence?: Record<number, [number | null, number | null]>
     }
   | { ok: false; reason: string }
 
