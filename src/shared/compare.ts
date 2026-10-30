@@ -8,10 +8,11 @@
 // with the item quoted, and nothing is ever merged or edited without a
 // click. A malformed vote means new, so a bad reply can never hide a
 // line.
+import rules from '../../shared/sorter.json'
 import { parseListItems } from './todo'
 
 /** How many of each file's most recent items are compared against. */
-export const COMPARE_CAP = 60
+export const COMPARE_CAP = rules.compareCap
 
 export type ContextFile = 'tasks' | 'ideas'
 
@@ -59,15 +60,11 @@ export function buildCompareContext(tasksText: string, ideasText: string, cap = 
 export function contextPrompt(items: readonly ContextItem[], cap = COMPARE_CAP): string {
   if (items.length === 0) return ''
   const lines = items.map((item) => `${item.number}. [${item.done ? 'x' : ' '}] ${item.text}`)
-  return `Items already filed (the most recent ${cap} of each file):\n${lines.join('\n')}`
+  return `${rules.contextHeader.replace('{cap}', String(cap))}\n${lines.join('\n')}`
 }
 
 /** Appended to the system prompt only when there are items to compare. */
-export const SORT_RELATIONS_PROMPT = [
-  'Below the sentences is a numbered list of items already in the user\'s files, each marked [ ] open or [x] done.',
-  'Also include the key "relations": an object mapping a sentence number to a pair [code, item], where code 1 means the sentence says the same thing as that item, and code 2 means the sentence reports that item as finished.',
-  'Leave out every sentence that is new. Relate a sentence to an item only when it clearly refers to the same thing; a sentence that reports something done is code 2 whatever label it carries. Numbers only, never text.'
-].join(' ')
+export const SORT_RELATIONS_PROMPT = rules.relationsPrompt.join(' ')
 
 export type Relation = 'same' | 'completes'
 

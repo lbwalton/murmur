@@ -55,9 +55,17 @@ Packaging: `npm run dist:mac` or `npm run dist:win`.
 
 What `npm install` makes, none of it tracked in the repo: the app and tray icons, drawn by `scripts/gen-icons.js`, and the share cards' display face, Bricolage Grotesque (SIL Open Font License 1.1), fetched by `scripts/fetch-display-face.js` into `src/renderer/public/fonts` with its license beside it. Offline, or with `MURMUR_OFFLINE=1`, the fetch is skipped and the share card sets its rank in the system face; everything else works. Release builds (`dist:mac`, `dist:win`) require the face and stop without it.
 
+## murmur on iPhone
+
+murmur for iPhone, a keyboard you talk to backed by the murmur app and running on your own key like the desktop app, is on its way to the App Store. How to use it is in [docs/iphone.md](docs/iphone.md). The code lives in [ios/](ios/), its plan is [ios/prd.json](ios/prd.json), and you can build it yourself with [ios/README.md](ios/README.md).
+
 ## Project process
 
 `prd.json` is the spec: every change maps to a story with acceptance criteria and a verified flag. `ROADMAP.md` is generated from it. Before any push, an independent review agent examines the full diff; confirmed findings get fixed first.
+
+## Contributing
+
+murmur does not accept outside code; issues and ideas are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

@@ -34,17 +34,30 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc])
 }
 
-/** Encode an RGBA byte buffer as a PNG. */
-function encodePng(width, height, rgba) {
+/** Encode an RGBA byte buffer as a PNG. alpha: false drops the alpha
+ *  channel and writes RGB, for an opaque image such as the iPhone icon. */
+function encodePng(width, height, rgba, { alpha = true } = {}) {
+  const channels = alpha ? 4 : 3
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(width, 0)
   ihdr.writeUInt32BE(height, 4)
   ihdr[8] = 8 // bit depth
-  ihdr[9] = 6 // color type RGBA
-  const raw = Buffer.alloc(height * (1 + width * 4))
+  ihdr[9] = alpha ? 6 : 2 // color type RGBA, or RGB for an opaque image
+  const stride = 1 + width * channels
+  const raw = Buffer.alloc(height * stride)
   for (let y = 0; y < height; y++) {
-    raw[y * (1 + width * 4)] = 0 // filter none
-    rgba.copy(raw, y * (1 + width * 4) + 1, y * width * 4, (y + 1) * width * 4)
+    raw[y * stride] = 0 // filter none
+    if (alpha) {
+      rgba.copy(raw, y * stride + 1, y * width * 4, (y + 1) * width * 4)
+    } else {
+      for (let x = 0; x < width; x++) {
+        const from = (y * width + x) * 4
+        const to = y * stride + 1 + x * 3
+        raw[to] = rgba[from]
+        raw[to + 1] = rgba[from + 1]
+        raw[to + 2] = rgba[from + 2]
+      }
+    }
   }
   const idat = zlib.deflateSync(raw, { level: 9 })
   return Buffer.concat([

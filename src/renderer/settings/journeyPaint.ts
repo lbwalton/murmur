@@ -6,8 +6,23 @@
 // context, all from the brush engine and all seeded, so the same
 // progress paints the same picture. k (0 to 1) is how far a paint-in has
 // got; 1 is the finished painting reduced motion always gets.
-import type { RankSpec } from '../../shared/ranks'
-import { type Rgb, cachedBrush, clamp, flickEase, lerp, mix, mulberry, parseColor, path, rgba, stroke, tokenColor } from '../brush'
+import type { ProgressReport, RankSpec } from '../../shared/ranks'
+import {
+  type Rgb,
+  type SceneItem,
+  cachedBrush,
+  clamp,
+  flickEase,
+  lerp,
+  mix,
+  mulberry,
+  parseColor,
+  path,
+  rgba,
+  splat,
+  stroke,
+  tokenColor
+} from '../brush'
 
 const TAU = Math.PI * 2
 
@@ -220,6 +235,51 @@ export function youX(roadIndex: number, toNext: number, count: number): number {
 /** The name a stretch of the road wears: both coral belts are coral. */
 const groupName = (belt: string): string => (belt.startsWith('coral') ? 'coral' : belt)
 
+/** The road: every rank after the starting none, the founder-only rank
+ *  only on the founder's road. */
+export function roadRanks(ladder: readonly RankSpec[], founder: boolean): RankSpec[] {
+  return ladder.filter((rank) => rank.id !== 'none' && (!rank.founderOnly || founder))
+}
+
+/** Share of the way from your rank's total to the next one's: the road,
+ *  the words stroke, and the tallies all measure since your current rank,
+ *  so they always agree. */
+export function sinceRank(have: number, from: number, need: number): number {
+  return need <= from ? 1 : clamp((have - from) / (need - from), 0, 1)
+}
+
+/** Where practice stands on the road: its ranks, your rank's place on it
+ *  (-1 before the first belt), the share of the way to the next rank (the
+ *  slower gate), and your x. */
+export function roadPlace(
+  progress: ProgressReport,
+  ladder: readonly RankSpec[]
+): { road: RankSpec[]; roadIndex: number; toNext: number; you: number } {
+  const road = roadRanks(ladder, progress.founder)
+  const { words, activeDays } = progress.totals
+  const roadIndex = road.findIndex((r) => r.id === progress.practice.rank.id)
+  const at = roadIndex >= 0 ? road[roadIndex] : null
+  const next = progress.practice.next
+  const toNext = next
+    ? Math.min(sinceRank(words, at?.words ?? 0, next.words ?? 0), sinceRank(activeDays, at?.activeDays ?? 0, next.activeDays ?? 0))
+    : 1
+  return { road, roadIndex, toNext, you: youX(roadIndex, toNext, road.length) }
+}
+
+/** The group names under the road and where each starts: one per name
+ *  (the two coral belts share one). Drawing them without overlap is the
+ *  painter's job (it measures them). */
+export function roadGroups(road: readonly RankSpec[]): { name: string; x: number }[] {
+  const out: { name: string; x: number }[] = []
+  GROUPS.forEach((g, gi) => {
+    const first = road.findIndex((r) => r.belt === g)
+    if (first < 0) return
+    if (gi > 0 && groupName(GROUPS[gi - 1]) === groupName(g)) return
+    out.push({ name: groupName(g), x: rankX(first, road.length) })
+  })
+  return out
+}
+
 /**
  * The road: a pencil track the whole way, each belt group's stretch
  * painted in its color up to `paintTo`, a knot per rank (filled when
@@ -235,7 +295,10 @@ export function paintRoad(
   paintTo: number,
   label: string,
   c: JourneyColors,
-  mono: string
+  mono: string,
+  /** False leaves the words off (the group names and your words), for a
+   *  page that sets them as native text over the painting (IOS-018). */
+  text = true
 ): void {
   const y = ROAD.y
   const n = road.length
@@ -262,7 +325,7 @@ export function paintRoad(
     // top of the label before it.
     const name = groupName(g)
     const named = gi > 0 && groupName(GROUPS[gi - 1]) === name
-    if (!named && x0 >= labelEnd + 10) {
+    if (text && !named && x0 >= labelEnd + 10) {
       ctx.fillStyle = rgba(c.dim)
       ctx.fillText(name, x0, y + 32)
       labelEnd = x0 + ctx.measureText(name).width
@@ -332,7 +395,7 @@ export function paintRoad(
   ctx.fill()
   ctx.textAlign = you < ROAD.pad + 60 ? 'left' : you > ROAD.W - ROAD.pad - 60 ? 'right' : 'center'
   ctx.fillStyle = rgba(c.gold)
-  ctx.fillText(label, you, y - 20)
+  if (text) ctx.fillText(label, you, y - 20)
 }
 
 // ------------------------------------------------------------ gates ---
@@ -648,3 +711,60 @@ export function paintStamp(ctx: CanvasRenderingContext2D, w: number, id: string,
 
 /** The easing a paint-in uses, exported so a test can pin it. */
 export const paintEase = (t: number): number => flickEase(clamp(t, 0, 1))
+
+// --------------------------------------------------------- ceremony ---
+
+/** The promotion ceremony's painting (US-077): the sweep in the belt's
+ *  color, an ember splat, a splat of the belt's color, and a chalky rice
+ *  stroke above. */
+export function ceremonyScene(rank: RankSpec, W: number, H: number, c: JourneyColors): SceneItem[] {
+  const col = beltOnInk(rank.belt, c)
+  const yc = H * 0.34
+  const bw = Math.min(H * 0.24, 210)
+  return [
+    {
+      start: 140,
+      dur: 720,
+      stroke: {
+        P: path(
+          [
+            [-W * 0.06, yc + bw * 0.3],
+            [W * 0.3, yc - bw * 0.12],
+            [W * 0.66, yc + bw * 0.08],
+            [W * 1.06, yc - bw * 0.22]
+          ],
+          3
+        ),
+        B: cachedBrush(990, 40),
+        opts: { width: bw, rgb: col, dry: 0.3, core: 0.85, ts: 0.02, te: 0.12 }
+      }
+    },
+    {
+      start: 520,
+      splat: { sp: splat(992, W * 0.24, yc + bw * 0.62, { r: bw * 0.18, count: 20, mist: 30, dir: 2.4, spread: 0.9, reach: 3 }), rgb: col }
+    },
+    {
+      start: 560,
+      dur: 420,
+      stroke: {
+        P: path(
+          [
+            [W * 0.12, yc - bw * 0.85],
+            [W * 0.4, yc - bw * 1.0],
+            [W * 0.62, yc - bw * 0.88]
+          ],
+          2
+        ),
+        B: cachedBrush(993, 30),
+        opts: { width: bw * 0.12, rgb: c.rice, alpha: 0.7, dry: 0.75 }
+      }
+    },
+    {
+      start: 620,
+      splat: {
+        sp: splat(991, W * 0.78, yc - bw * 0.55, { r: bw * 0.22, count: 26, mist: 40, dir: -0.6, spread: 1.1, reach: 3, blob: true }),
+        rgb: c.ember
+      }
+    }
+  ]
+}

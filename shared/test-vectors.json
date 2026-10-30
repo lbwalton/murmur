@@ -316,6 +316,121 @@
       },
       "input": "- send the report tomorrow",
       "expected": "- send the report tomorrow"
+    },
+    {
+      "name": "an accented word before a spoken comma",
+      "input": "café comma then tea",
+      "expected": "Café, then tea."
+    },
+    {
+      "name": "an emoji before a spoken period",
+      "input": "all done 👍 period see you",
+      "expected": "All done 👍. See you."
+    },
+    {
+      "name": "a curly apostrophe before a spoken question mark",
+      "input": "it’s fine question mark",
+      "expected": "It’s fine?"
+    },
+    {
+      "name": "word edges are ASCII, as in JavaScript: a term before an accented letter still matches",
+      "settings": {
+        "dictionary": [
+          {
+            "from": "caf",
+            "to": "CAF"
+          }
+        ]
+      },
+      "input": "meet at the café later",
+      "expected": "Meet at the CAFé later."
+    },
+    {
+      "name": "a dictionary value with a dollar sign stays as written",
+      "settings": {
+        "dictionary": [
+          {
+            "from": "five bucks",
+            "to": "$5"
+          }
+        ]
+      },
+      "input": "it costs five bucks",
+      "expected": "It costs $5."
+    },
+    {
+      "name": "an expansion after an accented word",
+      "settings": {
+        "expansions": [
+          {
+            "trigger": "my sig",
+            "text": "Best,\nJosé"
+          }
+        ]
+      },
+      "input": "merci beaucoup my sig",
+      "expected": "Merci beaucoup Best,\nJosé."
+    },
+    {
+      "name": "filler beside an accented word",
+      "input": "um señor uh period",
+      "expected": "Señor."
+    },
+    {
+      "name": "digits after an accented word",
+      "settings": {
+        "numbers": "digits"
+      },
+      "input": "année twenty two was good",
+      "expected": "Année 22 was good."
+    },
+    {
+      "name": "colon then comma: equal-length phrases keep their order",
+      "input": "send it colon comma then go",
+      "expected": "Send it: then go."
+    },
+    {
+      "name": "comma then colon: equal-length phrases keep their order",
+      "input": "dear team comma colon here we go",
+      "expected": "Dear team,: here we go."
+    },
+    {
+      "name": "new paragraph then question mark: equal-length phrases keep their order",
+      "input": "is it ready new paragraph question mark",
+      "expected": "Is it ready\n\n?"
+    },
+    {
+      "name": "case matching follows JavaScript: a dictionary term spelled ss never matches a sharp s",
+      "settings": {
+        "dictionary": [
+          {
+            "from": "strasse",
+            "to": "Strasse"
+          }
+        ]
+      },
+      "input": "die straße ist lang",
+      "expected": "Die straße ist lang."
+    },
+    {
+      "name": "a byte order mark counts as a space, as in JavaScript",
+      "input": "hello﻿comma there friend",
+      "expected": "Hello, there friend."
+    },
+    {
+      "name": "a next line character is not a space in JavaScript",
+      "input": "hello there friend",
+      "expected": "hello there friend."
+    },
+    {
+      "name": "a line separator ends a line, as in JavaScript",
+      "input": "first line one    second line two",
+      "expected": "First line one second line two."
+    },
+    {
+      "name": "a carriage return ends a line, as in JavaScript",
+      "input": "first line one\r   second line two",
+      "expected": "First line one\rsecond line two."
     }
   ]
 }

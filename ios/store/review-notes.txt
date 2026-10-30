@@ -1,0 +1,19 @@
+murmur is a dictation keyboard. Speech to text runs on a key each person brings from their own provider. For review, use this Groq key, made only for App Review on Groq's free plan, so it is never charged; it is revoked after review:
+
+REVIEW_KEY_HERE
+
+To try it (about 3 minutes):
+1. Open murmur and allow the microphone. At Add your key, keep Groq, paste the key, and tap Done. Later, the gear at the top right, then Provider and key, then Test connection says Works.
+2. Tap the microphone at the top right, tap Start a take, say a sentence, and tap stop. Your words appear, cleaned up.
+3. Add the keyboard: Settings, General, Keyboard, Keyboards, Add New Keyboard, murmur. Tap murmur and turn on Allow Full Access.
+4. In Notes, hold the globe key and pick murmur, then tap the pill. The first tap opens murmur, which starts a listening session. Swipe right along the bottom edge to go back, keep talking, and tap the pill again: your words land in the note. While the session runs, a tap on the pill starts a take without leaving Notes.
+
+Why Full Access: a keyboard and its app share nothing without it. With it, the murmur keyboard and the murmur app share the app group container: the keyboard leaves a start or stop request there, and the app leaves the dictated words for the keyboard to type. The keyboard makes no network requests (a test fails the build if its code names any networking API), types only the words the person dictated, and stores no typing. It opens only murmur, never another app. In password and phone number fields, iOS shows its own keyboard.
+
+Why the microphone runs in the background (UIBackgroundModes audio): a keyboard cannot use the microphone, so the murmur app holds it during a listening session the person starts, with the first tap on the pill, Start session in murmur, or the Start murmur control. iOS shows the orange dot the whole time, and a Live Activity shows the session with End. Between takes the sound is dropped as it arrives, never saved or sent; only a take, from tap to tap, goes to the person's provider. A session ends 15 minutes after the last take (in murmur, the gear, then Session, offers 5 minutes, 15 minutes, or 1 hour), when the person taps End session or End, or when a call or another app takes the microphone.
+
+Privacy: murmur collects nothing. Audio and text go only to the provider the person picks, under their own key. There is no account, server, analytics, or SDK.
+
+murmur Pro (com.lbwalton.murmur.ios.pro) is an optional one-time purchase: in murmur, tap the gear, then murmur Pro. Every dictation feature works without it.
+
+Questions: support@murmurapp.app

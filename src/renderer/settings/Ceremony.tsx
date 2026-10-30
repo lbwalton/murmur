@@ -10,8 +10,8 @@
 import { useEffect, useRef, useState } from 'react'
 import cosmeticsFile from '../../../shared/cosmetics.json'
 import type { RankSpec } from '../../shared/ranks'
-import { type SceneItem, type Surface, animateScene, cachedBrush, canvasDpr, paintScene, path, splat } from '../brush'
-import { beltOnInk, journeyColors } from './journeyPaint'
+import { type Surface, animateScene, canvasDpr, paintScene } from '../brush'
+import { ceremonyScene, journeyColors } from './journeyPaint'
 
 const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
 /** How long the ceremony stays before it ends on its own. */
@@ -25,61 +25,6 @@ function surface(canvas: HTMLCanvasElement, w: number, h: number): Surface | nul
   if (!ctx) return null
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   return { canvas, ctx, dpr }
-}
-
-/** The ceremony's painting: the sweep in the belt's color, an ember
- *  splat, a splat of the belt's color, and a chalky rice stroke above. */
-function scene(rank: RankSpec, W: number, H: number): SceneItem[] {
-  const c = journeyColors(BELT_HEX)
-  const col = beltOnInk(rank.belt, c)
-  const yc = H * 0.34
-  const bw = Math.min(H * 0.24, 210)
-  return [
-    {
-      start: 140,
-      dur: 720,
-      stroke: {
-        P: path(
-          [
-            [-W * 0.06, yc + bw * 0.3],
-            [W * 0.3, yc - bw * 0.12],
-            [W * 0.66, yc + bw * 0.08],
-            [W * 1.06, yc - bw * 0.22]
-          ],
-          3
-        ),
-        B: cachedBrush(990, 40),
-        opts: { width: bw, rgb: col, dry: 0.3, core: 0.85, ts: 0.02, te: 0.12 }
-      }
-    },
-    {
-      start: 520,
-      splat: { sp: splat(992, W * 0.24, yc + bw * 0.62, { r: bw * 0.18, count: 20, mist: 30, dir: 2.4, spread: 0.9, reach: 3 }), rgb: col }
-    },
-    {
-      start: 560,
-      dur: 420,
-      stroke: {
-        P: path(
-          [
-            [W * 0.12, yc - bw * 0.85],
-            [W * 0.4, yc - bw * 1.0],
-            [W * 0.62, yc - bw * 0.88]
-          ],
-          2
-        ),
-        B: cachedBrush(993, 30),
-        opts: { width: bw * 0.12, rgb: c.rice, alpha: 0.7, dry: 0.75 }
-      }
-    },
-    {
-      start: 620,
-      splat: {
-        sp: splat(991, W * 0.78, yc - bw * 0.55, { r: bw * 0.22, count: 26, mist: 40, dir: -0.6, spread: 1.1, reach: 3, blob: true }),
-        rgb: c.ember
-      }
-    }
-  ]
 }
 
 export function Ceremony(props: { rank: RankSpec; onClose: () => void }): React.JSX.Element {
@@ -109,7 +54,7 @@ export function Ceremony(props: { rank: RankSpec; onClose: () => void }): React.
       const F = surface(fx, W, H)
       if (!B || !F) return
       F.ctx.clearRect(0, 0, W, H)
-      const items = scene(props.rank, W, H)
+      const items = ceremonyScene(props.rank, W, H, journeyColors(BELT_HEX))
       if (animate) cancel = animateScene(B, F, items)
       else paintScene(B.ctx, items)
     }

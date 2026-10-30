@@ -11,7 +11,15 @@ const REPO = 'https://github.com/lbwalton/murmur'
 // reads too, so the app and the site never disagree (US-107).
 const PRO = require('../shared/pro.json')
 
-function content(site) {
+// The founders window (LaBroi, 2026-10-24): through December 31, 2026,
+// murmur Pro is $39 on the website with the Stripe code FOUNDERS, which
+// the checkout link fills in; then it is $49. Website only: the App Store
+// price stays $49. A build made after the window drops every founders
+// line, so the site is redeployed on January 1. It closes at midnight
+// Pacific time, the end of December 31 where LaBroi is.
+const FOUNDERS = { price: 39, code: 'FOUNDERS', ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse('2027-01-01T08:00:00Z') }
+
+function content(site, { supportEmail = '', now = Date.now() } = {}) {
   const links = {
     site,
     repo: REPO,
@@ -35,7 +43,9 @@ function content(site) {
   const facts = {
     macos: 'macOS 13 Ventura or later',
     windows: 'Windows 10 or later',
-    proPrice: PRO.price
+    proPrice: PRO.price,
+    // null once the window closes, so nothing says it any more.
+    founders: now < FOUNDERS.closes ? { ...FOUNDERS, buy: `${PRO.buyUrl}?prefilled_promo_code=${FOUNDERS.code}` } : null
   }
 
   const title = 'murmur: free, open source dictation app for Mac and Windows'
@@ -57,7 +67,12 @@ function content(site) {
       a: [
         `The app is free, with every dictation feature included. Transcription runs on your own API key, so you pay your provider directly, and at Groq's rates typical use costs cents a month. murmur Pro is an optional one-time purchase of $${facts.proPrice} that adds provider profiles and early access to new conveniences, and it funds development. See `,
         { text: 'what Pro includes', href: links.doc('pro') },
-        '.'
+        '.',
+        ...(facts.founders
+          ? [
+              ` Through ${facts.founders.ends}, Pro is $${facts.founders.price} with the code ${facts.founders.code}, and everyone who buys at that price is a founding member, with 10% off every future paid product.`
+            ]
+          : [])
       ]
     },
     {
@@ -124,7 +139,156 @@ function content(site) {
     }
   ]
 
-  return { links, facts, title, description, faq, compare: compare(links, facts) }
+  return { links, facts, title, description, faq, compare: compare(links, facts), privacy: privacy(links, supportEmail), support: support(links, supportEmail) }
+}
+
+/** The address as a link, or the issues page when the build has none. */
+const ask = (links, supportEmail) => (supportEmail ? { text: supportEmail, href: `mailto:${supportEmail}` } : { text: 'open an issue on GitHub', href: links.issues })
+
+// The privacy page the App Store listing links to (ios/prd.json IOS-026),
+// for every murmur app. Each claim was checked against the code on the
+// day in updated: the iPhone app names no address but the provider's, the
+// keyboard no networking API (scripts/lib/keyboard-network.test.js), the
+// desktop main process only the provider, GitHub's releases (src/main/
+// updater.ts), and the provider list on GitHub (src/main/catalog.ts); the
+// site's own policy allows nothing but its own files (site/headers.js).
+function privacy(links, supportEmail) {
+  return {
+    title: 'Privacy: murmur collects nothing',
+    description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
+    h1: 'murmur collects nothing.',
+    lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
+    updated: '2026-10-22',
+    items: [
+      {
+        q: 'Does murmur collect my data?',
+        a: [
+          "No. murmur has no server, no account, no analytics, no ads, and no tracking, on Mac, Windows, or iPhone. Nothing you say or type reaches Eze Media LLC. For the App Store's privacy label, the iPhone app answers Data Not Collected."
+        ]
+      },
+      {
+        q: 'Where does my voice go when I dictate?',
+        a: [
+          'To the transcription provider you chose (Groq unless you picked another), over an encrypted connection, under your own key, and only what you recorded while dictating. The provider handles it under its own privacy terms, which you agreed to when you made your key. Pointed at a server on your own computer, your voice never leaves it. ',
+          { text: 'Choosing a provider', href: links.doc('providers') },
+          '.'
+        ]
+      },
+      {
+        q: 'What else leaves my device?',
+        a: ['Only these, each because you asked for it or to keep the app working:'],
+        points: [
+          ['Cleanup.', ['With cleanup at Full and polish on, the words of a take go to your cleanup provider, the same one unless you chose a separate one. Transform sends the text you selected and what you asked for.']],
+          ['Your dictionary.', ['The words in your dictionary go along with your takes as spelling hints for your providers.']],
+          [
+            'Note sorting.',
+            ['With Sort into tasks and ideas on, the sentences of a note go to the provider you set for sorting (your cleanup provider on iPhone), which says which file each one belongs in.']
+          ],
+          ['Test connection.', ['It asks your provider for its list of models, with your key.']],
+          [
+            'Updates, on Mac and Windows.',
+            ['murmur checks GitHub for an update every few hours and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit.']
+          ],
+          ['The iPhone keyboard.', ['The murmur keyboard sends nothing anywhere. It hands your take to the murmur app on the phone and types only the words you dictated.']],
+          ['Your notes, if their folder syncs.', ['Notes are files in the folder you pick. If that folder syncs, like iCloud Drive or a synced vault, the sync service carries them under its own terms.']],
+          [
+            'Buying murmur Pro.',
+            [
+              "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server."
+            ]
+          ],
+          ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address.']]
+        ]
+      },
+      {
+        q: 'What stays on my device?',
+        a: [
+          'Everything else: your history, settings, numbers, belts and paintings, recordings waiting to be retried, your dictionary apart from those hints, and your notes. Your keys stay encrypted by your system: on Mac and Windows with its secure storage, and on iPhone in the Keychain.'
+        ]
+      },
+      {
+        q: 'How do I delete my data?',
+        a: ['Clear all empties your history (on the home tab on Mac and Windows, above your takes on iPhone). To remove everything murmur keeps:'],
+        points: [
+          ['Mac.', ['Quit murmur, move it to the Trash, and delete the folder Library/Application Support/murmur in your home folder.']],
+          ['Windows.', ['Uninstall murmur, then delete the folder %APPDATA%\\murmur. Uninstalling keeps it, so a reinstall picks up where you left off.']],
+          ['iPhone.', ['In murmur, tap the gear, then Provider and key, and tap Remove key for each key, since iOS keeps keys after an app is deleted. Then delete murmur.']],
+          ['Your provider.', ['To have a provider delete what it keeps, ask the provider; murmur never had it.']],
+          [
+            'Eze Media LLC.',
+            [
+              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It keeps them as long as your license and tax records need, and deletes them when you ask, unless the law requires keeping them. Write to ',
+              ask(links, supportEmail),
+              '.'
+            ]
+          ]
+        ]
+      },
+      {
+        q: 'Does this website track me?',
+        a: [
+          'No. murmurapp.app has no analytics, no cookies of its own, and no scripts but its own. Cloudflare hosts it and handles each request as any web host does.'
+        ]
+      },
+      {
+        q: 'Who do I ask about privacy?',
+        a: ['Eze Media LLC makes murmur. Write to ', ask(links, supportEmail), '. If any of this changes, this page changes first, with its date.']
+      }
+    ]
+  }
+}
+
+// The support page the App Store listing links to (ios/prd.json IOS-026).
+// Apple requires that it leads to real contact information, so a deploy
+// build refuses to run without the support address (site/build.js).
+function support(links, supportEmail) {
+  return {
+    title: 'Support: get help with murmur',
+    description: 'How to get help with murmur on Mac, Windows, or iPhone: email support, read the docs and troubleshooting, or report a bug on GitHub.',
+    h1: 'Get help with murmur.',
+    lede: 'Most answers are in the docs. When they are not, write, and a person answers.',
+    items: [
+      {
+        q: 'How do I get help with murmur?',
+        a: supportEmail
+          ? ['Email ', ask(links, supportEmail), ' from any device. Say which device you use (Mac, Windows, or iPhone), which version of murmur, what you did, and what happened.']
+          : ['Please ', ask(links, supportEmail), ': say which device you use, which version of murmur, what you did, and what happened.']
+      },
+      {
+        q: 'Where are the answers to common problems?',
+        a: [
+          { text: 'Troubleshooting', href: links.doc('troubleshooting') },
+          ' covers dictation that does not land, keys, permissions, and providers, and ',
+          { text: 'the docs', href: links.docs },
+          ' answer every setting.'
+        ]
+      },
+      {
+        q: 'How do I send a diagnostics report?',
+        a: [
+          'On iPhone, open murmur, tap the gear, then Diagnostics, and tap Save report. On Mac and Windows, open Settings, System, Diagnostics, and click Save report. Either way you get one plain text file to read before you share it: it never holds your words or your key, and nothing is sent until you send it. ',
+          { text: 'What a report holds', href: links.doc('troubleshooting') },
+          '.'
+        ]
+      },
+      {
+        q: 'How do I report a bug or ask for a feature?',
+        a: ['Open an issue on ', { text: "murmur's GitHub", href: links.issues }, ', or email if you would rather not.']
+      },
+      {
+        q: 'How do I get murmur Pro on my other device?',
+        // The Pro doc as a whole: a deploy reads the docs at the release it
+        // serves, which may not have this question's heading yet.
+        a: [
+          'One purchase covers Mac, Windows, and iPhone: email ',
+          ask(links, supportEmail),
+          ' with your order id, and you get a license key for the computer or a free App Store code for the iPhone. ',
+          { text: 'About murmur Pro', href: links.doc('pro') },
+          '.'
+        ]
+      }
+    ]
+  }
 }
 
 // The docs in the order a newcomer reads them, with the short name each
@@ -141,6 +305,11 @@ const DOCS = [
     'download',
     'Download and install',
     'Download murmur for Mac or Windows, install it, get past the Windows protected your PC screen, and check which Macs and PCs murmur runs on.'
+  ],
+  [
+    'iphone',
+    'murmur on iPhone',
+    'murmur on iPhone: add the murmur keyboard, talk in any app, keep notes by voice, and set up your key, cleanup, sessions, belts, and murmur Pro.'
   ],
   [
     'settings',

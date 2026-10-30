@@ -11,8 +11,8 @@ import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle } from './PageTitle'
 import { EmptyState } from './EmptyState'
-import { type Rgb, canvasDpr, mix, parseColor, rgba, tokenColor } from '../brush'
-import { daySeed, paintBlot, paintDab } from './inkMarks'
+import { type Rgb, canvasDpr, parseColor, tokenColor } from '../brush'
+import { CHART_H, HEAT_PCT, type WallMark, dabHeight, heatLevel, paintChartDab, paintWallMarks, wallSize } from './analyticsPaint'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -30,14 +30,6 @@ function monthOf(day: string): number {
 function prettyDay(day: string): string {
   return `${MONTHS[monthOf(day)]} ${Number(day.slice(8, 10))}`
 }
-
-// Fill strength per heat level. Level 0 keeps the resting cell color;
-// the rest mix the chosen base color over transparency so the ladder
-// reads the same for any bright base. Dark bases (the black belt)
-// invert instead: empty squares go light and activity darkens them,
-// so the fill never vanishes into the ink.
-const HEAT_PCT = [0, 20, 40, 65, 95]
-const HEAT_PCT_INVERTED = [0, 35, 55, 75, 95]
 
 function hexLuminance(color: string): number | null {
   const match = /^#([0-9a-f]{6})$/i.exec(color)
@@ -128,7 +120,7 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
             <div className="chart-col" key={day.day} title={`${day.words} words on ${prettyDay(day.day)}`}>
               <ChartDab
                 day={day.day}
-                height={Math.max(3, Math.round((day.words / maxWords) * 72))}
+                height={dabHeight(day.words, maxWords)}
                 empty={day.words === 0}
                 today={i === recent.length - 1}
               />
@@ -185,8 +177,6 @@ function rememberWallPeriod(year: number | null): void {
   }
 }
 
-const CHART_H = 76
-
 /** The screen's pixel density, kept current when the window moves to a
  *  screen of another density, so painted marks repaint sharp. */
 function useDevicePixelRatio(): number {
@@ -221,9 +211,7 @@ function ChartDab(props: { day: string; height: number; empty: boolean; today: b
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, CHART_H)
-      const rgb = props.today && !props.empty ? tokenColor('--brand', [217, 164, 65]) : tokenColor('--rice', [233, 227, 214])
-      const dabWidth = Math.min(props.empty ? 8 : 18, width * 0.72)
-      paintDab(ctx, width / 2, CHART_H - 1, props.height, dabWidth, rgb, daySeed(props.day), props.empty ? 0.22 : 0.92)
+      paintChartDab(ctx, width / 2, width, props.day, props.height, props.empty, props.today)
     }
     draw()
     const watch = new ResizeObserver(draw)
@@ -240,33 +228,12 @@ function wallRgb(color: string, fallback: Rgb): Rgb {
   return parseColor(color) ?? fallback
 }
 
-const CELL = 11
-const STEP = 14
-/** Room around the cells for the biggest blots' ragged edges. */
-const BLEED = 2
-
-/** The color a heat level paints, on the same scale as the old squares. */
-function blotColor(level: number, base: Rgb, inverted: boolean, paper: Rgb): { rgb: Rgb; alpha: number } {
-  if (inverted) return { rgb: mix(paper, base, HEAT_PCT_INVERTED[level] / 100), alpha: 1 }
-  return { rgb: base, alpha: HEAT_PCT[level] / 100 }
-}
-
 /**
- * The activity wall's paint (US-087): each active day a small blot in
- * the wall's color at its heat level, each empty day a faint dot (paper
- * mode keeps its white squares, painted by the cells underneath).
- * Seeded by the date, so the wall paints the same on every open.
+ * The activity wall's paint (US-087), sized to its canvas: the blots
+ * themselves are analyticsPaint's, shared with the iPhone (IOS-022).
  */
-interface Mark {
-  /** Seeds the blot's edge: the day it stands for. */
-  seed: string
-  level: number
-}
-
-function paintWall(canvas: HTMLCanvasElement, marks: ReadonlyArray<Mark | null>, rows: number, base: Rgb, inverted: boolean): void {
-  const cols = Math.ceil(marks.length / rows)
-  const width = Math.max(1, cols * STEP - (STEP - CELL)) + 2 * BLEED
-  const height = rows * STEP - (STEP - CELL) + 2 * BLEED
+function paintWall(canvas: HTMLCanvasElement, marks: ReadonlyArray<WallMark | null>, rows: number, base: Rgb, inverted: boolean): void {
+  const { width, height } = wallSize(marks.length, rows)
   const dpr = canvasDpr()
   canvas.width = Math.round(width * dpr)
   canvas.height = Math.round(height * dpr)
@@ -276,26 +243,7 @@ function paintWall(canvas: HTMLCanvasElement, marks: ReadonlyArray<Mark | null>,
   if (!ctx) return
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
-  // Cells start BLEED in, so an edge blot is never clipped.
-  ctx.translate(BLEED, BLEED)
-  const paper = tokenColor('--heat-invert-bg', [236, 233, 228])
-  const faint = tokenColor('--text', [236, 233, 228])
-  marks.forEach((mark, i) => {
-    if (!mark) return
-    const x = Math.floor(i / rows) * STEP + CELL / 2
-    const y = (i % rows) * STEP + CELL / 2
-    const lv = mark.level
-    if (lv === 0) {
-      if (inverted) return
-      ctx.fillStyle = rgba(faint, 0.12)
-      ctx.beginPath()
-      ctx.arc(x, y, 1.5, 0, Math.PI * 2)
-      ctx.fill()
-      return
-    }
-    const { rgb, alpha } = blotColor(lv, base, inverted, paper)
-    paintBlot(ctx, x, y, 3.9 + lv * 0.35, rgb, daySeed(mark.seed), alpha)
-  })
+  paintWallMarks(ctx, marks, rows, base, inverted)
 }
 
 function ActivityWall(props: {
@@ -313,14 +261,6 @@ function ActivityWall(props: {
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   const heatMax = Math.max(1, ...wall.days.map((d) => d.words))
-  const heatLevel = (words: number): number => {
-    if (words === 0) return 0
-    const r = words / heatMax
-    if (r > 0.75) return 4
-    if (r > 0.5) return 3
-    if (r > 0.25) return 2
-    return 1
-  }
 
   // Pad so weeks align into columns of seven, Sunday on top.
   const firstDay = wall.days[0]
@@ -388,7 +328,7 @@ function ActivityWall(props: {
   const screenDpr = useDevicePixelRatio()
   useEffect(() => {
     const base = wallRgb(heatBase, [249, 115, 22])
-    const marks = cells.map((cell) => (cell ? { seed: cell.day, level: heatLevel(cell.words) } : null))
+    const marks = cells.map((cell) => (cell ? { seed: cell.day, level: heatLevel(cell.words, heatMax) } : null))
     if (wallRef.current) paintWall(wallRef.current, marks, 7, base, inverted)
     // The legend: one row, a mark for each level from none to most.
     const legend = HEAT_PCT.map((_, level) => ({ seed: `legend-${level}`, level }))

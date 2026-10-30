@@ -16,20 +16,22 @@
 const { execFileSync } = require('node:child_process')
 const { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
-const { join } = require('node:path')
+const { join, resolve } = require('node:path')
 const { stripTypeScriptTypes } = require('node:module')
 const { encodePng } = require('../scripts/lib/draw')
 const { ensoSvgParts, loadBrush } = require('../scripts/lib/enso')
 const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
-const { clip, firstParagraph, renderDoc } = require('./markdown')
+const { clip, firstParagraph, renderDoc, slugify } = require('./markdown')
 const { headersFile } = require('./headers')
 const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
 const here = __dirname
 const root = join(here, '..')
 const src = join(here, 'src')
-const out = join(here, 'dist')
+// SITE_OUT writes elsewhere (the tests use it, so a test run never
+// replaces a deploy build waiting in site/dist).
+const out = process.env.SITE_OUT ? resolve(process.env.SITE_OUT) : join(here, 'dist')
 const tokensFile = join(root, 'src', 'renderer', 'tokens.css')
 
 const PLACEHOLDER = 'https://murmur.example'
@@ -38,7 +40,15 @@ if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && SITE_URL === PLACEHOLDE
   console.error('site: set SITE_URL (for example https://murmurapp.app) before a deploy build')
   process.exit(1)
 }
-const { links, facts, title, description, faq, compare } = content(SITE_URL)
+// The support address appears once Email Routing forwards it.
+const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || '').trim()
+// Apple requires the support page the App Store links to carry real
+// contact information (IOS-026), so a deploy never ships without it.
+if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && !SUPPORT_EMAIL) {
+  console.error('site: set SUPPORT_EMAIL (support@murmurapp.app) before a deploy build; the support page must carry it')
+  process.exit(1)
+}
+const { links, facts, title, description, faq, compare, privacy, support } = content(SITE_URL, { supportEmail: SUPPORT_EMAIL })
 const docsDir = join(root, 'docs')
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 // The docs pages describe the release the download button serves, so a
@@ -51,8 +61,6 @@ if (DOCS_REF && !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(DOCS_REF)) {
   console.error(`site: DOCS_REF ${JSON.stringify(DOCS_REF)} is not a plain git ref`)
   process.exit(1)
 }
-// The support address appears once Email Routing forwards it.
-const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL || '').trim()
 // The film renders outside the repo (~/Projects/murmur-film); without
 // it the page simply has no film section.
 const FILM_DIR = process.env.FILM_DIR || join(homedir(), 'Projects', 'murmur-film', 'out')
@@ -176,7 +184,10 @@ function jsonLd() {
         isAccessibleForFree: true,
         offers: [
           { '@type': 'Offer', name: 'murmur', price: '0', priceCurrency: 'USD' },
-          { '@type': 'Offer', name: 'murmur Pro', price: String(facts.proPrice), priceCurrency: 'USD', url: links.doc('pro') }
+          { '@type': 'Offer', name: 'murmur Pro', price: String(facts.proPrice), priceCurrency: 'USD', url: links.doc('pro') },
+          ...(facts.founders
+            ? [{ '@type': 'Offer', name: 'murmur Pro, founding member price', price: String(facts.founders.price), priceCurrency: 'USD', priceValidUntil: facts.founders.endsOn, url: facts.founders.buy }]
+            : [])
         ],
         author: { '@id': org },
         publisher: { '@id': org },
@@ -279,10 +290,21 @@ function footerHtml() {
       <nav aria-label="More">
         <a href="/docs/">docs</a>
         <a href="/wispr-flow-alternative/">murmur vs Wispr Flow</a>
+        <a href="/support/">support</a>
+        <a href="/privacy/">privacy</a>
         <a href="${links.releases}" target="_blank" rel="noopener noreferrer">releases</a>
         <a href="${links.repo}" target="_blank" rel="noopener noreferrer">source</a>
       </nav>
     </footer>`
+}
+
+/** The founders price line (LaBroi, 2026-10-24), under the download on
+ *  home and atop the Pro doc while the window is open; nothing after. */
+function foundersHtml(onPro) {
+  const f = facts.founders
+  if (!f) return ''
+  const pro = onPro ? 'murmur Pro' : '<a href="/docs/pro/">murmur Pro</a>, the optional one-time upgrade,'
+  return `<p class="founders"><strong>Founding member price:</strong> ${pro} is $${f.price} through ${f.ends}, then $${facts.proPrice}. Founding members keep 10% off every future paid product. <a href="${escapeHtml(f.buy)}" target="_blank" rel="noopener noreferrer">Get Pro for $${f.price}</a>, with the code ${f.code} already filled in.</p>`
 }
 
 function fontPreload(font) {
@@ -303,6 +325,7 @@ function page(tokens, font) {
     JSON_LD: jsonLd(),
     PILL_BARS: pillBars(),
     FAQ: faqHtml(),
+    FOUNDERS: foundersHtml(false),
     MAC_URL: links.mac,
     WINDOWS_URL: links.windows,
     WINDOWS_SCREEN_URL: links.windowsScreen.slice(SITE_URL.length),
@@ -369,6 +392,8 @@ function sitemapXml(docs) {
   const entries = [
     ['/', site, '1.0'],
     ['/wispr-flow-alternative/', compareDate(), '0.9'],
+    ['/privacy/', privacy.updated, '0.5'],
+    ['/support/', gitDate('site/content.js'), '0.6'],
     ['/docs/', [...docs.map((d) => d.updated), gitDate('site/content.js')].sort().at(-1), '0.8'],
     ...docs.map((d) => [`/docs/${d.name}/`, d.updated, '0.7'])
   ]
@@ -388,7 +413,7 @@ function llmsTxt(docs) {
 
 ## Facts
 - Platforms: ${facts.macos} (Apple silicon and Intel, one universal download); ${facts.windows} (x64 and ARM, one installer)
-- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)
+- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)${facts.founders ? `; through ${facts.founders.ends}, it is $${facts.founders.price} with the code ${facts.founders.code}, and buyers at that price are founding members with 10% off every future paid product` : ''}
 - Privacy: records only while the hotkey is held; audio goes only to the provider the user configured; history, stats, and settings stay on the computer; no account, no murmur server, no telemetry
 - Cleanup fails open: if the cleanup model errors, the plain transcript is still inserted, so a dictation is never lost
 - Current version: ${version}
@@ -407,6 +432,8 @@ ${docs.map((d) => `- ${d.title}: ${links.doc(d.name)}`).join('\n')}
 - ${SITE_URL}/ : what murmur is, the download button, and answers to common questions
 - ${links.docs} : the docs, every page listed with its questions
 - ${links.compare} : murmur compared with Wispr Flow
+- ${SITE_URL}/support/ : how to get help
+- ${SITE_URL}/privacy/ : what leaves each device, and why (murmur collects nothing)
 
 ## Compared with Wispr Flow
 ${c.answer}
@@ -583,6 +610,7 @@ function docPage(docs, doc, font) {
         <article class="doc">
           <nav class="crumbs" aria-label="Breadcrumb"><a href="/docs/">docs</a> <span aria-hidden="true">/</span> <span aria-current="page">${escapeHtml(doc.short)}</span></nav>
           <h1>${escapeHtml(doc.title)}</h1>
+          ${doc.name === 'pro' ? foundersHtml(true) : ''}
           ${doc.html}
           <p class="doc-meta">Updated ${doc.updated} · <a href="${links.docSource(doc.name, DOCS_REF || 'main')}" target="_blank" rel="noopener noreferrer">this page on GitHub</a></p>
           ${next ? `<p class="doc-next">Next: <a href="/docs/${next.name}/">${escapeHtml(next.title)}</a></p>` : ''}
@@ -730,6 +758,45 @@ function comparePage(font) {
     ]
   }
   return subpage({ path, pageTitle: c.title, pageDescription: c.description, current: 'compare', body, data, font })
+}
+
+/** A page of questions and short answers, like a doc: privacy and support
+ *  (IOS-026), each heading a question with GitHub's anchor. */
+function infoPage({ path, name, info, font }) {
+  const answer = (item) =>
+    `<p>${answerHtml(item.a)}</p>${
+      item.points ? `\n        <ul class="points">\n          ${item.points.map(([lead, rest]) => `<li><strong>${escapeHtml(lead)}</strong> ${answerHtml(rest)}</li>`).join('\n          ')}\n        </ul>` : ''
+    }`
+  const plainAnswer = (item) => [plain(item.a), ...(item.points ?? []).map(([lead, rest]) => `${lead} ${plain(rest)}`)].join(' ')
+  for (const item of info.items) if (!isQuestion(item.q)) throw new Error(`site: ${path} heading "${item.q}" is not a question`)
+  const body = `<article class="doc">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="/">murmur</a> <span aria-hidden="true">/</span> <span aria-current="page">${name}</span></nav>
+        <h1>${escapeHtml(info.h1)}</h1>
+        <p class="lede">${escapeHtml(info.lede)}</p>
+        ${info.items.map((item) => `<h2 id="${slugify(item.q)}">${escapeHtml(item.q)}</h2>\n        ${answer(item)}`).join('\n\n        ')}
+        ${info.updated ? `<p class="sources">Last changed ${info.updated}.</p>` : ''}
+      </article>`
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': `${SITE_URL}${path}#page`,
+        name: info.title,
+        description: info.description,
+        url: `${SITE_URL}${path}`,
+        ...(info.updated ? { dateModified: info.updated } : {}),
+        publisher: ORG(),
+        about: { '@type': 'SoftwareApplication', '@id': `${SITE_URL}/#app`, name: 'murmur' }
+      },
+      crumbs([
+        ['murmur', '/'],
+        [name, path]
+      ]),
+      faqData(`${SITE_URL}${path}#faq`, info.items.map((item) => ({ q: item.q, a: plainAnswer(item) })))
+    ]
+  }
+  return subpage({ path, pageTitle: info.title, pageDescription: info.description, current: name, body, data, font })
 }
 
 function notFoundPage(font) {
@@ -907,6 +974,8 @@ async function main() {
     ['/docs/', 'docs/index.html', docsIndexPage(docs, font.file)],
     ...docs.map((d) => [`/docs/${d.name}/`, `docs/${d.name}/index.html`, docPage(docs, d, font.file)]),
     ['/wispr-flow-alternative/', 'wispr-flow-alternative/index.html', comparePage(font.file)],
+    ['/privacy/', 'privacy/index.html', infoPage({ path: '/privacy/', name: 'privacy', info: privacy, font: font.file })],
+    ['/support/', 'support/index.html', infoPage({ path: '/support/', name: 'support', info: support, font: font.file })],
     ['/404', '404.html', notFoundPage(font.file)]
   ]
   const linkedFiles = checkLinks([['/', home], ...pages.map(([path, , html]) => [path, html])])
@@ -940,7 +1009,7 @@ async function main() {
   writeFileSync(join(out, 'llms-full.txt'), llmsFullTxt(docs))
   checkFiles(linkedFiles)
   console.log(
-    `site: built site/dist for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; ${pages.length + 1} pages; docs from ${DOCS_REF || 'the working tree'}; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
+    `site: built ${out === join(here, 'dist') ? 'site/dist' : out} for ${SITE_URL}${SITE_URL === PLACEHOLDER ? ' (placeholder; set SITE_URL for a real build)' : ''}; ${pages.length + 1} pages; docs from ${DOCS_REF || 'the working tree'}; display face ${font.file ? 'fetched' : 'skipped'}; film ${hasFilm() ? 'included' : 'not found'}`
   )
 }
 

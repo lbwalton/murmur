@@ -37,6 +37,18 @@ describe('formatTranscript against shared/test-vectors.json', () => {
     })
   }
 
+  it('orders equal-length spoken phrases by symbol, then phrase', () => {
+    // Every platform must agree on this order (format-spec.json). The map
+    // lists a b first, but b c's symbol X sorts before Y, so b c goes first.
+    const s = { ...(spec as unknown as FormatSpec), spokenPunctuation: { map: { 'a b': 'Y', 'b c': 'X' } } }
+    expect(formatTranscript('a b c', { level: 'full', numbers: 'auto' }, s)).toBe('AX')
+  })
+
+  it('gives every number unit its own value, so digits have one word each', () => {
+    const values = Object.values((spec as unknown as FormatSpec).numbers.units)
+    expect(new Set(values).size).toBe(values.length)
+  })
+
   it('is a pure function: same input, same output, no mutation', () => {
     const options: FormatOptions = { level: 'full', numbers: 'auto' }
     const s = spec as unknown as FormatSpec

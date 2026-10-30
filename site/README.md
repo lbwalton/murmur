@@ -30,7 +30,9 @@ What the build fetches or copies, none of which is ever committed:
 
 - **The display face.** Bricolage Grotesque (SIL Open Font License 1.1), the extra bold in its condensed widths, cut to the characters the page uses, from Google Fonts at build time, with its license beside it in `fonts/OFL.txt`. Offline (`SITE_OFFLINE=1`) or on a fetch failure the build carries on and the page uses system fonts.
 - **The film.** One drop, copied from `FILM_DIR` (default `~/Projects/murmur-film/out`, outside the repo). Without it the page has no film section.
-- **The support address.** `SUPPORT_EMAIL` adds it to the footer, the structured data, and llms.txt.
+- **The support address.** `SUPPORT_EMAIL` adds it to the footer, the structured data, llms.txt, and the support and privacy pages. A deploy build stops without it, since the support page the App Store links to must carry contact information (IOS-026).
+
+`SITE_OUT` writes the build somewhere other than `site/dist`; the tests use it, so running them never replaces a deploy build waiting there.
 
 What the page says lives in `content.js`. The FAQ renders from it twice, as the visible answers and as FAQPage JSON-LD, so the two always match; facts that drift (price, OS minimums) carry their verified-on date there.
 
