@@ -16,7 +16,7 @@ A rail on the left lists every section in three groups. Essentials: Provider and
 
 The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening an Advanced fold if the setting lives inside one. Esc clears the search.
 
-Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (base URL, profiles, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Toggle show every option as a button in a row.
+Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (base URL, profiles, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row.
 
 ## How long is my history kept, and where?
 
@@ -63,7 +63,35 @@ Set a transform chord under Settings, Transform. Select text in any app, hold th
 
 ## What is the difference between hold to talk and toggle?
 
-**Hold to talk**: recording runs while the hotkey is held, stops when released. Best for short, frequent dictations. **Toggle**: tap once to start, tap again to stop. Best for long passages. Rapid accidental double-taps are absorbed.
+**Hold to talk**: recording runs while the hotkey is held, stops when released. Best for short, frequent dictations. For a long passage, tap the hotkey twice instead and keep talking without holding it; one more tap stops it (see [How do I dictate hands-free?](#how-do-i-dictate-hands-free)). **Tap to start, tap to stop** (toggle): tap once to start, tap again to stop, every time, for anyone who cannot comfortably hold a key or tap it twice. Rapid accidental double-taps are absorbed.
+
+## How do I dictate hands-free?
+
+Tap the dictation hotkey twice, quickly, and keep talking. murmur holds the mic open until you tap the hotkey once more, then your words land at the cursor as usual.
+
+- **Starting**: a tap is a press shorter than 300 ms, and the second tap has to come within 400 ms of letting go of the first. Recording starts on the very first press, so nothing you say is lost while murmur works out whether you are holding or tapping. A press held longer is ordinary hold to talk, exactly as before.
+- **Stopping**: one tap of the hotkey ends the take, and the words go through the normal pipeline: pasted at your cursor, or left on the clipboard in Copy only mode. For half a second after the lock murmur ignores the hotkey, so a fumbled third tap cannot end the take early.
+- **Throwing a take away**: press Escape. Nothing is uploaded and nothing goes to history; the pill ends with a dry grey brush scrape. Escape still reaches the app in front, as every key does.
+- **What the pill shows**: the pill's own edge closes into a loop in one amber brush stroke, and the timer shows how long the mic has been open (0:42). A closed loop means murmur is holding the mic open. In the last minute before the 12 minute limit, the loop dries from amber to gold. With sound cues on, a soft rising 2-note chime confirms the lock. With reduced motion on, the loop is drawn whole and still. Holding the hotkey looks exactly as it always has.
+- **Your screen stays awake** while a take is locked, since you are not touching the keyboard or mouse. It goes back to normal the moment the take ends.
+- **The tray menu** shows Stop hands-free and Discard while a take is locked. Discard does what Escape does. Stop hands-free saves the words to history and the clipboard without pasting, because clicking the tray can move focus away from the app you were in.
+- **It stops on its own** after 2 minutes of quiet, when your screen locks, or at 12 minutes, and saves the words without pasting; see [Why did murmur stop my hands-free take?](#why-did-murmur-stop-my-hands-free-take).
+- **Notes**: the note chord works the same way, so a long brain dump is one double-tap away. The note files to your inbox and sorts like any other note. **Transform** stays hold only: it reads your selection when the take ends, and a long take could rewrite the wrong text.
+- **Modifier-only hotkeys** (a hotkey that is just Ctrl, say) count a tap only when no other key joins it, and the lock and the stop both wait for that clean release. A press joined by another key, like Ctrl+C after a Ctrl tap, is never a tap, a lock, or a stop, so a shortcut can never lock the mic or end a take halfway through.
+
+Prefer hold to talk exactly as it was? Switch off Settings, Dictation, Double-tap for hands-free. The switch is on by default and shows under Hold to talk; Tap to start, tap to stop is unchanged by it.
+
+## Why did murmur stop my hands-free take?
+
+So a mic is never left open by accident, a locked take stops on its own in 3 cases:
+
+- **2 minutes of quiet**: less than 200 ms of speech in the last 2 minutes, judged by the same speech check that keeps a silent take from being sent, so a cough or a key click does not keep the mic open.
+- **Your screen locked.**
+- **12 minutes**, the longest take. murmur uploads 16 kHz mono audio, 32 KB a second, so 12 minutes is about 23 MB, under the 25 MB Groq accepts for an uploaded file (console.groq.com/docs/speech-to-text, checked 2026-10-30).
+
+These takes are transcribed and saved to history and the clipboard, never pasted, because the app in front may have changed while you talked. A notification says why the take stopped and where the words went; paste them yourself, or with your paste-last chord. A note is filed as usual. If the transcription fails, the notification says the take is waiting under Retry on Home.
+
+If your computer sleeps, shuts down, or murmur quits (an update restart included) during a locked take, there is no time or network to transcribe it. The take stops, its audio goes on the Retry list on Home, and a notification says so; press Retry when you are back. Nothing is transcribed or copied later on its own, and murmur never installs a downloaded update while a take is locked. On Windows a shutdown does not wait for murmur, so that save is best effort.
 
 ## How do I choose which microphone murmur uses?
 
@@ -202,7 +230,7 @@ The macOS permissions list under Settings, System shows live status and deep-lin
 
 ## What do the sound cues mean?
 
-Quiet blips confirm what murmur is doing without you looking: a rising two-tone when recording starts, falling when it stops, a soft ding when text lands, a low note for no speech, and a buzz for errors. All synthesized live, no sound files anywhere. Settings, System, Sounds has the switch and a volume slider.
+Quiet blips confirm what murmur is doing without you looking: a rising two-tone when recording starts, falling when it stops, a softer, higher rising pair when a hands-free take locks, a soft ding when text lands, a low note for no speech, and a buzz for errors. All synthesized live, no sound files anywhere. Settings, System, Sounds has the switch and a volume slider.
 
 ## Does murmur start automatically at login?
 

@@ -564,6 +564,17 @@ export function isAudioReady(): boolean {
   return ready
 }
 
+/** Smoke only: hold the capture window's thread for ms, as a stuck
+ *  window would, so whatever it is asked next is answered late (the
+ *  hands-free park's give-up, US-117). No-op outside smoke. */
+export function stallCaptureForSmoke(ms: number): void {
+  if (!isSmoke) return
+  const busy = `{ const until = Date.now() + ${Math.round(ms)}; while (Date.now() < until) {} }`
+  void aliveAudio()
+    ?.webContents.executeJavaScript(busy)
+    .catch(() => undefined)
+}
+
 /** Play a sound cue, honoring the sounds setting. Fire and forget. */
 export function playCue(
   cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted' | 'lock'
