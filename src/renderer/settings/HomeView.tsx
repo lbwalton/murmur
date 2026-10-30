@@ -90,8 +90,8 @@ function reasonText(take: WaitingTake): string {
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
   if (f?.kind === 'parked') {
-    if (f.detail === 'quit') return 'Saved when murmur quit'
-    return `Saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
+    if (f.detail === 'quit') return 'saved when murmur quit'
+    return `saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
   }
   return `not transcribed: ${reasonText(take)}`
 }

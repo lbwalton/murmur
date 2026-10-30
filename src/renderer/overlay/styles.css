@@ -118,8 +118,11 @@ body {
   background: var(--red-soft);
 }
 
+/* Signal amber is for live states only: a take that ended, kept or
+   thrown away, settles to cream. */
 .pill-nospeech .bar,
-.pill-inserted .bar {
+.pill-inserted .bar,
+.pill-cancelled .bar {
   background: var(--cream-22);
 }
 

@@ -9,7 +9,7 @@ import { app } from 'electron'
 import { getApiKey, getSettings } from '../settings'
 import { appFetch } from '../net'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { type TranscribeResult, transcribe } from './provider'
+import { type TranscribeResult, transcribe, uploadTimeoutMs } from './provider'
 import { type TakeKind, type TakeRecord, saveRecovery } from './recovery'
 
 export const SMOKE_TRANSCRIPT = 'smoke transcript from the mock provider'
@@ -66,11 +66,12 @@ export async function transcribeWav(
   }
 
   const settings = getSettings()
-  const result = await transcribe(wav, {
-    baseUrl: settings.provider.baseUrl,
-    model: settings.provider.sttModel,
-    apiKey: key
-  })
+  // A long take needs longer to upload: live takes and retries alike.
+  const result = await transcribe(
+    wav,
+    { baseUrl: settings.provider.baseUrl, model: settings.provider.sttModel, apiKey: key },
+    { timeoutMs: uploadTimeoutMs(wav.byteLength) }
+  )
   if (!result.ok) return { ...result, saved: save({ kind: result.kind, detail: result.detail }) }
   return result
 }

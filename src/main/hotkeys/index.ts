@@ -12,6 +12,7 @@ import {
   type ParsedBinding,
   buildKeyMap,
   chordRefusal,
+  isPlainPress,
   isSafeBinding,
   matchesEvent,
   parseBinding
@@ -281,7 +282,8 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
   onKeyDown = (event) => {
     if (MODIFIER_BY_CODE.has(event.keycode)) heldModifiers.add(event.keycode)
     if (suppressed) return
-    if (event.keycode === UiohookKey.Escape) callbacks.cancel?.()
+    // A plain Escape only: with a modifier it is a system shortcut.
+    if (event.keycode === UiohookKey.Escape && isPlainPress(event)) callbacks.cancel?.()
     dispatcher?.keydown(event)
     noteDispatcher?.keydown(event)
     transformDispatcher?.keydown(event)

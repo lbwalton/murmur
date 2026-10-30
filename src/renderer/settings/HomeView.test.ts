@@ -49,8 +49,8 @@ describe('a waiting take', () => {
   })
 
   it('a hands-free take parked on sleep or quit says when it was saved', () => {
-    expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'darwin')).toBe('Saved when your Mac went to sleep')
-    expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'win32')).toBe('Saved when your PC went to sleep')
-    expect(waitingLine(take({ kind: 'parked', detail: 'quit' }), 'darwin')).toBe('Saved when murmur quit')
+    expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'darwin')).toBe('saved when your Mac went to sleep')
+    expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'win32')).toBe('saved when your PC went to sleep')
+    expect(waitingLine(take({ kind: 'parked', detail: 'quit' }), 'darwin')).toBe('saved when murmur quit')
   })
 })

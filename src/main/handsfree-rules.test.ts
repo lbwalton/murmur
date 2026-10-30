@@ -8,6 +8,7 @@ import {
   SilenceWatch,
   TAKE_LIMIT_MS,
   VOICED_LEVEL,
+  failedNotice,
   parkNotice,
   retryNotice,
   stopNotice
@@ -117,6 +118,17 @@ describe('the hands-free notices', () => {
     expect(retryNotice('limit').body).toBe(`Stopped at 12 minutes, the longest take. ${retry}`)
     expect(retryNotice('changed').body).toBe(`Stopped because the hotkey changed. ${retry}`)
     expect(retryNotice('menu')).toEqual({ title: 'murmur hands-free', body: retry })
+  })
+
+  it('a stopped take that could not be saved says so', () => {
+    expect(failedNotice('silence')).toEqual({
+      title: 'murmur hands-free',
+      body: 'Stopped after 2 minutes of quiet. The take could not be saved.'
+    })
+    expect(failedNotice('lock').body).toBe('Stopped when your screen locked. The take could not be saved.')
+    expect(failedNotice('limit').body).toBe('Stopped at 12 minutes, the longest take. The take could not be saved.')
+    expect(failedNotice('changed').body).toBe('Stopped because the hotkey changed. The take could not be saved.')
+    expect(failedNotice('menu')).toEqual({ title: 'murmur hands-free', body: 'The take could not be saved.' })
   })
 
   it('a parked take says why and where to find it', () => {

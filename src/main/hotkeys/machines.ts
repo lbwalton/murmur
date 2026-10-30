@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Dictation trigger state machines. Pure: no timers of their own, the
-// clock is injected, callbacks fire synchronously.
+// Dictation trigger state machines. Pure: the clock is injected, and so
+// is the one timer (HandsFreeMachine's second-tap window, setTimeout
+// unless a test passes its own schedule); callbacks fire synchronously.
 
 export interface DictationCallbacks {
   /** Begin a session. Returning false means nothing began (another
@@ -113,9 +114,14 @@ type HandsFreeState = 'idle' | 'pressed' | 'tapped' | 'lockPending' | 'locked'
  *   pressed -> idle on release at or after HOLD_MS (stop)
  *   pressed -> tapped on a shorter release; SECOND_TAP_MS later -> idle (discard)
  *   tapped -> locked on a second down (lock); LOCK_GUARD_MS of ignored keys follow
+ *   tapped -> lockPending on a second down with cleanRelease; its clean
+ *     release -> locked (lock), a joined key -> idle (discard)
  *   locked -> idle on the next real press (stop)
  * cleanRelease (modifier-only bindings) moves the lock and the stop from the
  * press to the release of a press that no other key joined (interrupt()).
+ * The key-repeat latch is physical: only a real release clears it, so a
+ * reset() or abandon() while the key is down never lets its repeats start
+ * a take.
  */
 export class HandsFreeMachine implements TriggerMachine {
   private state: HandsFreeState = 'idle'
@@ -201,8 +207,15 @@ export class HandsFreeMachine implements TriggerMachine {
         }, SECOND_TAP_MS)
         return
       case 'lockPending':
-        if (this.clean) this.lock(this.now())
-        else this.state = 'tapped' // unreachable: interrupt() discards first
+        if (this.clean) {
+          this.lock(this.now())
+          return
+        }
+        // Unreachable (interrupt() discards a joined lockPending press
+        // first); should it ever happen, the take goes, never locks.
+        this.clearTimer()
+        this.state = 'idle'
+        this.cb.discard()
         return
       case 'locked':
         if (this.armedStop && this.clean) {
@@ -246,10 +259,11 @@ export class HandsFreeMachine implements TriggerMachine {
     return this.state === 'locked'
   }
 
+  /** Forget the gesture without callbacks. held survives: a key still
+   *  down keeps repeating, and only its real release ends the press. */
   reset(): void {
     this.clearTimer()
     this.state = 'idle'
-    this.held = false
     this.ignoreUp = false
     this.armedStop = false
     this.clean = true

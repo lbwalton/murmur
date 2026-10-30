@@ -71,7 +71,7 @@ Tap the dictation hotkey twice, quickly, and keep talking. murmur holds the mic 
 
 - **Starting**: a tap is a press shorter than 300 ms, and the second tap has to come within 400 ms of letting go of the first. Recording starts on the very first press, so nothing you say is lost while murmur works out whether you are holding or tapping. A press held longer is ordinary hold to talk, exactly as before.
 - **Stopping**: one tap of the hotkey ends the take, and the words go through the normal pipeline: pasted at your cursor, or left on the clipboard in Copy only mode. For half a second after the lock murmur ignores the hotkey, so a fumbled third tap cannot end the take early.
-- **Throwing a take away**: press Escape. Nothing is uploaded and nothing goes to history; the pill ends with a dry grey brush scrape. Escape still reaches the app in front, as every key does.
+- **Throwing a take away**: press Escape on its own. Nothing is uploaded and nothing goes to history; the pill ends with a dry grey brush scrape. Escape still reaches the app in front, as every key does. With a modifier key held it is a different shortcut (Cmd+Option+Escape is Force Quit on the Mac, Ctrl+Escape opens Start on Windows), so the take keeps going.
 - **What the pill shows**: the pill's own edge closes into a loop in one amber brush stroke, and the timer shows how long the mic has been open (0:42). A closed loop means murmur is holding the mic open. In the last minute before the 12 minute limit, the loop dries from amber to gold. With sound cues on, a soft rising 2-note chime confirms the lock. With reduced motion on, the loop is drawn whole and still. Holding the hotkey looks exactly as it always has.
 - **Your screen stays awake** while a take is locked, since you are not touching the keyboard or mouse. It goes back to normal the moment the take ends.
 - **The tray menu** shows Stop hands-free and Discard while a take is locked. Discard does what Escape does. Stop hands-free saves the words to history and the clipboard without pasting, because clicking the tray can move focus away from the app you were in.
@@ -85,11 +85,11 @@ Prefer hold to talk exactly as it was? Switch off Settings, Dictation, Double-ta
 
 So a mic is never left open by accident, a locked take stops on its own in 3 cases:
 
-- **2 minutes of quiet**: less than 200 ms of speech in the last 2 minutes, judged by the same speech check that keeps a silent take from being sent, so a cough or a key click does not keep the mic open.
+- **2 minutes of quiet**: less than 200 ms of speech in the last 2 minutes, so a cough or a key click does not keep the mic open. Sound counts as speech when it reaches the loudness threshold of the speech check that keeps a silent take from being sent.
 - **Your screen locked.**
 - **12 minutes**, the longest take. murmur uploads 16 kHz mono audio, 32 KB a second, so 12 minutes is about 23 MB, under the 25 MB Groq accepts for an uploaded file (console.groq.com/docs/speech-to-text, checked 2026-10-30).
 
-These takes are transcribed and saved to history and the clipboard, never pasted, because the app in front may have changed while you talked. A notification says why the take stopped and where the words went; paste them yourself, or with your paste-last chord. A note is filed as usual. If the transcription fails, the notification says the take is waiting under Retry on Home.
+These takes are transcribed and saved to history and the clipboard, never pasted, because the app in front may have changed while you talked. A notification says why the take stopped and where the words went; paste them yourself, or with your paste-last chord. A note is filed as usual. If the transcription fails, the notification says the take is waiting under Retry on Home; if the take could not be saved at all, the notification says that too.
 
 If your computer sleeps, shuts down, or murmur quits (an update restart included) during a locked take, there is no time or network to transcribe it. The take stops, its audio goes on the Retry list on Home, and a notification says so; press Retry when you are back. Nothing is transcribed or copied later on its own, and murmur never installs a downloaded update while a take is locked. On Windows a shutdown does not wait for murmur, so that save is best effort.
 

@@ -83,6 +83,13 @@ export function retryNotice(reason: StopReason): { title: string; body: string }
   return { title: TITLE, body: `${STOPPED[reason]}${RETRY}` }
 }
 
+/** The notification for a take that stopped on its own and was lost
+ *  (a dead capture, a failed write, no Retry save): why, then that
+ *  nothing was kept, so the user is never left waiting on words. */
+export function failedNotice(reason: StopReason): { title: string; body: string } {
+  return { title: TITLE, body: `${STOPPED[reason]}The take could not be saved.` }
+}
+
 /** The notification for a take kept for Retry: why, then where. */
 export function parkNotice(
   reason: ParkReason,

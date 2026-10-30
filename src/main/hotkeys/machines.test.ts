@@ -346,6 +346,51 @@ describe('HandsFreeMachine', () => {
     expect(m.isActive()).toBe(false)
   })
 
+  it('reset keeps the key-repeat latch: a held key never starts a take until released', () => {
+    const { m, events } = rig()
+    m.keyDown()
+    m.reset()
+    m.keyDown() // OS key repeat of the same press
+    m.keyDown()
+    expect(events).toEqual(['start'])
+    expect(m.isActive()).toBe(false)
+    m.keyUp()
+    expect(events).toEqual(['start'])
+    m.keyDown()
+    expect(events).toEqual(['start', 'start'])
+    expect(m.isActive()).toBe(true)
+  })
+
+  it('reset during the guard press keeps the latch too', () => {
+    const { m, events, tick } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    tick(150)
+    m.keyDown()
+    m.keyUp()
+    tick(100)
+    m.keyDown() // inside the guard: ignored, still physically down
+    m.reset() // the take ended elsewhere (an auto-stop)
+    m.keyDown() // repeat
+    expect(events).toEqual(['start', 'lock'])
+    m.keyUp()
+    m.keyDown()
+    expect(events).toEqual(['start', 'lock', 'start'])
+  })
+
+  it('abandon keeps the key-repeat latch', () => {
+    const { m, events } = rig()
+    m.keyDown()
+    expect(m.abandon()).toBe('ended')
+    m.keyDown() // repeat
+    expect(events).toEqual(['start', 'stop'])
+    m.keyUp()
+    expect(events).toEqual(['start', 'stop'])
+    m.keyDown()
+    expect(events).toEqual(['start', 'stop', 'start'])
+  })
+
   it('abandon ends a press, discards a tap, and hands back a locked take', () => {
     const p = rig()
     p.m.keyDown()

@@ -17,8 +17,23 @@ export type TranscribeResult =
   | { ok: true; text: string }
   | { ok: false; kind: TranscribeErrorKind; detail: string }
 
+/** The shortest wait for an upload's answer, whatever its size. */
+export const MIN_UPLOAD_TIMEOUT_MS = 30_000
+
+/**
+ * How long one attempt may take to upload a WAV of this many bytes and
+ * hear back: 15 seconds for the answer plus the upload at 1 Mbps (125
+ * bytes a millisecond), never under 30 seconds. A 12 minute hands-free
+ * take is about 23 MB, which a fixed 30 seconds cut off on an ordinary
+ * home connection (US-117).
+ */
+export function uploadTimeoutMs(bytes: number): number {
+  return Math.max(MIN_UPLOAD_TIMEOUT_MS, 15_000 + bytes / 125)
+}
+
 export interface TranscribeOptions {
   fetchImpl?: typeof fetch
+  /** Per attempt. Defaults to MIN_UPLOAD_TIMEOUT_MS. */
   timeoutMs?: number
   /** Retries after the first attempt, for transient failures only. */
   retries?: number
@@ -78,7 +93,7 @@ export async function transcribe(
   cfg: TranscribeConfig,
   options: TranscribeOptions = {}
 ): Promise<TranscribeResult> {
-  const { fetchImpl = appFetch, timeoutMs = 30_000, retries = 1 } = options
+  const { fetchImpl = appFetch, timeoutMs = MIN_UPLOAD_TIMEOUT_MS, retries = 1 } = options
   let result = await attempt(wav, cfg, fetchImpl, timeoutMs)
   let remaining = retries
   while (!result.ok && RETRYABLE.includes(result.kind) && remaining > 0) {

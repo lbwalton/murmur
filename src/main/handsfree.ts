@@ -23,6 +23,7 @@ import {
   SilenceWatch,
   type StopReason,
   TAKE_LIMIT_MS,
+  failedNotice,
   parkNotice,
   retryNotice,
   stopNotice
@@ -123,6 +124,8 @@ function keepDisplayAwake(): number | null {
 function onLockScreen(): void {
   const take = locked
   if (!take || take.lockScreenTimer) return
+  // Stamped now, so the log shows how long a lid close takes to sleep.
+  log(`screen-lock wait=${LOCK_SCREEN_WAIT_MS}`)
   take.lockScreenTimer = setTimeout(() => {
     take.lockScreenTimer = null
     if (locked === take) void handsFreeAutoStop('lock')
@@ -207,9 +210,11 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   setOverlayLocked(false)
   log(`auto-stop reason=${reason} ms=${Date.now() - take.startedAt}`)
   const outcome = await dictationStop(take.kind, { save: reason })
-  // A take with no speech in it says nothing: the pill already did.
+  // A take with no speech in it says nothing: the pill already did. A
+  // lost take says so, since nobody was watching the pill.
   if (outcome === 'delivered') notify(stopNotice(reason, take.kind))
   else if (outcome === 'retry') notify(retryNotice(reason))
+  else if (outcome === 'failed') notify(failedNotice(reason))
 }
 
 /** No time or network to transcribe (sleep, shutdown, quit): the audio
@@ -219,6 +224,9 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
 export async function handsFreePark(reason: ParkReason): Promise<void> {
   const take = release()
   if (!take) return
+  // Stamped as the sleep or quit arrives; the park's own line follows
+  // once the audio is saved, which a sleep can delay past the wake.
+  log(`parking reason=${reason}`)
   parking = true
   try {
     resetHandsFreeGestures()
@@ -342,6 +350,7 @@ function registerHandsFreeSmoke(): void {
     const SPACE = key(UiohookKey.Space, { ctrlKey: true })
     const NOTE = key(UiohookKey.F18, { ctrlKey: true, shiftKey: true })
     const ESCAPE = key(UiohookKey.Escape)
+    const CTRL_ESCAPE = key(UiohookKey.Escape, { ctrlKey: true })
     const down = (ev: KeyEventLike): void => smokeHotkeyEvent('keydown', ev)
     const up = (ev: KeyEventLike): void => smokeHotkeyEvent('keyup', ev)
     const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)))
@@ -467,22 +476,27 @@ function registerHandsFreeSmoke(): void {
       seen.c = { locked: c !== null, cStopped, cSaved, clip: cClip === expected, notice: lastNotice?.body }
 
       // (d) Escape throws a locked take away: the pill scrapes, nothing
-      // is uploaded or kept.
+      // is uploaded or kept. Ctrl+Escape first (Start on Windows) is a
+      // system shortcut, not a cancel: the take stays locked.
       await begin()
       const dHistory = readHistory().length
       const d = await lockTake()
+      down(CTRL_ESCAPE)
+      up(CTRL_ESCAPE)
+      const dKeptOnCtrl = isHandsFreeLocked() && getOverlayState().locked && !has('[hands-free] cancel')
       down(ESCAPE)
       const dPhase = getOverlayPhase()
       up(ESCAPE)
       ok.d =
         d !== null &&
+        dKeptOnCtrl &&
         dPhase === 'cancelled' &&
         !isHandsFreeLocked() &&
         has('[hands-free] cancel') &&
         !has('[dictation]') &&
         readHistory().length === dHistory
       ok.j &&= !heldAwake(d?.hold ?? null)
-      seen.d = { locked: d !== null, dPhase }
+      seen.d = { locked: d !== null, dKeptOnCtrl, dPhase }
 
       // (e) With Double-tap for hands-free off, two quick taps are 2
       // short holds: each release ends its take, and nothing locks.
@@ -608,6 +622,8 @@ function registerHandsFreeSmoke(): void {
         k !== null &&
         kHeldThroughWait &&
         kParkLogged &&
+        // Both stamped as they arrive, for the live lid-close timing.
+        inOrder('[hands-free] screen-lock', '[hands-free] parking reason=sleep') &&
         has('saved=true') &&
         !has('auto-stop') &&
         parked() === kParked + 1 &&

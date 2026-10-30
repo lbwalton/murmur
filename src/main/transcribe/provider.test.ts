@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { type TranscribeConfig, transcribe } from './provider'
+import { MIN_UPLOAD_TIMEOUT_MS, type TranscribeConfig, transcribe, uploadTimeoutMs } from './provider'
 
 const cfg: TranscribeConfig = {
   baseUrl: 'https://api.example.com/v1/',
@@ -91,5 +91,30 @@ describe('transcribe', () => {
     const fetchImpl = (async () => jsonResponse(200, { nope: true })) as typeof fetch
     const result = await transcribe(wav, cfg, { fetchImpl, retries: 0 })
     expect(result).toMatchObject({ ok: false, kind: 'server', detail: 'response missing text' })
+  })
+})
+
+describe('uploadTimeoutMs', () => {
+  // 16 kHz 16-bit mono is 32,000 bytes a second, behind a 44 byte header.
+  const wavOf = (seconds: number): number => 44 + seconds * 32_000
+
+  it('gives a short take the 30 second floor', () => {
+    expect(MIN_UPLOAD_TIMEOUT_MS).toBe(30_000)
+    expect(uploadTimeoutMs(0)).toBe(30_000)
+    expect(uploadTimeoutMs(wavOf(10))).toBe(30_000)
+    // The floor holds until 15 seconds plus the upload at 1 Mbps passes it.
+    expect(uploadTimeoutMs(1_875_000)).toBe(30_000)
+    expect(uploadTimeoutMs(1_875_125)).toBe(30_001)
+  })
+
+  it('gives a 12 minute take about 199 seconds', () => {
+    // About 23 MB: 15 seconds for the answer plus 184 seconds of upload at 1 Mbps.
+    expect(Math.round(uploadTimeoutMs(wavOf(720)))).toBe(199_320)
+    expect(uploadTimeoutMs(23_000_000)).toBe(199_000)
+  })
+
+  it('grows with the payload', () => {
+    expect(uploadTimeoutMs(wavOf(300))).toBeGreaterThan(uploadTimeoutMs(wavOf(120)))
+    expect(uploadTimeoutMs(wavOf(720))).toBeGreaterThan(uploadTimeoutMs(wavOf(300)))
   })
 })
