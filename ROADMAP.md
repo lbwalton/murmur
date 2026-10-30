@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (91/116 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (92/117 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -95,6 +95,7 @@
 - [x] **US-113** Paste last waits for the chord to be let go
 - [x] **US-114** A spoken filler is never cut off as its own item
 - [x] **US-115** File only the item: commentary stays in the inbox
+- [x] **US-116** File only the item on a decision connection too
 
 ## Built, awaiting live verification
 
