@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "comment": "Desktop's pure note rules (src/shared/sorter.ts, todo.ts, receipt.ts, notes.ts) over these inputs, for every platform to give the same answers (ios/prd.json IOS-023). Seams are given as their two sides and the lead words they offer. Entries render at 10:32 on 2026-09-18 with the default entry template, and paths resolve at the same moment.",
+  "comment": "Desktop's pure note rules (src/shared/sorter.ts, todo.ts, receipt.ts, notes.ts) over these inputs, for every platform to give the same answers (ios/prd.json IOS-023). Seams are given as their two sides and the lead words they offer; a keep result's seams as their UTF-16 start and end. Entries render at 10:32 on 2026-09-18 with the default entry template, and paths resolve at the same moment.",
   "split": [
     {
       "text": "Call the dentist. Email Bob.",
@@ -410,6 +410,113 @@
         "then",
         "go"
       ]
+    },
+    {
+      "sentence": "Oh, and an idea: a Times Square takeover for BrambleCat.",
+      "sides": [],
+      "leadWords": []
+    },
+    {
+      "sentence": "Okay, so, um, buy milk, and eggs.",
+      "sides": [
+        {
+          "left": "Okay, so, um, buy milk",
+          "right": "eggs."
+        }
+      ],
+      "leadWords": [
+        "Okay",
+        "so",
+        "um",
+        "buy",
+        "milk"
+      ]
+    },
+    {
+      "sentence": "Buy milk, oh well, call Bob.",
+      "sides": [
+        {
+          "left": "Buy milk",
+          "right": "oh well, call Bob."
+        },
+        {
+          "left": "Buy milk, oh well",
+          "right": "call Bob."
+        }
+      ],
+      "leadWords": [
+        "Buy",
+        "milk",
+        "oh",
+        "well"
+      ]
+    },
+    {
+      "sentence": "Call the pharmacy, ER, and urgent care.",
+      "sides": [
+        {
+          "left": "Call the pharmacy",
+          "right": "ER, and urgent care."
+        },
+        {
+          "left": "Call the pharmacy, ER",
+          "right": "urgent care."
+        }
+      ],
+      "leadWords": [
+        "Call",
+        "the",
+        "pharmacy",
+        "ER"
+      ]
+    },
+    {
+      "sentence": "Um, okay.",
+      "sides": [],
+      "leadWords": []
+    },
+    {
+      "sentence": "Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, buy milk, and eggs.",
+      "sides": [
+        {
+          "left": "Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, Okay, buy milk",
+          "right": "eggs."
+        }
+      ],
+      "leadWords": [
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "Okay",
+        "buy",
+        "milk"
+      ]
     }
   ],
   "cuts": [
@@ -577,6 +684,42 @@
       "lead": null,
       "pieces": [
         "Buy milk and bread."
+      ]
+    },
+    {
+      "sentence": "Buy milk, oh well, call Bob.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Buy milk",
+        "oh well, call Bob"
+      ]
+    },
+    {
+      "sentence": "Call the pharmacy, ER, and urgent care.",
+      "confirmed": [
+        1,
+        2
+      ],
+      "lead": null,
+      "pieces": [
+        "Call the pharmacy",
+        "ER",
+        "urgent care"
+      ]
+    },
+    {
+      "sentence": "Okay, so, um, buy milk, and eggs.",
+      "confirmed": [
+        1
+      ],
+      "lead": null,
+      "pieces": [
+        "Okay, so, um, buy milk",
+        "eggs"
       ]
     }
   ],
@@ -1087,6 +1230,539 @@
         "topic": "",
         "seams": {},
         "relations": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"idea\",\"keep\":{\"2\":[5,10]}}",
+      "opts": {
+        "keepCounts": [
+          4,
+          10
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "idea"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {
+          "2": [
+            5,
+            10
+          ]
+        }
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[1,4]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[\"2\",4]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[3,2]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[1.5,3],\" 1\":[2,3]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {
+          "1": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[2,3,4]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 2,
+      "candidate": "{\"1\":\"task\",\"2\":\"task\",\"keep\":{\"2\":[1,2],\"3\":[1,2]}}",
+      "opts": {
+        "keepCounts": [
+          4,
+          0
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task",
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[2,3]}}",
+      "opts": {},
+      "verdict": {
+        "ok": false,
+        "reason": "extra sentences"
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":[[2,3]]}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    },
+    {
+      "count": 1,
+      "candidate": "{\"1\":\"task\",\"keep\":{\"1\":[0,3]}}",
+      "opts": {
+        "keepCounts": [
+          4
+        ]
+      },
+      "verdict": {
+        "ok": true,
+        "labels": [
+          "task"
+        ],
+        "topic": "",
+        "seams": {},
+        "relations": {},
+        "keep": {}
+      }
+    }
+  ],
+  "keepWords": [
+    {
+      "sentence": "Oh, and an idea: a rooftop launch party.",
+      "words": [
+        "Oh,",
+        "and",
+        "an",
+        "idea:",
+        "a",
+        "rooftop",
+        "launch",
+        "party."
+      ]
+    },
+    {
+      "sentence": "Hi there",
+      "words": []
+    },
+    {
+      "sentence": "Call the vet.",
+      "words": [
+        "Call",
+        "the",
+        "vet."
+      ]
+    },
+    {
+      "sentence": "- [ ] call Sam about the deck",
+      "words": []
+    },
+    {
+      "sentence": "1. renew the passport today",
+      "words": []
+    },
+    {
+      "sentence": "w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 w32 w33 w34 w35 w36 w37 w38 w39 w40 w41 w42 w43 w44 w45 w46 w47 w48 w49 w50 w51 w52 w53 w54 w55 w56 w57 w58 w59 w60.",
+      "words": [
+        "w1",
+        "w2",
+        "w3",
+        "w4",
+        "w5",
+        "w6",
+        "w7",
+        "w8",
+        "w9",
+        "w10",
+        "w11",
+        "w12",
+        "w13",
+        "w14",
+        "w15",
+        "w16",
+        "w17",
+        "w18",
+        "w19",
+        "w20",
+        "w21",
+        "w22",
+        "w23",
+        "w24",
+        "w25",
+        "w26",
+        "w27",
+        "w28",
+        "w29",
+        "w30",
+        "w31",
+        "w32",
+        "w33",
+        "w34",
+        "w35",
+        "w36",
+        "w37",
+        "w38",
+        "w39",
+        "w40",
+        "w41",
+        "w42",
+        "w43",
+        "w44",
+        "w45",
+        "w46",
+        "w47",
+        "w48",
+        "w49",
+        "w50",
+        "w51",
+        "w52",
+        "w53",
+        "w54",
+        "w55",
+        "w56",
+        "w57",
+        "w58",
+        "w59",
+        "w60."
+      ]
+    },
+    {
+      "sentence": "w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 w32 w33 w34 w35 w36 w37 w38 w39 w40 w41 w42 w43 w44 w45 w46 w47 w48 w49 w50 w51 w52 w53 w54 w55 w56 w57 w58 w59 w60 w61.",
+      "words": []
+    },
+    {
+      "sentence": "Buy café crème, and 🍎 apples.",
+      "words": [
+        "Buy",
+        "café",
+        "crème,",
+        "and",
+        "🍎",
+        "apples."
+      ]
+    }
+  ],
+  "keeps": [
+    {
+      "sentence": "Oh, and an idea: a rooftop launch party.",
+      "span": [
+        5,
+        8
+      ],
+      "result": {
+        "sentence": "a rooftop launch party.",
+        "seams": [],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Call the vet, I think.",
+      "span": [
+        1,
+        3
+      ],
+      "result": {
+        "sentence": "Call the vet",
+        "seams": [],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Honestly, tomorrow I need to buy apples, rice, and coffee.",
+      "span": [
+        2,
+        10
+      ],
+      "confirmed": [
+        2,
+        3
+      ],
+      "start": 7,
+      "result": {
+        "sentence": "tomorrow I need to buy apples, rice, and coffee.",
+        "seams": [
+          {
+            "start": 29,
+            "end": 31
+          },
+          {
+            "start": 35,
+            "end": 41
+          }
+        ],
+        "confirmed": [
+          1,
+          2
+        ],
+        "start": 6
+      }
+    },
+    {
+      "sentence": "Honestly, tomorrow I need to buy apples, rice, and coffee.",
+      "span": [
+        2,
+        8
+      ],
+      "confirmed": [
+        2,
+        3
+      ],
+      "start": 7,
+      "result": {
+        "sentence": "tomorrow I need to buy apples, rice",
+        "seams": [
+          {
+            "start": 29,
+            "end": 31
+          }
+        ],
+        "confirmed": [
+          1
+        ],
+        "start": 6
+      }
+    },
+    {
+      "sentence": "Honestly, tomorrow I need to buy apples, rice, and coffee.",
+      "span": [
+        8,
+        10
+      ],
+      "confirmed": [
+        2,
+        3
+      ],
+      "start": 7,
+      "result": {
+        "sentence": "rice, and coffee.",
+        "seams": [
+          {
+            "start": 4,
+            "end": 10
+          }
+        ],
+        "confirmed": [
+          1
+        ]
+      }
+    },
+    {
+      "sentence": "Oh, and an idea: a podcast tour.",
+      "span": [
+        1,
+        2
+      ],
+      "result": {
+        "sentence": "Oh, and an idea: a podcast tour.",
+        "seams": [],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Pack the tent, stove, etc. tonight.",
+      "span": [
+        1,
+        4
+      ],
+      "result": {
+        "sentence": "Pack the tent, stove",
+        "seams": [
+          {
+            "start": 13,
+            "end": 15
+          }
+        ],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Oh, an idea: buy café crème, and 🍎 apples.",
+      "span": [
+        4,
+        9
+      ],
+      "confirmed": [
+        1
+      ],
+      "result": {
+        "sentence": "buy café crème, and 🍎 apples.",
+        "seams": [
+          {
+            "start": 14,
+            "end": 20
+          }
+        ],
+        "confirmed": [
+          1
+        ]
+      }
+    },
+    {
+      "sentence": "Call the vet, I think.",
+      "span": [
+        0,
+        3
+      ],
+      "result": {
+        "sentence": "Call the vet, I think.",
+        "seams": [
+          {
+            "start": 12,
+            "end": 14
+          }
+        ],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Call the vet, I think.",
+      "span": [
+        3,
+        99
+      ],
+      "result": {
+        "sentence": "Call the vet, I think.",
+        "seams": [
+          {
+            "start": 12,
+            "end": 14
+          }
+        ],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Call the vet, I think.",
+      "span": [
+        3,
+        2
+      ],
+      "result": {
+        "sentence": "Call the vet, I think.",
+        "seams": [
+          {
+            "start": 12,
+            "end": 14
+          }
+        ],
+        "confirmed": []
+      }
+    },
+    {
+      "sentence": "Call the vet, I think.",
+      "span": [
+        1,
+        5
+      ],
+      "result": {
+        "sentence": "Call the vet, I think.",
+        "seams": [
+          {
+            "start": 12,
+            "end": 14
+          }
+        ],
+        "confirmed": []
       }
     }
   ],

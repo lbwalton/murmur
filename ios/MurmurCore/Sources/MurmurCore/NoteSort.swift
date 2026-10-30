@@ -126,7 +126,7 @@ public enum NoteSort {
         let units = Sorter.splitUnits(input.text)
         let all = units.sentences
         let positions = only ?? Array(all.indices)
-        let sentences = positions.map { all[$0] }
+        var sentences = positions.map { all[$0] }
         let unitLeads = positions.map { units.leads[$0] }
         if sentences.isEmpty { return (SortReport(outcome: .skipped, reason: "nothing to sort"), memory) }
         // Held and settled lines follow the note: a fresh note starts
@@ -141,31 +141,58 @@ public enum NoteSort {
         }
         guard let ask else { return (SortReport(outcome: .failed, reason: "no connection"), memory) }
 
-        let seams = sentences.map(Sorter.findSeams)
+        var seams = sentences.map(Sorter.findSeams)
         let seamCounts = seams.map(\.count)
         let offerSeams = seamCounts.contains { $0 > 0 }
         let leadCounts = sentences.indices.map { Sorter.leadWords(sentences[$0], seams[$0], rules: rules).count }
         let offerLeads = leadCounts.contains { $0 > 0 }
+        // Keep (IOS-033, desktop US-115): for a task or idea sentence the
+        // model points at the first and last word worth filing; numbers only.
+        let keepCounts = sentences.map { Sorter.keepWords($0, rules: rules).count }
+        let offerKeep = keepCounts.contains { $0 > 0 }
         let tasksText = folder.read(rules.layout.tasks) ?? ""
         let items = Compare.context(tasks: tasksText, ideas: folder.read(rules.layout.ideas) ?? "", cap: rules.compareCap)
 
         var system = [rules.systemPrompt.joined(separator: " ")]
         if offerSeams { system.append(rules.seamsPrompt.joined(separator: " ")) }
         if offerLeads { system.append(rules.leadsPrompt.joined(separator: " ")) }
+        if offerKeep { system.append(rules.keepPrompt.joined(separator: " ")) }
         if !items.isEmpty { system.append(rules.relationsPrompt.joined(separator: " ")) }
         var user = [Sorter.numberedList(sentences)]
         if offerSeams { user.append("Seams:\n" + Sorter.seamPrompt(sentences, seams)) }
         if offerLeads { user.append("Lead words:\n" + Sorter.leadPrompt(sentences, seams, rules: rules)) }
+        if offerKeep { user.append("Words:\n" + Sorter.keepPrompt(sentences, rules: rules)) }
         if !items.isEmpty { user.append(Compare.contextPrompt(items, rules: rules)) }
         let reply = await ask(system.joined(separator: " "), user.joined(separator: "\n\n"))
         guard case let .content(content) = reply else {
             if case let .failed(reason) = reply { return (SortReport(outcome: .failed, reason: reason), memory) }
             return (SortReport(outcome: .failed), memory)
         }
-        let reading = Sorter.validate(sentences.count, content, seamCounts: seamCounts, items: items.count, leadCounts: leadCounts)
-        guard case let .labeled(verdict) = reading else {
+        let reading = Sorter.validate(sentences.count, content, seamCounts: seamCounts, items: items.count, leadCounts: leadCounts, keepCounts: keepCounts)
+        guard case var .labeled(verdict) = reading else {
             if case let .rejected(reason) = reading { return (SortReport(outcome: .rejected, reason: reason), memory) }
             return (SortReport(outcome: .rejected), memory)
+        }
+
+        // File only the item (IOS-033, desktop US-115): a task or idea
+        // sentence the model trimmed is cut down to the words worth filing
+        // before anything else reads it, so held lines, cuts, lead-ins, and
+        // the files all see the same words. The inbox keeps every word.
+        if let keep = verdict.keep {
+            var votes = verdict.seams
+            var starts = verdict.starts ?? [:]
+            for number in keep.keys.sorted() {
+                guard let span = keep[number] else { continue }
+                let i = number - 1
+                guard verdict.labels[i] == .task || verdict.labels[i] == .idea else { continue }
+                let next = Sorter.applyKeep(sentences[i], seams[i], confirmed: votes[number], start: starts[number], span: span)
+                if JS.same(next.sentence, sentences[i]) { continue }
+                sentences[i] = next.sentence
+                seams[i] = next.seams
+                votes[number] = next.confirmed.isEmpty ? nil : next.confirmed
+                starts[number] = next.start
+            }
+            verdict = SortVerdict(labels: verdict.labels, seams: votes, relations: verdict.relations, starts: starts, keep: keep)
         }
 
         // A chat model reports no confidence, so every line is sure.

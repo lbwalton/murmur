@@ -208,6 +208,43 @@ const scenarios: Scenario[] = [
     name: 'a link back to the inbox is encoded',
     text: 'Order the #2 pencils (yellow) & erasers.',
     replies: [json({ 1: 'task' })]
+  },
+  // US-114 and US-115 (IOS-033): file only the item, never a lone filler.
+  {
+    name: 'the BrambleCat line files only the item',
+    text: 'Book the venue for Friday. Email Dana the budget. Oh, and an idea: a Times Square takeover for BrambleCat.',
+    replies: [json({ 1: 'task', 2: 'task', 3: 'idea', keep: { 3: [5, 10] } })]
+  },
+  {
+    name: 'a long filler run is never a cut, and the kept words cut',
+    text: `${'Okay, '.repeat(10)}buy milk, and eggs.`,
+    replies: [json({ 1: 'task', seams: { 1: [1] }, keep: { 1: [11, 14] } })]
+  },
+  {
+    name: 'ER stays an item',
+    text: 'Call the pharmacy, ER, and urgent care.',
+    replies: [json({ 1: 'task', seams: { 1: [1, 2] } })]
+  },
+  {
+    name: 'a trimmed run keeps its lead-in',
+    text: 'Honestly, tomorrow I need to buy apples, rice, and coffee.',
+    replies: [json({ 1: 'task', seams: { 1: [2, 3] }, starts: { 1: 7 }, keep: { 1: [2, 10] } })]
+  },
+  {
+    name: 'a bad keep span files the sentence whole',
+    text: 'Oh, call the vet.',
+    replies: [json({ 1: 'task', keep: { 1: [0, 9] } })]
+  },
+  {
+    name: "a note's keep span and a span of fillers alone change nothing",
+    text: 'Honestly the weather was lovely today. Oh, and an idea: a podcast tour.',
+    replies: [json({ 1: 'note', 2: 'idea', keep: { 1: [2, 4], 2: [1, 2] } })]
+  },
+  {
+    name: 'a trimmed line tied to a filed item is held with its kept words',
+    text: 'Oh, and an idea: a rooftop launch party.',
+    ideas: '## 2026-09-17\n- a rooftop launch party. ([09:00](inbox/2026-09-17.md))\n',
+    replies: [json({ 1: 'idea', keep: { 1: [5, 8] }, relations: { 1: [1, 1] } })]
   }
 ]
 

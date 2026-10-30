@@ -47,12 +47,14 @@ struct NotesVectors: Decodable {
         let seams: [String: [Int]]?
         let relations: [String: Vote]?
         let starts: [String: Int]?
+        let keep: [String: [Int]]?
     }
 
     struct Options: Decodable {
         let seamCounts: [Int]?
         let items: Int?
         let leadCounts: [Int]?
+        let keepCounts: [Int]?
     }
 
     struct ReplyCase: Decodable, Sendable {
@@ -60,6 +62,31 @@ struct NotesVectors: Decodable {
         let candidate: String
         let opts: Options
         let verdict: Verdict
+    }
+
+    struct KeepWordsCase: Decodable, Sendable {
+        let sentence: String
+        let words: [String]
+    }
+
+    struct SeamSpan: Decodable, Equatable {
+        let start: Int
+        let end: Int
+    }
+
+    struct KeepResult: Decodable {
+        let sentence: String
+        let seams: [SeamSpan]
+        let confirmed: [Int]
+        let start: Int?
+    }
+
+    struct KeepCase: Decodable, Sendable {
+        let sentence: String
+        let span: [Int]
+        let confirmed: [Int]?
+        let start: Int?
+        let result: KeepResult
     }
 
     struct Item: Decodable, Equatable {
@@ -125,6 +152,8 @@ struct NotesVectors: Decodable {
     let seams: [SeamCase]
     let cuts: [CutCase]
     let replies: [ReplyCase]
+    let keepWords: [KeepWordsCase]
+    let keeps: [KeepCase]
     let files: [FileCase]
     let ticks: [TickCase]
     let reminders: [ReminderCase]
@@ -179,7 +208,9 @@ extension NotesVectors.ReplyCase: CustomTestStringConvertible {
 
     @Test(arguments: NotesVectors.file?.replies ?? [])
     func repliesReadAsOnDesktop(_ c: NotesVectors.ReplyCase) {
-        let reading = Sorter.validate(c.count, c.candidate, seamCounts: c.opts.seamCounts ?? [], items: c.opts.items ?? 0, leadCounts: c.opts.leadCounts ?? [])
+        let reading = Sorter.validate(
+            c.count, c.candidate, seamCounts: c.opts.seamCounts ?? [], items: c.opts.items ?? 0, leadCounts: c.opts.leadCounts ?? [], keepCounts: c.opts.keepCounts ?? []
+        )
         switch reading {
         case let .rejected(reason):
             #expect(!c.verdict.ok && reason == c.verdict.reason)
@@ -189,7 +220,38 @@ extension NotesVectors.ReplyCase: CustomTestStringConvertible {
             #expect(Dictionary(uniqueKeysWithValues: verdict.seams.map { (String($0.key), $0.value) }) == (c.verdict.seams ?? [:]))
             #expect(Dictionary(uniqueKeysWithValues: verdict.relations.map { (String($0.key), NotesVectors.Vote(relation: $0.value.relation.rawValue, item: $0.value.item)) }) == (c.verdict.relations ?? [:]))
             #expect(verdict.starts.map { Dictionary(uniqueKeysWithValues: $0.map { (String($0.key), $0.value) }) } == c.verdict.starts)
+            #expect(verdict.keep.map { Dictionary(uniqueKeysWithValues: $0.map { (String($0.key), [$0.value.first, $0.value.last]) }) } == c.verdict.keep)
         }
+    }
+
+    /// IOS-033: the words a keep question offers, as desktop's keepWords.
+    @Test func keepWordsAreDesktops() throws {
+        let rules = try #require(NotesVectors.rules)
+        let file = try #require(NotesVectors.file)
+        #expect(file.keepWords.count >= 8)
+        for c in file.keepWords {
+            #expect(Sorter.keepWords(c.sentence, rules: rules) == c.words, "\(c.sentence)")
+        }
+    }
+
+    /// IOS-033: a sentence cut down to the kept words, with its seams,
+    /// their votes, and its lead-in carried, as desktop's applyKeep.
+    @Test func keptWordsAreDesktops() throws {
+        let file = try #require(NotesVectors.file)
+        #expect(file.keeps.count >= 10)
+        for c in file.keeps {
+            let span = KeepSpan(first: c.span[0], last: c.span[1])
+            let got = Sorter.applyKeep(c.sentence, Sorter.findSeams(c.sentence), confirmed: c.confirmed, start: c.start, span: span)
+            #expect(Array(got.sentence.utf16) == Array(c.result.sentence.utf16), "\(c.sentence) \(c.span)")
+            #expect(got.seams.map { NotesVectors.SeamSpan(start: $0.start, end: $0.end) } == c.result.seams, "\(c.sentence) \(c.span)")
+            #expect(got.confirmed == c.result.confirmed && got.start == c.result.start, "\(c.sentence) \(c.span)")
+        }
+    }
+
+    /// The fillers a side may not be made of alone are shared/sorter.json's.
+    @Test func fillersAreTheSharedOnes() throws {
+        let rules = try #require(NotesVectors.rules)
+        #expect(Sorter.notAnItemWords == rules.notAnItem)
     }
 
     @Test func filesReadAsOnDesktop() throws {

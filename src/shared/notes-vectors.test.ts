@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { expect, test } from 'vitest'
 import { appendSeparator, DEFAULT_NOTE_ENTRY_TEMPLATE, renderNoteEntry, resolveNotePath } from './notes'
 import { pillPlace, placeName, receiptLine } from './receipt'
-import { cutRun, findSeams, leadWords, seamSides, splitUnits, validateSort } from './sorter'
+import { applyKeep, cutRun, findSeams, keepWords, leadWords, seamSides, splitUnits, validateSort } from './sorter'
 import { parseListItems, parseTodo, reminderBody, tickLine } from './todo'
 
 const texts = [
@@ -41,7 +41,14 @@ const sentences = [
   'Call Mom AND Dad, Then Rest.',
   'One, two',
   'Pack the tent, stove, etc.',
-  'Wait... and then go, and then stop...'
+  'Wait... and then go, and then stop...',
+  // US-114: a side of spoken fillers alone is never offered; ER is an item.
+  'Oh, and an idea: a Times Square takeover for BrambleCat.',
+  'Okay, so, um, buy milk, and eggs.',
+  'Buy milk, oh well, call Bob.',
+  'Call the pharmacy, ER, and urgent care.',
+  'Um, okay.',
+  `${'Okay, '.repeat(30)}buy milk, and eggs.`
 ]
 
 const cuts: Array<{ sentence: string; confirmed: number[]; start?: number }> = [
@@ -57,10 +64,18 @@ const cuts: Array<{ sentence: string; confirmed: number[]; start?: number }> = [
   { sentence: 'Pack the tent, stove, etc.', confirmed: [1, 2] },
   { sentence: 'Wait... and then go, and then stop...', confirmed: [1, 2] },
   { sentence: 'Buy café crème, 🍎 apples, and pears.', confirmed: [1, 2], start: 2 },
-  { sentence: 'Buy milk and bread.', confirmed: [] }
+  { sentence: 'Buy milk and bread.', confirmed: [] },
+  // US-114: fillers alone between two cuts ride with the next piece.
+  { sentence: 'Buy milk, oh well, call Bob.', confirmed: [1, 2] },
+  { sentence: 'Call the pharmacy, ER, and urgent care.', confirmed: [1, 2] },
+  { sentence: 'Okay, so, um, buy milk, and eggs.', confirmed: [1] }
 ]
 
-const replies: Array<{ count: number; candidate: string; opts: { seamCounts?: number[]; items?: number; leadCounts?: number[] } }> = [
+const replies: Array<{
+  count: number
+  candidate: string
+  opts: { seamCounts?: number[]; items?: number; leadCounts?: number[]; keepCounts?: number[] }
+}> = [
   { count: 2, candidate: '{"1":"task","2":"note"}', opts: {} },
   { count: 2, candidate: 'Here you go:\n```json\n{"1": "Idea", "2": " NOTE "}\n```\nHope that helps!', opts: {} },
   { count: 2, candidate: '{"1":"task","2":"note","1":"idea"}', opts: {} },
@@ -92,7 +107,46 @@ const replies: Array<{ count: number; candidate: string; opts: { seamCounts?: nu
   { count: 2, candidate: '{"1":"task","2":"note","relations":{"1":["1",1],"2":[1,1.5]}}', opts: { items: 2 } },
   { count: 2, candidate: '{"1":"task","2":"note","relations":{"1":[1,1,1],"3":[1,1]," 2":[2,2]}}', opts: { items: 2 } },
   { count: 1, candidate: '{"1":"task","relations":{"1":[1,1]}}', opts: {} },
-  { count: 1, candidate: '{"1":"task","relations":[[1,1]]}', opts: { items: 1 } }
+  { count: 1, candidate: '{"1":"task","relations":[[1,1]]}', opts: { items: 1 } },
+  // US-115: keep votes, [first, last] word numbers per sentence.
+  { count: 2, candidate: '{"1":"task","2":"idea","keep":{"2":[5,10]}}', opts: { keepCounts: [4, 10] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[1,4]}}', opts: { keepCounts: [4] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":["2",4]}}', opts: { keepCounts: [4] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[3,2]}}', opts: { keepCounts: [4] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[1.5,3]," 1":[2,3]}}', opts: { keepCounts: [4] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[2,3,4]}}', opts: { keepCounts: [4] } },
+  { count: 2, candidate: '{"1":"task","2":"task","keep":{"2":[1,2],"3":[1,2]}}', opts: { keepCounts: [4, 0] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[2,3]}}', opts: {} },
+  { count: 1, candidate: '{"1":"task","keep":[[2,3]]}', opts: { keepCounts: [4] } },
+  { count: 1, candidate: '{"1":"task","keep":{"1":[0,3]}}', opts: { keepCounts: [4] } }
+]
+
+// US-115: the words a keep question offers, and a sentence cut down to
+// the kept words with its seams, their votes, and its lead-in carried.
+const keepSentences = [
+  'Oh, and an idea: a rooftop launch party.',
+  'Hi there',
+  'Call the vet.',
+  '- [ ] call Sam about the deck',
+  '1. renew the passport today',
+  `${Array.from({ length: 60 }, (_, i) => `w${i + 1}`).join(' ')}.`,
+  `${Array.from({ length: 61 }, (_, i) => `w${i + 1}`).join(' ')}.`,
+  'Buy café crème, and 🍎 apples.'
+]
+
+const keeps: Array<{ sentence: string; span: [number, number]; confirmed?: number[]; start?: number }> = [
+  { sentence: 'Oh, and an idea: a rooftop launch party.', span: [5, 8] },
+  { sentence: 'Call the vet, I think.', span: [1, 3] },
+  { sentence: 'Honestly, tomorrow I need to buy apples, rice, and coffee.', span: [2, 10], confirmed: [2, 3], start: 7 },
+  { sentence: 'Honestly, tomorrow I need to buy apples, rice, and coffee.', span: [2, 8], confirmed: [2, 3], start: 7 },
+  { sentence: 'Honestly, tomorrow I need to buy apples, rice, and coffee.', span: [8, 10], confirmed: [2, 3], start: 7 },
+  { sentence: 'Oh, and an idea: a podcast tour.', span: [1, 2] },
+  { sentence: 'Pack the tent, stove, etc. tonight.', span: [1, 4] },
+  { sentence: 'Oh, an idea: buy café crème, and 🍎 apples.', span: [4, 9], confirmed: [1] },
+  { sentence: 'Call the vet, I think.', span: [0, 3] },
+  { sentence: 'Call the vet, I think.', span: [3, 99] },
+  { sentence: 'Call the vet, I think.', span: [3, 2] },
+  { sentence: 'Call the vet, I think.', span: [1, 5] }
 ]
 
 const files = [
@@ -191,7 +245,7 @@ test("desktop's note rules give shared/notes-vectors.json's answers", () => {
   const data = {
     version: 1,
     comment:
-      "Desktop's pure note rules (src/shared/sorter.ts, todo.ts, receipt.ts, notes.ts) over these inputs, for every platform to give the same answers (ios/prd.json IOS-023). Seams are given as their two sides and the lead words they offer. Entries render at 10:32 on 2026-09-18 with the default entry template, and paths resolve at the same moment.",
+      "Desktop's pure note rules (src/shared/sorter.ts, todo.ts, receipt.ts, notes.ts) over these inputs, for every platform to give the same answers (ios/prd.json IOS-023). Seams are given as their two sides and the lead words they offer; a keep result's seams as their UTF-16 start and end. Entries render at 10:32 on 2026-09-18 with the default entry template, and paths resolve at the same moment.",
     split: texts.map((text) => ({ text, ...splitUnits(text) })),
     seams: sentences.map((sentence) => {
       const seams = findSeams(sentence)
@@ -199,6 +253,8 @@ test("desktop's note rules give shared/notes-vectors.json's answers", () => {
     }),
     cuts: cuts.map((c) => ({ ...c, ...cutRun(c.sentence, findSeams(c.sentence), c.confirmed, c.start) })),
     replies: replies.map((r) => ({ ...r, verdict: validateSort(r.count, r.candidate, r.opts) })),
+    keepWords: keepSentences.map((sentence) => ({ sentence, words: keepWords(sentence) })),
+    keeps: keeps.map((k) => ({ ...k, result: applyKeep(k.sentence, findSeams(k.sentence), k.confirmed, k.start, k.span) })),
     files: files.map((text) => ({ text, todo: parseTodo(text), list: parseListItems(text) })),
     ticks: ticks.map((t) => ({ ...t, result: tickLine(t.text, t.nth) })),
     reminders: reminders.map((r) => ({ ...r, body: reminderBody(parseTodo(r.text), r.maxChars) })),

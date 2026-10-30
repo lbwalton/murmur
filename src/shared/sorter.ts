@@ -261,8 +261,9 @@ const SEAM = new RegExp(`[,;]\\s+(?:${CONNECTOR}\\s+)?|\\s+${CONNECTOR}\\s+`, 'g
 // separator belongs to one quantifier only, so a long run of repeated
 // fillers is matched in linear time (review gate 2026-10-27: leading
 // whitespace inside the repeat backtracked 2^n on "okay, okay, ...").
-const NOT_AN_ITEM =
-  /^[\s.,;!?]*(?:(?:and|then|also|oh|ah|um|uhm|uh|uhh|erm|hmm|mhm|well|so|okay|ok|yeah|anyway|actually)\b[\s.,;!?]*)+$/i
+// The words live in shared/sorter.json (notAnItem), the iPhone's too
+// (IOS-033).
+const NOT_AN_ITEM = new RegExp(`^[\\s.,;!?]*(?:(?:${rules.notAnItem.join('|')})\\b[\\s.,;!?]*)+$`, 'i')
 
 function hasWords(side: string): boolean {
   return /\w/.test(side) && !NOT_AN_ITEM.test(side)
@@ -688,16 +689,13 @@ export function cutRun(
 // lead-in, and murmur files exactly those words. The rest stays in the
 // inbox, where every word already is; nothing is ever reworded.
 
-/** Asked for only when some sentence offers words to keep. */
-export const SORT_KEEP_PROMPT = [
-  'Some sentences also list all their words, numbered, under Words.',
-  'For a sentence you label task or idea that carries words around the item that only comment on it, announce it, or fill (for example Oh, and an idea:, I think, honestly), find the first and last word of the part worth filing: the task or idea itself, keeping any opening words that say when, where, or what the items are for.',
-  'Also include the key "keep": an object mapping the sentence number to [first, last] word numbers, for example {"2":[5,12]}. Leave a sentence out when all of its words belong. Word numbers only, never text.'
-].join(' ')
+/** Asked for only when some sentence offers words to keep. The
+ *  prompt lives in shared/sorter.json, the iPhone's too (IOS-033). */
+export const SORT_KEEP_PROMPT = rules.keepPrompt.join(' ')
 
 // A sentence longer than this is a ramble, not one item with words
 // around it; the question stays a sane size.
-const KEEP_WORDS_MAX = 60
+const KEEP_WORDS_MAX = rules.keepWordsMax
 
 /** The words the keep question offers for a sentence: every word, as
  *  the same /\S+/ tokens the lead-in counts. Empty for a list line (its

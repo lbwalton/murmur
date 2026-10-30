@@ -35,6 +35,9 @@ public struct SorterRules: Decodable, Sendable, Equatable {
     public let topicMaxChars: Int
     public let topicMaxWords: Int
     public let leadWordsMax: Int
+    public let keepPrompt: [String]
+    public let keepWordsMax: Int
+    public let notAnItem: [String]
     public let temperature: Double
     public let timeoutMs: Int
     public let receiptLineMax: Int
