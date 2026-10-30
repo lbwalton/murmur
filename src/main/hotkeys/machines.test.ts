@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { HoldMachine, ToggleMachine } from './machines'
+import { HandsFreeMachine, HoldMachine, ToggleMachine } from './machines'
 
 function recorder() {
   const events: string[] = []
@@ -144,5 +144,230 @@ describe('a refused start (review gate 2026-09-18, two chords sharing one mic)',
     const m = new HoldMachine({ start: () => undefined, stop: () => undefined })
     m.keyDown()
     expect(m.isActive()).toBe(true)
+  })
+})
+
+describe('HandsFreeMachine', () => {
+  function rig(opts: { cleanRelease?: boolean; refuseFirst?: boolean } = {}) {
+    const events: string[] = []
+    let t = 0
+    let refuse = opts.refuseFirst ?? false
+    let pending: { fn: () => void; due: number } | null = null
+    const m = new HandsFreeMachine(
+      {
+        start: () => {
+          events.push('start')
+          if (refuse) {
+            refuse = false
+            return false
+          }
+        },
+        stop: () => void events.push('stop'),
+        lock: () => void events.push('lock'),
+        discard: () => void events.push('discard')
+      },
+      {
+        now: () => t,
+        cleanRelease: opts.cleanRelease,
+        schedule: (fn, ms) => {
+          const job = { fn, due: t + ms }
+          pending = job
+          return () => {
+            if (pending === job) pending = null
+          }
+        }
+      }
+    )
+    return {
+      m,
+      events,
+      tick: (ms: number) => void (t += ms),
+      advance: (ms: number) => {
+        t += ms
+        const job = pending as { fn: () => void; due: number } | null
+        if (job && job.due <= t) {
+          pending = null
+          job.fn()
+        }
+      }
+    }
+  }
+
+  it('a hold ends on release, exactly as hold to talk', () => {
+    const { m, events, tick } = rig()
+    m.keyDown()
+    tick(300)
+    m.keyUp()
+    expect(events).toEqual(['start', 'stop'])
+    expect(m.isActive()).toBe(false)
+  })
+
+  it('a lone tap is thrown away after the second-tap window', () => {
+    const { m, events, tick, advance } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    advance(399)
+    expect(events).toEqual(['start'])
+    advance(1)
+    expect(events).toEqual(['start', 'discard'])
+    expect(m.isActive()).toBe(false)
+  })
+
+  it('two quick taps lock the take open', () => {
+    const { m, events, tick } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    tick(150)
+    m.keyDown()
+    expect(events).toEqual(['start', 'lock'])
+    expect(m.isLocked()).toBe(true)
+  })
+
+  it('key repeat never counts as a press', () => {
+    const { m, events, tick, advance } = rig()
+    m.keyDown()
+    m.keyDown()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    advance(400)
+    expect(events).toEqual(['start', 'discard'])
+  })
+
+  it('the guard ignores a fumbled third tap and the locking release', () => {
+    const { m, events, tick } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    tick(150)
+    m.keyDown()
+    m.keyUp()
+    tick(100)
+    m.keyDown()
+    m.keyUp()
+    expect(events).toEqual(['start', 'lock'])
+    expect(m.isLocked()).toBe(true)
+  })
+
+  it('one press after the guard stops a locked take', () => {
+    const { m, events, tick } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    tick(150)
+    m.keyDown()
+    m.keyUp()
+    tick(600)
+    m.keyDown()
+    expect(events).toEqual(['start', 'lock', 'stop'])
+    expect(m.isActive()).toBe(false)
+  })
+
+  it('refused start leaves the next press a fresh start', () => {
+    const { m, events, tick } = rig({ refuseFirst: true })
+    m.keyDown()
+    m.keyUp()
+    tick(100)
+    m.keyDown()
+    expect(events).toEqual(['start', 'start'])
+    expect(m.isActive()).toBe(true)
+  })
+
+  it('clean release: lock and stop wait for the release', () => {
+    const { m, events, tick } = rig({ cleanRelease: true })
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    tick(150)
+    m.keyDown()
+    expect(events).toEqual(['start'])
+    m.keyUp()
+    expect(events).toEqual(['start', 'lock'])
+    tick(600)
+    m.keyDown()
+    expect(events).toEqual(['start', 'lock'])
+    m.keyUp()
+    expect(events).toEqual(['start', 'lock', 'stop'])
+  })
+
+  it('clean release: a joined key is never a tap, a lock, or a stop', () => {
+    const a = rig({ cleanRelease: true })
+    a.m.keyDown()
+    a.tick(80)
+    a.m.keyUp()
+    a.tick(150)
+    a.m.keyDown()
+    a.m.interrupt()
+    a.m.keyUp()
+    expect(a.events).toEqual(['start', 'discard'])
+    expect(a.m.isLocked()).toBe(false)
+
+    const b = rig({ cleanRelease: true })
+    b.m.keyDown()
+    b.tick(80)
+    b.m.keyUp()
+    b.tick(150)
+    b.m.keyDown()
+    b.m.keyUp()
+    b.tick(600)
+    b.m.keyDown()
+    b.m.interrupt()
+    b.m.keyUp()
+    expect(b.events).toEqual(['start', 'lock'])
+    expect(b.m.isLocked()).toBe(true)
+  })
+
+  it('interrupt during a long first press stops, during a short one discards', () => {
+    const long = rig()
+    long.m.keyDown()
+    long.tick(300)
+    long.m.interrupt()
+    long.m.keyUp()
+    expect(long.events).toEqual(['start', 'stop'])
+    const short = rig()
+    short.m.keyDown()
+    short.tick(100)
+    short.m.interrupt()
+    short.m.keyUp()
+    expect(short.events).toEqual(['start', 'discard'])
+    expect(short.m.isActive()).toBe(false)
+  })
+
+  it('reset forgets the gesture and fires nothing', () => {
+    const { m, events, tick, advance } = rig()
+    m.keyDown()
+    tick(80)
+    m.keyUp()
+    m.reset()
+    advance(1000)
+    expect(events).toEqual(['start'])
+    expect(m.isActive()).toBe(false)
+  })
+
+  it('abandon ends a press, discards a tap, and hands back a locked take', () => {
+    const p = rig()
+    p.m.keyDown()
+    expect(p.m.abandon()).toBe('ended')
+    expect(p.events).toEqual(['start', 'stop'])
+
+    const t = rig()
+    t.m.keyDown()
+    t.tick(80)
+    t.m.keyUp()
+    expect(t.m.abandon()).toBe('ended')
+    expect(t.events).toEqual(['start', 'discard'])
+
+    const l = rig()
+    l.m.keyDown()
+    l.tick(80)
+    l.m.keyUp()
+    l.tick(150)
+    l.m.keyDown()
+    expect(l.m.abandon()).toBe('locked')
+    expect(l.events).toEqual(['start', 'lock'])
+    expect(l.m.isActive()).toBe(false)
+    expect(l.m.abandon()).toBe('idle')
   })
 })
