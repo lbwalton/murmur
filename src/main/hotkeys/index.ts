@@ -6,8 +6,9 @@
 import { UiohookKey, uIOhook } from 'uiohook-napi'
 import type { Settings } from '../../shared/settings'
 import { getSettings, onSettingsChanged } from '../settings'
-import { registerSmokeCheck } from '../smoke'
+import { isSmoke, registerSmokeCheck } from '../smoke'
 import {
+  type KeyEventLike,
   type ParsedBinding,
   buildKeyMap,
   chordRefusal,
@@ -16,7 +17,13 @@ import {
   parseBinding
 } from './binding'
 import { HotkeyDispatcher, type ModifierCodes } from './dispatch'
-import { type DictationCallbacks, HoldMachine, ToggleMachine, type TriggerMachine } from './machines'
+import {
+  type DictationCallbacks,
+  HandsFreeMachine,
+  HoldMachine,
+  ToggleMachine,
+  type TriggerMachine
+} from './machines'
 
 const keyMap = buildKeyMap(UiohookKey as unknown as Record<string, unknown>)
 
@@ -128,11 +135,19 @@ function armChord(raw: string, dictation: ParsedBinding | null, taken: ParsedBin
 }
 
 export interface HotkeyCallbacks extends DictationCallbacks {
+  /** Dictation chord: the second press locked the take, a lone tap expired.
+   *  Hands-free applies only when both are given (US-117). */
+  lock?: () => void
+  discard?: () => void
   pasteLast?: () => void
   /** The note chord's start and stop: a dictation whose words go to a file. */
-  note?: DictationCallbacks
+  note?: DictationCallbacks & { lock?: () => void; discard?: () => void }
   /** The transform chord's start and stop: a take that edits the selection. */
   transform?: DictationCallbacks
+  /** Escape: true when it cancelled a locked take. */
+  cancel?: () => boolean
+  /** apply() found a locked take mid-rebind: the caller saves it. */
+  lockedReset?: () => void
 }
 
 /** Everything apply() reads. Any other settings write (a Pro mark's day,
@@ -141,6 +156,7 @@ export interface HotkeyCallbacks extends DictationCallbacks {
 function chordsKey(settings: Settings): string {
   return JSON.stringify([
     settings.hotkey.mode,
+    settings.hotkey.doubleTap,
     settings.hotkey.binding,
     settings.hotkey.pasteLastBinding,
     settings.notes.binding,
@@ -149,18 +165,51 @@ function chordsKey(settings: Settings): string {
 }
 let appliedChords = ''
 
+/** A live take must not leak across a rebind. A hands-free machine
+ *  abandons itself; a take it had locked is handed back to be saved. */
+function stopLive(m: TriggerMachine | null, stop: () => void, callbacks: HotkeyCallbacks): void {
+  if (m instanceof HandsFreeMachine) {
+    if (m.abandon() === 'locked') callbacks.lockedReset?.()
+  } else if (m?.isActive()) {
+    stop()
+  }
+}
+
+/** Drop every hands-free gesture without callbacks (the take ended elsewhere). */
+export function resetHandsFreeGestures(): void {
+  for (const m of [machine, noteMachine]) if (m instanceof HandsFreeMachine) m.reset()
+}
+
+// The hook's own handlers, so the smoke run can feed them events.
+let onKeyDown: ((ev: KeyEventLike) => void) | null = null
+let onKeyUp: ((ev: KeyEventLike) => void) | null = null
+
+/** Feed a synthetic event through the hook handlers. No-op outside smoke. */
+export function smokeHotkeyEvent(type: 'keydown' | 'keyup', ev: KeyEventLike): void {
+  if (!isSmoke) return
+  if (type === 'keydown') onKeyDown?.(ev)
+  else onKeyUp?.(ev)
+}
+
 function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
   appliedChords = chordsKey(settings)
   // A live hold must not leak a stuck recording across a rebind.
-  if (machine?.isActive()) callbacks.stop()
-  if (noteMachine?.isActive()) callbacks.note?.stop()
-  if (transformMachine?.isActive()) callbacks.transform?.stop()
+  stopLive(machine, callbacks.stop, callbacks)
+  stopLive(noteMachine, () => callbacks.note?.stop(), callbacks)
+  stopLive(transformMachine, () => callbacks.transform?.stop(), callbacks)
+  const handsFree = settings.hotkey.mode === 'hold' && settings.hotkey.doubleTap
   const parsed = parseBinding(settings.hotkey.binding, keyMap)
   // Unsafe bindings (a bare letter would fire on every keystroke) are
   // treated as invalid: the Finish setup card surfaces it, dictation stays off.
   binding = parsed && isSafeBinding(parsed) ? parsed : null
-  machine =
-    settings.hotkey.mode === 'hold' ? new HoldMachine(callbacks) : new ToggleMachine(callbacks)
+  machine = handsFree && callbacks.lock && callbacks.discard
+    ? new HandsFreeMachine(
+        { ...callbacks, lock: callbacks.lock, discard: callbacks.discard },
+        { cleanRelease: parsed?.code === null }
+      )
+    : settings.hotkey.mode === 'hold'
+      ? new HoldMachine(callbacks)
+      : new ToggleMachine(callbacks)
   dispatcher = binding ? new HotkeyDispatcher(binding, machine, MODIFIER_CODES) : null
 
   // The secondary chords arm only when set and valid against the
@@ -173,10 +222,16 @@ function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
   noteMachine = null
   noteDispatcher = null
   if (noteBinding && callbacks.note) {
+    const note = callbacks.note
     noteMachine =
-      settings.hotkey.mode === 'hold'
-        ? new HoldMachine(callbacks.note)
-        : new ToggleMachine(callbacks.note)
+      handsFree && note.lock && note.discard
+        ? new HandsFreeMachine(
+            { ...note, lock: note.lock, discard: note.discard },
+            { cleanRelease: noteBinding.code === null }
+          )
+        : settings.hotkey.mode === 'hold'
+          ? new HoldMachine(note)
+          : new ToggleMachine(note)
     noteDispatcher = new HotkeyDispatcher(noteBinding, noteMachine, MODIFIER_CODES)
   }
   const taken = [pasteBinding, noteBinding].filter((b): b is ParsedBinding => b !== null)
@@ -223,9 +278,10 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
     if (chordsKey(settings) !== appliedChords) apply(settings, callbacks)
   })
 
-  uIOhook.on('keydown', (event) => {
+  onKeyDown = (event) => {
     if (MODIFIER_BY_CODE.has(event.keycode)) heldModifiers.add(event.keycode)
     if (suppressed) return
+    if (event.keycode === UiohookKey.Escape) callbacks.cancel?.()
     dispatcher?.keydown(event)
     noteDispatcher?.keydown(event)
     transformDispatcher?.keydown(event)
@@ -235,15 +291,17 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
         callbacks.pasteLast?.()
       }
     }
-  })
-  uIOhook.on('keyup', (event) => {
+  }
+  onKeyUp = (event) => {
     heldModifiers.delete(event.keycode)
     if (suppressed) return
     dispatcher?.keyup(event)
     noteDispatcher?.keyup(event)
     transformDispatcher?.keyup(event)
     if (pasteBinding && event.keycode === pasteBinding.code) pasteChordHeld = false
-  })
+  }
+  uIOhook.on('keydown', onKeyDown)
+  uIOhook.on('keyup', onKeyUp)
 
   try {
     uIOhook.start()
