@@ -207,6 +207,25 @@ describe('keep question (US-116)', () => {
     expect(read({ type: 'noul', noul: 1 }, pick('x'))).toMatchObject({ ok: true, keep: {} })
   })
 
+  it('keeps an end whole when the model is less sure of it than the threshold, and reports each end', () => {
+    const labels = { label_1: { type: 'choice', choice: 'idea' } }
+    const read = (first: unknown, last: unknown, threshold: number) =>
+      readDecisionAnswers({ ...labels, keep_first_1: first, keep_last_1: last }, 1, [0], 0, [], [8], threshold)
+    const pick = (n: string, confidence?: number) => ({ type: 'choice', choice: n, ...(confidence === undefined ? {} : { confidence }) })
+    expect(read(pick('5', 0.9), pick('7', 0.4), 0.5)).toMatchObject({
+      ok: true,
+      keep: { 1: [5, 8] },
+      keepConfidence: { 1: [0.9, 0.4] }
+    })
+    expect(read(pick('5', 0.3), pick('8', 0.9), 0.5)).toMatchObject({ ok: true, keep: {} })
+    // Exactly at the threshold trims, as a label files at it (US-058).
+    expect(read(pick('5', 0.5), pick('8', 0.5), 0.5)).toMatchObject({ ok: true, keep: { 1: [5, 8] } })
+    // A bare answer reads as sure, the same as a bare label.
+    expect(read(pick('5'), pick('8'), 0.9)).toMatchObject({ ok: true, keep: { 1: [5, 8] }, keepConfidence: { 1: [1, 1] } })
+    // A missing end reports no confidence.
+    expect(read(pick('5', 0.8), undefined, 0.5)).toMatchObject({ ok: true, keep: { 1: [5, 8] }, keepConfidence: { 1: [0.8, null] } })
+  })
+
   it('asks no keep question for the pieces compare request, which reads relations only', () => {
     const pieces = buildDecisionRequest('jev-latest', [idea], [[]], [], false)
     expect(pieces.questions.keep_first_1).toBeUndefined()

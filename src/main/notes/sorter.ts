@@ -548,7 +548,15 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       timeoutMs
     )
     const read = reply.ok
-      ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length, leadCounts, keepCounts)
+      ? readDecisionAnswers(
+          reply.answers,
+          sentences.length,
+          seamCounts,
+          items.length,
+          leadCounts,
+          keepCounts,
+          settings.notes.connection.threshold
+        )
       : null
     if (reply.ok && read?.ok) {
       verdict = read
@@ -641,6 +649,14 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     const confidence = verdict.confidence
     const perLine = verdict.labels.map((label, i) => `${i + 1}=${label}:${(confidence[i] ?? 1).toFixed(2)}`)
     writeAppLog(`[sort] confidence ${perLine.join(' ')} threshold=${threshold} model=${answeredBy}`)
+  }
+  // How sure the decision model was of where each item begins and ends
+  // (US-116), so a sentence that filed whole can be told from one the
+  // gate kept whole. Numbers only, never the words.
+  const keepSure = protocol === 'decide' ? Object.entries(verdict.keepConfidence ?? {}) : []
+  if (keepSure.length > 0) {
+    const ends = keepSure.map(([n, [first, last]]) => `${n}=${first?.toFixed(2) ?? '-'}/${last?.toFixed(2) ?? '-'}`)
+    writeAppLog(`[sort] keep ${ends.join(' ')} threshold=${threshold} model=${answeredBy}`)
   }
   const { kept: sure, held: unsure } = holdBelow(
     sentences.length,
@@ -2034,10 +2050,10 @@ export function initSorter(): void {
                 answers: {
                   label_1: { type: 'choice', choice: 'task', confidence: 1 },
                   label_2: { type: 'choice', choice: 'idea', confidence: 1 },
-                  keep_first_1: { type: 'choice', choice: '1' },
-                  keep_last_1: { type: 'choice', choice: '4' },
-                  keep_first_2: { type: 'choice', choice: '5' },
-                  keep_last_2: { type: 'choice', choice: '8' }
+                  keep_first_1: { type: 'choice', choice: '1', confidence: 1 },
+                  keep_last_1: { type: 'choice', choice: '4', confidence: 0.99 },
+                  keep_first_2: { type: 'choice', choice: '5', confidence: 0.97 },
+                  keep_last_2: { type: 'choice', choice: '8', confidence: 0.95 }
                 }
               }),
               { status: 200 }
@@ -2068,7 +2084,8 @@ export function initSorter(): void {
         decideOk &&
         !existsSync(join(vault, 'murmur', 'inbox', '2026-09-18.md')) &&
         log.includes(' trimmed=1') &&
-        /protocol=decide model=jev-1\.14\.0 slot=separate.* trimmed=1/.test(log)
+        /protocol=decide model=jev-1\.14\.0 slot=separate.* trimmed=1/.test(log) &&
+        log.includes('[sort] keep 1=1.00/0.99 2=0.97/0.95 threshold=')
       )
     } finally {
       updateSettings({ notes: before })

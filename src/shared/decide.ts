@@ -196,7 +196,11 @@ export function readDecisionAnswers(
   seamCounts: readonly number[],
   itemCount = 0,
   leadCounts: readonly number[] = [],
-  keepCounts: readonly number[] = []
+  keepCounts: readonly number[] = [],
+  /** A keep end the model is less sure of than this keeps that end
+   *  whole (US-116, LaBroi 2026-10-30): a dropped word costs more than
+   *  a kept one. The sort passes its confidence threshold. */
+  keepThreshold = 0
 ): SortVerdict {
   if (!isRecord(answers)) return { ok: false, reason: 'missing sentences' }
   const labels: SortLabel[] = []
@@ -246,21 +250,28 @@ export function readDecisionAnswers(
     if (Number.isInteger(word) && word >= 2 && word <= offered) starts[i + 1] = word
   })
   const offeredLeads = leadCounts.some((n) => n >= 2)
-  // Keep (US-116): a missing or out-of-range end keeps that end whole;
-  // the chat path's reader then drops a span of every word or crossed
-  // ends, so both paths trim by the same rule.
+  // Keep (US-116): a missing, out-of-range, or unsure end keeps that
+  // end whole; the chat path's reader then drops a span of every word
+  // or crossed ends, so both paths trim by the same rule.
   const offeredKeep = keepCounts.some((n) => n > 0)
   let keep: KeepSpans = {}
+  const keepConfidence: Record<number, [number | null, number | null]> = {}
   if (offeredKeep) {
     const raw: Record<string, [number, number]> = {}
     keepCounts.forEach((offered, i) => {
       if (offered === 0) return
-      const end = (key: string, whole: number): number => {
+      const end = (key: string, whole: number): { word: number; sure: number | null } => {
         const answer = answers[`${key}_${i + 1}`]
-        const word = isRecord(answer) && answer.type === 'choice' ? Number(answer.choice) : NaN
-        return Number.isInteger(word) && word >= 1 && word <= offered ? word : whole
+        if (!isRecord(answer) || answer.type !== 'choice') return { word: whole, sure: null }
+        const sure = confidenceOf(answer, String(answer.choice))
+        const word = Number(answer.choice)
+        const usable = Number.isInteger(word) && word >= 1 && word <= offered && sure >= keepThreshold
+        return { word: usable ? word : whole, sure }
       }
-      raw[String(i + 1)] = [end('keep_first', 1), end('keep_last', offered)]
+      const first = end('keep_first', 1)
+      const last = end('keep_last', offered)
+      raw[String(i + 1)] = [first.word, last.word]
+      keepConfidence[i + 1] = [first.sure, last.sure]
     })
     keep = readKeepSpans(raw, keepCounts)
   }
@@ -272,6 +283,6 @@ export function readDecisionAnswers(
     confidence,
     relations,
     ...(offeredLeads ? { starts } : {}),
-    ...(offeredKeep ? { keep } : {})
+    ...(offeredKeep ? { keep, keepConfidence } : {})
   }
 }
