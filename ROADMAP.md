@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (91/116 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (92/116 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -95,6 +95,7 @@
 - [x] **US-113** Paste last waits for the chord to be let go
 - [x] **US-114** A spoken filler is never cut off as its own item
 - [x] **US-115** File only the item: commentary stays in the inbox
+- [x] **US-116** File only the item on a decision connection too
 
 ## Built, awaiting live verification
 
@@ -127,4 +128,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-107** The murmur Pro mark in the app: a gold pill, filled when Pro is yours
 - [ ] **US-108** murmur Pro on the site: the mark, a pro link, and a /pro/ page
 - [ ] **US-112** Security patches for the dependencies GitHub flagged
-- [ ] **US-116** File only the item on a decision connection too
