@@ -135,3 +135,68 @@ describe('where a note landed (US-082)', () => {
     expect(m.transition('inserted', undefined, 140)?.hint).toBeNull()
   })
 })
+
+describe('hands-free (US-117)', () => {
+  it('recording can move to cancelled and cancelled to idle', () => {
+    const m = new OverlayMachine()
+    expect(m.transition('cancelled')).toBeNull()
+    m.transition('recording', () => 1000, null, { mode: 'note' })
+    const cancelled = m.transition('cancelled')
+    expect(cancelled?.phase).toBe('cancelled')
+    expect(cancelled?.startedAt).toBeNull()
+    expect(cancelled?.mode).toBe('note')
+    expect(m.transition('processing')).toBeNull()
+    expect(m.transition('hint', undefined, null, { hint: 'nope' })).toBeNull()
+    expect(m.transition('idle')?.phase).toBe('idle')
+    // Only a live take can be thrown away.
+    m.transition('recording')
+    m.transition('processing')
+    expect(m.transition('cancelled')).toBeNull()
+    m.transition('inserted')
+    expect(m.transition('cancelled')).toBeNull()
+  })
+
+  it('a new take can start while the cancel lingers', () => {
+    const m = new OverlayMachine()
+    m.transition('recording', () => 1000)
+    m.transition('cancelled')
+    const next = m.transition('recording', () => 2000)
+    expect(next?.phase).toBe('recording')
+    expect(next?.startedAt).toBe(2000)
+    expect(next?.locked).toBe(false)
+  })
+
+  it('locked is false at rest and survives recording but not processing', () => {
+    const m = new OverlayMachine()
+    expect(m.get().locked).toBe(false)
+    // Only a recording can be locked.
+    expect(m.setLocked(true)).toBeNull()
+    expect(m.get().locked).toBe(false)
+    m.transition('recording', () => 1000)
+    expect(m.get().locked).toBe(false)
+    const locked = m.setLocked(true)
+    expect(locked?.locked).toBe(true)
+    expect(locked?.startedAt).toBe(1000) // the timer still counts from the first press
+    expect(m.get().locked).toBe(true)
+    expect(m.setLocked(true)).toBeNull() // nothing changed
+    expect(m.transition('processing')?.locked).toBe(false)
+    expect(m.setLocked(true)).toBeNull()
+    expect(m.transition('inserted')?.locked).toBe(false)
+    expect(m.transition('idle')?.locked).toBe(false)
+  })
+
+  it('every way out of a locked recording unlocks it', () => {
+    const m = new OverlayMachine()
+    for (const out of ['idle', 'cancelled', 'processing'] as const) {
+      m.transition('idle')
+      m.transition('recording')
+      m.setLocked(true)
+      expect(m.transition(out)?.locked).toBe(false)
+    }
+    m.transition('idle')
+    m.transition('recording')
+    m.setLocked(true)
+    expect(m.setLocked(false)?.locked).toBe(false)
+    expect(m.get().phase).toBe('recording')
+  })
+})

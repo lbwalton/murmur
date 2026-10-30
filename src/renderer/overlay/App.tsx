@@ -13,6 +13,7 @@ import { formatDuration } from '../../shared/time'
 import type { OverlayApi } from '../../preload/overlay'
 import { BAR_COUNT, Bars } from './Bars'
 import { InkWave } from './InkWave'
+import { LockRingCanvas } from './LockRingCanvas'
 import { PulseWave } from './PulseWave'
 import { SpeckleWave } from './SpeckleWave'
 
@@ -32,7 +33,8 @@ export function App(): React.JSX.Element {
     startedAt: null,
     wpm: null,
     mode: 'dictation',
-    hint: null
+    hint: null,
+    locked: false
   })
   const [levels, setLevels] = useState<number[]>(() => new Array<number>(BAR_COUNT).fill(0))
   const [style, setStyle] = useState<string>('bars')
@@ -40,13 +42,16 @@ export function App(): React.JSX.Element {
   const [accent, setAccent] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const levelRef = useRef(0)
+  const pillRef = useRef<HTMLDivElement>(null)
+  const needleRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef(state)
   stateRef.current = state
 
   useEffect(() => {
     window.murmurOverlay.onState((next) => {
       setState(next)
-      if (next.phase === 'idle' || next.phase === 'recording') {
+      // A cancel drops the waveform flat, as the take is thrown away.
+      if (next.phase === 'idle' || next.phase === 'recording' || next.phase === 'cancelled') {
         setLevels(new Array<number>(BAR_COUNT).fill(0))
         levelRef.current = 0
       }
@@ -69,6 +74,7 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     document.body.dataset.phase = state.phase
     document.body.dataset.mode = state.mode
+    document.body.dataset.locked = String(state.locked)
     if (state.phase !== 'recording' && state.phase !== 'processing') {
       setElapsed(0)
       return
@@ -84,6 +90,7 @@ export function App(): React.JSX.Element {
   }, [state])
 
   const live = state.phase === 'recording'
+  const locked = live && state.locked
   // Bare sheds its box while the needle is the message and puts it
   // back for text; compact grows back to full size for the same
   // phases, so a hint, an error, or no speech reads the same anywhere.
@@ -99,84 +106,98 @@ export function App(): React.JSX.Element {
     state.mode === 'transform' ? 'pill-transform' : '',
     state.phase === 'error' && state.hint ? 'pill-says' : '',
     bareNow ? 'look-bare' : '',
-    compactNow ? 'look-compact' : ''
+    compactNow ? 'look-compact' : '',
+    locked ? 'pill-locked' : ''
   ]
   return (
-    <div className={classes.filter(Boolean).join(' ')}>
-      <div className="needle">
-        <span className={`dot ${live ? 'dot-live' : ''}`} />
-        <div
-          className="wave"
-          aria-hidden="true"
-          style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
-        >
-          {/* The canvases size their bitmap once on mount, so a change in
-              the look being drawn must remount them. */}
-          {isInkStyle(style) ? (
-            <InkWave
-              key={`${drawnAs}-${style}`}
-              kind={style}
-              levelRef={levelRef}
-              phase={state.phase}
-              accent={accent}
-              bare={bareNow}
-            />
-          ) : style === 'pulse' ? (
-            <PulseWave
-              key={drawnAs}
-              levelRef={levelRef}
-              muted={state.phase !== 'recording'}
-              accent={accent ?? 'rgb(240, 164, 75)'}
-              bare={bareNow}
-            />
-          ) : style === 'speckle' ? (
-            <SpeckleWave
-              key={drawnAs}
-              levelRef={levelRef}
-              muted={state.phase !== 'recording'}
-              accent={accent}
-              bare={bareNow}
-            />
-          ) : (
-            <Bars levels={levels} compact={compactNow} />
-          )}
+    <>
+      <div className={classes.filter(Boolean).join(' ')} ref={pillRef}>
+        <div className="needle" ref={needleRef}>
+          <span className={`dot ${live ? 'dot-live' : ''}`} />
+          <div
+            className="wave"
+            aria-hidden="true"
+            style={accent ? ({ '--wave-accent': accent } as React.CSSProperties) : undefined}
+          >
+            {/* The canvases size their bitmap once on mount, so a change in
+                the look being drawn must remount them. */}
+            {isInkStyle(style) ? (
+              <InkWave
+                key={`${drawnAs}-${style}`}
+                kind={style}
+                levelRef={levelRef}
+                phase={state.phase}
+                accent={accent}
+                bare={bareNow}
+              />
+            ) : style === 'pulse' ? (
+              <PulseWave
+                key={drawnAs}
+                levelRef={levelRef}
+                muted={state.phase !== 'recording'}
+                accent={accent ?? 'rgb(240, 164, 75)'}
+                bare={bareNow}
+              />
+            ) : style === 'speckle' ? (
+              <SpeckleWave
+                key={drawnAs}
+                levelRef={levelRef}
+                muted={state.phase !== 'recording'}
+                accent={accent}
+                bare={bareNow}
+              />
+            ) : (
+              <Bars levels={levels} compact={compactNow} />
+            )}
+          </div>
         </div>
-      </div>
-      <span className="status-slot">
-        {(state.phase === 'recording' || state.phase === 'processing') && (
-          <>
-            {state.mode === 'note' && <span className="mode-tag">note</span>}
-            {state.mode === 'transform' && <span className="mode-tag">transform</span>}
-            <span className="timer" data-timer="">
-              {formatDuration(elapsed)}
+        <span className="status-slot">
+          {(state.phase === 'recording' || state.phase === 'processing') && (
+            <>
+              {state.mode === 'note' && <span className="mode-tag">note</span>}
+              {state.mode === 'transform' && <span className="mode-tag">transform</span>}
+              <span className="timer" data-timer="">
+                {formatDuration(elapsed)}
+              </span>
+            </>
+          )}
+          {state.phase === 'inserted' && (
+            <span className="ok" data-wpm="">
+              {state.mode === 'note'
+                ? state.hint
+                  ? `noted to ${state.hint}`
+                  : 'noted'
+                : state.mode === 'transform'
+                  ? 'transformed'
+                  : state.wpm && state.wpm > 0
+                    ? `${state.wpm} wpm`
+                    : 'inserted'}
             </span>
-          </>
-        )}
-        {state.phase === 'inserted' && (
-          <span className="ok" data-wpm="">
-            {state.mode === 'note'
-              ? state.hint
-                ? `noted to ${state.hint}`
-                : 'noted'
-              : state.mode === 'transform'
-                ? 'transformed'
-                : state.wpm && state.wpm > 0
-                  ? `${state.wpm} wpm`
-                  : 'inserted'}
-          </span>
-        )}
-        {state.phase === 'hint' && (
-          <span className="quiet" data-hint="">
-            {state.hint}
-          </span>
-        )}
-        {state.phase === 'nospeech' && <span className="quiet">no speech</span>}
-        {state.phase === 'error' && (
-          <span className="err" data-error="">
-            {state.hint ?? 'error'}
-          </span>
-        )}
-      </span>
-    </div>
+          )}
+          {state.phase === 'hint' && (
+            <span className="quiet" data-hint="">
+              {state.hint}
+            </span>
+          )}
+          {state.phase === 'nospeech' && <span className="quiet">no speech</span>}
+          {state.phase === 'error' && (
+            <span className="err" data-error="">
+              {state.hint ?? 'error'}
+            </span>
+          )}
+        </span>
+      </div>
+      {/* Hands-free (US-117): the loop closes while murmur holds the mic,
+          and a cancel scrapes across it. Holding draws nothing. */}
+      {(locked || state.phase === 'cancelled') && (
+        <LockRingCanvas
+          phase={state.phase}
+          look={drawnAs}
+          startedAt={state.startedAt}
+          pillRef={pillRef}
+          needleRef={needleRef}
+        />
+      )}
+    </>
   )
 }

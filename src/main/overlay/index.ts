@@ -8,6 +8,7 @@ import { devRendererUrl, watchWindow } from '../window-watch'
 import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import {
+  CANCEL_LINGER_MS,
   INK_STYLES,
   OVERLAY_LOOKS,
   type OverlayLook,
@@ -35,6 +36,7 @@ const machine = new OverlayMachine()
 let lingerTimer: NodeJS.Timeout | null = null
 let clickThrough = false
 const previewTimers: NodeJS.Timeout[] = []
+let levelListener: ((level: number) => void) | null = null
 
 /** The overlay window, only while it is safe to touch. */
 function aliveOverlay(): BrowserWindow | null {
@@ -118,13 +120,18 @@ export function setOverlayPhase(
   }
   sendState(state)
 
-  if (phase === 'inserted' || phase === 'error' || phase === 'nospeech' || phase === 'hint') {
+  if (phase === 'inserted' || phase === 'error' || phase === 'nospeech' || phase === 'hint' || phase === 'cancelled') {
     lingerTimer = setTimeout(
       () => {
         setOverlayPhase('idle')
       },
-      // An error that says why is read like a hint, so it lingers like one.
-      phase === 'hint' || (phase === 'error' && state.hint) ? HINT_LINGER_MS : LINGER_MS
+      // An error that says why is read like a hint, so it lingers like
+      // one; a cancel stays only while its scrape draws and the pill fades.
+      phase === 'cancelled'
+        ? CANCEL_LINGER_MS
+        : phase === 'hint' || (phase === 'error' && state.hint)
+          ? HINT_LINGER_MS
+          : LINGER_MS
     )
   }
   if (phase === 'idle' && !isSmoke) win.hide()
@@ -135,6 +142,20 @@ export function setOverlayPhase(
  *  Refused while a session is live (the machine rejects the jump). */
 export function showOverlayHint(text: string, mode: OverlayMode = 'dictation'): boolean {
   return setOverlayPhase('hint', null, { mode, hint: text }) !== null
+}
+
+/** Lock or unlock the live take on the pill (US-117): while locked the
+ *  pill closes its loop. Only a recording can be locked; asked at any
+ *  other phase, or with nothing to change, nothing is sent. */
+export function setOverlayLocked(locked: boolean): void {
+  const state = machine.setLocked(locked)
+  if (state) sendState(state)
+}
+
+/** Hear each live level while recording, as the overlay does (US-117:
+ *  the silence watch). One listener at a time; null removes it. */
+export function setAudioLevelListener(fn: ((level: number) => void) | null): void {
+  levelListener = fn
 }
 
 export function getOverlayPhase(): OverlayPhase {
@@ -289,10 +310,12 @@ export function initOverlay(): void {
     })
   }
 
-  // Live waveform: audio renderer posts levels, the overlay paints them.
+  // Live waveform: audio renderer posts levels, the overlay paints them,
+  // and a level listener (the hands-free silence watch) hears them too.
   ipcMain.on(IpcChannels.audioLevel, (_event, level: number) => {
     if (machine.get().phase === 'recording') {
       aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
+      levelListener?.(level)
     }
   })
 
@@ -746,6 +769,113 @@ export function initOverlay(): void {
         })
       }
     }
+
+    // The hands-free ring (US-117), with bars and ink dabs in each look,
+    // over a dark app and a white page: the loop closed after its
+    // draw-in, half dried 11:30 into a take, and the cancel scrape as it
+    // lands. The pill also gets the draw-in halfway, and reduced motion:
+    // the loop closed at once and the scrape still (the CSS half of
+    // reduced motion, the pill gone at once, needs the real setting).
+    const backdrops = { dark: 'rgb(29, 28, 34)', white: 'rgb(255, 255, 255)' }
+    // The renderer's own times (overlay/lockRing.ts), with a margin: the
+    // loop draws in for 650 ms (eased, so 140 ms in shows about half of
+    // it) and the scrape for 340 ms.
+    const drawnMs = 850
+    const midDrawMs = 140
+    const scrapedMs = 360
+    for (const style of ['bars', 'dabs']) {
+      for (const look of OVERLAY_LOOKS) {
+        registerSmokeCheck(`overlayRingShot-${style}-${look}`, async () => {
+          const win = aliveOverlay()
+          if (!win) return false
+          const { writeFile } = await import('node:fs/promises')
+          const shootOn = async (name: string, bg: keyof typeof backdrops): Promise<void> => {
+            await win.webContents.executeJavaScript(
+              `document.documentElement.style.background = ${JSON.stringify(backdrops[bg])}`
+            )
+            await inkWait(34)
+            const image = await win.webContents.capturePage()
+            await writeFile(join(shotsDir, `ring-${style}-${look}-${name}-${bg}.png`), image.toPNG())
+          }
+          const shoot = async (name: string): Promise<void> => {
+            await shootOn(name, 'dark')
+            await shootOn(name, 'white')
+          }
+          const speak = async (ms: number): Promise<void> => {
+            for (let t = 0; t < ms; t += 33) {
+              const level = 0.04 + 0.2 * Math.abs(Math.sin(t / 110)) * (0.5 + 0.5 * Math.abs(Math.sin(t / 430)))
+              win.webContents.send(IpcChannels.overlayLevel, level)
+              await inkWait(33)
+            }
+          }
+          // A locked take, startedAt ago (the timer and the drying read it).
+          const lockedTake = async (ago = 0): Promise<boolean> => {
+            const state = machine.transition('recording', () => Date.now() - ago)
+            if (!state) return false
+            sendState(state)
+            await speak(500)
+            setOverlayLocked(true)
+            return true
+          }
+          const original = { style: getSettings().overlay.style, look: getSettings().overlay.look }
+          try {
+            updateSettings({ overlay: { style, look } })
+            await inkWait(250)
+            for (const bg of ['dark', 'white'] as const) {
+              if (!(await lockedTake())) return false
+              if (look === 'pill' && bg === 'dark') {
+                await speak(midDrawMs)
+                await shootOn('drawing', bg)
+              }
+              await speak(drawnMs)
+              if (bg === 'dark') await shoot('locked')
+              setOverlayPhase('cancelled')
+              await inkWait(scrapedMs)
+              await shootOn('cancel', bg)
+              setOverlayPhase('idle')
+              await inkWait(80)
+            }
+            if (!(await lockedTake(690_000))) return false
+            await speak(drawnMs)
+            await shoot('dry50')
+            setOverlayPhase('idle')
+            if (look === 'pill' && style === 'bars') {
+              // The ring reads reduced motion as it mounts.
+              await win.webContents.executeJavaScript(
+                `(() => {
+                  window.__murmurRealMatchMedia = window.matchMedia.bind(window)
+                  window.matchMedia = (q) =>
+                    typeof q === 'string' && q.includes('prefers-reduced-motion')
+                      ? { matches: true, media: q, addListener(){}, removeListener(){}, addEventListener(){}, removeEventListener(){}, onchange: null, dispatchEvent(){ return true } }
+                      : window.__murmurRealMatchMedia(q)
+                })()`
+              )
+              await inkWait(80)
+              if (!(await lockedTake())) return false
+              await inkWait(60)
+              await shootOn('reduced-locked', 'dark')
+              setOverlayPhase('cancelled')
+              await inkWait(60)
+              await shootOn('reduced-cancel', 'dark')
+            }
+            return true
+          } finally {
+            setOverlayPhase('idle')
+            await win.webContents.executeJavaScript(
+              `(() => {
+                document.documentElement.style.background = ''
+                if (window.__murmurRealMatchMedia) {
+                  window.matchMedia = window.__murmurRealMatchMedia
+                  delete window.__murmurRealMatchMedia
+                }
+              })()`
+            )
+            updateSettings({ overlay: original })
+            await inkWait(100)
+          }
+        })
+      }
+    }
   }
 
   registerSmokeCheck('overlayStatesAndTimer', async () => {
@@ -771,5 +901,123 @@ export function initOverlay(): void {
       processing.phase === 'processing' &&
       idle.phase === 'idle'
     )
+  })
+
+  registerSmokeCheck('overlayLockRing', async () => {
+    // Hands-free (US-117), live in the DOM: a lock refused at rest;
+    // holding draws no ring; a lock mounts the ring with paint on it and
+    // the timer still counting from the first press; the level listener
+    // hears levels only while recording and only while set; processing
+    // unlocks and takes the ring away; a cancel keeps the canvas for the
+    // scrape, rests by itself after CANCEL_LINGER_MS, and a new take may
+    // start while it lingers. Focus and click-through hold throughout.
+    const win = aliveOverlay()
+    if (!win) return false
+    interface Ring {
+      phase?: string
+      locked?: string
+      ring: boolean
+      painted: number
+      timer?: string
+    }
+    const read = async (): Promise<Ring> =>
+      JSON.parse(
+        await win.webContents.executeJavaScript(
+          `(() => {
+            const c = document.querySelector('canvas[data-lock-ring]')
+            let painted = 0
+            if (c && c.width > 0 && c.height > 0) {
+              const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+              for (let i = 3; i < d.length; i += 4) if (d[i] > 8) painted++
+            }
+            return JSON.stringify({
+              phase: document.body.dataset.phase,
+              locked: document.body.dataset.locked,
+              ring: c !== null,
+              painted,
+              timer: (document.querySelector('[data-timer]') || {}).textContent
+            })
+          })()`
+        )
+      ) as Ring
+    const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    const deadline = Date.now() + 20_000
+    const until = async (ready: (ring: Ring) => boolean): Promise<Ring> => {
+      let ring = await read()
+      while (!ready(ring) && Date.now() < deadline) {
+        await wait(40)
+        ring = await read()
+      }
+      return ring
+    }
+    const heard: number[] = []
+    try {
+      setOverlayLocked(true)
+      const refused = !machine.get().locked
+      if (!setOverlayPhase('recording')) return false
+      const startedAt = machine.get().startedAt
+      const holding = await until((ring) => ring.phase === 'recording' && typeof ring.timer === 'string')
+      await wait(150)
+      const stillHolding = await read()
+      setAudioLevelListener((level) => heard.push(level))
+      ipcMain.emit(IpcChannels.audioLevel, {}, 0.31)
+      setOverlayLocked(true)
+      const locked = await until((ring) => ring.locked === 'true' && ring.ring && ring.painted > 200)
+      const sameTake = machine.get().startedAt === startedAt
+      ipcMain.emit(IpcChannels.audioLevel, {}, 0.42)
+      setAudioLevelListener(null)
+      ipcMain.emit(IpcChannels.audioLevel, {}, 0.53)
+      setOverlayPhase('processing')
+      const processing = await until((ring) => ring.phase === 'processing' && !ring.ring)
+      setAudioLevelListener((level) => heard.push(level))
+      ipcMain.emit(IpcChannels.audioLevel, {}, 0.64)
+      setAudioLevelListener(null)
+      setOverlayPhase('idle')
+      await until((ring) => ring.phase === 'idle')
+      // A cancel: the scrape paints, then the pill rests on its own.
+      if (!setOverlayPhase('recording')) return false
+      setOverlayLocked(true)
+      await until((ring) => ring.ring && ring.painted > 200)
+      setOverlayPhase('cancelled')
+      const cancelledAt = Date.now()
+      const cancelled = await until((ring) => ring.phase === 'cancelled' && ring.ring && ring.painted > 200)
+      const rested = await until((ring) => ring.phase === 'idle' && !ring.ring)
+      const restedAfter = Date.now() - cancelledAt
+      // A new take may start while a cancel lingers.
+      if (!setOverlayPhase('recording')) return false
+      setOverlayPhase('cancelled')
+      const again = setOverlayPhase('recording')?.phase === 'recording'
+      setOverlayPhase('idle')
+      const flags = !win.isFocusable() && win.isAlwaysOnTop() && clickThrough
+      const ok =
+        refused &&
+        holding.locked === 'false' &&
+        !stillHolding.ring &&
+        locked.locked === 'true' &&
+        locked.ring &&
+        locked.painted > 200 &&
+        typeof locked.timer === 'string' &&
+        sameTake &&
+        heard.join(',') === '0.31,0.42' &&
+        processing.locked === 'false' &&
+        !processing.ring &&
+        cancelled.locked === 'false' &&
+        cancelled.ring &&
+        rested.phase === 'idle' &&
+        !rested.ring &&
+        restedAfter >= CANCEL_LINGER_MS - 50 &&
+        again &&
+        flags
+      if (!ok) {
+        console.error(
+          `smoke overlayLockRing: ${JSON.stringify({ refused, holding, stillHolding, locked, sameTake, heard, processing, cancelled, rested, restedAfter, again, flags })}`
+        )
+      }
+      return ok
+    } finally {
+      setAudioLevelListener(null)
+      setOverlayPhase('idle')
+      await wait(100)
+    }
   })
 }
