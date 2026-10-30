@@ -92,6 +92,14 @@ describe('mergeSettings', () => {
     expect(mergeSettings(DEFAULT_SETTINGS, { timeBack: { milestones: false } }).timeBack.milestones).toBe(false)
   })
 
+  it('turns double-tap on by default, for new and stored profiles', () => {
+    expect(DEFAULT_SETTINGS.hotkey.doubleTap).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { hotkey: { mode: 'hold', binding: 'Alt+Space' } }).hotkey.doubleTap).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { hotkey: { doubleTap: false } }).hotkey.doubleTap).toBe(false)
+    expect(mergeSettings(DEFAULT_SETTINGS, { hotkey: { doubleTap: 'yes' } }).hotkey.doubleTap).toBe(true)
+    expect(mergeSettings(DEFAULT_SETTINGS, { hotkey: { mode: 'toggle' } }).hotkey.mode).toBe('toggle')
+  })
+
   it('preserves unknown keys from newer builds', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, { futureFeature: { on: true } })
     expect((merged as unknown as Record<string, unknown>).futureFeature).toEqual({ on: true })

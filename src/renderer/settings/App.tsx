@@ -1026,11 +1026,25 @@ export function App(): React.JSX.Element {
                 value={settings.hotkey.mode}
                 options={[
                   { value: 'hold', label: 'Hold to talk' },
-                  { value: 'toggle', label: 'Toggle' }
+                  { value: 'toggle', label: 'Tap to start, tap to stop' }
                 ]}
                 onChange={(mode) => void update({ hotkey: { mode } as Settings['hotkey'] })}
               />
             </Row>
+
+            {settings.hotkey.mode === 'hold' && (
+              <Row
+                label="Double-tap for hands-free"
+                keywords="hands free double tap lock long"
+                desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to throw the take away."
+              >
+                <Switch
+                  checked={settings.hotkey.doubleTap}
+                  label="Double-tap for hands-free"
+                  onChange={(doubleTap) => void update({ hotkey: { ...settings.hotkey, doubleTap } })}
+                />
+              </Row>
+            )}
 
             <MicRow settings={settings} onUpdate={update} />
 

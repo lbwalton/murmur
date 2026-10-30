@@ -19,6 +19,8 @@ export interface Settings {
     /** Chord that pastes the newest history entry. Empty means the
      *  feature is disarmed; it only works once the user captures one. */
     pasteLastBinding: string
+    /** Hold to talk only: tap the hotkey twice to keep the mic open hands-free. */
+    doubleTap: boolean
   }
   provider: {
     baseUrl: string
@@ -222,7 +224,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkey: {
     mode: 'hold',
     binding: isMacPlatform() ? 'Alt+Space' : 'Ctrl+Space',
-    pasteLastBinding: ''
+    pasteLastBinding: '',
+    doubleTap: true
   },
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',
