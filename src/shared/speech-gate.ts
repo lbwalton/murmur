@@ -4,6 +4,12 @@
 // the stock phrases Whisper-family models hallucinate on silence.
 // Either one firing means nothing is ever inserted.
 
+/** The gate's defaults: a 30 ms window whose RMS reaches this counts
+ *  as voiced, and a take needs this much voiced time to be speech.
+ *  Hands-free's silence watch (US-117) judges quiet by the same two. */
+export const SPEECH_RMS_THRESHOLD = 0.01
+export const MIN_VOICED_MS = 200
+
 export interface GateOptions {
   windowMs?: number
   rmsThreshold?: number
@@ -16,7 +22,7 @@ export function voicedMs(
   sampleRate: number,
   options: GateOptions = {}
 ): number {
-  const { windowMs = 30, rmsThreshold = 0.01 } = options
+  const { windowMs = 30, rmsThreshold = SPEECH_RMS_THRESHOLD } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let voiced = 0
   for (let start = 0; start + windowSize <= samples.length; start += windowSize) {
@@ -33,7 +39,7 @@ export function hasSpeechEnergy(
   sampleRate: number,
   options: GateOptions = {}
 ): boolean {
-  const { minVoicedMs = 200 } = options
+  const { minVoicedMs = MIN_VOICED_MS } = options
   return voicedMs(samples, sampleRate, options) >= minVoicedMs
 }
 
@@ -67,7 +73,7 @@ export function trimSilence(
   sampleRate: number,
   options: GateOptions & { paddingMs?: number } = {}
 ): Float32Array {
-  const { windowMs = 30, rmsThreshold = 0.01, paddingMs = 250 } = options
+  const { windowMs = 30, rmsThreshold = SPEECH_RMS_THRESHOLD, paddingMs = 250 } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let firstVoiced = -1
   let lastVoiced = -1

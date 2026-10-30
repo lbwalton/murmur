@@ -85,6 +85,17 @@ function reasonText(take: WaitingTake): string {
   return 'something went wrong'
 }
 
+/** A waiting take's line. A hands-free take parked on sleep or quit
+ *  (US-117) was never tried, so it says when it was saved instead. */
+export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
+  const f = take.failure
+  if (f?.kind === 'parked') {
+    if (f.detail === 'quit') return 'Saved when murmur quit'
+    return `Saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
+  }
+  return `not transcribed: ${reasonText(take)}`
+}
+
 function whenOf(at: number): string {
   const date = new Date(at)
   if (date.toDateString() === new Date().toDateString()) return `today ${timeOf(at)}`
@@ -337,6 +348,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
   }
 
   if (takes.length === 0 && !message) return null
+  const platform = navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32'
 
   return (
     <section className="panel waiting">
@@ -407,7 +419,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
                 </button>
               </span>
             </div>
-            <p className="waiting-reason dim">not transcribed: {reasonText(take)}</p>
+            <p className="waiting-reason dim">{waitingLine(take, platform)}</p>
           </div>
         ))}
       </div>

@@ -4,7 +4,7 @@
 // insertion into the target app, so focusable stays false forever.
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain, screen } from 'electron'
-import { devRendererUrl, watchWindow } from '../window-watch'
+import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
 import {
@@ -315,7 +315,13 @@ export function initOverlay(): void {
   ipcMain.on(IpcChannels.audioLevel, (_event, level: number) => {
     if (machine.get().phase === 'recording') {
       aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
-      levelListener?.(level)
+      // A listener that throws must never become an uncaught error in
+      // main, and its log line stays content-free.
+      try {
+        levelListener?.(level)
+      } catch {
+        writeAppLog('[overlay] level listener failed')
+      }
     }
   })
 

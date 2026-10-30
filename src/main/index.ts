@@ -7,6 +7,15 @@ import { BrowserWindow, Menu, app, clipboard, ipcMain } from 'electron'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation, pasteLastDictation } from './dictation'
 import {
+  deferQuitForPark,
+  handsFreeAutoStop,
+  handsFreeCancel,
+  handsFreeDiscard,
+  handsFreeLock,
+  handsFreeStop,
+  initHandsFree
+} from './handsfree'
+import {
   captureHotkeyViaHook,
   initHotkeys,
   isBindingParseable,
@@ -207,7 +216,13 @@ app.on('second-instance', () => {
   showSettingsWindow()
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  // A locked hands-free take is parked for Retry first (US-117); the
+  // park quits again when it is done, so this quit only waits.
+  if (deferQuitForPark()) {
+    event.preventDefault()
+    return
+  }
   isQuitting = true
   stopHotkeys()
   // Failsafe: if anything (a window, a native hook thread) still blocks
@@ -323,27 +338,35 @@ app.whenReady().then(async () => {
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
 
+  // Hands-free (US-117) rides the dictation and note chords: a hold
+  // works as before, a double-tap locks the take. Transform holds only.
   initHotkeys({
     start: dictationStart,
-    stop: () => {
-      void dictationStop()
-    },
+    stop: () => handsFreeStop('dictation'),
+    lock: () => handsFreeLock('dictation'),
+    discard: () => handsFreeDiscard('dictation'),
     pasteLast: () => {
       void pasteLastDictation()
     },
     note: {
       start: () => dictationStart('note'),
-      stop: () => {
-        void dictationStop('note')
-      }
+      stop: () => handsFreeStop('note'),
+      lock: () => handsFreeLock('note'),
+      discard: () => handsFreeDiscard('note')
     },
     transform: {
       start: () => dictationStart('transform'),
       stop: () => {
         void dictationStop('transform')
       }
+    },
+    cancel: handsFreeCancel,
+    // A chord change mid-take: the locked take is saved, never lost.
+    lockedReset: () => {
+      void handsFreeAutoStop('changed')
     }
   })
+  initHandsFree()
   initPermissions()
 
   // Share card: the journey page draws a PNG locally; main only offers
@@ -436,6 +459,14 @@ app.whenReady().then(async () => {
     },
     onOpenLastNote: () => {
       void openLastNote('tray')
+    },
+    // Stop hands-free saves like an auto-stop: the click can move focus
+    // (to the taskbar on Windows), so a paste could land nowhere.
+    onStopHandsFree: () => {
+      void handsFreeAutoStop('menu')
+    },
+    onDiscardHandsFree: () => {
+      handsFreeCancel()
     }
   })
   // The inbox item exists only while there is a folder to open.

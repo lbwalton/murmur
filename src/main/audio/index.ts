@@ -575,7 +575,24 @@ export function playCue(
   })
 }
 
+// A locked hands-free take parks before murmur quits (US-117), and its
+// audio lives in this window. This listener runs first (it registers at
+// import), so it asks before destroying the window; the quit that
+// follows the park finds nothing to keep.
+let keepAudioOnQuit: () => boolean = () => false
+export function setKeepAudioOnQuit(keep: () => boolean): void {
+  keepAudioOnQuit = keep
+}
+
+/** Windows ends a session (shutdown, restart, sign out) without a quit
+ *  event; the capture window hears it. No-op elsewhere. */
+export function onAudioSessionEnd(listener: () => void): void {
+  if (process.platform !== 'win32') return
+  aliveAudio()?.on('session-end', listener)
+}
+
 app.on('before-quit', () => {
+  if (keepAudioOnQuit()) return
   audioWindow?.destroy()
   audioWindow = null
 })
