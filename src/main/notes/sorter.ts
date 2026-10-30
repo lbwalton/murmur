@@ -516,8 +516,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // points at the word where its first item begins; numbers only.
   const leadCounts = sentences.map((sentence, i) => leadWords(sentence, seamsBySentence[i] ?? []).length)
   const offerLeads = leadCounts.some((n) => n > 0)
-  // Keep (US-115): for a task or idea sentence the model points at the
-  // first and last word worth filing; numbers only, chat only.
+  // Keep (US-115, US-116 on a decision connection): for a task or idea
+  // sentence the model points at the first and last word worth filing;
+  // numbers only.
   const keepCounts = sentences.map((sentence) => keepWords(sentence).length)
   const offerKeep = keepCounts.some((n) => n > 0)
   // Filed items (US-055): what is already in the two files, read from
@@ -547,7 +548,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       timeoutMs
     )
     const read = reply.ok
-      ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length, leadCounts)
+      ? readDecisionAnswers(reply.answers, sentences.length, seamCounts, items.length, leadCounts, keepCounts)
       : null
     if (reply.ok && read?.ok) {
       verdict = read
@@ -605,8 +606,8 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // File only the item (US-115): a task or idea sentence the model
   // trimmed is cut down to the words worth filing before anything else
   // reads it, so held lines, cuts, lead-ins, and the files all see the
-  // same words. The inbox keeps every word. Only the chat reply carries
-  // a keep vote; a decision answer files whole sentences, as before.
+  // same words. The inbox keeps every word. A chat reply votes keep as
+  // [first, last]; a decision answer as two Choices (US-116).
   let trimmed = 0
   if (verdict.keep) {
     const seamVotes: SeamVotes = { ...verdict.seams }
@@ -833,7 +834,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
 /**
  * The second, smaller request of a piece-by-piece comparison: the
  * pieces as numbered sentences against the same items, on the same
- * connection the sort used. No seams are offered and no topic asked;
+ * connection the sort used. No seams or keep words are offered and no topic asked;
  * the labels come back but the sentence's own label is kept. Any
  * failure is reported, never thrown; the caller holds the whole line.
  */
@@ -846,7 +847,7 @@ async function askRelations(
   const noSeams = pieces.map(() => 0)
   if (protocol === 'decide') {
     const reply = await askDecision(
-      buildDecisionRequest(config.model, pieces, pieces.map(() => []), items),
+      buildDecisionRequest(config.model, pieces, pieces.map(() => []), items, false),
       config,
       fetchImpl,
       timeoutMs
@@ -1938,8 +1939,9 @@ export function initSorter(): void {
     // US-115: a task or idea files only the words the keep vote points
     // at, a run's cut and lead-in follow the kept words, a bad span
     // files the sentence whole, a note's span is ignored, the chat
-    // fallback after a failed decision trims too, and the sort never
-    // writes the inbox.
+    // fallback after a failed decision trims too, a decision answer
+    // trims from its keep Choices (US-116), and the sort never writes
+    // the inbox.
     const before = getSettings().notes
     const vault = join(app.getPath('userData'), 'smoke-vault-keep')
     const todo = join(vault, 'murmur', 'todo.md')
@@ -2016,6 +2018,45 @@ export function initSorter(): void {
       )
       const fallbackOk = fellBack.outcome === 'filed' && read(ideas) === `${afterIdeas}- a podcast tour. ${link}\n`
 
+      // US-116: the decision model trims too, from two keep Choices.
+      // LaBroi's live dump of 2026-10-29, which filed whole on 0.1.16.
+      const beforeDecideTodo = read(todo)
+      const beforeDecideIdeas = read(ideas)
+      let decideBody = ''
+      const decided = await sortNote(
+        { ...base, text: 'Call the dentist tomorrow. Oh, and an idea: a rooftop launch party.' },
+        {
+          fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+            decideBody = String(init?.body ?? '')
+            return new Response(
+              JSON.stringify({
+                model: 'jev-1.14.0',
+                answers: {
+                  label_1: { type: 'choice', choice: 'task', confidence: 1 },
+                  label_2: { type: 'choice', choice: 'idea', confidence: 1 },
+                  keep_first_1: { type: 'choice', choice: '1' },
+                  keep_last_1: { type: 'choice', choice: '4' },
+                  keep_first_2: { type: 'choice', choice: '5' },
+                  keep_last_2: { type: 'choice', choice: '8' }
+                }
+              }),
+              { status: 200 }
+            )
+          }) as typeof fetch,
+          connection: { baseUrl: 'https://mock-decide.local/v1', model: 'jev-latest', apiKey: 'k' },
+          protocol: 'decide'
+        }
+      )
+      const asked = JSON.parse(decideBody || '{}') as { questions?: Record<string, { criteria?: Record<string, string> }> }
+      const decideOk =
+        decided.outcome === 'filed' &&
+        decided.tasks === 1 &&
+        decided.ideas === 1 &&
+        asked.questions?.keep_first_2?.criteria?.['5'] === 'a' &&
+        asked.questions?.keep_last_2?.criteria?.['8'] === 'party.' &&
+        read(todo) === `${beforeDecideTodo}- [ ] Call the dentist tomorrow. ${link}\n` &&
+        read(ideas) === `${beforeDecideIdeas}- a rooftop launch party. ${link}\n`
+
       const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
       const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
       return (
@@ -2024,8 +2065,10 @@ export function initSorter(): void {
         badOk &&
         noteOk &&
         fallbackOk &&
+        decideOk &&
         !existsSync(join(vault, 'murmur', 'inbox', '2026-09-18.md')) &&
-        log.includes(' trimmed=1')
+        log.includes(' trimmed=1') &&
+        /protocol=decide model=jev-1\.14\.0 slot=separate.* trimmed=1/.test(log)
       )
     } finally {
       updateSettings({ notes: before })
