@@ -2,12 +2,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   LEVEL_FRAME_MS,
+  LOCK_SCREEN_WAIT_MS,
   SILENCE_VOICED_MS,
   SILENCE_WINDOW_MS,
   SilenceWatch,
   TAKE_LIMIT_MS,
   VOICED_LEVEL,
   parkNotice,
+  retryNotice,
   stopNotice
 } from './handsfree-rules'
 import { MIN_VOICED_MS, SPEECH_RMS_THRESHOLD } from '../shared/speech-gate'
@@ -19,6 +21,8 @@ describe('the hands-free times', () => {
     expect(SILENCE_VOICED_MS).toBe(200)
     expect(VOICED_LEVEL).toBe(0.01)
     expect(LEVEL_FRAME_MS).toBe(33)
+    // A lid close locks the screen just before the sleep it brings.
+    expect(LOCK_SCREEN_WAIT_MS).toBe(1_000)
     expect(VOICED_LEVEL).toBe(SPEECH_RMS_THRESHOLD)
     expect(SILENCE_VOICED_MS).toBe(MIN_VOICED_MS)
   })
@@ -101,6 +105,18 @@ describe('the hands-free notices', () => {
       'Stopped after 2 minutes of quiet. Your words are on the clipboard and in history.'
     )
     expect(stopNotice('menu', 'note').body).toBe('Your note is saved.')
+  })
+
+  it('a stopped take whose transcription failed says it waits in Retry', () => {
+    const retry = 'Your take is saved. Open murmur and press Retry on Home.'
+    expect(retryNotice('silence')).toEqual({
+      title: 'murmur hands-free',
+      body: 'Stopped after 2 minutes of quiet. Your take is saved. Open murmur and press Retry on Home.'
+    })
+    expect(retryNotice('lock').body).toBe(`Stopped when your screen locked. ${retry}`)
+    expect(retryNotice('limit').body).toBe(`Stopped at 12 minutes, the longest take. ${retry}`)
+    expect(retryNotice('changed').body).toBe(`Stopped because the hotkey changed. ${retry}`)
+    expect(retryNotice('menu')).toEqual({ title: 'murmur hands-free', body: retry })
   })
 
   it('a parked take says why and where to find it', () => {

@@ -38,29 +38,31 @@ export function saveTakeForRetry(wav: Uint8Array, take: TakeRecord): string {
 /**
  * Transcribe a finished recording. On failure a live take's WAV is
  * saved for recovery with what it was and why it failed (US-068), and
- * the failure is returned, never thrown. A retry passes recover: false:
+ * the failure is returned, never thrown, with saved saying whether the
+ * audio made it onto the waiting list. A retry passes recover: false:
  * its audio is already saved.
  */
 export async function transcribeWav(
   wav: Uint8Array,
   recover: { kind: TakeKind; startedAt: number } | false
-): Promise<TranscribeResult> {
+): Promise<TranscribeResult & { saved?: boolean }> {
   if (isSmoke) return { ok: true, text: SMOKE_TRANSCRIPT }
 
-  const save = (failure: { kind: string; detail: string }): void => {
-    if (recover === false) return
+  const save = (failure: { kind: string; detail: string }): boolean => {
+    if (recover === false) return false
     try {
       saveTakeForRetry(wav, { ...recover, failure })
+      return true
     } catch (error) {
       console.error('[murmur] recovery save failed:', error)
+      return false
     }
   }
 
   const key = getApiKey()
   if (!key) {
     const failure = { kind: 'auth' as const, detail: 'no API key configured' }
-    save(failure)
-    return { ok: false, ...failure }
+    return { ok: false, ...failure, saved: save(failure) }
   }
 
   const settings = getSettings()
@@ -69,7 +71,7 @@ export async function transcribeWav(
     model: settings.provider.sttModel,
     apiKey: key
   })
-  if (!result.ok) save({ kind: result.kind, detail: result.detail })
+  if (!result.ok) return { ...result, saved: save({ kind: result.kind, detail: result.detail }) }
   return result
 }
 

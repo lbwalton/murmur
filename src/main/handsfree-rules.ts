@@ -16,6 +16,10 @@ export const SILENCE_VOICED_MS = MIN_VOICED_MS
 export const VOICED_LEVEL = SPEECH_RMS_THRESHOLD
 /** One overlay level sample stands for this much audio. */
 export const LEVEL_FRAME_MS = 33
+/** A screen lock waits this long before it stops a take: a closing lid
+ *  locks the screen just before the sleep it brings, and a sleep keeps
+ *  the take for Retry instead of transcribing it into a sleeping Mac. */
+export const LOCK_SCREEN_WAIT_MS = 1_000
 
 /** Why a locked take stopped and was saved without a paste. */
 export type StopReason = 'silence' | 'lock' | 'limit' | 'menu' | 'changed'
@@ -23,6 +27,7 @@ export type StopReason = 'silence' | 'lock' | 'limit' | 'menu' | 'changed'
 export type ParkReason = 'sleep' | 'quit'
 
 const TITLE = 'murmur hands-free'
+const RETRY = 'Your take is saved. Open murmur and press Retry on Home.'
 
 /**
  * The live levels of one locked take, reduced to when voice was heard.
@@ -70,6 +75,12 @@ const STOPPED: Record<StopReason, string> = {
 export function stopNotice(reason: StopReason, kind: 'dictation' | 'note'): { title: string; body: string } {
   const where = kind === 'note' ? 'Your note is saved.' : 'Your words are on the clipboard and in history.'
   return { title: TITLE, body: `${STOPPED[reason]}${where}` }
+}
+
+/** The notification for a take that stopped on its own but could not
+ *  be transcribed: why, then where it waits. */
+export function retryNotice(reason: StopReason): { title: string; body: string } {
+  return { title: TITLE, body: `${STOPPED[reason]}${RETRY}` }
 }
 
 /** The notification for a take kept for Retry: why, then where. */

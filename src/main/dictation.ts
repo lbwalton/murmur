@@ -101,19 +101,24 @@ export function liveSessionKind(): DictationKind | null {
   return getOverlayPhase() === 'recording' ? sessionKind : null
 }
 
+/** What became of a stopped take: its words reached their place
+ *  (pasted, saved, filed, or transformed), it held no speech, its
+ *  transcription failed and the audio waits in Retry, or it failed some
+ *  other way (nothing began, a dead capture, a failed write). */
+export type StopOutcome = 'delivered' | 'nospeech' | 'retry' | 'failed'
+
 /**
- * End the live take and deliver it. Resolves true when the words
- * reached their place (pasted, saved, filed, or transformed). With save
- * (a hands-free take that stopped on its own, US-117) a dictation is
- * never pasted, since the app in front may have changed: it goes to
- * history and the clipboard instead. A note files as usual.
+ * End the live take and deliver it. With save (a hands-free take that
+ * stopped on its own, US-117) a dictation is never pasted, since the
+ * app in front may have changed: it goes to history and the clipboard
+ * instead. A note files as usual.
  */
 export async function dictationStop(
   kind: DictationKind = 'dictation',
   opts: { save?: StopReason } = {}
-): Promise<boolean> {
-  if (getOverlayPhase() !== 'recording') return false
-  if (sessionKind !== kind) return false
+): Promise<StopOutcome> {
+  if (getOverlayPhase() !== 'recording') return 'failed'
+  if (sessionKind !== kind) return 'failed'
   setOverlayPhase('processing')
   playCue('stop')
   const wav = await stopRecording()
@@ -121,7 +126,7 @@ export async function dictationStop(
     void logDictation('capture-failed')
     setOverlayPhase('error')
     playCue('error')
-    return false
+    return 'failed'
   }
 
   // Guard one: no speech energy means no upload and nothing inserted.
@@ -152,7 +157,7 @@ export async function dictationStop(
       }
       setOverlayPhase('nospeech')
       playCue('nospeech')
-      return false
+      return 'nospeech'
     }
     const { trimSilence } = await import('../shared/speech-gate')
     const { encodeWavPcm16 } = await import('../shared/wav')
@@ -160,7 +165,7 @@ export async function dictationStop(
   } catch {
     setOverlayPhase('error')
     playCue('error')
-    return false
+    return 'failed'
   }
 
   if (kind === 'transform') {
@@ -172,12 +177,12 @@ export async function dictationStop(
         startedAt,
         transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt })
       })
-      return outcome === 'transformed' || outcome === 'copied'
+      return outcome === 'transformed' || outcome === 'copied' ? 'delivered' : 'failed'
     } catch (error) {
       console.error('[murmur] transform threw:', error)
       setOverlayPhase('error')
       playCue('error')
-      return false
+      return 'failed'
     }
   }
 
@@ -203,7 +208,7 @@ export async function dictationStop(
     }
     setOverlayPhase('error')
     playCue('error')
-    return false
+    return result.saved ? 'retry' : 'failed'
   }
   // Guard two lives in finishTranscript: empty or hallucinated
   // transcripts never insert. History records the transcript as heard.
@@ -212,10 +217,10 @@ export async function dictationStop(
   if (finalText === null) {
     setOverlayPhase('nospeech')
     playCue('nospeech')
-    return false
+    return 'nospeech'
   }
 
-  if (kind === 'note') return deliverNote(heardText, finalText, peak)
+  if (kind === 'note') return (await deliverNote(heardText, finalText, peak)) ? 'delivered' : 'failed'
 
   try {
     if (opts.save) {
@@ -231,13 +236,13 @@ export async function dictationStop(
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       refreshOverlayConfig()
-      return true
+      return 'delivered'
     }
     const outcome = await insertText(finalText)
     if (outcome === 'error') {
       setOverlayPhase('error')
       playCue('error')
-      return false
+      return 'failed'
     } else {
       const { recordSession } = await import('./history')
       const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
@@ -251,13 +256,13 @@ export async function dictationStop(
       playCue('insert')
       // A session can change rank, and rank can change the belt accent.
       refreshOverlayConfig()
-      return true
+      return 'delivered'
     }
   } catch (error) {
     console.error('[murmur] insertion failed:', error)
     setOverlayPhase('error')
     playCue('error')
-    return false
+    return 'failed'
   }
 }
 

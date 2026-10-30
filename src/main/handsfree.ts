@@ -5,19 +5,24 @@
 // take: the 12 minute limit and the silence watch, Escape and the tray's
 // Discard, the auto-stops that save without pasting (the app in front
 // may have changed), and parking the audio for Retry when the computer
-// sleeps or murmur quits. Every way a take ends lets go of it at once,
-// so whichever comes first wins and the rest do nothing. Logs carry
-// numbers and outcomes, never words.
-import { Notification, app, powerMonitor } from 'electron'
+// sleeps or murmur quits. While a take is locked the display stays
+// awake: hands-free invites no keyboard or mouse input, and a display
+// that sleeps on idle can lock the screen mid-sentence; the silence and
+// 12 minute stops still bound the hold. Every way a take ends lets go
+// of it at once, so whichever comes first wins and the rest do nothing.
+// Logs carry numbers and outcomes, never words.
+import { Notification, app, powerMonitor, powerSaveBlocker } from 'electron'
 import { onAudioSessionEnd, playCue, setKeepAudioOnQuit } from './audio'
 import { dictationCancelTake, dictationDiscard, dictationPark, dictationStop, liveSessionKind } from './dictation'
 import {
+  LOCK_SCREEN_WAIT_MS,
   type ParkReason,
   SILENCE_WINDOW_MS,
   SilenceWatch,
   type StopReason,
   TAKE_LIMIT_MS,
   parkNotice,
+  retryNotice,
   stopNotice
 } from './handsfree-rules'
 import { resetHandsFreeGestures } from './hotkeys'
@@ -42,6 +47,11 @@ interface LockedTake {
   lockedAt: number
   limitTimer: NodeJS.Timeout
   silenceTimer: NodeJS.Timeout
+  /** A screen lock waiting out LOCK_SCREEN_WAIT_MS before it stops the
+   *  take; a sleep inside the wait parks the take instead. */
+  lockScreenTimer: NodeJS.Timeout | null
+  /** The powerSaveBlocker id keeping the display awake, if one started. */
+  displayBlocker: number | null
 }
 
 let locked: LockedTake | null = null
@@ -51,6 +61,7 @@ let parking = false
 let quitAfterPark = false
 let limitMs = TAKE_LIMIT_MS
 let silenceWindowMs = SILENCE_WINDOW_MS
+let parkGiveUpMs = PARK_GIVE_UP_MS
 let lastNotice: { title: string; body: string } | null = null
 
 function log(line: string): void {
@@ -74,17 +85,41 @@ function notify(notice: { title: string; body: string }): void {
   }
 }
 
-/** Let go of the locked take: its timers, the silence watch, and the
- *  tray items. Synchronous, so a second way out finds nothing. */
+/** Let go of the locked take: its timers, the silence watch, the
+ *  display's wake hold, and the tray items. Synchronous, so a second way
+ *  out finds nothing. */
 function release(): LockedTake | null {
   const take = locked
   if (!take) return null
   locked = null
   clearTimeout(take.limitTimer)
   clearInterval(take.silenceTimer)
+  if (take.lockScreenTimer) clearTimeout(take.lockScreenTimer)
+  if (take.displayBlocker !== null) powerSaveBlocker.stop(take.displayBlocker)
   setAudioLevelListener(null)
   setTrayHandsFree(false)
   return take
+}
+
+/** Hold the display awake; null when the system would not. */
+function keepDisplayAwake(): number | null {
+  try {
+    return powerSaveBlocker.start('prevent-display-sleep')
+  } catch {
+    log('display wake hold failed')
+    return null
+  }
+}
+
+/** The screen locked: stop the take after LOCK_SCREEN_WAIT_MS, unless a
+ *  sleep comes first (a closing lid locks, then sleeps) and parks it. */
+function onLockScreen(): void {
+  const take = locked
+  if (!take || take.lockScreenTimer) return
+  take.lockScreenTimer = setTimeout(() => {
+    take.lockScreenTimer = null
+    if (locked === take) void handsFreeAutoStop('lock')
+  }, LOCK_SCREEN_WAIT_MS)
 }
 
 /** The second press locked the take: the mic stays open until a tap,
@@ -110,7 +145,9 @@ export function handsFreeLock(kind: LockedKind): void {
         if (locked === take && watch.quiet(Date.now(), take.lockedAt)) void handsFreeAutoStop('silence')
       },
       Math.min(SILENCE_CHECK_MS, silenceWindowMs)
-    )
+    ),
+    lockScreenTimer: null,
+    displayBlocker: keepDisplayAwake()
   }
   locked = take
   setAudioLevelListener((level) => watch.push(level, Date.now()))
@@ -162,13 +199,16 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   resetHandsFreeGestures()
   setOverlayLocked(false)
   log(`auto-stop reason=${reason} ms=${Date.now() - take.startedAt}`)
-  const delivered = await dictationStop(take.kind, { save: reason })
-  if (delivered) notify(stopNotice(reason, take.kind))
+  const outcome = await dictationStop(take.kind, { save: reason })
+  // A take with no speech in it says nothing: the pill already did.
+  if (outcome === 'delivered') notify(stopNotice(reason, take.kind))
+  else if (outcome === 'retry') notify(retryNotice(reason))
 }
 
 /** No time or network to transcribe (sleep, shutdown, quit): the audio
  *  goes on the Retry list, untranscribed, and a notification says so.
- *  Gives up after PARK_GIVE_UP_MS. */
+ *  Gives up waiting after PARK_GIVE_UP_MS; a park that still lands
+ *  later (timers pause across a sleep) says so then, once. */
 export async function handsFreePark(reason: ParkReason): Promise<void> {
   const take = release()
   if (!take) return
@@ -177,15 +217,24 @@ export async function handsFreePark(reason: ParkReason): Promise<void> {
     resetHandsFreeGestures()
     setOverlayLocked(false)
     let giveUp: NodeJS.Timeout | undefined
-    const saved = await Promise.race([
-      dictationPark(reason).catch(() => false),
-      new Promise<boolean>((resolve) => {
-        giveUp = setTimeout(() => resolve(false), PARK_GIVE_UP_MS)
+    const park = dictationPark(reason).catch(() => false)
+    const onTime = await Promise.race([
+      park.then((saved) => ({ saved })),
+      new Promise<null>((resolve) => {
+        giveUp = setTimeout(() => resolve(null), parkGiveUpMs)
       })
     ])
     clearTimeout(giveUp)
-    log(`park reason=${reason} ms=${Date.now() - take.startedAt} saved=${saved}`)
-    if (saved) notify(parkNotice(reason))
+    log(`park reason=${reason} ms=${Date.now() - take.startedAt} saved=${onTime?.saved ?? false}`)
+    if (onTime?.saved) notify(parkNotice(reason))
+    if (!onTime) {
+      // Only this path can still notify, so a take never gets 2 notices.
+      void park.then((saved) => {
+        if (!saved) return
+        log(`park reason=${reason} saved=true late=true`)
+        notify(parkNotice(reason))
+      })
+    }
   } finally {
     parking = false
     if (quitAfterPark) {
@@ -221,21 +270,24 @@ export function lastHandsFreeNotice(): { title: string; body: string } | null {
   return lastNotice
 }
 
-/** Smoke shortens the limit and the silence window; {} restores both.
- *  No-op outside smoke. */
-export function setHandsFreeTimesForSmoke(t: { limitMs?: number; silenceWindowMs?: number }): void {
+/** Smoke shortens the limit, the silence window, and the park's
+ *  give-up; {} restores all three. No-op outside smoke. */
+export function setHandsFreeTimesForSmoke(t: {
+  limitMs?: number
+  silenceWindowMs?: number
+  parkGiveUpMs?: number
+}): void {
   if (!isSmoke) return
   limitMs = t.limitMs ?? TAKE_LIMIT_MS
   silenceWindowMs = t.silenceWindowMs ?? SILENCE_WINDOW_MS
+  parkGiveUpMs = t.parkGiveUpMs ?? PARK_GIVE_UP_MS
 }
 
 export function initHandsFree(): void {
   // The capture window holds a locked take's audio, so it outlives the
   // first quit long enough for the park.
   setKeepAudioOnQuit(() => isHandsFreeLocked() || isParking())
-  powerMonitor.on('lock-screen', () => {
-    void handsFreeAutoStop('lock')
-  })
+  powerMonitor.on('lock-screen', onLockScreen)
   powerMonitor.on('suspend', () => {
     void handsFreePark('sleep')
   })
