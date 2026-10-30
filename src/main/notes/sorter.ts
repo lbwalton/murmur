@@ -54,14 +54,19 @@ import type { Settings } from '../../shared/settings'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
   type LeadIn,
+  type LeadStarts,
+  SORT_KEEP_PROMPT,
   SORT_LEADS_PROMPT,
   SORT_SEAMS_PROMPT,
   SORT_SYSTEM_PROMPT,
   SORT_TOPIC_PROMPT,
+  applyKeep,
   applySplits,
   findSeams,
   headingPrefix,
   holdBelow,
+  keepPrompt,
+  keepWords,
   leadPrompt,
   leadWords,
   numberedList,
@@ -75,7 +80,7 @@ import {
   validateSort
 } from '../../shared/sorter'
 import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
-import type { SortLabel, SortVerdict } from '../../shared/sorter'
+import type { SeamVotes, SortLabel, SortVerdict } from '../../shared/sorter'
 import { resolvePolishConnection } from '../formatter'
 import type { PolishConfig } from '../formatter/llm'
 import rules from '../../../shared/sorter.json'
@@ -512,6 +517,10 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // points at the word where its first item begins; numbers only.
   const leadCounts = sentences.map((sentence, i) => leadWords(sentence, seamsBySentence[i] ?? []).length)
   const offerLeads = leadCounts.some((n) => n > 0)
+  // Keep (US-115): for a task or idea sentence the model points at the
+  // first and last word worth filing; numbers only, chat only.
+  const keepCounts = sentences.map((sentence) => keepWords(sentence).length)
+  const offerKeep = keepCounts.some((n) => n > 0)
   // Filed items (US-055): what is already in the two files, read from
   // the base this note landed in, so a dump is compared before it files.
   let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
@@ -565,12 +574,14 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
       ...(offerSeams ? [SORT_SEAMS_PROMPT] : []),
       ...(offerLeads ? [SORT_LEADS_PROMPT] : []),
+      ...(offerKeep ? [SORT_KEEP_PROMPT] : []),
       ...(items.length > 0 ? [SORT_RELATIONS_PROMPT] : [])
     ].join(' ')
     const userPrompt = [
       numberedList(sentences),
       ...(offerSeams ? [`Seams:\n${seamPrompt(sentences, seamsBySentence)}`] : []),
       ...(offerLeads ? [`Lead words:\n${leadPrompt(sentences, seamsBySentence)}`] : []),
+      ...(offerKeep ? [`Words:\n${keepPrompt(sentences)}`] : []),
       ...(items.length > 0 ? [contextPrompt(items)] : [])
     ].join('\n\n')
     const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
@@ -582,13 +593,39 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       topic: wantsTopic,
       seamCounts,
       items: items.length,
-      leadCounts
+      leadCounts,
+      keepCounts
     })
     if (!chat.ok) {
       writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
       return record('rejected', NONE, chat.reason)
     }
     verdict = chat
+  }
+
+  // File only the item (US-115): a task or idea sentence the model
+  // trimmed is cut down to the words worth filing before anything else
+  // reads it, so held lines, cuts, lead-ins, and the files all see the
+  // same words. The inbox keeps every word. Only the chat reply carries
+  // a keep vote; a decision answer files whole sentences, as before.
+  let trimmed = 0
+  if (verdict.keep) {
+    const seamVotes: SeamVotes = { ...verdict.seams }
+    const leadStarts: LeadStarts = { ...(verdict.starts ?? {}) }
+    for (const [key, span] of Object.entries(verdict.keep)) {
+      const i = Number(key) - 1
+      if (verdict.labels[i] !== 'task' && verdict.labels[i] !== 'idea') continue
+      const next = applyKeep(sentences[i], seamsBySentence[i] ?? [], seamVotes[i + 1], leadStarts[i + 1], span)
+      if (next.sentence === sentences[i]) continue
+      sentences[i] = next.sentence
+      seamsBySentence[i] = next.seams
+      if (next.confirmed.length > 0) seamVotes[i + 1] = next.confirmed
+      else delete seamVotes[i + 1]
+      if (next.start !== undefined) leadStarts[i + 1] = next.start
+      else delete leadStarts[i + 1]
+      trimmed += 1
+    }
+    verdict = { ...verdict, seams: seamVotes, starts: leadStarts }
   }
 
   // Held lines (US-058): on a decision connection, a line the model is
@@ -789,7 +826,7 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const heldNote =
     heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${relatedHeld} threshold=${threshold}` : ''
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}${trimmed > 0 ? ` trimmed=${trimmed}` : ''}`
   )
   return record('filed', counts, undefined, written.places)
 }
@@ -1892,6 +1929,104 @@ export function initSorter(): void {
         mixedOk &&
         log.includes('split=1 protocol=chat') &&
         log.includes(' leads=1')
+      )
+    } finally {
+      updateSettings({ notes: before })
+    }
+  })
+
+  registerSmokeCheck('noteKeep', async () => {
+    // US-115: a task or idea files only the words the keep vote points
+    // at, a run's cut and lead-in follow the kept words, a bad span
+    // files the sentence whole, a note's span is ignored, the chat
+    // fallback after a failed decision trims too, and the sort never
+    // writes the inbox.
+    const before = getSettings().notes
+    const vault = join(app.getPath('userData'), 'smoke-vault-keep')
+    const todo = join(vault, 'murmur', 'todo.md')
+    const ideas = join(vault, 'murmur', 'ideas.md')
+    const read = (file: string): string => (existsSync(file) ? readFileSync(file, 'utf8') : '')
+    const link = '([10:32](inbox/2026-09-18.md))'
+    const base = { base: vault, inboxRelative: 'murmur/inbox/2026-09-18.md', when: probeMoment }
+    const answer = (content: string, sink?: (body: string) => void): typeof fetch =>
+      (async (_url: unknown, init?: RequestInit) => {
+        sink?.(String(init?.body ?? ''))
+        return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 })
+      }) as typeof fetch
+    try {
+      mkdirSync(join(vault, 'murmur', 'inbox'), { recursive: true })
+      updateSettings({ notes: { folder: vault, sort: true, ...layout } })
+
+      let body = ''
+      const idea = await sortNote(
+        { ...base, text: 'Oh, and an idea: a rooftop launch party.' },
+        { fetchImpl: answer('{"1":"idea","keep":{"1":[5,8]}}', (b) => (body = b)), connection: cfg }
+      )
+      const sent = JSON.parse(body) as { messages: Array<{ content: string }> }
+      const ideaOk =
+        idea.outcome === 'filed' &&
+        idea.ideas === 1 &&
+        sent.messages[0].content.includes('key "keep"') &&
+        sent.messages[1].content.includes('Words:\n1: 1 Oh, | 2 and | 3 an | 4 idea: | 5 a | 6 rooftop') &&
+        // The filler is never offered as a cut (US-114).
+        !sent.messages[1].content.includes('Seams:') &&
+        read(ideas) === `## 2026-09-18\n- a rooftop launch party. ${link}\n`
+
+      const run = await sortNote(
+        { ...base, text: 'Honestly, tomorrow I need to buy apples, rice, and coffee.' },
+        {
+          fetchImpl: answer('{"1":"task","seams":{"1":[2,3]},"starts":{"1":7},"keep":{"1":[2,10]}}'),
+          connection: cfg
+        }
+      )
+      const runOk =
+        run.outcome === 'filed' &&
+        run.tasks === 3 &&
+        read(todo) ===
+          `## 2026-09-18\n- tomorrow I need to buy:\n  - [ ] apples ${link}\n  - [ ] rice ${link}\n  - [ ] coffee ${link}\n`
+
+      const afterRun = read(todo)
+      const bad = await sortNote(
+        { ...base, text: 'Oh, call the vet.' },
+        { fetchImpl: answer('{"1":"task","keep":{"1":[0,9]}}'), connection: cfg }
+      )
+      const badOk = bad.outcome === 'filed' && bad.tasks === 1 && read(todo) === `${afterRun}- [ ] Oh, call the vet. ${link}\n`
+
+      const afterBad = read(todo)
+      const afterIdeas = read(ideas)
+      const note = await sortNote(
+        { ...base, text: 'Honestly the weather was lovely today.' },
+        { fetchImpl: answer('{"1":"note","keep":{"1":[2,4]}}'), connection: cfg }
+      )
+      const noteOk = note.outcome === 'filed' && note.notes === 1 && read(todo) === afterBad && read(ideas) === afterIdeas
+
+      // A decision that fails falls back to the chat sorter, which trims.
+      const fellBack = await sortNote(
+        { ...base, text: 'Oh, and an idea: a podcast tour.' },
+        {
+          fetchImpl: (async (url: unknown) =>
+            String(url).endsWith('/systemone')
+              ? new Response('{}', { status: 500 })
+              : new Response(JSON.stringify({ choices: [{ message: { content: '{"1":"idea","keep":{"1":[5,7]}}' } }] }), {
+                  status: 200
+                })) as typeof fetch,
+          connection: { baseUrl: 'https://mock-decide.local/v1', model: 'jev-latest', apiKey: 'k' },
+          protocol: 'decide',
+          fallback: cfg
+        }
+      )
+      const fallbackOk = fellBack.outcome === 'filed' && read(ideas) === `${afterIdeas}- a podcast tour. ${link}\n`
+
+      const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+      const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : ''
+      return (
+        ideaOk &&
+        runOk &&
+        badOk &&
+        noteOk &&
+        fallbackOk &&
+        !existsSync(join(vault, 'murmur', 'inbox', '2026-09-18.md')) &&
+        log.includes(' trimmed=1')
       )
     } finally {
       updateSettings({ notes: before })

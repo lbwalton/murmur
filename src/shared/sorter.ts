@@ -109,6 +109,9 @@ export type SortVerdict =
       /** Where each cut run's first item begins (US-062); absent or
        *  empty means no lead-in anywhere. */
       starts?: LeadStarts
+      /** The words worth filing per task or idea sentence (US-115);
+       *  absent or empty means every sentence files whole. */
+      keep?: KeepSpans
     }
   | { ok: false; reason: string }
 
@@ -120,6 +123,10 @@ export type SeamVotes = Record<number, number[]>
 /** Where each sentence's first item begins, by sentence number: a word
  *  number among leadWords (US-062). Absent means no lead-in. */
 export type LeadStarts = Record<number, number>
+
+/** The first and last word worth filing, by sentence number: word
+ *  numbers among keepWords (US-115). Absent means the whole sentence. */
+export type KeepSpans = Record<number, [number, number]>
 
 /** Asked for only when topic headings are on. */
 export const SORT_TOPIC_PROMPT = rules.topicPrompt.join(' ')
@@ -161,7 +168,13 @@ function extractObject(candidate: string): string | null {
 export function validateSort(
   count: number,
   candidate: string,
-  opts: { topic?: boolean; seamCounts?: readonly number[]; items?: number; leadCounts?: readonly number[] } = {}
+  opts: {
+    topic?: boolean
+    seamCounts?: readonly number[]
+    items?: number
+    leadCounts?: readonly number[]
+    keepCounts?: readonly number[]
+  } = {}
 ): SortVerdict {
   const text = candidate.trim()
   if (text.length === 0) return { ok: false, reason: 'empty' }
@@ -182,11 +195,13 @@ export function validateSort(
   const offeredSeams = (opts.seamCounts ?? []).some((n) => n > 0)
   const offeredItems = (opts.items ?? 0) > 0
   const offeredLeads = (opts.leadCounts ?? []).some((n) => n > 0)
+  const offeredKeep = (opts.keepCounts ?? []).some((n) => n > 0)
   const reserved = new Set<string>([
     ...(opts.topic ? ['topic'] : []),
     ...(offeredSeams ? ['seams'] : []),
     ...(offeredItems ? ['relations'] : []),
-    ...(offeredLeads ? ['starts'] : [])
+    ...(offeredLeads ? ['starts'] : []),
+    ...(offeredKeep ? ['keep'] : [])
   ])
   const numbered = entries.filter(([key]) => !reserved.has(key))
   for (const [key] of numbered) {
@@ -210,7 +225,10 @@ export function validateSort(
   const starts = offeredLeads
     ? { starts: readLeadStarts((parsed as Record<string, unknown>).starts, opts.leadCounts ?? []) }
     : {}
-  return { ok: true, labels, topic, seams, relations, ...starts }
+  const keep = offeredKeep
+    ? { keep: readKeepSpans((parsed as Record<string, unknown>).keep, opts.keepCounts ?? []) }
+    : {}
+  return { ok: true, labels, topic, seams, relations, ...starts, ...keep }
 }
 
 // ------------------------------------------------------------ seams ---
@@ -234,10 +252,16 @@ const SEAM = new RegExp(`[,;]\\s+(?:${CONNECTOR}\\s+)?|\\s+${CONNECTOR}\\s+`, 'g
 // A side that is nothing but joining words ("And", "then") is not an
 // item, and a cut inside an open quote or parenthesis would leave both
 // lines with half of it; neither is offered (review gate 2026-09-21).
-const ONLY_CONNECTORS = /^(?:\s*(?:and|then|also)\b[\s.,;!?]*)+$/i
+// Nor is a side of spoken fillers alone: "Oh, and an idea: ..." filed
+// "Oh" as an idea of its own (US-114, live-found 2026-10-27). Every
+// separator belongs to one quantifier only, so a long run of repeated
+// fillers is matched in linear time (review gate 2026-10-27: leading
+// whitespace inside the repeat backtracked 2^n on "okay, okay, ...").
+const NOT_AN_ITEM =
+  /^[\s.,;!?]*(?:(?:and|then|also|oh|ah|um|uhm|uh|uhh|erm|hmm|mhm|well|so|okay|ok|yeah|anyway|actually)\b[\s.,;!?]*)+$/i
 
 function hasWords(side: string): boolean {
-  return /\w/.test(side) && !ONLY_CONNECTORS.test(side)
+  return /\w/.test(side) && !NOT_AN_ITEM.test(side)
 }
 
 function insideQuoteOrParen(left: string): boolean {
@@ -278,7 +302,15 @@ export function seamSides(sentence: string, seam: Seam): { left: string; right: 
  *  the end of a piece by doubled punctuation is trimmed. */
 export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: readonly number[]): string[] {
   if (confirmed.some((n) => !Number.isInteger(n) || n < 1 || n > seams.length)) return [sentence]
-  const chosen = [...new Set(confirmed)].map((n) => seams[n - 1]).sort((a, b) => a.start - b.start)
+  let chosen = [...new Set(confirmed)].map((n) => seams[n - 1]).sort((a, b) => a.start - b.start)
+  // Fillers alone between two cuts ("buy milk, oh well, call Bob") are
+  // no item either: the cut after them goes, so they ride with the
+  // next piece (US-114). findSeams already keeps the first and last
+  // pieces from being fillers alone.
+  for (let k = fillerPiece(sentence, chosen); k !== -1 && chosen.length > 0; k = fillerPiece(sentence, chosen)) {
+    const drop = Math.min(k, chosen.length - 1)
+    chosen = chosen.filter((_, j) => j !== drop)
+  }
   const pieces: string[] = []
   let cursor = 0
   for (const seam of chosen) {
@@ -287,6 +319,19 @@ export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: 
   }
   pieces.push(sentence.slice(cursor))
   return pieces.map((p) => p.trim().replace(/[,;]+$/, '').trim()).filter((p) => p.length > 0)
+}
+
+/** The first piece between chosen cuts that holds words but no item
+ *  (fillers or joining words alone), or -1. An empty piece is left to
+ *  the cutter's own trim, as before. */
+function fillerPiece(sentence: string, chosen: readonly Seam[]): number {
+  for (let k = 0; k <= chosen.length; k++) {
+    const from = k === 0 ? 0 : chosen[k - 1].end
+    const to = k === chosen.length ? sentence.length : chosen[k].start
+    const piece = sentence.slice(from, to)
+    if (piece.trim().length > 0 && !hasWords(piece)) return k
+  }
+  return -1
 }
 
 /** A vote as a clean list of seam numbers, or null when it is not a
@@ -628,4 +673,107 @@ export function cutRun(
   const split = start !== undefined && start <= offered ? splitLeadIn(pieces[0], start) : null
   if (split) pieces[0] = split.item
   return { lead: split ? split.lead : null, pieces }
+}
+
+// ------------------------------------------------------------- keep ---
+// File only the item (US-115; LaBroi, 2026-10-27: pull out only what is
+// a to-do or an idea, and the commentary stays in the brain dump). A
+// task or idea sentence often carries words that only announce or
+// comment on it: "Oh, and an idea: a rooftop launch party." The model
+// points at the first and last word worth filing, by number as for a
+// lead-in, and murmur files exactly those words. The rest stays in the
+// inbox, where every word already is; nothing is ever reworded.
+
+/** Asked for only when some sentence offers words to keep. */
+export const SORT_KEEP_PROMPT = [
+  'Some sentences also list all their words, numbered, under Words.',
+  'For a sentence you label task or idea that carries words around the item that only comment on it, announce it, or fill (for example Oh, and an idea:, I think, honestly), find the first and last word of the part worth filing: the task or idea itself, keeping any opening words that say when, where, or what the items are for.',
+  'Also include the key "keep": an object mapping the sentence number to [first, last] word numbers, for example {"2":[5,12]}. Leave a sentence out when all of its words belong. Word numbers only, never text.'
+].join(' ')
+
+// A sentence longer than this is a ramble, not one item with words
+// around it; the question stays a sane size.
+const KEEP_WORDS_MAX = 60
+
+/** The words the keep question offers for a sentence: every word, as
+ *  the same /\S+/ tokens the lead-in counts. Empty for a list line (its
+ *  item is the line), a sentence under 3 words, or a ramble. */
+export function keepWords(sentence: string): string[] {
+  if (LIST_LINE.test(sentence)) return []
+  const words = sentence.match(WORD) ?? []
+  return words.length >= 3 && words.length <= KEEP_WORDS_MAX ? words : []
+}
+
+/** The words as the chat model sees them, numbered under their
+ *  sentence; empty when no sentence offers any. */
+export function keepPrompt(sentences: readonly string[]): string {
+  const lines: string[] = []
+  sentences.forEach((sentence, i) => {
+    const words = keepWords(sentence)
+    if (words.length > 0) lines.push(`${i + 1}: ${words.map((w, j) => `${j + 1} ${w}`).join(' | ')}`)
+  })
+  return lines.join('\n')
+}
+
+/** Read a keep vote: per sentence, [first, last] inside the words
+ *  offered. Anything else, or a span that keeps every word, leaves that
+ *  sentence whole; the others still trim. */
+export function readKeepSpans(raw: unknown, keepCounts: readonly number[]): KeepSpans {
+  const spans: KeepSpans = {}
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return spans
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const sentence = Number(key)
+    if (!Number.isInteger(sentence) || sentence < 1 || sentence > keepCounts.length) continue
+    if (!Array.isArray(value) || value.length !== 2) continue
+    const [first, last] = value as unknown[]
+    if (typeof first !== 'number' || typeof last !== 'number') continue
+    if (!Number.isInteger(first) || !Number.isInteger(last)) continue
+    const count = keepCounts[sentence - 1]
+    if (first < 1 || last < first || last > count) continue
+    if (first === 1 && last === count) continue
+    spans[sentence] = [first, last]
+  }
+  return spans
+}
+
+/**
+ * A sentence cut down to the words worth filing, carrying its seams,
+ * their votes, and its lead-in start over to the shorter text, so the
+ * cutter and the lead-in see the words that will land. A seam outside
+ * the kept words is gone, and a lead-in that began among the dropped
+ * words is no lead-in. The joining punctuation the trim leaves goes,
+ * and so does a period when the kept words stop short of the
+ * sentence's end. A span that keeps nothing usable changes nothing.
+ */
+export function applyKeep(
+  sentence: string,
+  seams: readonly Seam[],
+  confirmed: readonly number[] | undefined,
+  start: number | undefined,
+  span: readonly [number, number]
+): { sentence: string; seams: Seam[]; confirmed: number[]; start: number | undefined } {
+  const same = { sentence, seams: [...seams], confirmed: [...(confirmed ?? [])], start }
+  const words = [...sentence.matchAll(WORD)]
+  const [first, last] = span
+  if (!Number.isInteger(first) || !Number.isInteger(last)) return same
+  if (first < 1 || last < first || last > words.length || (first === 1 && last === words.length)) return same
+  const from = words[first - 1].index ?? 0
+  const end = words[last - 1]
+  let text = sentence.slice(from, (end.index ?? 0) + end[0].length).replace(/[,;:]+$/, '')
+  if (last < words.length && !ABBREVIATION.test(text)) text = text.replace(/(?<!\.)\.$/, '')
+  text = text.trim()
+  // Fillers alone are no item, whichever way they arrive (US-114).
+  if (!hasWords(text)) return same
+  const offered = findSeams(text)
+  const carried = (confirmed ?? [])
+    .map((n) => seams[n - 1])
+    .filter((seam): seam is Seam => seam !== undefined && seam.start >= from && seam.end <= from + text.length)
+    .map((seam) => offered.findIndex((o) => o.start === seam.start - from && o.end === seam.end - from) + 1)
+    .filter((n) => n > 0)
+  return {
+    sentence: text,
+    seams: offered,
+    confirmed: [...new Set(carried)].sort((a, b) => a - b),
+    start: start !== undefined && start > first ? start - (first - 1) : undefined
+  }
 }

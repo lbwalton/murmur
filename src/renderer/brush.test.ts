@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   type SceneItem,
   animateScene,
   brush,
+  canvasDpr,
   mulberry,
   paintScene,
   parseColor,
@@ -271,5 +272,28 @@ describe('animated scene details (US-073 review)', () => {
     expect(sizes[1]).toEqual([76, 76])
     const layerDraw = draws.find((d) => d.length === 4)
     expect(layerDraw).toEqual([31, 21, 38, 38])
+  })
+})
+
+describe('canvasDpr', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('paints at the full ratio, so a zoomed window stays sharp (US-111)', () => {
+    vi.stubGlobal('window', { devicePixelRatio: 3 })
+    expect(canvasDpr()).toBe(3)
+    expect(canvasDpr(2)).toBe(6)
+    vi.stubGlobal('window', { devicePixelRatio: 6 })
+    expect(canvasDpr()).toBe(6)
+  })
+
+  it('holds a stray ratio at 8 and reads a missing one as 1', () => {
+    vi.stubGlobal('window', { devicePixelRatio: 7.5 })
+    expect(canvasDpr()).toBe(7.5)
+    vi.stubGlobal('window', { devicePixelRatio: 20 })
+    expect(canvasDpr()).toBe(8)
+    vi.stubGlobal('window', { devicePixelRatio: 0 })
+    expect(canvasDpr()).toBe(1)
   })
 })

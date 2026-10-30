@@ -51,7 +51,7 @@ Escape cancels capture. **Reset** restores the platform default. Bare letters an
 
 Set a chord under Settings, Dictation, Paste last dictation. Pressing it pastes your newest history entry wherever your cursor is, through the same insertion pipeline as a live dictation: handy when a busy app missed the original paste, or you want the same text somewhere else. The feature is off until you capture a chord, and Clear disarms it again.
 
-Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fire by accident), and it must not contain your dictation hotkey's modifiers (holding Ctrl+Alt+V with a Ctrl+Alt dictation hotkey would start a recording before the V lands), so murmur refuses those at capture and says why. murmur listens globally without swallowing keys, so pick a combo your apps ignore: a modifier plus an F-key (Ctrl+F12) is the safest shape. Holding the chord pastes once, and it does nothing while a recording or transcription is in flight. With empty history it plays the soft no-speech cue and touches nothing.
+Two rules keep the chord trustworthy. It needs a regular key (modifiers alone fire by accident), and it must not contain your dictation hotkey's modifiers (holding Ctrl+Alt+V with a Ctrl+Alt dictation hotkey would start a recording before the V lands), so murmur refuses those at capture and says why. murmur listens globally without swallowing keys, so pick a combo your apps ignore: a modifier plus an F-key (Ctrl+F12) is the safest shape. Holding the chord pastes once, the moment you let go of its modifiers (a paste sent while Ctrl is still down reaches the app as Ctrl+Cmd+V, which is not paste; after a second murmur pastes anyway), and it does nothing while a recording or transcription is in flight. With empty history it plays the soft no-speech cue and touches nothing.
 
 ## How do I speak a note instead of pasting it?
 
@@ -158,6 +158,12 @@ Settings, Look, Overlay look. Three looks:
 - **Bare** drops the box and the border entirely: just the waveform, with the timer in small type beneath it. Every bar, dot, and ring carries a faint ink edge that hugs it, so the waveform reads over a white page as well as a dark app, and the speckle, pulse, and ink styles fade out toward their edges instead of stopping at a line. It just appears, more instrument than window.
 
 One rule holds in every look: text that has to be read (a hint such as "set a notes folder in settings", an error, no speech) always comes in the full pill, because a sentence with no backing is unreadable over a busy window. In bare, a note or a spoken edit shows its small mode tag but not the gold edge the pill wears, since there is no edge to color. Preview shows the current look without dictating. The overlay never takes focus and clicks pass straight through it in every look, so it can never steal a keystroke from the app you are dictating into.
+
+## How do I make murmur's window text bigger?
+
+Zoom the window. On a Mac, press Cmd + (or Cmd =) to zoom in, Cmd - to zoom out, and Cmd 0 to go back to actual size; the same three live in the View menu while the murmur window is in front. On Windows, press Ctrl +, Ctrl -, and Ctrl 0.
+
+Each press steps through 80, 90, 100, 110, 125, 150, 175, 200, 250, and 300 percent, like a browser. Past 200 percent, less fits in the window at once, so make the window bigger to see more. Only the settings window zooms: the overlay pill keeps its size, so dictation looks the same wherever you zoom. murmur remembers your zoom, so the window opens at the same size after you quit and reopen it. Text, the brush marks, and the painting all redraw at the new size, so nothing turns blurry.
 
 ## How do recaps and the wrap-up work?
 

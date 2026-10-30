@@ -25,13 +25,14 @@ import { initNotes, openTodayNote } from './notes'
 import { getLastNote, onLastNoteChanged, openLastNote } from './notes/receipt'
 import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
-import { getSettings, initSettings, onSettingsChanged } from './settings'
+import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
 import { createTray, getTray, setTrayInboxVisible, setTrayLastNoteVisible } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
+import { attachSettingsZoom, stepSettingsZoom } from './zoom'
 
 // A packaged murmur never starts with a Chromium remote debugging port
 // or pipe (US-072): either hands any program that can launch murmur a
@@ -123,6 +124,16 @@ if (!gotLock) {
 let settingsWindow: BrowserWindow | null = null
 let isQuitting = false
 
+// MURMUR_SETTINGS_ZOOM=2 (isolated runs only, like every capture hook)
+// records crisp footage for videos: the window's content grows by the
+// factor and the page zooms by it, so the layout is the same at twice
+// the pixels.
+function captureZoom(): number | undefined {
+  if (!isolatedRun) return undefined
+  const factor = Number(process.env.MURMUR_SETTINGS_ZOOM)
+  return Number.isFinite(factor) && factor >= 1 && factor <= 4 ? factor : undefined
+}
+
 function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 920,
@@ -141,6 +152,15 @@ function createSettingsWindow(): BrowserWindow {
   watchWindow(win, 'settings')
   // A dead page comes back on its own and remounts from main (US-071).
   reviveOnDeath(win, 'settings')
+  // Cmd or Ctrl plus and minus zoom this window only (US-111).
+  const capture = captureZoom()
+  if (capture) {
+    const [w, h] = win.getContentSize()
+    win.setContentSize(Math.round(w * capture), Math.round(h * capture))
+    // Grown from its corner it would run off the screen; recenter it.
+    win.center()
+  }
+  attachSettingsZoom(win, capture)
 
   // Closing the window hides it; the app lives in the tray.
   win.on('close', (event) => {
@@ -208,9 +228,10 @@ app.whenReady().then(async () => {
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
-  // Minimal menu: macOS needs Edit roles for Cmd+V in fields; everything
-  // else stays out so stray accelerators cannot surprise the user. Other
-  // platforms get no menu bar at all.
+  // Minimal menu: macOS needs Edit roles for Cmd+V in fields, and View
+  // holds the settings window's zoom (US-111); everything else stays out
+  // so stray accelerators cannot surprise the user. Other platforms get
+  // no menu bar at all (the settings window catches Ctrl zoom itself).
   if (process.platform === 'darwin') {
     Menu.setApplicationMenu(
       Menu.buildFromTemplate([
@@ -228,6 +249,26 @@ app.whenReady().then(async () => {
             { role: 'copy' },
             { role: 'paste' },
             { role: 'selectAll' }
+          ]
+        },
+        {
+          // Not the zoom roles: those would zoom whichever page has
+          // focus and forget it at quit. These zoom the settings window
+          // and save the step.
+          label: 'View',
+          submenu: [
+            { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => stepSettingsZoom(settingsWindow, 'reset') },
+            { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => stepSettingsZoom(settingsWindow, 'in') },
+            // Cmd = is the key people press for zoom in; it answers too,
+            // without a second row in the menu.
+            {
+              label: 'Zoom In',
+              accelerator: 'CommandOrControl+=',
+              visible: false,
+              acceleratorWorksWhenHidden: true,
+              click: () => stepSettingsZoom(settingsWindow, 'in')
+            },
+            { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => stepSettingsZoom(settingsWindow, 'out') }
           ]
         },
         { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
@@ -452,6 +493,56 @@ app.whenReady().then(async () => {
     }
     return false
   })
+  registerSmokeCheck('settingsZoom', async () => {
+    // Zoom reaches the settings window only (US-111): two presses take
+    // it to 125 percent and its pixel ratio with it (canvases redraw
+    // sharp), the pill and the audio window stay at 100 percent, and the
+    // step is saved. A page load applies the saved zoom (a different one
+    // is saved behind the page's back, as a fresh launch would find it),
+    // and reset returns to 1.
+    await settingsLoaded
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const others = BrowserWindow.getAllWindows().filter(
+      (w) => w !== win && /\/(overlay|audio)\/index\.html/.test(w.webContents.getURL())
+    )
+    if (others.length !== 2) {
+      console.error(`smoke settingsZoom: expected the pill and the audio window, found ${others.length}`)
+      return false
+    }
+    const ratio = (w: BrowserWindow): Promise<number> => w.webContents.executeJavaScript('window.devicePixelRatio')
+    const base = await ratio(others[0])
+    stepSettingsZoom(win, 'in')
+    stepSettingsZoom(win, 'in')
+    const zoomed = win.webContents.getZoomFactor()
+    const zoomedRatio = await ratio(win)
+    const othersZoom = others.map((w) => w.webContents.getZoomFactor())
+    const othersRatio = await Promise.all(others.map(ratio))
+    const saved = getSettings().windowZoom
+    updateSettings({ windowZoom: 1.5 })
+    const reloaded = new Promise<void>((resolve) => win.webContents.once('did-finish-load', () => resolve()))
+    win.webContents.reload()
+    await reloaded
+    const afterReload = win.webContents.getZoomFactor()
+    stepSettingsZoom(win, 'reset')
+    const reset = win.webContents.getZoomFactor()
+    const near = (a: number, b: number): boolean => Math.abs(a - b) < 0.01
+    const ok =
+      near(zoomed, 1.25) &&
+      near(zoomedRatio, base * 1.25) &&
+      othersZoom.every((z) => near(z, 1)) &&
+      othersRatio.every((r) => near(r, base)) &&
+      saved === 1.25 &&
+      near(afterReload, 1.5) &&
+      near(reset, 1) &&
+      getSettings().windowZoom === 1
+    if (!ok) {
+      console.error(
+        `smoke settingsZoom: zoomed=${zoomed} ratio=${zoomedRatio} base=${base} others=${othersZoom.join(',')} othersRatio=${othersRatio.join(',')} saved=${saved} afterReload=${afterReload} reset=${reset}`
+      )
+    }
+    return ok
+  })
   registerSmokeCheck('wizard', async () => {
     // The pure machine walks the whole path, gates hold, and a fresh
     // profile (which smoke always is) gets the wizard offered in the DOM.
@@ -522,6 +613,39 @@ app.whenReady().then(async () => {
     })()`)) as { items: number; sections: number; finish: boolean; first: string | null } | null
     if (!probe) return false
     return probe.items === 9 && probe.sections === 9 && probe.finish && probe.first === 'Hotkey'
+  })
+
+  registerSmokeCheck('settingsZoomSharp', async () => {
+    // At the top step, 300 percent, every brush canvas on screen paints
+    // at the full pixel ratio, not a capped one, so paint stays sharp
+    // (US-111). Registered after settingsRail, which skipped the wizard,
+    // so the tabs and the current tab's stroke are showing.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    let top = 0
+    let sharp = 'no canvas'
+    try {
+      for (let i = 0; i < 12; i++) stepSettingsZoom(win, 'in')
+      top = win.webContents.getZoomFactor()
+      for (let i = 0; i < 20 && sharp !== 'ok'; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        // Too few pixels is soft; more (the Pro mark's 2x for its lift)
+        // is fine.
+        sharp = await win.webContents.executeJavaScript(
+          `(() => {
+            const shown = [...document.querySelectorAll('canvas')].filter((c) => c.clientWidth > 0)
+            if (shown.length === 0) return 'no canvas'
+            const soft = shown.filter((c) => c.width < c.clientWidth * window.devicePixelRatio - 2)
+            return soft.length === 0 ? 'ok' : soft.map((c) => c.className + ' ' + c.width + '/' + c.clientWidth).join(';')
+          })()`
+        )
+      }
+    } finally {
+      stepSettingsZoom(win, 'reset')
+    }
+    const ok = Math.abs(top - 3) < 0.01 && sharp === 'ok'
+    if (!ok) console.error(`smoke settingsZoomSharp: top=${top} sharp=${sharp}`)
+    return ok
   })
 
   registerSmokeCheck('widgetLifecycle', async () => {

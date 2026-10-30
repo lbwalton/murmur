@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import cosmeticsFile from '../../../shared/cosmetics.json'
 import type { RankSpec } from '../../shared/ranks'
-import { type Surface, animateScene, paintScene } from '../brush'
+import { type Surface, animateScene, canvasDpr, paintScene } from '../brush'
 import { ceremonyScene, journeyColors } from './journeyPaint'
 
 const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
@@ -18,7 +18,7 @@ const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltC
 export const CEREMONY_MS = 4600
 
 function surface(canvas: HTMLCanvasElement, w: number, h: number): Surface | null {
-  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  const dpr = canvasDpr()
   canvas.width = Math.round(w * dpr)
   canvas.height = Math.round(h * dpr)
   const ctx = canvas.getContext('2d')

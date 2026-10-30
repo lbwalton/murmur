@@ -25,7 +25,7 @@ import {
   liftWaitMs,
   strokeProgress
 } from '../../shared/proMark'
-import { type Rgb, cachedBrush, mix, path, stroke, tokenColor } from '../brush'
+import { type Rgb, cachedBrush, canvasDpr, mix, path, stroke, tokenColor } from '../brush'
 
 export function ProMark(props: {
   state: 'filled' | 'outlined'
@@ -198,7 +198,7 @@ export function HeaderProMark(props: {
       if (w === 0 || h === 0) return
       // Drawn at twice the screen's density from the start, so PRO and
       // the bristles stay sharp while the mark is lifted to 2x.
-      const dpr = Math.min(4, (window.devicePixelRatio || 1) * LIFT.scale)
+      const dpr = canvasDpr(LIFT.scale)
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(w * dpr)
         canvas.height = Math.round(h * dpr)
@@ -406,6 +406,19 @@ export function HeaderProMark(props: {
       if (!run.current) check()
     })
     if (pillRef.current) watch.observe(pillRef.current)
+    // A zoom step (US-111) changes the density without resizing the pill,
+    // so the mark repaints at the new density as well.
+    let density: MediaQueryList | null = null
+    const onDensity = (): void => {
+      if (!run.current) check()
+      watchDensity()
+    }
+    const watchDensity = (): void => {
+      density?.removeEventListener('change', onDensity)
+      density = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`)
+      density.addEventListener('change', onDensity)
+    }
+    watchDensity()
     return () => {
       clearWait()
       const r = run.current
@@ -417,6 +430,7 @@ export function HeaderProMark(props: {
       document.removeEventListener('visibilitychange', onVisibility)
       button?.removeEventListener('click', onClick)
       watch.disconnect()
+      density?.removeEventListener('change', onDensity)
       controls.current = null
     }
   }, [])

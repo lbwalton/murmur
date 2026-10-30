@@ -181,4 +181,12 @@ describe('sanitized entry lists', () => {
     expect(merged.provider.profiles.length).toBe(1)
     expect(merged.provider.profiles[0]?.id).toBe('abcd1234')
   })
+
+  it('opens an older profile at 100 percent and snaps a stored zoom to a step (US-111)', () => {
+    expect(mergeSettings(DEFAULT_SETTINGS, { autostart: true }).windowZoom).toBe(1)
+    expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 1.5 }).windowZoom).toBe(1.5)
+    expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 1.3 }).windowZoom).toBe(1.25)
+    expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 'big' }).windowZoom).toBe(1)
+    expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 40 }).windowZoom).toBe(3)
+  })
 })

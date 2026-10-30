@@ -10,6 +10,7 @@ import {
 import { type OverlayLook, normalizeOverlayLook } from './overlay-state'
 import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
+import { normalizeZoom } from './zoom'
 
 export interface Settings {
   hotkey: {
@@ -172,6 +173,10 @@ export interface Settings {
   }
   autostart: boolean
   showDockIcon: boolean
+  /** The settings window's zoom (US-111), a factor from shared/zoom.ts:
+   *  Cmd or Ctrl plus and minus step it, zero resets it to 1. Only the
+   *  settings window zooms; the pill stays its own size. */
+  windowZoom: number
   /** Refresh the bundled provider catalog (rates, presets, nuances)
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
@@ -307,6 +312,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   autostart: false,
   showDockIcon: false,
+  windowZoom: 1,
   catalogRefresh: true,
   whatsNewSeenVersion: '',
   onboarding: {
@@ -387,6 +393,9 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   // as hours per take or as nothing at all; the same clamp the math uses.
   const timeBack = out.timeBack as Record<string, unknown> | undefined
   if (timeBack) timeBack.typingWpm = clampTypingWpm(timeBack.typingWpm)
+  // A zoom off the steps (a hand edit, a corrupt file) would leave the
+  // window too small or too big to read; snap it to the nearest step.
+  if ('windowZoom' in out) out.windowZoom = normalizeZoom(out.windowZoom)
   // A look outside the three would leave the pill undrawn.
   const overlay = out.overlay as Record<string, unknown> | undefined
   if (overlay) overlay.look = normalizeOverlayLook(overlay.look)

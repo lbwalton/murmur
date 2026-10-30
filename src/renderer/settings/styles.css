@@ -223,8 +223,12 @@ body {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+  /* Zoomed to 250 or 300 percent (US-111), a small window wraps the tabs
+     onto a second row; the gap clears the current tab's stroke. */
+  row-gap: 12px;
 }
 
 .nav-btn {

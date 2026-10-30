@@ -5,6 +5,7 @@
 // each time its data changes). Reduced motion always gets the finished
 // painting at once.
 import { useEffect, useRef } from 'react'
+import { canvasDpr } from '../brush'
 
 export type Paint = (ctx: CanvasRenderingContext2D, w: number, h: number, k: number) => void
 
@@ -39,7 +40,7 @@ export function PaintCanvas(props: {
       const w = props.width ?? canvas.clientWidth
       const h = props.height ?? canvas.clientHeight
       if (w === 0 || h === 0) return
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const dpr = canvasDpr()
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(w * dpr)
         canvas.height = Math.round(h * dpr)

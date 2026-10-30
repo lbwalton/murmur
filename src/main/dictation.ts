@@ -384,6 +384,12 @@ export function dictationCancel(): void {
  * owns the pipeline, so recording and processing ignore the chord.
  */
 export async function pasteLastDictation(): Promise<void> {
+  // The chord fires on its key going down, with its modifiers still
+  // held, and a paste sent then arrives as another shortcut (Ctrl+Cmd+V
+  // is not paste), so the paste waits for them to come up first. The
+  // phase is read after the wait: a take may have started meanwhile.
+  const { waitForModifiersReleased } = await import('./hotkeys')
+  if (!(await waitForModifiersReleased())) void logDictation('paste-last modifiers still held; pasting anyway')
   const phase = getOverlayPhase()
   if (phase === 'recording' || phase === 'processing') {
     void logDictation(`paste-last ignored phase=${phase}`)

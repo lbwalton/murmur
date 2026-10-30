@@ -4,13 +4,13 @@
 // with the real hotkey saying how to make the first stroke. Never red,
 // never splatter: an empty screen is an invitation, not an error.
 import { useEffect, useRef } from 'react'
-import { cachedBrush, path, stroke, tokenColor } from '../brush'
+import { cachedBrush, canvasDpr, path, stroke, tokenColor } from '../brush'
 
 const W = 120
 const H = 40
 
 function paintScrape(canvas: HTMLCanvasElement): void {
-  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  const dpr = canvasDpr()
   canvas.width = Math.round(W * dpr)
   canvas.height = Math.round(H * dpr)
   const ctx = canvas.getContext('2d')

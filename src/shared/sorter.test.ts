@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_FILED_HEADING_TEMPLATE,
   type SortLabel,
+  applyKeep,
   applySplits,
   confirmedSeams,
   cutAtSeams,
@@ -11,11 +12,14 @@ import {
   headingPrefix,
   holdBelow,
   ideaLine,
+  keepPrompt,
+  keepWords,
   leadLine,
   leadPrompt,
   leadWords,
   numberedList,
   planFiling,
+  readKeepSpans,
   rekeyVotes,
   relativeLink,
   remainingSentences,
@@ -317,6 +321,20 @@ describe('findSeams (US-056)', () => {
     expect(findSeams('wait, then')).toEqual([])
     expect(findSeams('buy milk, and.')).toEqual([])
     expect(sides('And then we went home, and ate')).toEqual([['And then we went home', 'ate']])
+  })
+
+  it('never offers a side that is only spoken fillers (US-114)', () => {
+    expect(findSeams('Oh, and an idea: a Times Square takeover for BrambleCat.')).toEqual([])
+    expect(findSeams('Um, so, buy milk')).toEqual([])
+    expect(findSeams('buy milk, okay.')).toEqual([])
+    expect(findSeams('Well, anyway, call Bob')).toEqual([])
+    expect(sides('So, call Bob and email Ann')).toEqual([['So, call Bob', 'email Ann']])
+  })
+
+  it('keeps a side where a filler sits with real words, or only starts a word', () => {
+    expect(sides('dig the well, and fix the pump')).toEqual([['dig the well', 'fix the pump']])
+    expect(sides('drive to Ohio, then buy a sofa')).toEqual([['drive to Ohio', 'buy a sofa']])
+    expect(sides('okra, and wellness tea')).toEqual([['okra', 'wellness tea']])
   })
 
   it('never offers a seam inside a quote or a parenthesis', () => {
@@ -624,5 +642,115 @@ describe('lead-ins (US-062)', () => {
 
   it('numbers the lead words for the chat model', () => {
     expect(leadPrompt(['Call Sam.', sentence], [[], seams])).toBe('2: 1 I | 2 need | 3 to | 4 buy | 5 apples | 6 rice')
+  })
+})
+
+describe('cutAtSeams with fillers between cuts (US-114)', () => {
+  it('lets fillers alone between two cuts ride with the next piece', () => {
+    const s = 'buy milk, oh well, call Bob'
+    expect(cutAtSeams(s, findSeams(s), [1, 2])).toEqual(['buy milk', 'oh well, call Bob'])
+  })
+
+  it('returns a sentence with no cut whole, fillers or not', () => {
+    expect(cutAtSeams('Okay.', [], [])).toEqual(['Okay.'])
+  })
+
+  it('stays fast on a long run of repeated fillers', () => {
+    const s = `${'okay, '.repeat(200)}call Bob, and email Ann.`
+    const started = Date.now()
+    expect(findSeams(s).length).toBeGreaterThan(0)
+    expect(findSeams(`${'yeah,  '.repeat(200)}call Bob`)).toEqual([])
+    expect(Date.now() - started).toBeLessThan(500)
+  })
+
+  it('treats uhm, uhh, and mhm as fillers but not ER, a real word', () => {
+    expect(findSeams('Uhm, uhh, mhm, call Bob')).toEqual([])
+    const s = 'Stops today: bank, ER, and pharmacy'
+    expect(cutAtSeams(s, findSeams(s), [1, 2])).toEqual(['Stops today: bank', 'ER', 'pharmacy'])
+  })
+
+  it('leaves pieces with real words where they were cut', () => {
+    const s = 'buy milk, walk the dog, call Bob'
+    expect(cutAtSeams(s, findSeams(s), [1, 2])).toEqual(['buy milk', 'walk the dog', 'call Bob'])
+  })
+})
+
+describe('keep: file only the item (US-115)', () => {
+  it('offers every word of a prose sentence, none of a list line or a short one', () => {
+    expect(keepWords('Oh, and an idea: a rooftop party.')).toEqual(['Oh,', 'and', 'an', 'idea:', 'a', 'rooftop', 'party.'])
+    expect(keepWords('- [ ] buy eggs and milk')).toEqual([])
+    expect(keepWords('Call Bob.')).toEqual([])
+    expect(keepWords(Array.from({ length: 61 }, () => 'word').join(' '))).toEqual([])
+  })
+
+  it('numbers the words under their sentence', () => {
+    expect(keepPrompt(['Call Bob.', 'Oh, an idea: tacos.'])).toBe('2: 1 Oh, | 2 an | 3 idea: | 4 tacos.')
+  })
+
+  it('reads spans inside the words offered and drops the rest', () => {
+    expect(readKeepSpans({ '1': [5, 7], '2': [1, 3] }, [7, 4])).toEqual({ 1: [5, 7], 2: [1, 3] })
+    // A span that keeps every word is no trim.
+    expect(readKeepSpans({ '1': [1, 7] }, [7])).toEqual({})
+    // Out of range, backwards, not numbers, or not a pair: that sentence files whole.
+    expect(readKeepSpans({ '1': [0, 3], '2': [4, 2], '3': ['1', '2'], '4': [2], '5': [2, 9] }, [7, 7, 7, 7, 7])).toEqual({})
+    expect(readKeepSpans({ '9': [1, 2] }, [7])).toEqual({})
+    expect(readKeepSpans([1, 2], [7])).toEqual({})
+  })
+
+  it('trims a sentence to the kept words, exactly as spoken', () => {
+    const s = 'Oh, and an idea: a Times Square takeover for BrambleCat.'
+    expect(applyKeep(s, findSeams(s), undefined, undefined, [5, 10])).toEqual({
+      sentence: 'a Times Square takeover for BrambleCat.',
+      seams: [],
+      confirmed: [],
+      start: undefined
+    })
+  })
+
+  it('drops the joining punctuation and the period when the kept words stop short', () => {
+    expect(applyKeep('Call the vet, I think.', [], undefined, undefined, [1, 3]).sentence).toBe('Call the vet')
+    expect(applyKeep('Buy stamps, etc. you know.', [], undefined, undefined, [1, 3]).sentence).toBe('Buy stamps, etc.')
+  })
+
+  it('carries seams, votes, and the lead-in start over to the kept words', () => {
+    const s = 'Honestly, tomorrow I need to buy apples, rice, and coffee.'
+    const seams = findSeams(s)
+    expect(seams).toHaveLength(3)
+    const kept = applyKeep(s, seams, [2, 3], 7, [2, 10])
+    expect(kept.sentence).toBe('tomorrow I need to buy apples, rice, and coffee.')
+    expect(kept.confirmed).toEqual([1, 2])
+    expect(kept.start).toBe(6)
+    expect(cutRun(kept.sentence, kept.seams, kept.confirmed, kept.start)).toEqual({
+      lead: 'tomorrow I need to buy',
+      pieces: ['apples', 'rice', 'coffee']
+    })
+  })
+
+  it('forgets a lead-in that began among the dropped words', () => {
+    const s = 'I need to buy apples, rice, and coffee, I think.'
+    const kept = applyKeep(s, findSeams(s), [1, 2], 5, [5, 8])
+    expect(kept.sentence).toBe('apples, rice, and coffee')
+    expect(kept.start).toBeUndefined()
+    expect(kept.confirmed).toEqual([1, 2])
+  })
+
+  it('never files a span of fillers alone', () => {
+    const s = 'Oh, and an idea: a rooftop launch party.'
+    expect(applyKeep(s, [], undefined, undefined, [1, 1]).sentence).toBe(s)
+    expect(applyKeep(s, [], undefined, undefined, [1, 2]).sentence).toBe(s)
+  })
+
+  it('changes nothing for a span outside the words or one that keeps them all', () => {
+    const s = 'Oh, call the vet.'
+    expect(applyKeep(s, [], undefined, undefined, [0, 4]).sentence).toBe(s)
+    expect(applyKeep(s, [], undefined, undefined, [1, 4]).sentence).toBe(s)
+    expect(applyKeep(s, [], undefined, undefined, [3, 9]).sentence).toBe(s)
+  })
+
+  it('validateSort reads keep only when it was offered', () => {
+    const offered = validateSort(1, '{"1":"idea","keep":{"1":[5,10]}}', { keepCounts: [10] })
+    expect(offered.ok && offered.keep).toEqual({ 1: [5, 10] })
+    // Not offered, the key is an unknown sentence, as for every reserved key.
+    expect(validateSort(1, '{"1":"idea","keep":{"1":[5,10]}}')).toEqual({ ok: false, reason: 'extra sentences' })
   })
 })

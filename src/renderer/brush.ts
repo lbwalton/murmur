@@ -63,6 +63,18 @@ export function tokenColor(name: string, fallback: Rgb): Rgb {
   return parseColor(getComputedStyle(document.documentElement).getPropertyValue(name)) ?? fallback
 }
 
+/** The pixel ratio a canvas paints at: the screen's density times the
+ *  window's zoom (US-111), so paint stays sharp at 300 percent on a Retina
+ *  screen. Zoom shrinks the layout as it raises the ratio, so a canvas
+ *  holds about the pixels it covers on screen, as it does at 100 percent
+ *  on Retina. The cap of 8 covers a 250 percent Windows display at 300
+ *  percent zoom (7.5) and stops a stray ratio. scale is for a mark drawn
+ *  bigger than its box (ProMark's lift). */
+export function canvasDpr(scale = 1): number {
+  const ratio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
+  return Math.min(8, ratio) * scale
+}
+
 export interface PathPoint {
   x: number
   y: number

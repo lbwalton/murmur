@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (88/110 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (92/115 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -92,6 +92,10 @@
 - [x] **US-104** Build tool security alerts, October
 - [x] **US-105** Apply corrections: spoken slip-ups come out fixed, behind a switch
 - [x] **US-110** The mic follows your computer's default input, and Settings lets you pick one
+- [x] **US-111** Zoom the settings window with Cmd plus and Cmd minus
+- [x] **US-113** Paste last waits for the chord to be let go
+- [x] **US-114** A spoken filler is never cut off as its own item
+- [x] **US-115** File only the item: commentary stays in the inbox
 
 ## Built, awaiting live verification
 
@@ -122,3 +126,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-106** A changelog page on the site, built from CHANGELOG.md
 - [ ] **US-107** The murmur Pro mark in the app: a gold pill, filled when Pro is yours
 - [ ] **US-108** murmur Pro on the site: the mark, a pro link, and a /pro/ page
+- [ ] **US-112** Security patches for the dependencies GitHub flagged

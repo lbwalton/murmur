@@ -11,7 +11,7 @@ import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle } from './PageTitle'
 import { EmptyState } from './EmptyState'
-import { type Rgb, parseColor, tokenColor } from '../brush'
+import { type Rgb, canvasDpr, parseColor, tokenColor } from '../brush'
 import { CHART_H, HEAT_PCT, type WallMark, dabHeight, heatLevel, paintChartDab, paintWallMarks, wallSize } from './analyticsPaint'
 
 const bridge = (): SettingsApi => window.murmur
@@ -204,7 +204,7 @@ function ChartDab(props: { day: string; height: number; empty: boolean; today: b
     const draw = (): void => {
       const width = canvas.clientWidth
       if (width === 0) return
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const dpr = canvasDpr()
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(CHART_H * dpr)
       const ctx = canvas.getContext('2d')
@@ -234,7 +234,7 @@ function wallRgb(color: string, fallback: Rgb): Rgb {
  */
 function paintWall(canvas: HTMLCanvasElement, marks: ReadonlyArray<WallMark | null>, rows: number, base: Rgb, inverted: boolean): void {
   const { width, height } = wallSize(marks.length, rows)
-  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  const dpr = canvasDpr()
   canvas.width = Math.round(width * dpr)
   canvas.height = Math.round(height * dpr)
   canvas.style.width = `${width}px`

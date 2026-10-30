@@ -2,6 +2,28 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.16 (2026-10-27)
+
+- Brain dumps file only the to-do or the idea: when murmur sorts a note, it files just the words that are the task or idea, and the words around them (Oh, and an idea:, I think, honestly) stay in your inbox note with everything else you said. Intro words that say when or what for, like "Tomorrow I need to buy", still sit above their items. murmur still never rewrites a word; the model only points at where each item starts and ends.
+- A filler is never filed on its own: "Oh, and an idea: a rooftop party" could put "Oh" on your ideas list as an idea of its own. Words like oh, um, well, and okay now stay with the item they belong to.
+
+## 0.1.15 (2026-10-27)
+
+- Paste last dictation works every time: the paste now lands the moment you let go of your shortcut. Before, murmur pasted while you were still holding the shortcut's Ctrl, Alt, Shift, or Cmd key, so the app saw a different shortcut and nothing appeared unless you let go very fast.
+
+## 0.1.14 (2026-10-25)
+
+- Safer connections: murmur now refuses a set of stolen security certificates (issued through eMudhra) that browsers already block, so no one who can watch your network can use one to pose as your provider and read a dictation or your key on its way out. It comes with a newer Electron, the engine murmur runs on, which also fixes 2 rare ways a request could fail.
+
+## 0.1.13 (2026-10-24)
+
+- The murmur Pro mark: a small gold pill that says PRO. Filled means Pro is yours, and it sits after the murmur wordmark at the top of the window, beside murmur Pro in the settings rail, and on the Profiles row; outlined means Pro adds something there. Founding members wear the same mark, and their Pro section says Founding member.
+- Painted in each day: the first time each day the window opens, the mark at the top lifts, 3 or 4 brush strokes paint its gold in from different angles, and it settles back with the strokes left on it as that day's badge, different every day. Press the mark to watch it again, or switch off Paint the mark each day under Settings, murmur Pro. With reduce motion on, it shows the finished brushwork, still.
+- Activate or Reactivate Pro and every mark fills with gold and glows, one after another from the top of the window down. Home says thank you, once.
+- 30 days after you install murmur, Home shows one quiet line with the time murmur has given you back and a See Pro button. No thanks, or buying Pro, dismisses it for good.
+- The microphone follows your computer's default input: after a mic is unplugged, after the computer or its display wakes, after you dock or undock. Before, murmur could stay on the wrong input after sleep and hear nothing until you restarted it. To keep murmur on one mic whenever it is plugged in, pick it under Settings, Dictation, Microphone, which also shows the mic in use right now.
+- Zoom the settings window: Cmd + and Cmd - on a Mac (Ctrl + and Ctrl - on Windows) step from 80 to 300 percent, and Cmd 0 goes back to actual size. The pill keeps its size, text and brush marks redraw sharp, and murmur remembers your zoom.
+
 ## 0.1.12 (2026-10-20)
 
 - Works on work networks that inspect secure traffic (Zscaler, Netskope, and the like): murmur now sends every request the way your browser does, trusting the certificates your computer trusts and following its proxy settings. Before, dictation could fail on these networks even while your browser worked fine.
