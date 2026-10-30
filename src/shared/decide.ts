@@ -8,13 +8,16 @@
 // downstream of the verdict never knows which model answered.
 import { type ContextItem, type RelationVotes } from './compare'
 import {
+  type KeepSpans,
   type LeadStarts,
   SORT_LABELS,
   type Seam,
   type SeamVotes,
   type SortLabel,
   type SortVerdict,
+  keepWords,
   leadWords,
+  readKeepSpans,
   seamSides
 } from './sorter'
 
@@ -42,14 +45,17 @@ export interface DecisionRequest {
 }
 
 /** One Choice per sentence over the three labels, one Noul per seam
- *  with both sides as structured fields, and, when there are filed
- *  items, a relation Choice and an item Choice per sentence. No
- *  question here can return text. */
+ *  with both sides as structured fields, two keep Choices per sentence
+ *  of 3 to 60 words, and, when there are filed items, a relation Choice
+ *  and an item Choice per sentence. No question here can return text. */
 export function buildDecisionRequest(
   model: string,
   sentences: readonly string[],
   seamsBySentence: readonly Seam[][],
-  items: readonly ContextItem[] = []
+  items: readonly ContextItem[] = [],
+  /** False for the pieces' second compare request: they are already
+   *  the kept words, and that request reads relations only. */
+  offerKeep = true
 ): DecisionRequest {
   const questions: Record<string, DecisionQuestion> = {}
   // The items are listed once, in the state; each option here is just
@@ -113,6 +119,35 @@ export function buildDecisionRequest(
         criteria: options
       }
     }
+    // US-116: file only the item, as the chat path's keep vote (US-115)
+    // does. Two Choices over every word number, where the part worth
+    // filing begins and where it ends; a number cannot carry text.
+    const all = offerKeep ? keepWords(sentence) : []
+    if (all.length > 0) {
+      const options: Record<string, string> = {}
+      all.forEach((word, j) => {
+        options[String(j + 1)] = word
+      })
+      questions[`keep_first_${n}`] = {
+        type: 'choice',
+        instructions: {
+          question:
+            'If this sentence is a task or an idea wrapped in words that only announce it, comment on it, or fill (for example Oh, and an idea:, I think, honestly), at which word does the part worth filing BEGIN? Keep opening words that say when, where, or what the items are for (for example Tomorrow, or For the party). Pick 1 when every word belongs or the sentence is neither a task nor an idea.',
+          sentence: n,
+          text: sentence
+        },
+        criteria: options
+      }
+      questions[`keep_last_${n}`] = {
+        type: 'choice',
+        instructions: {
+          question: `If this sentence is a task or an idea followed by words that only comment on it or fill (for example I guess, or honestly), at which word does the part worth filing END? Pick ${all.length} when every word belongs or the sentence is neither a task nor an idea.`,
+          sentence: n,
+          text: sentence
+        },
+        criteria: options
+      }
+    }
     seamsBySentence[i]?.forEach((seam, j) => {
       const { left, right } = seamSides(sentence, seam)
       questions[`seam_${n}_${j + 1}`] = {
@@ -160,7 +195,12 @@ export function readDecisionAnswers(
   count: number,
   seamCounts: readonly number[],
   itemCount = 0,
-  leadCounts: readonly number[] = []
+  leadCounts: readonly number[] = [],
+  keepCounts: readonly number[] = [],
+  /** A keep end the model is less sure of than this keeps that end
+   *  whole (US-116, LaBroi 2026-10-30): a dropped word costs more than
+   *  a kept one. The sort passes its confidence threshold. */
+  keepThreshold = 0
 ): SortVerdict {
   if (!isRecord(answers)) return { ok: false, reason: 'missing sentences' }
   const labels: SortLabel[] = []
@@ -210,5 +250,39 @@ export function readDecisionAnswers(
     if (Number.isInteger(word) && word >= 2 && word <= offered) starts[i + 1] = word
   })
   const offeredLeads = leadCounts.some((n) => n >= 2)
-  return { ok: true, labels, topic: '', seams, confidence, relations, ...(offeredLeads ? { starts } : {}) }
+  // Keep (US-116): a missing, out-of-range, or unsure end keeps that
+  // end whole; the chat path's reader then drops a span of every word
+  // or crossed ends, so both paths trim by the same rule.
+  const offeredKeep = keepCounts.some((n) => n > 0)
+  let keep: KeepSpans = {}
+  const keepConfidence: Record<number, [number | null, number | null]> = {}
+  if (offeredKeep) {
+    const raw: Record<string, [number, number]> = {}
+    keepCounts.forEach((offered, i) => {
+      if (offered === 0) return
+      const end = (key: string, whole: number): { word: number; sure: number | null } => {
+        const answer = answers[`${key}_${i + 1}`]
+        if (!isRecord(answer) || answer.type !== 'choice') return { word: whole, sure: null }
+        const sure = confidenceOf(answer, String(answer.choice))
+        const word = Number(answer.choice)
+        const usable = Number.isInteger(word) && word >= 1 && word <= offered && sure >= keepThreshold
+        return { word: usable ? word : whole, sure }
+      }
+      const first = end('keep_first', 1)
+      const last = end('keep_last', offered)
+      raw[String(i + 1)] = [first.word, last.word]
+      keepConfidence[i + 1] = [first.sure, last.sure]
+    })
+    keep = readKeepSpans(raw, keepCounts)
+  }
+  return {
+    ok: true,
+    labels,
+    topic: '',
+    seams,
+    confidence,
+    relations,
+    ...(offeredLeads ? { starts } : {}),
+    ...(offeredKeep ? { keep, keepConfidence } : {})
+  }
 }
