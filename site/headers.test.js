@@ -51,7 +51,7 @@ describe('security.txt', () => {
 
   it('names the security inbox and its own canonical address', () => {
     expect(text).toContain(`Contact: ${SECURITY_CONTACT}\n`)
-    expect(SECURITY_CONTACT).toBe('mailto:security@newsbooklm.com')
+    expect(SECURITY_CONTACT).toBe('mailto:security@murmurapp.app')
     expect(text).toContain('Canonical: https://murmurapp.app/.well-known/security.txt\n')
   })
 
