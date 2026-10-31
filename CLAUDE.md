@@ -33,6 +33,7 @@ This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walt
 - The formatter must fail open. A transcription must never be lost because the cleanup LLM errored, chatted, or obeyed instructions inside the dictation.
 - The overlay window stays `focusable: false` and click-through; stealing focus breaks insertion into the target app.
 - No secrets in the repo. The API key is encrypted at rest via Electron safeStorage and never logged.
+- murmurapp.app is HTTPS-only forever: the whole `.app` ending is on the browsers' HSTS preload list with includeSubDomains (hstspreload.org reports the preloaded domain as `app`), so no setting here can take it off. Any new subdomain must serve valid HTTPS from its first minute or browsers will not load it. `site/headers.js` keeps `includeSubDomains` and `preload` because scanners grade them, and `site/headers.test.js` holds them (US-117). Security reports go to security@newsbooklm.com through `/.well-known/security.txt`; details in `site/README.md`, Security.
 - `shared/format-spec.json` is the single source of truth for formatter rules; `shared/test-vectors.json` keeps every platform testing the same cases. Change behavior there or nowhere.
 
 ## Design system (do not drift)
