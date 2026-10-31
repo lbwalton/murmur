@@ -85,12 +85,13 @@ function reasonText(take: WaitingTake): string {
   return 'something went wrong'
 }
 
-/** A waiting take's line. A hands-free take parked on sleep or quit
- *  (US-117) was never tried, so it says when it was saved instead. */
+/** A waiting take's line. A hands-free take parked on sleep, quit, or
+ *  Escape (US-117) was never tried, so it says when it was saved instead. */
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
   if (f?.kind === 'parked') {
     if (f.detail === 'quit') return 'saved when murmur quit'
+    if (f.detail === 'cancel') return 'saved when you cancelled it'
     return `saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
   }
   return `not transcribed: ${reasonText(take)}`

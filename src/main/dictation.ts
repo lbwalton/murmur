@@ -33,7 +33,7 @@ import {
 import { SMOKE_TRANSCRIPT, saveTakeForRetry, transcribeWav } from './transcribe'
 import { TRANSFORM_NO_CONNECTION_HINT, performTransform } from './transform'
 import { registerSmokeCheck } from './smoke'
-import type { ParkReason, StopReason } from './handsfree-rules'
+import type { KeepReason, ParkReason, StopReason } from './handsfree-rules'
 
 /** Where a session's words go: the cursor, a notes file (US-050), or
  *  an instruction for the selected text (US-054). */
@@ -44,6 +44,10 @@ let sessionStartedAt = 0
 // chord during a take must not stop it (each chord runs its own trigger
 // machine, and both machines call in here).
 let sessionKind: DictationKind = 'dictation'
+// Takes cancelled with Escape whose audio is still coming back from the
+// capture window (US-117). No take starts meanwhile: a result carries no
+// id, so a new take's stop could be answered with the cancelled audio.
+let cancelsKeeping = 0
 
 // One content-free breadcrumb per dictation outcome. Never transcript
 // text, never key material; failures here never break a dictation.
@@ -60,6 +64,7 @@ async function logDictation(line: string): Promise<void> {
  *  is live, or the note chord has no folder yet), so a toggle trigger
  *  does not flip to active over a press that did nothing. */
 export function dictationStart(kind: DictationKind = 'dictation'): boolean {
+  if (cancelsKeeping > 0) return false
   const phase = getOverlayPhase()
   if (
     phase !== 'idle' &&
@@ -429,12 +434,64 @@ export function dictationDiscard(kind?: DictationKind): boolean {
   return true
 }
 
-/** Escape or Discard on a locked take (US-117): the take is thrown away
- *  and the pill ends in the cancel scrape. */
-export function dictationCancelTake(): void {
-  if (getOverlayPhase() !== 'recording') return
-  cancelRecording()
+/** What became of a take's audio headed for Retry: kept, not kept
+ *  because no speech was in it, or lost (a dead capture, a failed write). */
+export type KeepOutcome = 'kept' | 'nospeech' | 'failed'
+
+/** Escape or Discard on a locked take (US-117): the pill ends in the
+ *  cancel scrape and nothing is transcribed. Escape keeps the audio for
+ *  Retry; Discard throws it away. Null when nothing was to be kept. */
+export async function dictationCancelTake(keep: boolean): Promise<KeepOutcome | null> {
+  if (getOverlayPhase() !== 'recording') return null
+  // The scrape starts now, before the audio comes back.
+  const kind = sessionKind
+  const startedAt = sessionStartedAt
+  if (!keep) {
+    cancelRecording()
+    setOverlayPhase('cancelled')
+    return null
+  }
   setOverlayPhase('cancelled')
+  cancelsKeeping += 1
+  try {
+    return await keepForRetry(await stopRecording(), kind, startedAt, 'cancel')
+  } catch (error) {
+    console.error('[murmur] cancel keep failed:', error)
+    return 'failed'
+  } finally {
+    cancelsKeeping -= 1
+  }
+}
+
+/** A stopped take's audio onto the Retry list, untranscribed. Throws
+ *  when the Retry folder cannot be written; callers decide. */
+async function keepForRetry(
+  wav: Uint8Array | null,
+  kind: DictationKind,
+  startedAt: number,
+  reason: KeepReason
+): Promise<KeepOutcome> {
+  const step = reason === 'cancel' ? 'cancel' : 'park'
+  if (!wav) {
+    void logDictation(`${step} capture-failed`)
+    return 'failed'
+  }
+  const samples = wavSamples(wav)
+  if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
+    void logDictation(`${step} nospeech durationMs=${Date.now() - startedAt}`)
+    return 'nospeech'
+  }
+  // Trimmed like a live upload, so a retry never sends the silence
+  // that breeds hallucinated sign-offs.
+  const { trimSilence } = await import('../shared/speech-gate')
+  const { encodeWavPcm16 } = await import('../shared/wav')
+  const upload = encodeWavPcm16(trimSilence(samples, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
+  saveTakeForRetry(upload, {
+    kind,
+    startedAt,
+    failure: { kind: 'parked', detail: reason }
+  })
+  return 'kept'
 }
 
 /**
@@ -451,27 +508,7 @@ export async function dictationPark(reason: ParkReason): Promise<boolean> {
   // Processing claims the take: no stop can deliver it meanwhile.
   setOverlayPhase('processing')
   try {
-    const wav = await stopRecording()
-    if (!wav) {
-      void logDictation('park capture-failed')
-      return false
-    }
-    const samples = wavSamples(wav)
-    if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
-      void logDictation(`park nospeech durationMs=${Date.now() - startedAt}`)
-      return false
-    }
-    // Trimmed like a live upload, so a retry never sends the silence
-    // that breeds hallucinated sign-offs.
-    const { trimSilence } = await import('../shared/speech-gate')
-    const { encodeWavPcm16 } = await import('../shared/wav')
-    const upload = encodeWavPcm16(trimSilence(samples, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
-    saveTakeForRetry(upload, {
-      kind,
-      startedAt,
-      failure: { kind: 'parked', detail: reason }
-    })
-    return true
+    return (await keepForRetry(await stopRecording(), kind, startedAt, reason)) === 'kept'
   } catch (error) {
     console.error('[murmur] park failed:', error)
     return false

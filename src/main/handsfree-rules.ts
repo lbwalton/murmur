@@ -25,6 +25,9 @@ export const LOCK_SCREEN_WAIT_MS = 1_000
 export type StopReason = 'silence' | 'lock' | 'limit' | 'menu' | 'changed'
 /** Why a locked take was kept for Retry without being transcribed. */
 export type ParkReason = 'sleep' | 'quit'
+/** A parked take, or one cancelled with Escape: an Escape meant for the
+ *  app in front must not lose a long take. */
+export type KeepReason = ParkReason | 'cancel'
 
 const TITLE = 'murmur hands-free'
 const RETRY = 'Your take is saved. Open murmur and press Retry on Home.'
@@ -92,10 +95,18 @@ export function failedNotice(reason: StopReason): { title: string; body: string 
 
 /** The notification for a take kept for Retry: why, then where. */
 export function parkNotice(
-  reason: ParkReason,
+  reason: KeepReason,
   platform: NodeJS.Platform = process.platform
 ): { title: string; body: string } {
+  if (reason === 'cancel') return { title: TITLE, body: `Cancelled. ${RETRY}` }
   const why =
     reason === 'quit' ? 'murmur quit' : platform === 'win32' ? 'Your PC went to sleep' : 'Your Mac went to sleep'
   return { title: TITLE, body: `${why}, so your take is saved. Open murmur and press Retry on Home.` }
+}
+
+/** The notification for a take cancelled with Escape whose audio could
+ *  not be kept (a dead capture, a failed write), since Escape promises
+ *  to keep it. A take with no speech in it says nothing. */
+export function cancelFailedNotice(): { title: string; body: string } {
+  return { title: TITLE, body: 'Cancelled. The take could not be saved.' }
 }

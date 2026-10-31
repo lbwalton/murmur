@@ -2,10 +2,10 @@
 // Hands-free (US-117): everything that happens while a take is locked.
 // The gesture machine (hotkeys/machines.ts) decides when a double-tap
 // locks a take and when a press stops it; this module holds the locked
-// take: the 12 minute limit and the silence watch, Escape and the tray's
-// Discard, the auto-stops that save without pasting (the app in front
-// may have changed), and parking the audio for Retry when the computer
-// sleeps or murmur quits. While a take is locked the display stays
+// take: the 12 minute limit and the silence watch, Escape (its audio
+// waits in Retry) and the tray's Discard, the auto-stops that save
+// without pasting (the app in front may have changed), and parking the
+// audio for Retry when the computer sleeps or murmur quits. While a take is locked the display stays
 // awake: hands-free invites no keyboard or mouse input, and a display
 // that sleeps on idle can lock the screen mid-sentence; the silence and
 // 12 minute stops still bound the hold. Every way a take ends lets go
@@ -15,7 +15,14 @@ import { Notification, app, clipboard, powerMonitor, powerSaveBlocker } from 'el
 import { UiohookKey } from 'uiohook-napi'
 import type { FormatSpec } from '../shared/formatter'
 import { onAudioSessionEnd, playCue, setKeepAudioOnQuit, stallCaptureForSmoke } from './audio'
-import { dictationCancelTake, dictationDiscard, dictationPark, dictationStop, liveSessionKind } from './dictation'
+import {
+  type KeepOutcome,
+  dictationCancelTake,
+  dictationDiscard,
+  dictationPark,
+  dictationStop,
+  liveSessionKind
+} from './dictation'
 import {
   LOCK_SCREEN_WAIT_MS,
   type ParkReason,
@@ -23,6 +30,7 @@ import {
   SilenceWatch,
   type StopReason,
   TAKE_LIMIT_MS,
+  cancelFailedNotice,
   failedNotice,
   parkNotice,
   retryNotice,
@@ -60,9 +68,11 @@ interface LockedTake {
 }
 
 let locked: LockedTake | null = null
-let parking = false
-// A quit that arrived while a take was locked or parking: the park
-// quits again once it is done.
+// Takes on their way to Retry (a park, or audio kept from Escape): the
+// capture window holds their audio, so a quit waits for them.
+let parking = 0
+// A quit that arrived while a take was locked or parking: the last park
+// to finish quits again.
 let quitAfterPark = false
 let limitMs = TAKE_LIMIT_MS
 let silenceWindowMs = SILENCE_WINDOW_MS
@@ -184,9 +194,12 @@ export function handsFreeDiscard(kind: LockedKind): void {
   if (dictationDiscard(kind)) log('discard')
 }
 
-/** Escape, or Discard in the tray: throw the locked take away. False,
- *  and nothing happens, when no take is locked. */
-export function handsFreeCancel(): boolean {
+/** Escape, or Discard in the tray: end the locked take untranscribed.
+ *  Escape keeps its audio for Retry, with a notification saying so,
+ *  since an Escape meant for the app in front must not lose a long
+ *  take; Discard throws it away. False, and nothing happens, when no
+ *  take is locked. */
+export function handsFreeCancel(keep: boolean): boolean {
   const take = release()
   if (!take) return false
   // Escape still reaches the hotkey dispatcher as a joining key; the
@@ -194,10 +207,29 @@ export function handsFreeCancel(): boolean {
   resetHandsFreeGestures()
   // Cancelled first: leaving the recording clears the lock itself, so
   // the loop fades under the scrape instead of vanishing before it.
-  dictationCancelTake()
+  const kept = dictationCancelTake(keep)
   setOverlayLocked(false)
-  log(`cancel ms=${Date.now() - take.startedAt}`)
+  log(`cancel ms=${Date.now() - take.startedAt} keep=${keep}`)
+  if (keep) void settleCancel(kept)
   return true
+}
+
+/** Escape's kept audio on its way to Retry counts as a park, so a quit
+ *  meanwhile waits for it: a fraction of a second, or the capture
+ *  window's 5 s stop timeout when the window is stuck.
+ *  It says where the take went, or that it was lost; a take with no
+ *  speech in it says nothing. */
+async function settleCancel(kept: Promise<KeepOutcome | null>): Promise<void> {
+  parking += 1
+  try {
+    const outcome = await kept.catch((): KeepOutcome => 'failed')
+    log(`cancel saved=${outcome === 'kept'}`)
+    if (outcome === 'kept') notify(parkNotice('cancel'))
+    else if (outcome === 'failed') notify(cancelFailedNotice())
+  } finally {
+    parking -= 1
+    quitIfParked()
+  }
 }
 
 /** The take stopped on its own (quiet, a screen lock, the limit, the
@@ -227,7 +259,7 @@ export async function handsFreePark(reason: ParkReason): Promise<void> {
   // Stamped as the sleep or quit arrives; the park's own line follows
   // once the audio is saved, which a sleep can delay past the wake.
   log(`parking reason=${reason}`)
-  parking = true
+  parking += 1
   try {
     resetHandsFreeGestures()
     setOverlayLocked(false)
@@ -251,22 +283,27 @@ export async function handsFreePark(reason: ParkReason): Promise<void> {
       })
     }
   } finally {
-    parking = false
-    if (quitAfterPark) {
-      quitAfterPark = false
-      app.quit()
-    }
+    parking -= 1
+    quitIfParked()
   }
+}
+
+/** A quit that waited on parks goes ahead once the last one is done. */
+function quitIfParked(): void {
+  if (!quitAfterPark || parking > 0) return
+  quitAfterPark = false
+  app.quit()
 }
 
 /**
  * For murmur's quit (and a shutdown): true when the quit must wait,
- * because a locked take is parked first. The park quits again when it
- * is done or gives up, so murmur always quits. An update installs only
+ * because a locked take is parked first, or a take is still on its way
+ * to Retry. The last park quits again when it is done or gives up, so
+ * murmur always quits. An update installs only
  * on quit, so it never installs over a locked take either.
  */
 export function deferQuitForPark(): boolean {
-  if (!locked && !parking) return false
+  if (!locked && parking === 0) return false
   quitAfterPark = true
   if (locked) void handsFreePark('quit')
   return true
@@ -277,7 +314,7 @@ export function isHandsFreeLocked(): boolean {
 }
 
 export function isParking(): boolean {
-  return parking
+  return parking > 0
 }
 
 /** The newest hands-free notice, for the smoke run. */
@@ -379,7 +416,7 @@ function registerHandsFreeSmoke(): void {
     }
     // A clean start: nothing locked, the last take finished, a fresh log mark.
     const begin = async (): Promise<void> => {
-      if (isHandsFreeLocked()) handsFreeCancel()
+      if (isHandsFreeLocked()) handsFreeCancel(false)
       await until(settled)
       mark = readLog().length
     }
@@ -475,11 +512,14 @@ function registerHandsFreeSmoke(): void {
       ok.j &&= !heldAwake(c?.hold ?? null)
       seen.c = { locked: c !== null, cStopped, cSaved, clip: cClip === expected, notice: lastNotice?.body }
 
-      // (d) Escape throws a locked take away: the pill scrapes, nothing
-      // is uploaded or kept. Ctrl+Escape first (Start on Windows) is a
-      // system shortcut, not a cancel: the take stays locked.
+      // (d) Escape ends a locked take untranscribed: the pill scrapes,
+      // nothing is uploaded or goes to history, and the audio waits in
+      // Retry with a notification saying so. Ctrl+Escape first (Start on
+      // Windows) is a system shortcut, not a cancel: the take stays
+      // locked. The tray's Discard then throws a take away entirely.
       await begin()
       const dHistory = readHistory().length
+      const dParked = parked()
       const d = await lockTake()
       down(CTRL_ESCAPE)
       up(CTRL_ESCAPE)
@@ -487,16 +527,38 @@ function registerHandsFreeSmoke(): void {
       down(ESCAPE)
       const dPhase = getOverlayPhase()
       up(ESCAPE)
+      const dUnlocked = !isHandsFreeLocked()
+      const dSaved = await until(() => has('[hands-free] cancel saved=true'), 3_000)
+      const dNotice = lastNotice?.body
+      const dNothingSent = !has('[dictation]')
+      ok.j &&= !heldAwake(d?.hold ?? null)
+      await begin()
+      const dDiscardParked = parked()
+      const dDiscard = await lockTake()
+      const dDiscarded = handsFreeCancel(false)
+      const dDiscardPhase = getOverlayPhase()
+      // Long enough for a keep to have landed, had Discard kept anything.
+      const dDiscardKept = await until(() => has('cancel saved='), 1_000)
       ok.d =
         d !== null &&
         dKeptOnCtrl &&
         dPhase === 'cancelled' &&
-        !isHandsFreeLocked() &&
+        dUnlocked &&
+        dNothingSent &&
         has('[hands-free] cancel') &&
+        dSaved &&
+        parked() === dParked + 1 &&
+        dNotice === parkNotice('cancel').body &&
+        dDiscard !== null &&
+        dDiscarded &&
+        dDiscardPhase === 'cancelled' &&
+        has('keep=false') &&
+        !dDiscardKept &&
+        parked() === dDiscardParked &&
         !has('[dictation]') &&
         readHistory().length === dHistory
-      ok.j &&= !heldAwake(d?.hold ?? null)
-      seen.d = { locked: d !== null, dKeptOnCtrl, dPhase }
+      ok.j &&= !heldAwake(dDiscard?.hold ?? null)
+      seen.d = { locked: d !== null, dKeptOnCtrl, dPhase, dSaved, dNotice, dDiscarded, dDiscardPhase, dDiscardKept }
 
       // (e) With Double-tap for hands-free off, two quick taps are 2
       // short holds: each release ends its take, and nothing locks.
@@ -587,20 +649,24 @@ function registerHandsFreeSmoke(): void {
         liveSessionKind() === 'dictation'
       down(ESCAPE)
       up(ESCAPE)
+      const hPhase = getOverlayPhase()
+      // The kept audio lands before the next case reads the log.
+      const hSaved = await until(() => has('[hands-free] cancel saved='), 3_000)
       ok.h =
         h !== null &&
         hStillLocked &&
         !has('lock kind=note') &&
         !has('[hands-free] stop') &&
         has('[hands-free] cancel') &&
-        getOverlayPhase() === 'cancelled'
-      seen.h = { locked: h !== null, hStillLocked, phase: getOverlayPhase() }
+        hPhase === 'cancelled' &&
+        hSaved
+      seen.h = { locked: h !== null, hStillLocked, phase: hPhase, hSaved }
 
       // (i) Escape outside a locked take is ignored.
       await begin()
       down(ESCAPE)
       up(ESCAPE)
-      const iCancelled = handsFreeCancel()
+      const iCancelled = handsFreeCancel(true)
       ok.i = !iCancelled && !has('[hands-free]')
       seen.i = { iCancelled }
 
@@ -681,11 +747,37 @@ function registerHandsFreeSmoke(): void {
         lastNotice?.body === parkNotice('sleep').body
       seen.l = { locked: l !== null, lGaveUp, lLate, notices: noticeCount - lNotices }
 
+      // (m) A press while Escape's audio is still on its way (the capture
+      // window held busy) starts nothing, since its stop could be
+      // answered with the cancelled audio. The cancelled audio lands in
+      // Retry once, and the next take delivers as usual.
+      await begin()
+      const mParked = parked()
+      const m = await lockTake()
+      await wait(300)
+      stallCaptureForSmoke(800)
+      await wait(50)
+      down(ESCAPE)
+      up(ESCAPE)
+      down(SPACE)
+      const mRefused = getOverlayPhase() !== 'recording'
+      await wait(400)
+      up(SPACE)
+      const mKept = await until(() => has('[hands-free] cancel saved=true'), 3_000)
+      const mHistory = readHistory().length
+      down(SPACE)
+      const mNextStarted = getOverlayPhase() === 'recording'
+      await wait(600)
+      up(SPACE)
+      const mNext = await until(() => readHistory().length === mHistory + 1, 5_000)
+      ok.m = m !== null && mRefused && mKept && parked() === mParked + 1 && mNextStarted && mNext
+      seen.m = { locked: m !== null, mRefused, mKept, parked: parked() - mParked, mNextStarted, mNext }
+
       const passed = Object.values(ok).every(Boolean)
       if (!passed) console.error(`smoke handsFree: ${JSON.stringify({ ok, seen })}`)
       return passed
     } finally {
-      if (isHandsFreeLocked()) handsFreeCancel()
+      if (isHandsFreeLocked()) handsFreeCancel(false)
       setHandsFreeTimesForSmoke({})
       await until(settled)
       updateSettings({ hotkey: hotkeyBefore, notes: { binding: noteBindingBefore } })

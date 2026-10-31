@@ -8,6 +8,7 @@ import {
   SilenceWatch,
   TAKE_LIMIT_MS,
   VOICED_LEVEL,
+  cancelFailedNotice,
   failedNotice,
   parkNotice,
   retryNotice,
@@ -144,5 +145,17 @@ describe('the hands-free notices', () => {
       body: 'murmur quit, so your take is saved. Open murmur and press Retry on Home.'
     })
     expect(parkNotice('quit', 'win32')).toEqual(parkNotice('quit', 'darwin'))
+  })
+
+  it('a take cancelled with Escape says it is saved and where to find it', () => {
+    expect(parkNotice('cancel', 'darwin')).toEqual({
+      title: 'murmur hands-free',
+      body: 'Cancelled. Your take is saved. Open murmur and press Retry on Home.'
+    })
+    expect(parkNotice('cancel', 'win32')).toEqual(parkNotice('cancel', 'darwin'))
+  })
+
+  it('a cancelled take that could not be kept says so', () => {
+    expect(cancelFailedNotice()).toEqual({ title: 'murmur hands-free', body: 'Cancelled. The take could not be saved.' })
   })
 })

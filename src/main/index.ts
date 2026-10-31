@@ -360,7 +360,8 @@ app.whenReady().then(async () => {
         void dictationStop('transform')
       }
     },
-    cancel: handsFreeCancel,
+    // Escape keeps the take for Retry; the tray's Discard throws it away.
+    cancel: () => handsFreeCancel(true),
     // A chord change mid-take: the locked take is saved, never lost.
     lockedReset: () => {
       void handsFreeAutoStop('changed')
@@ -466,7 +467,7 @@ app.whenReady().then(async () => {
       void handsFreeAutoStop('menu')
     },
     onDiscardHandsFree: () => {
-      handsFreeCancel()
+      handsFreeCancel(false)
     }
   })
   // The inbox item exists only while there is a folder to open.
