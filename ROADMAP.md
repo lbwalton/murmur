@@ -128,4 +128,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-107** The murmur Pro mark in the app: a gold pill, filled when Pro is yours
 - [ ] **US-108** murmur Pro on the site: the mark, a pro link, and a /pro/ page
 - [ ] **US-112** Security patches for the dependencies GitHub flagged
-- [ ] **US-117** A security contact, headers every scanner can read, and the HSTS preload written down
+- [ ] **US-118** A security contact, headers every scanner can read, and the HSTS preload written down

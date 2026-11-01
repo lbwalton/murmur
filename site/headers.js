@@ -26,7 +26,7 @@ const SECURITY_HEADERS = [
 // it with fetch(), which sees only a few basic headers unless the rest
 // are exposed. Exposing the list above lets it see them instead of
 // grading them missing; their values are public to any other request
-// already (US-117).
+// already (US-118).
 const HEADERS = [
   ...SECURITY_HEADERS,
   ['Access-Control-Expose-Headers', SECURITY_HEADERS.map(([name]) => name).join(', ')]

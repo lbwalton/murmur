@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // What security scanners grade on murmurapp.app, held so a change to
-// headers.js or the build cannot quietly undo it (US-117).
+// headers.js or the build cannot quietly undo it (US-118).
 import { describe, expect, it } from 'vitest'
 import { HEADERS, SECURITY_HEADERS, headersFile } from './headers'
 import { SECURITY_CONTACT, VALID_DAYS, securityTxt } from './security-txt'

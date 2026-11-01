@@ -6,7 +6,7 @@
 // comparison, and a 404, all under one header and footer. Also the night
 // studio tokens copied from the app, the app's brush engine stripped of
 // its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt and
-// llms-full.txt, the security contact at /.well-known/security.txt (US-117),
+// llms-full.txt, the security contact at /.well-known/security.txt (US-118),
 // the _headers Cloudflare Pages serves, and the icons and preview image
 // drawn by the same kit as the app icons. Nothing binary lives in the
 // repo: the display face is fetched at build time (the page falls back

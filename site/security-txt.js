@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// security.txt (RFC 9116, US-117): where to report a security problem
+// security.txt (RFC 9116, US-118): where to report a security problem
 // in murmur or this site. Reports go to murmur's own address,
 // security@murmurapp.app (LaBroi, 2026-10-31). Expires is 364 days
 // after the build, so every deploy renews it; deploy again within 364
