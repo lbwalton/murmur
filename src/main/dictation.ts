@@ -370,8 +370,9 @@ export type RetriedDelivery =
 /**
  * Deliver a saved take's transcript (US-068). The app the take was
  * spoken into no longer has the cursor, so nothing is pasted and no
- * pill or cue plays: a dictation goes to the log at its original time
- * and to the clipboard, where paste-last finds it next; a note files
+ * pill or cue plays: a dictation goes to the log at its original time,
+ * where paste-last finds it next (it is the newest entry appended), and
+ * the clipboard is left alone (LaBroi, 2026-11-01); a note files
  * like a live note under the day and time it was spoken; a transform's
  * instruction is kept unsent, since the selection it was for is gone.
  */
@@ -404,13 +405,6 @@ export async function deliverRetried(
   }
 
   const event = recordSession({ ...timing, rawText: heardText, finalText })
-  try {
-    await clipboard.writeText(finalText)
-  } catch (error) {
-    // The words are already safe in the log; a clipboard hiccup must not
-    // fail the retry and keep the audio for a duplicate delivery.
-    console.error('[murmur] retry clipboard write failed:', error)
-  }
   refreshOverlayConfig()
   return { ok: true, words: event?.words ?? 0, location: 'log' }
 }

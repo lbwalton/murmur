@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { clearAllQuestion, discardAllQuestion, discardedMessage, waitingLine } from './HomeView'
+import { clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -57,5 +57,15 @@ describe('a waiting take', () => {
   it('a hands-free take cancelled with Escape says so', () => {
     expect(waitingLine(take({ kind: 'parked', detail: 'cancel' }), 'darwin')).toBe('saved when you cancelled it')
     expect(waitingLine(take({ kind: 'parked', detail: 'cancel' }), 'win32')).toBe('saved when you cancelled it')
+  })
+})
+
+describe('retried dictation message', () => {
+  it('says the words are in the log and the clipboard is untouched', () => {
+    expect(retriedDictationMessage('Cmd+Shift+V')).toBe(
+      'Done: the words are in your log. Press Cmd+Shift+V in any app to paste it there.'
+    )
+    expect(retriedDictationMessage('')).toBe('Done: the words are in your log. Press copy beside it in the log below to copy it.')
+    expect(retriedDictationMessage('')).not.toMatch(/clipboard/)
   })
 })

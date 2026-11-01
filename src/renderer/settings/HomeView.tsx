@@ -209,11 +209,19 @@ export function discardedMessage(gone: number, asked: number): string {
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
 }
 
+/** The result line after one retried dictation: the clipboard is untouched. */
+export function retriedDictationMessage(pasteLastBinding: string): string {
+  const paste = pasteLastBinding
+    ? ` Press ${pasteLastBinding} in any app to paste it there.`
+    : ' Press copy beside it in the log below to copy it.'
+  return `Done: the words are in your log.${paste}`
+}
+
 /**
  * Takes that were recorded but not transcribed (US-068). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
- * words land in the log, and a dictation also on the clipboard, where
- * paste-last finds it. Discard asks once, then deletes the audio.
+ * words land in the log, where paste-last finds a dictation, and the
+ * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
  * Discard all (US-096) asks in place, with the count, before deleting:
  * the question counts the takes listed when it opened, and only those
  * are deleted, so a take that fails while it is open is kept. Keep them
@@ -276,9 +284,6 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
       else failed += 1
     }
     setBusy(null)
-    const paste = props.pasteLastBinding
-      ? ` Press ${props.pasteLastBinding} in any app to paste it there.`
-      : ' Paste it wherever it belongs.'
     if (done.length === 1 && failed === 0) {
       const { kind, location } = done[0]
       setMessage(
@@ -288,7 +293,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
             : 'Done: the note is filed under the time you spoke it, and it is in your log.'
           : kind === 'transform'
             ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : `Done: the words are in your log and on your clipboard.${paste}`
+            : retriedDictationMessage(props.pasteLastBinding)
       )
     } else if (done.length > 0) {
       setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
