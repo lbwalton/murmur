@@ -115,8 +115,9 @@ export type StopOutcome = 'delivered' | 'nospeech' | 'retry' | 'failed'
 /**
  * End the live take and deliver it. With save (a hands-free take that
  * stopped on its own, US-117) a dictation is never pasted, since the
- * app in front may have changed: it goes to history and the clipboard
- * instead. A note files as usual.
+ * app in front may have changed: it goes to history only, and the
+ * clipboard is left alone (paste-last brings it back). A note files
+ * as usual.
  */
 export async function dictationStop(
   kind: DictationKind = 'dictation',
@@ -231,12 +232,8 @@ export async function dictationStop(
     if (opts.save) {
       const { recordSession } = await import('./history')
       const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
-      try {
-        await clipboard.writeText(finalText)
-      } catch (error) {
-        // The words are already safe in history.
-        console.error('[murmur] saved take clipboard write failed:', error)
-      }
+      // The clipboard stays the user's: Cmd+V keeps pasting what they
+      // copied. The words wait in history for the paste-last shortcut.
       void logDictation(`delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}`)
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')

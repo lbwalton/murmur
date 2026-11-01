@@ -40,6 +40,7 @@ import { resetHandsFreeGestures, smokeHotkeyEvent } from './hotkeys'
 import type { KeyEventLike } from './hotkeys/binding'
 import { LOCK_GUARD_MS, SECOND_TAP_MS } from './hotkeys/machines'
 import { getOverlayPhase, getOverlayState, setAudioLevelListener, setOverlayLocked, setOverlayPhase } from './overlay'
+import { getSettings } from './settings'
 import { isSmoke, registerSmokeCheck } from './smoke'
 import { setTrayHandsFree, trayMenuLabels } from './tray'
 import { writeAppLog } from './window-watch'
@@ -244,7 +245,7 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   const outcome = await dictationStop(take.kind, { save: reason })
   // A take with no speech in it says nothing: the pill already did. A
   // lost take says so, since nobody was watching the pill.
-  if (outcome === 'delivered') notify(stopNotice(reason, take.kind))
+  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, getSettings().hotkey.pasteLastBinding))
   else if (outcome === 'retry') notify(retryNotice(reason))
   else if (outcome === 'failed') notify(failedNotice(reason))
 }
@@ -369,7 +370,7 @@ function registerHandsFreeSmoke(): void {
     if (!isSmoke) return false
     const { existsSync, readFileSync } = await import('node:fs')
     const { join } = await import('node:path')
-    const { getSettings, updateSettings } = await import('./settings')
+    const { updateSettings } = await import('./settings')
     const { readHistory } = await import('./history')
     const { SMOKE_TRANSCRIPT, recoveryDir } = await import('./transcribe')
     const { listRecovery, removeRecovery } = await import('./transcribe/recovery')
@@ -446,6 +447,9 @@ function registerHandsFreeSmoke(): void {
     const hotkeyBefore = { ...getSettings().hotkey }
     const noteBindingBefore = getSettings().notes.binding
     const clipboardBefore = await clipboard.readText()
+    // A saved take leaves the clipboard alone: this is what Cmd+V must keep pasting.
+    const SENTINEL = 'murmur smoke: the user copied this'
+    const newestWords = (): string => readHistory().at(-1)?.finalText ?? ''
     const ok: Record<string, boolean> = {}
     const seen: Record<string, unknown> = {}
     try {
@@ -496,21 +500,23 @@ function registerHandsFreeSmoke(): void {
       // (c) The limit stops a locked take and saves it without a paste.
       setHandsFreeTimesForSmoke({ limitMs: 1_500 })
       await begin()
-      await clipboard.writeText('')
+      await clipboard.writeText(SENTINEL)
       const c = await lockTake()
       const cStopped = await until(() => has('[hands-free] auto-stop reason=limit'), 3_000)
       const cSaved = await until(() => has('[dictation] delivered outcome=saved reason=limit'), 3_000)
       setHandsFreeTimesForSmoke({})
       const cClip = await clipboard.readText()
+      const cWords = newestWords()
       ok.c =
         c !== null &&
         cStopped &&
         cSaved &&
         !has('outcome=copied') &&
-        cClip === expected &&
-        lastNotice?.body === stopNotice('limit', 'dictation').body
+        cClip === SENTINEL &&
+        cWords === expected &&
+        lastNotice?.body === stopNotice('limit', 'dictation', getSettings().hotkey.pasteLastBinding).body
       ok.j &&= !heldAwake(c?.hold ?? null)
-      seen.c = { locked: c !== null, cStopped, cSaved, clip: cClip === expected, notice: lastNotice?.body }
+      seen.c = { locked: c !== null, cStopped, cSaved, clip: cClip === SENTINEL, words: cWords === expected, notice: lastNotice?.body }
 
       // (d) Escape ends a locked take untranscribed: the pill scrapes,
       // nothing is uploaded or goes to history, and the audio waits in
@@ -592,7 +598,7 @@ function registerHandsFreeSmoke(): void {
       // (f) A settings change while locked saves the take, and the tray
       // items that showed while it was locked go away.
       await begin()
-      await clipboard.writeText('')
+      await clipboard.writeText(SENTINEL)
       const f = await lockTake()
       const fTray = trayMenuLabels()
       updateSettings({ hotkey: { binding: 'Ctrl+Shift+F19' } })
@@ -601,6 +607,7 @@ function registerHandsFreeSmoke(): void {
       const fTrayAfter = trayMenuLabels()
       updateSettings({ hotkey: { binding: 'Ctrl+Space' } })
       const fClip = await clipboard.readText()
+      const fWords = newestWords()
       ok.f =
         f !== null &&
         fTray.includes('Stop hands-free') &&
@@ -609,9 +616,10 @@ function registerHandsFreeSmoke(): void {
         fSaved &&
         !fTrayAfter.includes('Stop hands-free') &&
         !fTrayAfter.includes('Discard') &&
-        fClip === expected &&
-        lastNotice?.body === stopNotice('changed', 'dictation').body
-      seen.f = { locked: f !== null, fTray, fStopped, fSaved, fTrayAfter, clip: fClip === expected }
+        fClip === SENTINEL &&
+        fWords === expected &&
+        lastNotice?.body === stopNotice('changed', 'dictation', getSettings().hotkey.pasteLastBinding).body
+      seen.f = { locked: f !== null, fTray, fStopped, fSaved, fTrayAfter, clip: fClip === SENTINEL, words: fWords === expected }
 
       // (g) Timers after the take ended do nothing: a tap stops the take
       // at about 700 ms, and the 1,500 ms limit that follows is a no-op.
@@ -698,7 +706,7 @@ function registerHandsFreeSmoke(): void {
       ok.j &&= !heldAwake(k?.hold ?? null)
       // A screen lock alone stops the take after the wait and saves it.
       await begin()
-      await clipboard.writeText('')
+      await clipboard.writeText(SENTINEL)
       const k2 = await lockTake()
       powerMonitor.emit('lock-screen')
       const k2ScreenAt = Date.now()
@@ -708,14 +716,16 @@ function registerHandsFreeSmoke(): void {
       const k2After = Date.now() - k2ScreenAt
       const k2Saved = await until(() => has('[dictation] delivered outcome=saved reason=lock'), 3_000)
       const k2Clip = await clipboard.readText()
+      const k2Words = newestWords()
       const kLockAlone =
         k2 !== null &&
         k2Waited &&
         k2Stopped &&
         k2After >= LOCK_SCREEN_WAIT_MS - 50 &&
         k2Saved &&
-        k2Clip === expected &&
-        lastNotice?.body === stopNotice('lock', 'dictation').body
+        k2Clip === SENTINEL &&
+        k2Words === expected &&
+        lastNotice?.body === stopNotice('lock', 'dictation', getSettings().hotkey.pasteLastBinding).body
       ok.k = kSleep && kLockAlone
       seen.k = { kSleep, kHeldThroughWait, kParkLogged, k2Waited, k2Stopped, k2After, k2Saved }
 

@@ -90,7 +90,9 @@ describe('SilenceWatch', () => {
 
 describe('the hands-free notices', () => {
   it('every stop reason has copy for a dictation and a note', () => {
-    const words = 'Your words are on the clipboard and in history.'
+    const binding = 'Ctrl+F12'
+    const withBinding = `Your words are in history. Press ${binding} to paste them.`
+    const noBinding = "Your words are in history on murmur's Home."
     const note = 'Your note is saved.'
     const why = {
       silence: 'Stopped after 2 minutes of quiet. ',
@@ -100,13 +102,25 @@ describe('the hands-free notices', () => {
       changed: 'Stopped because the hotkey changed. '
     } as const
     for (const reason of Object.keys(why) as Array<keyof typeof why>) {
-      expect(stopNotice(reason, 'dictation')).toEqual({ title: 'murmur hands-free', body: `${why[reason]}${words}` })
-      expect(stopNotice(reason, 'note')).toEqual({ title: 'murmur hands-free', body: `${why[reason]}${note}` })
+      expect(stopNotice(reason, 'dictation', binding)).toEqual({
+        title: 'murmur hands-free',
+        body: `${why[reason]}${withBinding}`
+      })
+      expect(stopNotice(reason, 'dictation', '')).toEqual({
+        title: 'murmur hands-free',
+        body: `${why[reason]}${noBinding}`
+      })
+      for (const b of [binding, '']) {
+        expect(stopNotice(reason, 'note', b)).toEqual({ title: 'murmur hands-free', body: `${why[reason]}${note}` })
+      }
     }
-    expect(stopNotice('silence', 'dictation').body).toBe(
-      'Stopped after 2 minutes of quiet. Your words are on the clipboard and in history.'
+    expect(stopNotice('silence', 'dictation', 'Ctrl+F12').body).toBe(
+      'Stopped after 2 minutes of quiet. Your words are in history. Press Ctrl+F12 to paste them.'
     )
-    expect(stopNotice('menu', 'note').body).toBe('Your note is saved.')
+    expect(stopNotice('silence', 'dictation', '').body).toBe(
+      "Stopped after 2 minutes of quiet. Your words are in history on murmur's Home."
+    )
+    expect(stopNotice('menu', 'note', '').body).toBe('Your note is saved.')
   })
 
   it('a stopped take whose transcription failed says it waits in Retry', () => {

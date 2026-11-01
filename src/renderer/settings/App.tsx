@@ -1036,7 +1036,7 @@ export function App(): React.JSX.Element {
               <Row
                 label="Double-tap for hands-free"
                 keywords="hands free double tap lock long"
-                desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to throw the take away."
+                desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to cancel; the take waits on Home to retry."
               >
                 <Switch
                   checked={settings.hotkey.doubleTap}

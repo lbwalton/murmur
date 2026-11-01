@@ -74,9 +74,18 @@ const STOPPED: Record<StopReason, string> = {
 }
 
 /** The notification for a take that stopped on its own: why, then
- *  where the words went (nothing was pasted). */
-export function stopNotice(reason: StopReason, kind: 'dictation' | 'note'): { title: string; body: string } {
-  const where = kind === 'note' ? 'Your note is saved.' : 'Your words are on the clipboard and in history.'
+ *  where the words went (nothing was pasted and the clipboard was not
+ *  touched). pasteLastBinding is the raw paste-last setting, '' when
+ *  none is set. */
+export function stopNotice(
+  reason: StopReason,
+  kind: 'dictation' | 'note',
+  pasteLastBinding: string
+): { title: string; body: string } {
+  const words = pasteLastBinding
+    ? `Your words are in history. Press ${pasteLastBinding} to paste them.`
+    : "Your words are in history on murmur's Home."
+  const where = kind === 'note' ? 'Your note is saved.' : words
   return { title: TITLE, body: `${STOPPED[reason]}${where}` }
 }
 
