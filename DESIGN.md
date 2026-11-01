@@ -33,9 +33,9 @@ Where paint goes:
 | Website hero | Full: paints in once, then the visitor can paint and save a poster. |
 | Logo and app icon | The ensō pill (US-075). Brushed at 64 px and up (the splat from 128 px); a clean drawn version below 64 px, in the tray, the favicon, and the site header. |
 | Journey, promotions, share card | Full. |
-| The pill | The ink waveform styles, earned one per belt. Hands-free (US-117, LaBroi's pick A from the Closing the loop preview, 2026-10-30): when a double-tap locks the mic, one signal amber brush stroke paints the pill's own outline all the way round and a little past its start, closing the loop the icon leaves open, so a locked pill is the logo, closed. Holding draws no loop. In bare the loop goes round the dot and the waveform together. In the last minute before the 12 minute stop it dries to brand gold; reduced motion draws it closed and still. |
+| The pill | The ink waveform styles, earned one per belt. Hands-free (US-117, LaBroi's pick A from the Closing the loop preview, 2026-10-30): when a double-tap locks the mic, one signal amber brush stroke paints the pill's own outline all the way round and a little past its start, closing the loop the icon leaves open, so a locked pill is the logo, closed. Holding draws no loop. In bare the loop goes round the dot and the waveform together. In the last minute before the 12 minute stop it dries to brand gold; reduced motion draws it closed and still. LaBroi's picks from the Fading the loop preview (2026-11-01): the loop paints in at full strength, holds full for 1 second, then fades over 3 seconds (ease in and out) to a resting strength set in Settings, Dictation, Loop once it settles (10% to 100%, default 20%; 10% is the floor so a locked take never looks like a plain hold, 100% never fades), and stays there; in the last minute it dries to gold at that resting strength, never climbing back to full. Reduced motion keeps the fade, since it moves nothing. The lock chime is tap tap: 2 light ticks on one note (1319 Hz), an echo of the double-tap. |
 | Launch film | Full. |
-| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles are the one exception, because each is a live preview of the pill. |
+| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles and the loop level tile are the exceptions, because each is a preview of the pill itself (the tiles live, the loop level tile still). |
 | Errors | None. Clean red, never splatter. |
 | Tray icon | None. |
 
@@ -54,6 +54,7 @@ The settings window is where people work, so paint appears only where something 
 | Where | The touch | Story |
 | --- | --- | --- |
 | Look | Waveform tiles: each style as a live mini pill; locked ones dimmed with the belt that unlocks them. | US-084 |
+| Dictation | The loop level tile, above the Loop once it settles slider: a still preview of the locked pill (the waveform tiles' mini pill in your look, waveform, and accent, with the red live dot and a timer) with the loop painted round it at the slider's level, following the slider as you drag. LaBroi's pick from the Fading the loop preview, 2026-11-01. | US-117 |
 | Home | One gold stroke under back today, today against a typical day; the last note row. | US-085, US-082 |
 | Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-086 |
 | Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-087 |

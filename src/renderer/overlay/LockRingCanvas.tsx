@@ -159,5 +159,15 @@ export function LockRingCanvas(props: {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  return <canvas ref={canvasRef} className="lock-ring" data-lock-ring="" aria-hidden="true" />
+  // The level it paints with, in the DOM for the overlayLoopLevel smoke
+  // check: proof the setting reached the loop itself, not only main.
+  return (
+    <canvas
+      ref={canvasRef}
+      className="lock-ring"
+      data-lock-ring=""
+      data-loop-level={props.loopLevel}
+      aria-hidden="true"
+    />
+  )
 }

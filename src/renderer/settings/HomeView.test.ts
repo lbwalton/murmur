@@ -62,10 +62,16 @@ describe('a waiting take', () => {
 
 describe('retried dictation message', () => {
   it('says the words are in the log and the clipboard is untouched', () => {
-    expect(retriedDictationMessage('Cmd+Shift+V')).toBe(
-      'Done: the words are in your log. Press Cmd+Shift+V in any app to paste it there.'
+    expect(retriedDictationMessage('Cmd+Shift+V', true)).toBe(
+      'Done: the words are in your log. Press Cmd+Shift+V in any app to paste them there.'
     )
-    expect(retriedDictationMessage('')).toBe('Done: the words are in your log. Press copy beside it in the log below to copy it.')
-    expect(retriedDictationMessage('')).not.toMatch(/clipboard/)
+    expect(retriedDictationMessage('', true)).toBe('Done: the words are in your log. Click copy on it in the log below.')
+    expect(retriedDictationMessage('', true)).not.toMatch(/clipboard/)
+  })
+
+  it('never names a disarmed paste-last chord, which does nothing', () => {
+    expect(retriedDictationMessage('Cmd+Shift+V', false)).toBe(
+      'Done: the words are in your log. Click copy on it in the log below.'
+    )
   })
 })

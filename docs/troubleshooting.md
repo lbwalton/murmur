@@ -14,7 +14,7 @@ A take waits there when its transcription failed: no API key was saved, the prov
 
 What a retry does: it sends the saved audio to your provider with your current settings and runs the same cleanup as a live dictation. Where the words go depends on what you were doing when you spoke:
 
-- **A dictation** lands in your log at the time you spoke it, marked retried. Your clipboard is left alone, so Cmd+V (Ctrl+V on Windows) still pastes whatever you copied before. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (settings tab, dictation, Paste last dictation), which pastes the retried words, or click **copy** on the entry in the log.
+- **A dictation** lands in your log at the time you spoke it, marked retried. Your clipboard is left alone, so Cmd+V (Ctrl+V on Windows) still pastes whatever you copied before. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (Settings, Dictation, Paste last dictation), which pastes the retried words, or click **copy** on the entry in the log.
 - **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
 - **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
 

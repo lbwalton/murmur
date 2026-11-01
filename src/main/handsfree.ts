@@ -36,7 +36,7 @@ import {
   retryNotice,
   stopNotice
 } from './handsfree-rules'
-import { resetHandsFreeGestures, smokeHotkeyEvent } from './hotkeys'
+import { getHotkeysStatus, resetHandsFreeGestures, smokeHotkeyEvent } from './hotkeys'
 import type { KeyEventLike } from './hotkeys/binding'
 import { LOCK_GUARD_MS, SECOND_TAP_MS } from './hotkeys/machines'
 import { getOverlayPhase, getOverlayState, setAudioLevelListener, setOverlayLocked, setOverlayPhase } from './overlay'
@@ -245,9 +245,16 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   const outcome = await dictationStop(take.kind, { save: reason })
   // A take with no speech in it says nothing: the pill already did. A
   // lost take says so, since nobody was watching the pill.
-  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, getSettings().hotkey.pasteLastBinding))
+  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, ...pasteChord()))
   else if (outcome === 'retry') notify(retryNotice(reason))
   else if (outcome === 'failed') notify(failedNotice(reason))
+}
+
+/** The paste-last chord the stop notice may name, and whether it is
+ *  armed: read after the stop, so a hotkey change that disarmed it (the
+ *  changed reason) is already counted. */
+function pasteChord(): [string, boolean] {
+  return [getSettings().hotkey.pasteLastBinding, getHotkeysStatus().pasteBindingValid]
 }
 
 /** No time or network to transcribe (sleep, shutdown, quit): the audio
@@ -501,6 +508,9 @@ function registerHandsFreeSmoke(): void {
       setHandsFreeTimesForSmoke({ limitMs: 1_500 })
       await begin()
       await clipboard.writeText(SENTINEL)
+      // Every smoke take says the same words, so only a new entry proves
+      // this take reached history.
+      const cHistory = readHistory().length
       const c = await lockTake()
       const cStopped = await until(() => has('[hands-free] auto-stop reason=limit'), 3_000)
       const cSaved = await until(() => has('[dictation] delivered outcome=saved reason=limit'), 3_000)
@@ -513,10 +523,19 @@ function registerHandsFreeSmoke(): void {
         cSaved &&
         !has('outcome=copied') &&
         cClip === SENTINEL &&
+        readHistory().length === cHistory + 1 &&
         cWords === expected &&
-        lastNotice?.body === stopNotice('limit', 'dictation', getSettings().hotkey.pasteLastBinding).body
+        lastNotice?.body === stopNotice('limit', 'dictation', ...pasteChord()).body
       ok.j &&= !heldAwake(c?.hold ?? null)
-      seen.c = { locked: c !== null, cStopped, cSaved, clip: cClip === SENTINEL, words: cWords === expected, notice: lastNotice?.body }
+      seen.c = {
+        locked: c !== null,
+        cStopped,
+        cSaved,
+        clip: cClip === SENTINEL,
+        history: readHistory().length - cHistory,
+        words: cWords === expected,
+        notice: lastNotice?.body
+      }
 
       // (d) Escape ends a locked take untranscribed: the pill scrapes,
       // nothing is uploaded or goes to history, and the audio waits in
@@ -599,6 +618,7 @@ function registerHandsFreeSmoke(): void {
       // items that showed while it was locked go away.
       await begin()
       await clipboard.writeText(SENTINEL)
+      const fHistory = readHistory().length
       const f = await lockTake()
       const fTray = trayMenuLabels()
       updateSettings({ hotkey: { binding: 'Ctrl+Shift+F19' } })
@@ -617,9 +637,19 @@ function registerHandsFreeSmoke(): void {
         !fTrayAfter.includes('Stop hands-free') &&
         !fTrayAfter.includes('Discard') &&
         fClip === SENTINEL &&
+        readHistory().length === fHistory + 1 &&
         fWords === expected &&
-        lastNotice?.body === stopNotice('changed', 'dictation', getSettings().hotkey.pasteLastBinding).body
-      seen.f = { locked: f !== null, fTray, fStopped, fSaved, fTrayAfter, clip: fClip === SENTINEL, words: fWords === expected }
+        lastNotice?.body === stopNotice('changed', 'dictation', ...pasteChord()).body
+      seen.f = {
+        locked: f !== null,
+        fTray,
+        fStopped,
+        fSaved,
+        fTrayAfter,
+        clip: fClip === SENTINEL,
+        history: readHistory().length - fHistory,
+        words: fWords === expected
+      }
 
       // (g) Timers after the take ended do nothing: a tap stops the take
       // at about 700 ms, and the 1,500 ms limit that follows is a no-op.
@@ -707,6 +737,7 @@ function registerHandsFreeSmoke(): void {
       // A screen lock alone stops the take after the wait and saves it.
       await begin()
       await clipboard.writeText(SENTINEL)
+      const k2History = readHistory().length
       const k2 = await lockTake()
       powerMonitor.emit('lock-screen')
       const k2ScreenAt = Date.now()
@@ -724,10 +755,20 @@ function registerHandsFreeSmoke(): void {
         k2After >= LOCK_SCREEN_WAIT_MS - 50 &&
         k2Saved &&
         k2Clip === SENTINEL &&
+        readHistory().length === k2History + 1 &&
         k2Words === expected &&
-        lastNotice?.body === stopNotice('lock', 'dictation', getSettings().hotkey.pasteLastBinding).body
+        lastNotice?.body === stopNotice('lock', 'dictation', ...pasteChord()).body
       ok.k = kSleep && kLockAlone
-      seen.k = { kSleep, kHeldThroughWait, kParkLogged, k2Waited, k2Stopped, k2After, k2Saved }
+      seen.k = {
+        kSleep,
+        kHeldThroughWait,
+        kParkLogged,
+        k2Waited,
+        k2Stopped,
+        k2After,
+        k2Saved,
+        k2History: readHistory().length - k2History
+      }
 
       // (l) A park that gives up waiting but saves later says so then,
       // exactly once. The capture window is held busy, as a stuck one

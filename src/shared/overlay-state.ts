@@ -34,8 +34,6 @@ export function normalizeOverlayLook(value: unknown): OverlayLook {
   return (OVERLAY_LOOKS as readonly unknown[]).includes(value) ? (value as OverlayLook) : 'pill'
 }
 
-/** The ink waveforms (US-074), drawn with the brush. Each is a
- *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
 /** How strong the hands-free loop rests once it has faded (US-117), as a
  *  whole percent. 10 is the floor so a locked take never looks like a
  *  plain hold; 100 never fades. */
@@ -50,6 +48,8 @@ export function normalizeLoopLevel(value: unknown): number {
   return Math.min(LOOP_LEVEL_MAX, Math.max(LOOP_LEVEL_MIN, Math.round(value / 5) * 5))
 }
 
+/** The ink waveforms (US-074), drawn with the brush. Each is a
+ *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
 export const INK_STYLES = ['dabs', 'flecks', 'rings', 'ribbon'] as const
 export type InkStyle = (typeof INK_STYLES)[number]
 

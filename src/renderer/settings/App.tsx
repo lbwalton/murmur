@@ -716,6 +716,7 @@ export function App(): React.JSX.Element {
               onUpdateSettings={update}
               license={license}
               onUpdatePro={updatePro}
+              pasteArmed={hotkeys?.pasteBindingValid !== false}
               onSeePro={() => {
                 setPage('setup')
                 // The settings column is hidden until the page switch paints.
@@ -1056,6 +1057,8 @@ export function App(): React.JSX.Element {
                 <LoopLevelSlider
                   value={settings.overlay.loopLevel}
                   look={settings.overlay.look}
+                  style={settings.overlay.style}
+                  accent={guiAccent}
                   disabled={!settings.hotkey.doubleTap}
                   onCommit={(loopLevel) => void update({ overlay: { ...settings.overlay, loopLevel } })}
                 />

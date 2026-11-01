@@ -76,15 +76,20 @@ const STOPPED: Record<StopReason, string> = {
 /** The notification for a take that stopped on its own: why, then
  *  where the words went (nothing was pasted and the clipboard was not
  *  touched). pasteLastBinding is the raw paste-last setting, '' when
- *  none is set. */
+ *  none is set; pasteArmed is false when that chord is saved but
+ *  disarmed (it clashes with another hotkey or no longer parses), so it
+ *  is never named as the way to the words, since pressing it does
+ *  nothing. */
 export function stopNotice(
   reason: StopReason,
   kind: 'dictation' | 'note',
-  pasteLastBinding: string
+  pasteLastBinding: string,
+  pasteArmed: boolean
 ): { title: string; body: string } {
-  const words = pasteLastBinding
-    ? `Your words are in history. Press ${pasteLastBinding} to paste them.`
-    : "Your words are in history on murmur's Home."
+  const words =
+    pasteLastBinding && pasteArmed
+      ? `Your words are in history. Press ${pasteLastBinding} to paste them.`
+      : "Your words are in history on murmur's Home."
   const where = kind === 'note' ? 'Your note is saved.' : words
   return { title: TITLE, body: `${STOPPED[reason]}${where}` }
 }

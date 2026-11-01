@@ -209,11 +209,15 @@ export function discardedMessage(gone: number, asked: number): string {
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
 }
 
-/** The result line after one retried dictation: the clipboard is untouched. */
-export function retriedDictationMessage(pasteLastBinding: string): string {
-  const paste = pasteLastBinding
-    ? ` Press ${pasteLastBinding} in any app to paste it there.`
-    : ' Press copy beside it in the log below to copy it.'
+/** The result line after one retried dictation: the clipboard is
+ *  untouched. The paste-last chord is named only while it is armed; a
+ *  saved chord that is disarmed (it clashes with another hotkey or no
+ *  longer parses) does nothing, so the line points at the log instead. */
+export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean): string {
+  const paste =
+    pasteLastBinding && pasteArmed
+      ? ` Press ${pasteLastBinding} in any app to paste them there.`
+      : ' Click copy on it in the log below.'
   return `Done: the words are in your log.${paste}`
 }
 
@@ -227,7 +231,7 @@ export function retriedDictationMessage(pasteLastBinding: string): string {
  * are deleted, so a take that fails while it is open is kept. Keep them
  * has focus, so a double press never deletes. One question at a time.
  */
-function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | null {
+function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }): React.JSX.Element | null {
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -293,7 +297,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
             : 'Done: the note is filed under the time you spoke it, and it is in your log.'
           : kind === 'transform'
             ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : retriedDictationMessage(props.pasteLastBinding)
+            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed)
       )
     } else if (done.length > 0) {
       setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
@@ -441,6 +445,9 @@ export function HomeView(props: {
   onUpdatePro: (patch: Partial<Settings['pro']>) => Promise<void>
   /** Opens the Pro section in settings. */
   onSeePro: () => void
+  /** False when the saved paste-last chord is disarmed (main's hotkey
+   *  status), so Home never names a chord that does nothing. */
+  pasteArmed: boolean
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
   // The empty state waits for the list, so a full history never flashes
@@ -590,7 +597,7 @@ export function HomeView(props: {
         </p>
       )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} />
+      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>

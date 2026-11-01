@@ -221,9 +221,6 @@ function currentLook(): OverlayLook {
   return normalizeOverlayLook(override ?? getSettings().overlay.look)
 }
 
-/** The last config sent to the overlay, for the smoke check. */
-let lastConfigSent: { loopLevel: number } | null = null
-
 function sendOverlayConfig(): void {
   void (async () => {
     // Smoke walks the ink styles through the setting, so the QA override
@@ -231,7 +228,6 @@ function sendOverlayConfig(): void {
     const style = (isSmoke ? undefined : process.env.MURMUR_OVERLAY_STYLE) ?? getSettings().overlay.style
     const accent = await resolveAccent()
     const config = { style, accent, look: currentLook(), loopLevel: normalizeLoopLevel(getSettings().overlay.loopLevel) }
-    lastConfigSent = config
     aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, config)
   })()
 }
@@ -916,19 +912,45 @@ export function initOverlay(): void {
   })
 
   // The loop level (US-117) rides the overlay config, so moving the
-  // slider mid-take reaches the overlay at once.
+  // slider during a locked take reaches the loop at once: with a take
+  // locked, the ring canvas paints at the level in force, then at 50
+  // once the setting changes (it carries the level it paints with).
   registerSmokeCheck('overlayLoopLevel', async () => {
+    const win = aliveOverlay()
+    if (!win) return false
     const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
     const original = getSettings().overlay
+    const before = String(normalizeLoopLevel(original.loopLevel))
+    const target = before === '50' ? '55' : '50'
+    const read = async (): Promise<string | null> =>
+      (await win.webContents.executeJavaScript(
+        `(() => { const c = document.querySelector('canvas[data-lock-ring]'); return c ? c.getAttribute('data-loop-level') : null })()`
+      )) as string | null
+    const until = async (want: string): Promise<string | null> => {
+      const deadline = Date.now() + 5000
+      let seen = await read()
+      while (seen !== want && Date.now() < deadline) {
+        await wait(40)
+        seen = await read()
+      }
+      return seen
+    }
     try {
-      updateSettings({ overlay: { ...original, loopLevel: 50 } })
-      const start = Date.now()
-      while (lastConfigSent?.loopLevel !== 50 && Date.now() - start < 5000) await wait(50)
-      const ok = lastConfigSent?.loopLevel === 50
-      if (!ok) console.error(`smoke overlayLoopLevel: last config ${JSON.stringify(lastConfigSent)}`)
+      if (!setOverlayPhase('recording')) return false
+      setOverlayLocked(true)
+      const locked = machine.get().locked
+      const mounted = await until(before)
+      updateSettings({ overlay: { ...original, loopLevel: Number(target) } })
+      const moved = await until(target)
+      const stillLocked = machine.get().locked
+      const ok = locked && mounted === before && moved === target && stillLocked
+      if (!ok) {
+        console.error(`smoke overlayLoopLevel: ${JSON.stringify({ locked, before, mounted, target, moved, stillLocked })}`)
+      }
       return ok
     } finally {
       updateSettings({ overlay: original })
+      setOverlayPhase('idle')
       await wait(100)
     }
   })
