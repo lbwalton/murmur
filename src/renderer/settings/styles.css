@@ -2757,3 +2757,28 @@ textarea.well-multiline {
     justify-content: flex-start;
   }
 }
+
+/* The hands-free loop level (US-117): a still tile above the slider,
+   right-aligned in the row's control column. */
+.loop-level {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.loop-tile-wrap {
+  background: var(--ink);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  line-height: 0;
+}
+
+.loop-tile-wrap.dim {
+  opacity: 0.4;
+}
+
+.loop-level-value {
+  min-width: 36px;
+  text-align: right;
+}

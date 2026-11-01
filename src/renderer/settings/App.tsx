@@ -30,6 +30,7 @@ import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
+import { LoopLevelSlider } from './LoopLevelRow'
 import { Insignia, TabStroke } from './HeaderMarks'
 import { HeaderProMark, ProMark } from './ProMark'
 import { HISTORY_CLEARED } from './HomeView'
@@ -1042,6 +1043,21 @@ export function App(): React.JSX.Element {
                   checked={settings.hotkey.doubleTap}
                   label="Double-tap for hands-free"
                   onChange={(doubleTap) => void update({ hotkey: { ...settings.hotkey, doubleTap } })}
+                />
+              </Row>
+            )}
+
+            {settings.hotkey.mode === 'hold' && (
+              <Row
+                label="Loop once it settles"
+                keywords="hands free loop ring fade faint strength level double tap"
+                desc="The loop starts at full each time you double-tap, then fades to this."
+              >
+                <LoopLevelSlider
+                  value={settings.overlay.loopLevel}
+                  look={settings.overlay.look}
+                  disabled={!settings.hotkey.doubleTap}
+                  onCommit={(loopLevel) => void update({ overlay: { ...settings.overlay, loopLevel } })}
                 />
               </Row>
             )}

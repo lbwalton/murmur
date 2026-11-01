@@ -5,8 +5,10 @@
 // together), drying to brand gold in the last minute before the hard
 // stop. On a cancel the loop fades with the pill under one dry grey
 // scrape, never red. Reduced motion draws the loop closed and still, and
-// the scrape still. Mounted only while locked or cancelled, so holding
-// draws nothing and costs nothing.
+// the scrape still. The loop holds full for a second, then fades to the
+// Settings level (reduced motion keeps the fade: nothing moves). Mounted
+// only while locked or cancelled, so holding draws nothing and costs
+// nothing.
 import { useEffect, useRef } from 'react'
 import type { OverlayLook, OverlayPhase } from '../../shared/overlay-state'
 import { applyInkEdge, inkEdge } from './bare'
@@ -18,6 +20,7 @@ import {
   ringBox,
   ringBrush,
   ringDryness,
+  ringStrength,
   scrapePoints,
   stadium
 } from './lockRing'
@@ -29,6 +32,8 @@ export function LockRingCanvas(props: {
   look: OverlayLook
   /** Epoch ms of the take's first press; null once it has ended. */
   startedAt: number | null
+  /** Where the loop rests after its fade, in percent (Settings). */
+  loopLevel: number
   pillRef: React.RefObject<HTMLDivElement | null>
   needleRef: React.RefObject<HTMLDivElement | null>
 }): React.JSX.Element {
@@ -58,12 +63,14 @@ export function LockRingCanvas(props: {
     const hadLoop = propsRef.current.phase === 'recording'
     let cancelledAt: number | null = null
     let dryness = 0
+    // The strength the loop had, so a cancel fades it from there.
+    let strength = 1
     let lastKey = ''
     let raf = 0
 
     const frame = (now: number): void => {
       raf = requestAnimationFrame(frame)
-      const { phase, look, startedAt, pillRef, needleRef } = propsRef.current
+      const { phase, look, startedAt, loopLevel, pillRef, needleRef } = propsRef.current
       const el = look === 'bare' ? needleRef.current : pillRef.current
       if (!el) return
       if (phase === 'cancelled' && cancelledAt === null) cancelledAt = now
@@ -71,7 +78,10 @@ export function LockRingCanvas(props: {
       if (phase === 'recording' && startedAt !== null) dryness = ringDryness(Date.now() - startedAt)
 
       const progress = reduced ? 1 : easeOut(clamp((now - lockedAt) / LOCK_DRAW_MS, 0, 1))
-      let ringAlpha = hadLoop ? 1 : 0
+      // The fade changes strength and moves nothing, so reduced motion
+      // keeps it. A cancel holds the strength the loop had.
+      if (phase === 'recording') strength = ringStrength(now - lockedAt, loopLevel / 100)
+      let ringAlpha = hadLoop ? strength : 0
       let scrape = 0
       let scrapeAlpha = 0
       if (cancelledAt !== null) {

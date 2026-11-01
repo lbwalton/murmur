@@ -4,10 +4,13 @@ import { CANCEL_LINGER_MS as SHARED_LINGER } from '../../shared/overlay-state'
 import {
   CANCEL_LINGER_MS,
   LOCK_DRAW_MS,
+  LOOP_FADE_MS,
+  LOOP_HOLD_MS,
   RING_OVERLAP,
   ringBox,
   ringBrush,
   ringDryness,
+  ringStrength,
   scrapePoints,
   stadium
 } from './lockRing'
@@ -100,5 +103,29 @@ describe('the lock ring (US-117)', () => {
     expect(CANCEL_LINGER_MS).toBe(900)
     // Main lingers the cancelled phase by the same constant the scrape is timed to.
     expect(CANCEL_LINGER_MS).toBe(SHARED_LINGER)
+  })
+})
+
+describe('ringStrength', () => {
+  const full = LOCK_DRAW_MS + LOOP_HOLD_MS
+  it('holds at full through the draw and the hold', () => {
+    expect(LOOP_HOLD_MS).toBe(1000)
+    expect(LOOP_FADE_MS).toBe(3000)
+    expect(ringStrength(0, 0.2)).toBe(1)
+    expect(ringStrength(full, 0.2)).toBe(1)
+  })
+  it('is exactly halfway at the middle of the fade', () => {
+    expect(ringStrength(full + LOOP_FADE_MS / 2, 0.2)).toBeCloseTo(0.6, 10)
+  })
+  it('rests once the fade is done and for the rest of the take', () => {
+    expect(ringStrength(full + LOOP_FADE_MS, 0.2)).toBeCloseTo(0.2, 10)
+    expect(ringStrength(600_000, 0.2)).toBeCloseTo(0.2, 10)
+  })
+  it('never fades at 100 percent and never drops below the rest', () => {
+    for (let t = 0; t <= 6000; t += 100) {
+      expect(ringStrength(t, 1)).toBe(1)
+      expect(ringStrength(t, 0.1)).toBeGreaterThanOrEqual(0.1)
+      expect(ringStrength(t, 0.1)).toBeLessThanOrEqual(1)
+    }
   })
 })

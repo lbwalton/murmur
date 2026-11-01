@@ -36,6 +36,20 @@ export function normalizeOverlayLook(value: unknown): OverlayLook {
 
 /** The ink waveforms (US-074), drawn with the brush. Each is a
  *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
+/** How strong the hands-free loop rests once it has faded (US-117), as a
+ *  whole percent. 10 is the floor so a locked take never looks like a
+ *  plain hold; 100 never fades. */
+export const LOOP_LEVEL_MIN = 10
+export const LOOP_LEVEL_MAX = 100
+export const LOOP_LEVEL_DEFAULT = 20
+
+/** A loop level the overlay can draw: the default for anything that is
+ *  not a finite number, else the nearest 5, kept within 10..100. */
+export function normalizeLoopLevel(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return LOOP_LEVEL_DEFAULT
+  return Math.min(LOOP_LEVEL_MAX, Math.max(LOOP_LEVEL_MIN, Math.round(value / 5) * 5))
+}
+
 export const INK_STYLES = ['dabs', 'flecks', 'rings', 'ribbon'] as const
 export type InkStyle = (typeof INK_STYLES)[number]
 

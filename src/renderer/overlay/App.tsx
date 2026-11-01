@@ -6,7 +6,9 @@ import {
   type OverlayLook,
   type OverlayPhase,
   type OverlayState,
+  LOOP_LEVEL_DEFAULT,
   isInkStyle,
+  normalizeLoopLevel,
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { formatDuration } from '../../shared/time'
@@ -40,6 +42,7 @@ export function App(): React.JSX.Element {
   const [style, setStyle] = useState<string>('bars')
   const [look, setLook] = useState<OverlayLook>('pill')
   const [accent, setAccent] = useState<string | null>(null)
+  const [loopLevel, setLoopLevel] = useState(LOOP_LEVEL_DEFAULT)
   const [elapsed, setElapsed] = useState(0)
   const levelRef = useRef(0)
   const pillRef = useRef<HTMLDivElement>(null)
@@ -64,6 +67,7 @@ export function App(): React.JSX.Element {
       setStyle(config.style)
       setLook(normalizeOverlayLook(config.look))
       setAccent(config.accent ?? null)
+      setLoopLevel(normalizeLoopLevel(config.loopLevel))
     })
   }, [])
 
@@ -194,6 +198,7 @@ export function App(): React.JSX.Element {
           phase={state.phase}
           look={drawnAs}
           startedAt={state.startedAt}
+          loopLevel={loopLevel}
           pillRef={pillRef}
           needleRef={needleRef}
         />

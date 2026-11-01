@@ -11,6 +11,20 @@ export { CANCEL_LINGER_MS } from '../../shared/overlay-state'
 export const RING_OVERLAP = 0.05
 /** The loop draws in this long after the lock. */
 export const LOCK_DRAW_MS = 650
+/** The loop holds at full strength this long after it has drawn in... */
+export const LOOP_HOLD_MS = 1000
+/** ...then fades this long, ease in and out, to its resting strength. */
+export const LOOP_FADE_MS = 3000
+
+/** The loop's strength, sinceLockMs after the lock: 1 while it draws in
+ *  and holds, then an ease in and out down to rest (0.1..1, the
+ *  Settings level), where it stays for the rest of the take. */
+export function ringStrength(sinceLockMs: number, rest: number): number {
+  const t = Math.min(1, Math.max(0, (sinceLockMs - LOCK_DRAW_MS - LOOP_HOLD_MS) / LOOP_FADE_MS))
+  const eased = t * t * (3 - 2 * t)
+  return rest + (1 - rest) * (1 - eased)
+}
+
 /** The cancel scrape draws in this long. */
 export const SCRAPE_MS = 340
 /** Then the pill fades this long. */

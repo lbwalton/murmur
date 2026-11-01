@@ -67,15 +67,29 @@ describe('mergeSettings', () => {
   })
 
   it('ships the overlay as the classic pill and repairs an unknown look', () => {
-    expect(DEFAULT_SETTINGS.overlay).toEqual({ style: 'bars', look: 'pill' })
+    expect(DEFAULT_SETTINGS.overlay).toEqual({ style: 'bars', look: 'pill', loopLevel: 20 })
     const at = (look: unknown): string => mergeSettings(DEFAULT_SETTINGS, { overlay: { look } }).overlay.look
     expect(at('compact')).toBe('compact')
     expect(at('bare')).toBe('bare')
     expect(at('huge')).toBe('pill')
     expect(at(7)).toBe('pill')
     // A style-only save (the waveform picker) leaves the look alone.
-    const merged = mergeSettings({ ...DEFAULT_SETTINGS, overlay: { style: 'bars', look: 'bare' } }, { overlay: { style: 'pulse' } })
-    expect(merged.overlay).toEqual({ style: 'pulse', look: 'bare' })
+    const merged = mergeSettings({ ...DEFAULT_SETTINGS, overlay: { style: 'bars', look: 'bare', loopLevel: 20 } }, { overlay: { style: 'pulse' } })
+    expect(merged.overlay).toEqual({ style: 'pulse', look: 'bare', loopLevel: 20 })
+  })
+
+  it('ships the loop level at 20 and snaps it to steps of 5 within 10 to 100', () => {
+    expect(DEFAULT_SETTINGS.overlay.loopLevel).toBe(20)
+    const at = (loopLevel: unknown): number =>
+      mergeSettings(DEFAULT_SETTINGS, { overlay: { loopLevel } }).overlay.loopLevel
+    expect(at(50)).toBe(50)
+    expect(at(5)).toBe(10)
+    expect(at(101)).toBe(100)
+    expect(at(33)).toBe(35)
+    expect(at('loud')).toBe(20)
+    expect(at(Number.NaN)).toBe(20)
+    // A save that leaves the level out keeps it.
+    expect(mergeSettings({ ...DEFAULT_SETTINGS, overlay: { ...DEFAULT_SETTINGS.overlay, loopLevel: 65 } }, { overlay: { look: 'bare' } }).overlay.loopLevel).toBe(65)
   })
 
   it('ships time back at 40 wpm and repairs a typing speed that cannot be used', () => {

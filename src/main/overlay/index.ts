@@ -17,6 +17,7 @@ import {
   type OverlayPhase,
   type OverlayState,
   type TransitionExtras,
+  normalizeLoopLevel,
   normalizeOverlayLook
 } from '../../shared/overlay-state'
 import { NOTE_FOLDER_HINT } from '../../shared/notes'
@@ -220,13 +221,18 @@ function currentLook(): OverlayLook {
   return normalizeOverlayLook(override ?? getSettings().overlay.look)
 }
 
+/** The last config sent to the overlay, for the smoke check. */
+let lastConfigSent: { loopLevel: number } | null = null
+
 function sendOverlayConfig(): void {
   void (async () => {
     // Smoke walks the ink styles through the setting, so the QA override
     // must not pin the style there either.
     const style = (isSmoke ? undefined : process.env.MURMUR_OVERLAY_STYLE) ?? getSettings().overlay.style
     const accent = await resolveAccent()
-    aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, { style, accent, look: currentLook() })
+    const config = { style, accent, look: currentLook(), loopLevel: normalizeLoopLevel(getSettings().overlay.loopLevel) }
+    lastConfigSent = config
+    aliveOverlay()?.webContents.send(IpcChannels.overlayConfig, config)
   })()
 }
 
@@ -249,7 +255,7 @@ export function initOverlay(): void {
   // finding: every settings save was re-reading the entire log).
   let lastConfigKey = ''
   onSettingsChanged((settings) => {
-    const key = `${settings.overlay.style}|${settings.overlay.look}|${settings.cosmetics.accent}`
+    const key = `${settings.overlay.style}|${settings.overlay.look}|${settings.overlay.loopLevel}|${settings.cosmetics.accent}`
     if (key === lastConfigKey) return
     lastConfigKey = key
     sendOverlayConfig()
@@ -907,6 +913,24 @@ export function initOverlay(): void {
       processing.phase === 'processing' &&
       idle.phase === 'idle'
     )
+  })
+
+  // The loop level (US-117) rides the overlay config, so moving the
+  // slider mid-take reaches the overlay at once.
+  registerSmokeCheck('overlayLoopLevel', async () => {
+    const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    const original = getSettings().overlay
+    try {
+      updateSettings({ overlay: { ...original, loopLevel: 50 } })
+      const start = Date.now()
+      while (lastConfigSent?.loopLevel !== 50 && Date.now() - start < 5000) await wait(50)
+      const ok = lastConfigSent?.loopLevel === 50
+      if (!ok) console.error(`smoke overlayLoopLevel: last config ${JSON.stringify(lastConfigSent)}`)
+      return ok
+    } finally {
+      updateSettings({ overlay: original })
+      await wait(100)
+    }
   })
 
   registerSmokeCheck('overlayLockRing', async () => {
