@@ -49,7 +49,12 @@ if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && !SUPPORT_EMAIL) {
   console.error('site: set SUPPORT_EMAIL (support@murmurapp.app) before a deploy build; the support page must carry it')
   process.exit(1)
 }
-const { links, facts, title, description, faq, compare, privacy, support } = content(SITE_URL, { supportEmail: SUPPORT_EMAIL })
+const { links, facts, title, description, faq: allFaq, compare, privacy, support } = content(SITE_URL, { supportEmail: SUPPORT_EMAIL })
+// The home answers: one that points at a doc (its doc) shows only when
+// that doc is on the site, since a deploy reads the docs at the release it
+// serves, which may not have it yet (the iPhone doc). Set once the docs
+// are read, before any page is written.
+let faq = allFaq.filter((item) => !item.doc)
 const docsDir = join(root, 'docs')
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 // The docs pages describe the release the download button serves, so a
@@ -977,9 +982,10 @@ async function main() {
   const font = await fetchFont()
   writeFileSync(join(out, 'fonts.css'), font.css)
   THEME_COLOR = tokens.ink
+  const docs = readDocs()
+  faq = allFaq.filter((item) => !item.doc || docs.some((d) => d.name === item.doc))
   const home = page(tokens, font.file)
   writeFileSync(join(out, 'index.html'), home)
-  const docs = readDocs()
   const pages = [
     ['/docs/', 'docs/index.html', docsIndexPage(docs, font.file)],
     ...docs.map((d) => [`/docs/${d.name}/`, `docs/${d.name}/index.html`, docPage(docs, d, font.file)]),

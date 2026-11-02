@@ -148,7 +148,30 @@ describe('the site build (IOS-026)', () => {
     it('puts the checkout link on the Pro page 3 times', () => {
       expect(read('docs/pro/index.html').split(`href="${PRO.buyUrl}"`).length - 1).toBe(3)
     })
+
+    it('answers the iPhone question on home, linking the iPhone doc, without claiming the App Store has it', () => {
+      const home = read('index.html')
+      expect(home).toContain('Is there a murmur app for iPhone?')
+      expect(home).toContain('href="/docs/iphone/"')
+      expect(home).toContain('on its way to the App Store')
+      expect(home).not.toMatch(/apps\.apple\.com|free on the App Store|Download on the App Store/)
+      expect(read('llms.txt')).toContain('Is there a murmur app for iPhone?')
+    })
   })
+
+  // A deploy from a ref without the iPhone doc must still build: the home
+  // answer that links it stays off the site until the doc is there.
+  // v0.1.16 predates the iPhone doc; CI's shallow checkout has no tags.
+  const beforeIphone = spawnSync('git', ['rev-parse', '--verify', '--quiet', 'v0.1.16^{commit}'], { cwd: root, encoding: 'utf8' }).status === 0
+  it.skipIf(!beforeIphone)('leaves the iPhone answer off home when the docs it reads have no iPhone doc', () => {
+    const out = join(scratch, 'no-iphone')
+    const run = build({ SITE_URL: SITE, SUPPORT_EMAIL: EMAIL, DOCS_REF: 'v0.1.16' }, out)
+    expect(run.status, run.stderr).toBe(0)
+    const home = readFileSync(join(out, 'index.html'), 'utf8')
+    expect(home).toContain('Which computers does murmur run on?')
+    expect(home).not.toContain('Is there a murmur app for iPhone?')
+    expect(home).not.toContain('/docs/iphone/')
+  }, 60_000)
 })
 
 describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {

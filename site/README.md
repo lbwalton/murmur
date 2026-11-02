@@ -35,7 +35,7 @@ What the build fetches or copies, none of which is ever committed:
 
 `SITE_OUT` writes the build somewhere other than `site/dist`; the tests use it, so running them never replaces a deploy build waiting there.
 
-What the page says lives in `content.js`. The FAQ renders from it twice, as the visible answers and as FAQPage JSON-LD, so the two always match; facts that drift (price, OS minimums) carry their verified-on date there.
+What the page says lives in `content.js`. The FAQ renders from it twice, as the visible answers and as FAQPage JSON-LD, so the two always match; facts that drift (price, OS minimums) carry their verified-on date there. An answer that names a doc (its `doc`) shows only when the docs the build reads have that doc, so a deploy from a release without it still builds; the iPhone answer, which links the iPhone doc, works this way.
 
 ## Hosting: Cloudflare Pages
 

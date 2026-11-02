@@ -98,6 +98,18 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
       ]
     },
     {
+      // Shown only when the iPhone doc is on the site (doc, read by
+      // build.js), since a deploy reads the docs at the release it serves.
+      // Until Apple approves murmur, it says on its way, never a store link.
+      q: 'Is there a murmur app for iPhone?',
+      doc: 'iphone',
+      a: [
+        'It is on its way to the App Store. murmur for iPhone is a keyboard you talk to: tap the pill in any app, speak, and your words land where your cursor is, cleaned up. It is free, for iPhones running iOS 26 or later, and like murmur on the Mac and Windows, it runs on your own key and collects nothing. ',
+        { text: 'How murmur works on iPhone', href: links.doc('iphone') },
+        '.'
+      ]
+    },
+    {
       q: 'Why does Windows warn me when I install murmur?',
       a: [
         "murmur's Windows installer is not signed yet, so Windows shows a blue Windows protected your PC screen for it, as it does for any unsigned app. Click More info, then Run anyway. ",
