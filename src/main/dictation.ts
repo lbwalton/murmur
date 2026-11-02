@@ -5,7 +5,7 @@
 import { clipboard } from 'electron'
 import formatSpec from '../../shared/format-spec.json'
 import { type FormatSpec, formatTranscript } from '../shared/formatter'
-import hallucinations from '../shared/hallucinations.json'
+import hallucinations from '../../shared/hallucinations.json'
 import {
   hasSpeechEnergy,
   isDeadStream,

@@ -3,6 +3,7 @@
 // items are still open and what the next few are, and the notification
 // says exactly that. This module only ever reads; a checkbox the user
 // ticked in their editor is the only thing that closes an item.
+import rules from '../../shared/sorter.json'
 import { dayKey } from './history'
 import { shouldFire } from './recap'
 
@@ -145,7 +146,7 @@ export function tickLine(text: string, nth: number): TickResult {
 
 /** One line for a notification: the count, then as much of the next
  *  items as fits. Empty when nothing is open, so nothing fires. */
-export function reminderBody(items: readonly TodoItem[], maxChars = 180): string {
+export function reminderBody(items: readonly TodoItem[], maxChars = rules.reminderMaxChars): string {
   const open = openItems(items)
   if (open.length === 0) return ''
   const count = `${open.length} open ${open.length === 1 ? 'task' : 'tasks'}`

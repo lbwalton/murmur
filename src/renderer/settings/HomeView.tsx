@@ -8,7 +8,7 @@ import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../sha
 import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
 import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
-import { formatMinutesBack } from '../../shared/timeback'
+import { formatMinutesBack, typicalLine } from '../../shared/timeback'
 import { type ProFacts, shouldOfferPro, thanksDue } from '../../shared/proMark'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
@@ -144,13 +144,6 @@ function LastNoteRow(): React.JSX.Element | null {
       {said && <p className="dim last-note-said">{said}</p>}
     </section>
   )
-}
-
-/** Today in words against a typical day (US-085). Past double, the
- *  percentage stops meaning much, so it says so instead. */
-function typicalLine(share: number, typical: number): string {
-  const of = `your typical day (${formatMinutesBack(typical)})`
-  return share > 2 ? `More than double ${of}` : `${Math.round(share * 100)}% of ${of}`
 }
 
 /** Told to the rest of the window when Clear all empties the log, so the

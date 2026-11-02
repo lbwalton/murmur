@@ -19,6 +19,7 @@
   "include": [
     "src",
     "shared",
+    "ios/Web",
     "electron.vite.config.ts",
     "vitest.config.ts"
   ]

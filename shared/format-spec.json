@@ -20,7 +20,7 @@
     ]
   },
   "spokenPunctuation": {
-    "comment": "Full level: spoken commands become symbols. Longest phrase wins. Terminal symbols capitalize the next word. Newline commands also swallow surrounding spaces. This is a command vocabulary: speaking the word literally converts, which is the accepted tradeoff of deterministic dictation.",
+    "comment": "Full level: spoken commands become symbols. Longest phrase wins; phrases of equal length go in order of their symbols, then of the phrases themselves (UTF-16 order), which for this map is the order listed here. Terminal symbols capitalize the next word. Newline commands also swallow surrounding spaces. This is a command vocabulary: speaking the word literally converts, which is the accepted tradeoff of deterministic dictation.",
     "map": {
       "new paragraph": "\n\n",
       "new line": "\n",

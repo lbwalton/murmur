@@ -81,6 +81,18 @@ Settings, Dictation, Microphone. **Mac default** (on Windows, **Windows default*
 
 The cleanup pass fails open: if the model is slow, wrong, or chatty, murmur inserts the deterministically formatted text instead. A dictation is never lost or delayed indefinitely because of the cleanup model.
 
+## What if the cleanup model answers my question instead of typing it?
+
+murmur checks every reply from the cleanup model, and when a reply looks like an answer to what you said rather than your words tidied up, it inserts your formatted words instead. The model is told that everything you dictate is your words, but it can still slip and reply, such as "Canberra." for "What's the capital of Australia?". A reply is turned away when:
+
+- more than 4 in 10 of its words are words you never said (and more than 1 word);
+- it leaves out more than half of what you said (and more than 1 word), unless a list you spoke (with Smart lists on) or a correction you made explains the cut;
+- your take ends in a question, and the reply turns it into a statement with a word changed, or adds something after it ("Are you free tomorrow? Yes.").
+
+Spoken numbers written as digits ("two coffees" as "2 coffees") don't count against a cleanup, and 1 changed word doesn't on its own. The check can miss a reply that keeps most of your words, such as one that works out a sum while repeating it ("12 times 8 is 96" for "Tell me twelve times eight"), so read back anything that matters. In a very short take, a model that splits or joins words ("3pm" as "3 PM") can be turned away too; you get your formatted words, never a lost dictation.
+
+Measured on Groq through these rules (2026-10-22): 70 test sentences, 32 of them questions or requests, sent through the cleanup pass with Smart lists and Apply corrections in every combination, 2 runs each, on gpt-oss-120b and gpt-oss-20b, with each question also asked of the model outright to see what its answers look like. gpt-oss-120b never answered through the cleanup pass; gpt-oss-20b did 11 times over two runs, and earlier versions of murmur would have typed every one. Across all of it the check caught 119 answers and turned away none of the 2,023 good cleanups (189 different ones, 30 of which changed words).
+
 ## What is Smart lists, and how do I dictate a list?
 
 Smart lists turns spoken structure into real structure. It is off by default (dictation behaves exactly as it always has) and lives in Settings, Dictation, Smart lists. With it on and formatting at Full, murmur formats lists two ways:
@@ -100,11 +112,11 @@ Turn on Apply corrections in Settings, Dictation. With it on and formatting at F
 
 It is off by default, and off means dictation behaves exactly as it always has: your slip-ups stay in the text.
 
-**What counts as a correction?** A cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one. Restarted phrases and stumbled repeats are dropped too.
+**What counts as a correction?** A cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one, including a No that says the whole thing over: "Let's go to Italy. No, let's go to Japan and stay for a week." types Let's go to Japan and stay for a week. Restarted phrases and stumbled repeats are dropped too.
 
 **Will it remove "actually" or "I mean" when I mean them?** No. When nothing is being taken back, the cue word is part of what you said and stays: "Actually, the tests are passing now" and "I mean, it works, but it could be faster" type exactly as spoken.
 
-**Can it lose words?** The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech carried a cue word, the cut removed one, the cut is no bigger than those cues explain (about one wrong phrase each), and every word left is a word you said. A rewrite in new words never earns that deeper cut, and no cut may remove more than 60% of what you said. Measured on Groq with gpt-oss-120b (2026-10-17, 23 test sentences, 10 runs each, with Smart lists on and off), it fixed all 280 corrections and kept all 180 cue words that were meant. In an earlier run while the instructions were being tuned, the model once dropped a few real words next to a fix, so read back anything that matters.
+**Can it lose words?** The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech carried a cue word, the cut removed one (a No counts here only between pauses, as in "Monday. No, Wednesday" or "the twelfth, no, the fourteenth", so "no problem", "he said no", a No that opens what you said, a No right after a question, and one right after the first word of a sentence ("Well, no,") never do, and "Sorry, no," counts once), the cut is no bigger than those cues explain (about one wrong phrase each), and every word left is a word you said. A rewrite in new words never earns that deeper cut, and in a take of twelve words or more, no cut may remove more than 60% of what you said (a shorter take may lose at most eight words). Measured on Groq with gpt-oss-120b through these same rules (2026-10-19, 32 test sentences, 5 runs each): every answer that came back fixed its correction and kept all 70 cue words that were meant, 86 of 90 corrections with Smart lists off and 84 of 90 with it on; the provider turned the other tries away for a moment, and those were typed as you said them. An earlier run the same day caught one fix that also dropped real words next to it (for the buttons). No check can tell words dropped next to a fix from the fix itself, so read back anything that matters.
 
 Corrections need the cleanup pass (Full formatting and a working cleanup model). Saying "scratch that" deletes the current sentence at Full formatting with or without this switch.
 

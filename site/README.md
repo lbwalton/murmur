@@ -8,6 +8,7 @@ Since US-092 the site also has:
 - **The Wispr Flow comparison** at `/wispr-flow-alternative/`, written in `content.js`. Every Wispr Flow fact there carries the date it was checked against Wispr's own pages; recheck before changing a word.
 - **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
 - **A 404 page** with the same header.
+- **Short addresses.** `/pro` and `/pro/` forward for good (a 301) to `/docs/pro/` (LaBroi, 2026-11-01). The list is `site/redirects.js`: the build checks each one lands on a page it built and writes them into `dist/_redirects`, which Pages applies, and the preview server answers the same way.
 
 The build checks every link on every page: one that points at a page or a question that does not exist stops it.
 
@@ -30,9 +31,11 @@ What the build fetches or copies, none of which is ever committed:
 
 - **The display face.** Bricolage Grotesque (SIL Open Font License 1.1), the extra bold in its condensed widths, cut to the characters the page uses, from Google Fonts at build time, with its license beside it in `fonts/OFL.txt`. Offline (`SITE_OFFLINE=1`) or on a fetch failure the build carries on and the page uses system fonts.
 - **The film.** One drop, copied from `FILM_DIR` (default `~/Projects/murmur-film/out`, outside the repo). Without it the page has no film section.
-- **The support address.** `SUPPORT_EMAIL` adds it to the footer, the structured data, and llms.txt.
+- **The support address.** `SUPPORT_EMAIL` adds it to the footer, the structured data, llms.txt, and the support and privacy pages. A deploy build stops without it, since the support page the App Store links to must carry contact information (IOS-026).
 
-What the page says lives in `content.js`. The FAQ renders from it twice, as the visible answers and as FAQPage JSON-LD, so the two always match; facts that drift (price, OS minimums) carry their verified-on date there.
+`SITE_OUT` writes the build somewhere other than `site/dist`; the tests use it, so running them never replaces a deploy build waiting there.
+
+What the page says lives in `content.js`. The FAQ renders from it twice, as the visible answers and as FAQPage JSON-LD, so the two always match; facts that drift (price, OS minimums) carry their verified-on date there. An answer that names a doc (its `doc`) shows only when the docs the build reads have that doc, so a deploy from a release without it still builds; the iPhone answer, which links the iPhone doc, works this way.
 
 ## Hosting: Cloudflare Pages
 

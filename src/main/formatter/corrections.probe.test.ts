@@ -100,6 +100,65 @@ const CASES: ProbeCase[] = [
     keep: ['text jordan the address before noon'],
     drop: ['email']
   },
+  // Added 2026-10-22 (IOS-032's review gate): a question asked again,
+  // corrected, so the answered check is seen to keep a corrected question.
+  {
+    text: 'Can we meet Monday? Sorry, I mean can we meet Tuesday?',
+    keep: ['can we meet tuesday'],
+    drop: ['monday']
+  },
+  { text: 'Is the call at two? Wait, is it at three?', keep: ['call at three'], drop: ['two'] },
+  // Added 2026-10-19 from LaBroi's iPhone check (IOS-030): a bare No that
+  // opens the next sentence and says the plan again was fixed 3 to 5
+  // times in 10. The prompt's train to Boston example mirrors his
+  // sentence, so it is tuned now; the Monday, chairs, and Denver cases
+  // hold out. The traps below hold the other side, the two longest ones
+  // at twelve words or more so the length check judges them too.
+  {
+    text: "Let's go to Italy. No, let's go to Japan and stay for a week.",
+    keep: ['japan and stay for a week'],
+    drop: ['italy']
+  },
+  {
+    text: 'Put the meeting on Monday. No, put it on Wednesday after lunch.',
+    keep: ['wednesday after lunch'],
+    drop: ['monday']
+  },
+  {
+    text: 'Order the blue chairs for the office. No, order the green ones.',
+    keep: ['green'],
+    drop: ['blue']
+  },
+  {
+    text: "We'll fly into Denver on Friday. No, we'll fly into Salt Lake City and rent a car.",
+    keep: ['salt lake city', 'rent a car'],
+    drop: ['denver']
+  },
+  {
+    text: 'Is the report done? No, it still needs the charts.',
+    keep: ['is the report done', 'no it still needs the charts'],
+    drop: []
+  },
+  {
+    text: "Did you call the bank? No, I'll call them after lunch.",
+    keep: ['did you call the bank', 'no ill call them after lunch'],
+    drop: []
+  },
+  {
+    text: "We have no budget for travel this quarter, so let's meet online.",
+    keep: ['we have no budget for travel', 'meet online'],
+    drop: []
+  },
+  {
+    text: 'Is the report ready for the board meeting on Friday? No, it still needs the charts from finance.',
+    keep: ['is the report ready for the board meeting', 'no it still needs the charts'],
+    drop: []
+  },
+  {
+    text: 'Oh no, the build failed again on the release branch and the demo starts in ten minutes.',
+    keep: ['oh no the build failed', 'demo starts in ten minutes'],
+    drop: []
+  },
   {
     text: 'Sorry I missed your call, I was in a meeting all afternoon.',
     keep: ['sorry i missed your call', 'meeting all afternoon'],
@@ -159,22 +218,48 @@ const fetchImpl: typeof fetch = ROUTE
 
 async function measure(corrections: boolean): Promise<{ fixed: number; kept: number; misses: string[] }> {
   const jobs = CASES.flatMap((probe) => Array.from({ length: RUNS }, () => probe))
-  const results: Array<{ probe: ProbeCase; typed: string }> = []
+  const results: Array<{ probe: ProbeCase; typed: string; fallback: string; answer: string }> = []
   let next = 0
   const worker = async (): Promise<void> => {
     while (next < jobs.length) {
       const probe = jobs[next++]
-      const polished = await polishTranscript(
-        probe.text,
-        { baseUrl: BASE_URL, model: MODEL, apiKey: KEY },
-        { fetchImpl, timeoutMs: 30_000, smartLists: SMART_LISTS, corrections }
-      )
+      let fallback = ''
+      let answer = ''
+      // The model's own words, kept so a rejected answer can be read.
+      const recording: typeof fetch = async (url, init) => {
+        const response = await fetchImpl(url, init)
+        const json = (await response.clone().json().catch(() => null)) as {
+          choices?: Array<{ message?: { content?: string } }>
+        } | null
+        answer = json?.choices?.[0]?.message?.content ?? ''
+        return response
+      }
+      // A provider's rate limit is not the model's answer: wait and ask
+      // again (IOS-032), so every correction is judged.
+      let polished: string | null = null
+      for (let attempt = 1; attempt <= 5; attempt++) {
+        fallback = ''
+        polished = await polishTranscript(
+          probe.text,
+          { baseUrl: BASE_URL, model: MODEL, apiKey: KEY },
+          { fetchImpl: recording, timeoutMs: 30_000, smartLists: SMART_LISTS, corrections, onFallback: (reason) => (fallback = reason) }
+        )
+        if (fallback !== 'http 429') break
+        await new Promise((resolve) => setTimeout(resolve, 3000 * attempt))
+      }
       // A fallback types the formatted text unchanged, so grade that.
-      results.push({ probe, typed: polished ?? probe.text })
+      results.push({ probe, typed: polished ?? probe.text, fallback, answer })
     }
   }
   await Promise.all(Array.from({ length: 6 }, worker))
-  const misses = results.filter((r) => !passes(r.probe, r.typed)).map((r) => `${r.probe.text}\n    typed: ${r.typed}`)
+  // A miss names its fallback and what the model said, so a rejected fix
+  // reads apart from a model that changed nothing (or a provider error).
+  const misses = results
+    .filter((r) => !passes(r.probe, r.typed))
+    .map(
+      (r) =>
+        `${r.probe.text}\n    typed: ${r.typed}${r.fallback ? ` (fallback: ${r.fallback}; model said: ${JSON.stringify(r.answer)})` : ''}`
+    )
   const fixed = results.filter((r) => r.probe.drop.length > 0 && passes(r.probe, r.typed)).length
   const kept = results.filter((r) => r.probe.drop.length === 0 && passes(r.probe, r.typed)).length
   return { fixed, kept, misses }

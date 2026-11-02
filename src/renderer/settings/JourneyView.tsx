@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ranksFile from '../../../shared/ranks.json'
 import cosmeticsFile from '../../../shared/cosmetics.json'
-import { type Rgb, clamp, lerp, parseColor } from '../brush'
+import { type Rgb, lerp, parseColor } from '../brush'
 import { PaintCanvas } from './PaintCanvas'
 import {
   type JourneyColors,
@@ -20,7 +20,8 @@ import {
   paintStamp,
   paintTallies,
   paintWordsGate,
-  youX
+  roadPlace,
+  sinceRank
 } from './journeyPaint'
 import type { EarnedAchievement } from '../../shared/achievements'
 import type { CosmeticsReport } from '../../shared/cosmetics'
@@ -37,20 +38,10 @@ const bridge = (): SettingsApi => window.murmur
 
 // The same file the engine promotes from, so this list can never drift.
 const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
-/** The road: every rank after the starting none; the founder-only rank
- *  only on the founder's road. */
-const roadRanks = (founder: boolean): RankSpec[] => LADDER.filter((rank) => rank.id !== 'none' && (!rank.founderOnly || founder))
 const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
 
 const cssValue = (name: string, fallback: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-
-/** Share of the way from your rank's total to the next one's: the road,
- *  the words stroke, and the tallies all measure since your current rank,
- *  so they always agree. */
-function sinceRank(have: number, from: number, need: number): number {
-  return need <= from ? 1 : clamp((have - from) / (need - from), 0, 1)
-}
 
 /** The practice rank, words, and days as of the last time the Journey
  *  showed them. Paint moves only when progress moved since then (else the
@@ -177,18 +168,10 @@ function knotNote(rank: RankSpec, state: 'earned' | 'next' | 'ahead'): string {
 function Road(props: { progress: ProgressReport; colors: JourneyColors; paintIn: boolean }): React.JSX.Element {
   const { progress } = props
   const scrollRef = useRef<HTMLDivElement>(null)
-  const road = roadRanks(progress.founder)
-  const { words: haveWords, activeDays: haveDays } = progress.totals
-  const roadIndex = road.findIndex((r) => r.id === progress.practice.rank.id)
+  const { road, roadIndex, toNext, you } = roadPlace(progress, LADDER)
+  const haveWords = progress.totals.words
   const at = roadIndex >= 0 ? road[roadIndex] : null
   const next = progress.practice.next
-  const toNext = next
-    ? Math.min(
-        sinceRank(haveWords, at?.words ?? 0, next.words ?? 0),
-        sinceRank(haveDays, at?.activeDays ?? 0, next.activeDays ?? 0)
-      )
-    : 1
-  const you = youX(roadIndex, toNext, road.length)
   const words = `you, ${haveWords.toLocaleString()} words`
   const [tip, setTip] = useState<{ x: number; text: string; edge: '' | 'start' | 'end' } | null>(null)
   useEffect(() => {

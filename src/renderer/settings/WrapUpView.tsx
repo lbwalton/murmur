@@ -5,39 +5,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AnalyticsSummary } from '../../shared/analytics'
 import { countsTowardStats, dayKey, eventDay, type SessionEvent } from '../../shared/history'
-import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, sealBelt, shiftDay, weekLine, weekOf } from '../../shared/painting'
+import { type PaintingBook, type PaintingRecord, SUBJECT_NAMES, shiftDay, weekOf } from '../../shared/painting'
 import { formatMinutesBack } from '../../shared/timeback'
 import type { SettingsApi } from '../../preload/settings'
 import { PageTitle, useToday } from './PageTitle'
-import cosmeticsFile from '../../../shared/cosmetics.json'
-import ranksFile from '../../../shared/ranks.json'
-import type { RankSpec } from '../../shared/ranks'
-import { tokenColor } from '../brush'
 import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
-import { journeyColors, sealPaint } from './journeyPaint'
 import { EmptyState } from './EmptyState'
-import { LIGHT_WORDS, lightFor, planLight } from './paintLight'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
-import {
-  CARD,
-  type Gesture,
-  type ScrollDay,
-  SCROLL,
-  MAX_EXTRA,
-  type PaintingColors,
-  type SealColor,
-  paintPainting,
-  paintPaintingCard,
-  paintingCaption,
-  paintingColors,
-  paintingLine,
-  paintWeekScroll,
-  planPainting
-} from './painting'
+import { CARD, SCROLL, MAX_EXTRA, type PaintingColors, paintPainting, paintingCaption, paintingLine } from './painting'
+import { cardFonts, dayColors, drawDayCard, drawWeekScroll, lightOf, longDate, planFor, progressOf, sealOf } from './paintingDay'
 
 const bridge = (): SettingsApi => window.murmur
-const BELT_HEX = (cosmeticsFile as { beltColors: Record<string, string> }).beltColors
 
 /** The stroke count the wrap-up last showed for a day: the newest stroke
  *  paints itself in only when it is new since then. */
@@ -57,79 +36,12 @@ function rememberSeen(value: string): void {
   }
 }
 
-function colorsNow(): PaintingColors {
-  const c = journeyColors(BELT_HEX)
-  return paintingColors(tokenColor('--panel', [23, 22, 27]), c.rice, c.ember, c.gold)
-}
-
-/** How far a painting has got: its strokes so far (past its size, the
- *  strokes a finished painting keeps adding) and whether it is finished. */
-function progressOf(record: PaintingRecord): { done: number; finished: boolean } {
-  return { done: Math.min(record.words.length, record.target + MAX_EXTRA), finished: record.words.length >= record.target }
-}
-
-/** A day's whole plan: its strokes, then what each take past its size
- *  added, from that take's words. */
-function planFor(record: PaintingRecord): Gesture[] {
-  const { subject, seed, target, tier, level } = record
-  return planPainting({ subject, seed, target, tier, level }, record.words.slice(target, target + MAX_EXTRA))
-}
-
-const LADDER = (ranksFile as { ranks: RankSpec[] }).ranks
-
-/** The rank and level a day was painted at, for its card, and its light
- *  once it has one: white belt, one stripe, level 1, by moonlight.
- *  Records from before ranks were kept name the level. */
-function painterOf(record: PaintingRecord): string {
-  const light = record.hour !== undefined && record.words.length >= record.target ? `, ${LIGHT_WORDS[lightFor(record.hour)]}` : ''
-  if (record.rank === 'none') return `painted before the first belt, level ${record.level}${light}`
-  const rank = LADDER.find((r) => r.id === record.rank)
-  return `${rank ? `painted at ${rank.label}, level` : 'painted at level'} ${record.level}${light}`
-}
-
-/** A finished painting's light (US-100), from the hour its takes were
- *  made in; none before it finishes. */
-function lightOf(record: PaintingRecord, plan: readonly Gesture[]): Gesture | undefined {
-  if (record.hour === undefined || record.words.length < record.target) return undefined
-  return planLight(plan, record.target, record.seed, record.tier, record.hour)
-}
-
-/** The seal's color (US-101): the belt the day was painted at, as paint
- *  on the night ground, the coral belts in their two colors; undefined
- *  keeps the ember seal (before the first belt, or a record from before
- *  ranks were kept). */
-function sealOf(record: PaintingRecord): SealColor | undefined {
-  const belt = sealBelt(record.rank, LADDER)
-  return belt ? sealPaint(belt, journeyColors(BELT_HEX)) : undefined
-}
-
-/** A day's key as words: Friday, October 9. */
-function longDate(day: string): string {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
-}
-
-/** The fonts a saved card draws with: the display face when it loaded,
- *  else a condensed system face. */
-function cardFonts(hasFace: boolean): { display: string; body: string; mono: string } {
-  const css = getComputedStyle(document.documentElement)
-  const body = css.getPropertyValue('--font-body').trim() || 'sans-serif'
-  return {
-    display: hasFace ? `"${DISPLAY}", ${body}` : `"Arial Narrow", "Helvetica Neue", ${body}`,
-    body,
-    mono: css.getPropertyValue('--font-mono').trim() || 'monospace'
-  }
-}
-
 /**
  * Saves a day's portrait card (1080 by 1350): the painting as it stands,
  * its name, how far it got, the date, and the wordmark. Drawn and saved
  * here, nothing sent. True when it was saved.
  */
 async function saveDayCard(day: string, record: PaintingRecord, colors: PaintingColors, longestMs: number | null): Promise<boolean> {
-  const { subject, seed, target } = record
-  const plan = planFor(record)
-  const { done, finished } = progressOf(record)
   const hasFace = await loadDisplayFace()
   const canvas = document.createElement('canvas')
   canvas.width = CARD.W * 2
@@ -137,35 +49,8 @@ async function saveDayCard(day: string, record: PaintingRecord, colors: Painting
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
   ctx.setTransform(2, 0, 0, 2, 0, 0)
-  const fonts = cardFonts(hasFace)
-  const c = journeyColors(BELT_HEX)
-  const more = done - target
-  paintPaintingCard(
-    ctx,
-    plan,
-    record.words,
-    colors,
-    { text: c.text, dim: c.dim },
-    fonts,
-    {
-      date: longDate(day),
-      // The subject stays a surprise until its third stroke here too.
-      title: done < 3 ? 'a painting' : SUBJECT_NAMES[subject],
-      caption: finished
-        ? `finished in ${target} strokes${more > 0 ? `, and ${more} more` : ''}`
-        : `${done} of ${target} strokes so far`,
-      line: finished ? paintingLine(record.words, longestMs) : null,
-      painter: painterOf(record)
-    },
-    { done, finished, seed, sealColor: sealOf(record), light: lightOf(record, plan) }
-  )
+  drawDayCard(ctx, day, record, colors, longestMs, cardFonts(hasFace ? DISPLAY : null))
   return bridge().saveShareCard(canvas.toDataURL('image/png'), 'day', day)
-}
-
-/** A day's key as its short weekday: Fri. */
-function shortDay(day: string): string {
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short' })
 }
 
 /**
@@ -175,21 +60,6 @@ function shortDay(day: string): string {
  * Drawn and saved here, nothing sent. True when it was saved.
  */
 async function saveWeekScroll(last: string, book: PaintingBook, colors: PaintingColors): Promise<boolean> {
-  const week = weekOf(last)
-  const days: ScrollDay[] = week.map((day) => {
-    const record = Object.hasOwn(book, day) ? book[day] : null
-    if (!record) return { day: shortDay(day), caption: 'a day off', painting: null }
-    const plan = planFor(record)
-    const { done, finished } = progressOf(record)
-    return {
-      day: shortDay(day),
-      caption: finished ? SUBJECT_NAMES[record.subject] : `${done} of ${record.target}`,
-      painting: { plan, words: record.words, opts: { done, seal: finished ? 1 : 0, seed: record.seed, sealColor: sealOf(record), light: lightOf(record, plan) } }
-    }
-  })
-  const numbers = weekLine(book, last)
-  const [y, m, d] = week[0].split('-').map(Number)
-  const title = `the week of ${new Date(y, m - 1, d).toLocaleDateString([], { month: 'long', day: 'numeric' })}`
   const hasFace = await loadDisplayFace()
   const canvas = document.createElement('canvas')
   canvas.width = SCROLL.W * 2
@@ -197,8 +67,7 @@ async function saveWeekScroll(last: string, book: PaintingBook, colors: Painting
   const ctx = canvas.getContext('2d')
   if (!ctx) return false
   ctx.setTransform(2, 0, 0, 2, 0, 0)
-  const c = journeyColors(BELT_HEX)
-  paintWeekScroll(ctx, days, colors, { text: c.text, dim: c.dim }, cardFonts(hasFace), { title, numbers })
+  drawWeekScroll(ctx, last, book, colors, cardFonts(hasFace ? DISPLAY : null))
   return bridge().saveShareCard(canvas.toDataURL('image/png'), 'week', last)
 }
 
@@ -342,7 +211,7 @@ export function WrapUpView(props: {
   const today = shownDay
   const said = daySummary(events, back)
   const [note, setNote] = useState('')
-  const colors = useMemo(colorsNow, [])
+  const colors = useMemo(dayColors, [])
 
   const record: PaintingRecord | null = book[today] ?? null
   const extraKey = record ? record.words.slice(record.target, record.target + MAX_EXTRA).join(',') : ''

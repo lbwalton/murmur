@@ -4,12 +4,15 @@
 // dictation whose destination is a markdown file instead of the cursor,
 // so the one rule that matters here is that the words always land.
 
-export const DEFAULT_NOTE_PATH_TEMPLATE = 'murmur/inbox/{date}.md'
-export const DEFAULT_NOTE_ENTRY_TEMPLATE = '## {time}\n\n{text}\n\n'
+import rules from '../../shared/sorter.json'
+
+// Where notes land, shared with the iPhone (shared/sorter.json, IOS-023).
+export const DEFAULT_NOTE_PATH_TEMPLATE = rules.layout.inbox
+export const DEFAULT_NOTE_ENTRY_TEMPLATE = rules.layout.entry
 /** Where the sorter copies tasks and ideas (US-051), relative to the
  *  notes folder and under the same guard as the inbox path. */
-export const DEFAULT_TASKS_TEMPLATE = 'murmur/todo.md'
-export const DEFAULT_IDEAS_TEMPLATE = 'murmur/ideas.md'
+export const DEFAULT_TASKS_TEMPLATE = rules.layout.tasks
+export const DEFAULT_IDEAS_TEMPLATE = rules.layout.ideas
 
 /** What the pill says when the note chord fires with no folder set.
  *  One constant, so the overlay smoke check measures the real text. */

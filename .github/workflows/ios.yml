@@ -1,0 +1,84 @@
+# The iPhone gates (ios/prd.json IOS-002): MurmurCore's tests, the app's
+# tests, and the headless smoke on a Mac, whenever iPhone code, the
+# shared rules, or what the iPhone build generates from changes.
+# Desktop's gates stay in ci.yml. macos-26's default Xcode is 26.6 with
+# the iOS 26.5 simulator (runner image checked 2026-10-10).
+name: ios
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'src/renderer/tokens.css'
+      - 'src/renderer/brush.ts'
+      - 'src/renderer/settings/journeyPaint.ts'
+      - 'src/renderer/settings/painting.ts'
+      - 'src/renderer/settings/paintingDay.ts'
+      - 'src/renderer/settings/paintKit.ts'
+      - 'src/renderer/settings/paintLight.ts'
+      - 'src/renderer/settings/paintSubjects.ts'
+      - 'src/shared/painting.ts'
+      - 'src/shared/ranks.ts'
+      - 'src/shared/history.ts'
+      - 'package.json'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'src/renderer/tokens.css'
+      - 'src/renderer/brush.ts'
+      - 'src/renderer/settings/journeyPaint.ts'
+      - 'src/renderer/settings/painting.ts'
+      - 'src/renderer/settings/paintingDay.ts'
+      - 'src/renderer/settings/paintKit.ts'
+      - 'src/renderer/settings/paintLight.ts'
+      - 'src/renderer/settings/paintSubjects.ts'
+      - 'src/shared/painting.ts'
+      - 'src/shared/ranks.ts'
+      - 'src/shared/history.ts'
+      - 'package.json'
+      - '.github/workflows/ios.yml'
+
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: brew install xcodegen
+      - run: npm run ios:test
+      - run: npm run ios:smoke
+      # A smoke that never reports usually means the app crashed: show the
+      # newest crash report's reason and the faulting thread, so the failure
+      # names the line.
+      - name: Crash report
+        if: failure()
+        run: |
+          python3 - <<'EOF'
+          import glob, json, os
+          files = sorted(glob.glob(os.path.expanduser('~/Library/Logs/DiagnosticReports/murmur*.ips')), key=os.path.getmtime)
+          if not files:
+              print('no murmur crash report')
+          for path in files[-1:]:
+              report = json.loads(open(path).read().split('\n', 1)[1])
+              print(path)
+              print('exception:', report.get('exception'))
+              print('termination:', report.get('termination'))
+              print('asi:', report.get('asi'))
+              images = report.get('usedImages', [])
+              thread = report['threads'][report.get('faultingThread', 0)]
+              for frame in thread.get('frames', [])[:40]:
+                  index = frame.get('imageIndex')
+                  image = images[index].get('name') if index is not None and index < len(images) else '?'
+                  print(' ', image, frame.get('symbol'), frame.get('sourceFile', ''), frame.get('sourceLine', ''))
+          EOF

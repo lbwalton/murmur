@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-only
 // Local preview of site/dist with the same headers Cloudflare Pages
-// sends (headers.js), on the port claimed for it in the port registry.
+// sends (headers.js) and the same short addresses (redirects.js), on
+// the port claimed for it in the port registry.
 // Static files only, no dependencies; for checking, never for hosting.
 const { createServer } = require('node:http')
 const { createReadStream, existsSync, statSync } = require('node:fs')
 const { extname, join, normalize, sep } = require('node:path')
 const { HEADERS } = require('./headers')
+const { REDIRECTS } = require('./redirects')
 
 const root = join(__dirname, 'dist')
 const port = Number(process.env.PORT || 4870)
@@ -29,6 +31,11 @@ createServer((req, res) => {
     path = decodeURIComponent(url.pathname)
   } catch {
     res.writeHead(400).end('bad path')
+    return
+  }
+  const redirect = REDIRECTS.find(([from]) => from === path)
+  if (redirect) {
+    res.writeHead(301, { ...Object.fromEntries(HEADERS), Location: redirect[1] + url.search }).end()
     return
   }
   let file = normalize(join(root, path))

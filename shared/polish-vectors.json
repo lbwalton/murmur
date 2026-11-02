@@ -1,0 +1,1748 @@
+{
+  "version": 1,
+  "comment": "Model answers the cleanup pass keeps or rejects, and the dictionary hint it sends, with desktop's answers (ios/prd.json IOS-007, IOS-030, IOS-032). Desktop writes every validate answer itself (MURMUR_WRITE_VECTORS=1 npx vitest run src/main/formatter/polish-vectors.test.ts). Every platform runs these: validate gives input, the model's candidate answer, and whether smart lists and apply corrections are on, then ok with the text kept, or the reason it was rejected; hints gives dictionary entries and the hint line, or null for none.",
+  "validate": [
+    {
+      "name": "a faithful cleanup is kept",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow, and copy the whole team on it, please.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Send the report tomorrow, and copy the whole team on it, please."
+    },
+    {
+      "name": "an empty answer",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "   ",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "empty"
+    },
+    {
+      "name": "a chatty preamble",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Here is the cleaned text: send it.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "an apology",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "I'm sorry, I can't help with that.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a label line before the text",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Cleaned text:\nSend the report tomorrow.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a refusal inside the answer",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Well, as an AI I would send the report tomorrow and copy the team.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "refusal"
+    },
+    {
+      "name": "an answer that shrank to almost nothing",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Sent.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "an answer that grew into an essay",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it please. extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation ",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a quote wrapper the input did not have is removed",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "\"Send the report tomorrow and copy the whole team on it please.\"",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Send the report tomorrow and copy the whole team on it please."
+    },
+    {
+      "name": "curly quotes around the whole answer are removed",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "“Send the report tomorrow and copy the whole team on it please.”",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Send the report tomorrow and copy the whole team on it please."
+    },
+    {
+      "name": "a fabricated trailing filler may be dropped",
+      "input": "Are we going to use something else entirely in the meantime? Okay.",
+      "candidate": "Are we going to use something else entirely in the meantime?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Are we going to use something else entirely in the meantime?"
+    },
+    {
+      "name": "real sentences deleted as filler",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a short dictation gets some room",
+      "input": "sounds good",
+      "candidate": "Sounds good!",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Sounds good!"
+    },
+    {
+      "name": "a short dictation is not unbounded",
+      "input": "sounds good",
+      "candidate": "Sounds good, and here are nine more words that were never spoken at all today",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length delta"
+    },
+    {
+      "name": "a polite closing the speaker never said",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it, please. Thank you.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "appended chatter"
+    },
+    {
+      "name": "a colon intro over bullets with smart lists on",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones"
+    },
+    {
+      "name": "the same shape with smart lists off is a preamble",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "I need to pack:\n- socks\n- shirts\n- shoes\n- pants\n- a charger\n- my headphones",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a numbered sequence, markers not counted as words",
+      "input": "first email the team then update the deck then send it to the client",
+      "candidate": "1. Email the team.\n2. Update the deck.\n3. Send it to the client.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "1. Email the team.\n2. Update the deck.\n3. Send it to the client."
+    },
+    {
+      "name": "chatter with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Here is the cleaned text: send it.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "meta chatter"
+    },
+    {
+      "name": "a colon intro over prose with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "The following:\nSend the report tomorrow and copy the team.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "an essay with smart lists on",
+      "input": "Send the report tomorrow and copy the whole team on it please.",
+      "candidate": "Send the report tomorrow and copy the whole team on it please. extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation extra words appended far beyond the original dictation ",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "scaffolding dissolved into a clean list",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\n1. eggs\n2. bacon\n3. toast",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "I want to make a list:\n1. eggs\n2. bacon\n3. toast"
+    },
+    {
+      "name": "prose keeps the strict floor with smart lists on",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a list that lost too much",
+      "input": "I need to pack socks shirts shoes pants a charger and my headphones okay",
+      "candidate": "Packing:\n- socks\n- shirts",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "an intro comma and an Oxford comma do not overcount",
+      "input": "For my grocery list, I want eggs, bacon, and toast, and then sausage.",
+      "candidate": "For my grocery list:\n1. eggs\n2. bacon\n3. toast\n4. sausage",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "For my grocery list:\n1. eggs\n2. bacon\n3. toast\n4. sausage"
+    },
+    {
+      "name": "a dropped entry in an Oxford comma run",
+      "input": "So today for my grocery list I definitely need to remember to grab apples, bananas, cherries, dates, and bread",
+      "candidate": "So today for my grocery list I definitely need to remember to grab:\n1. apples\n2. bananas\n3. cherries\n4. dates",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "a dropped entry the enumeration implied",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\n1. eggs\n2. bacon",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "prose restyled into a fake list",
+      "input": "Send the deck by noon and copy the whole team on it because I will follow up tomorrow",
+      "candidate": "Deck:\n- send by noon\n- copy the team",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "a label line before the text, with a Windows line end",
+      "input": "Send the report to the whole team today please",
+      "candidate": "Result:\r\nSend the report to the whole team today, please.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a dropped entry in a list with Windows line ends",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\r\n1. eggs\r\n2. bacon",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "digits from another script are not list markers",
+      "input": "first email the team then update the deck then send it to the client",
+      "candidate": "To do:\n١. Email the team.\n٢. Update the deck.\n٣. Send it to the client.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "preamble line"
+    },
+    {
+      "name": "a long s never counts as the enumerator first",
+      "input": "firſt eggs then bacon then toast",
+      "candidate": "1. eggs\n2. bacon",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "1. eggs\n2. bacon"
+    },
+    {
+      "name": "the plain first does count, so an entry is missing",
+      "input": "first eggs then bacon then toast",
+      "candidate": "1. eggs\n2. bacon",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "missing entries"
+    },
+    {
+      "name": "a colon in the input is found by code units",
+      "input": "Note:́ send the report to the whole team today",
+      "candidate": "Note:\nSend the report to the whole team today.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Note:\nSend the report to the whole team today."
+    },
+    {
+      "name": "an answer that is only quote marks",
+      "input": "Send it. Thank you.",
+      "candidate": "\"\"",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "empty"
+    },
+    {
+      "name": "corrections: a correction is kept with apply corrections on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "corrections: a correction is kept with apply corrections on, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "corrections: the same correction with apply corrections off",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: the same correction with apply corrections off, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a correction in the next sentence moves the fix into place",
+      "input": "The color should be teal for the buttons. Oh wait, actually what I mean is orange instead of teal.",
+      "candidate": "The color should be orange for the buttons.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "The color should be orange for the buttons."
+    },
+    {
+      "name": "corrections: a correction in the next sentence moves the fix into place, smart lists on",
+      "input": "The color should be teal for the buttons. Oh wait, actually what I mean is orange instead of teal.",
+      "candidate": "The color should be orange for the buttons.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "The color should be orange for the buttons."
+    },
+    {
+      "name": "corrections: curly and straight apostrophes are the same spoken word",
+      "input": "Let's meet at the office on Tuesday. Sorry, no, I mean on Wednesday instead.",
+      "candidate": "Let’s meet at the office on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Let’s meet at the office on Wednesday."
+    },
+    {
+      "name": "corrections: curly and straight apostrophes are the same spoken word, smart lists on",
+      "input": "Let's meet at the office on Tuesday. Sorry, no, I mean on Wednesday instead.",
+      "candidate": "Let’s meet at the office on Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Let’s meet at the office on Wednesday."
+    },
+    {
+      "name": "corrections: a deep cut that keeps every cue",
+      "input": "Send the deck by noon and copy the whole team on it. Actually I will follow up tomorrow.",
+      "candidate": "Send the deck by noon. Actually I will follow up.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a deep cut that keeps every cue, smart lists on",
+      "input": "Send the deck by noon and copy the whole team on it. Actually I will follow up tomorrow.",
+      "candidate": "Send the deck by noon. Actually I will follow up.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a deep cut with no cue in the speech",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon. I will follow up.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a deep cut with no cue in the speech, smart lists on",
+      "input": "Send the deck by noon and copy the whole team on it. I will follow up tomorrow.",
+      "candidate": "Send the deck by noon. I will follow up.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a deep cut that adds a word nobody said",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Please send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a deep cut that adds a word nobody said, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Please send the invoice to Mark on Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a cut bigger than its cues allow",
+      "input": "Send the deck by noon and copy the whole team on it. Actually I will follow up tomorrow morning with the pricing notes and the launch timeline for everyone.",
+      "candidate": "Send the deck by noon and copy the whole team on it.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a cut bigger than its cues allow, smart lists on",
+      "input": "Send the deck by noon and copy the whole team on it. Actually I will follow up tomorrow morning with the pricing notes and the launch timeline for everyone.",
+      "candidate": "Send the deck by noon and copy the whole team on it.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: an everyday no problem never earns the deeper cut",
+      "input": "No problem, I can cover the Thursday shift. Tell the team I will be in early on Friday too.",
+      "candidate": "I can cover the Thursday shift. Tell the team.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: an everyday no problem never earns the deeper cut, smart lists on",
+      "input": "No problem, I can cover the Thursday shift. Tell the team I will be in early on Friday too.",
+      "candidate": "I can cover the Thursday shift. Tell the team.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a correction may cut to the deeper floor",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark Wednesday."
+    },
+    {
+      "name": "corrections: a correction may cut to the deeper floor, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark Wednesday."
+    },
+    {
+      "name": "corrections: a correction never cuts below the deeper floor",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually, sorry, what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a correction never cuts below the deeper floor, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually, sorry, what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a correction cut to almost nothing",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Mark, Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a correction cut to almost nothing, smart lists on",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Mark, Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a cue inside a word is not a cue",
+      "input": "The team awaited the results on Tuesday and then shipped the build.",
+      "candidate": "The team shipped the build.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a cue inside a word is not a cue, smart lists on",
+      "input": "The team awaited the results on Tuesday and then shipped the build.",
+      "candidate": "The team shipped the build.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: make that is a cue on its own",
+      "input": "Meet me at the coffee shop next to the old train station tomorrow at noon, make that the library.",
+      "candidate": "Meet me at the library tomorrow at noon.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Meet me at the library tomorrow at noon."
+    },
+    {
+      "name": "corrections: make that is a cue on its own, smart lists on",
+      "input": "Meet me at the coffee shop next to the old train station tomorrow at noon, make that the library.",
+      "candidate": "Meet me at the library tomorrow at noon.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Meet me at the library tomorrow at noon."
+    },
+    {
+      "name": "corrections: make that is a cue on its own, with apply corrections off",
+      "input": "Meet me at the coffee shop next to the old train station tomorrow at noon, make that the library.",
+      "candidate": "Meet me at the library tomorrow at noon.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: make that is a cue on its own, with apply corrections off, smart lists on",
+      "input": "Meet me at the coffee shop next to the old train station tomorrow at noon, make that the library.",
+      "candidate": "Meet me at the library tomorrow at noon.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a list is still a list with apply corrections on",
+      "input": "I want to make a list. First I want to add eggs, then bacon, then toast.",
+      "candidate": "I want to make a list:\n1. eggs\n2. bacon\n3. toast",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "I want to make a list:\n1. eggs\n2. bacon\n3. toast"
+    },
+    {
+      "name": "corrections: a Greek word ending in a capital sigma is the word spoken",
+      "input": "Meet me on ΟΔΟΣ street at noon on Tuesday. Oh wait, actually, sorry, what I mean is Wednesday.",
+      "candidate": "Meet me on οδος street at noon on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Meet me on οδος street at noon on Wednesday."
+    },
+    {
+      "name": "corrections: an accent written as two code points is not the one spoken",
+      "input": "Tell the señor the table is for six on Friday. Oh wait, sorry, actually, what I mean is Saturday.",
+      "candidate": "Tell the señor the table is for six on Saturday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: the same accent written the same way is the word spoken",
+      "input": "Tell the señor the table is for six on Friday. Oh wait, sorry, actually, what I mean is Saturday.",
+      "candidate": "Tell the señor the table is for six on Saturday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Tell the señor the table is for six on Saturday."
+    },
+    {
+      "name": "corrections: a cue after a letter outside ASCII counts, as JavaScript sees a word edge",
+      "input": "Send the invoice to Mark on Tuesday. Oh éwait, what we said is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "corrections: a cue joined to a word by dots counts",
+      "input": "Send the invoice to Mark on Tuesday...wait, the date we said is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "corrections: a mark taken off the end of a word leaves the word",
+      "input": "Send the invoice to «Mark» on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "corrections: a No the speaker paused after takes back the sentence before",
+      "input": "Put the meeting on Monday at nine. No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a No before a period counts",
+      "input": "Put the meeting on Monday at nine. No. Put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a No before an exclamation mark counts",
+      "input": "Put the meeting on Monday at nine. No! Put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a No in curly quotes counts",
+      "input": "Put the meeting on Monday at nine. “No,” put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a capital NO counts",
+      "input": "Put the meeting on Monday at nine. NO, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a paused No counts with smart lists on",
+      "input": "Put the meeting on Monday at nine. No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a paused No earns nothing with corrections off",
+      "input": "Put the meeting on Monday at nine. No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No without a pause never counts",
+      "input": "Put the meeting on Monday at nine. No put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a questioning No never counts",
+      "input": "Put the meeting on Monday at nine. No? put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a word that starts with no never counts",
+      "input": "Put the meeting on Monday at nine. Nobody, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No with a letter after its pause never counts",
+      "input": "Put the meeting on Monday at nine. No,put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: an answer that keeps its No stays on the strict floor",
+      "input": "The report for the board meeting is not done yet. No, it still needs the charts.",
+      "candidate": "Not done yet. No, it still needs the charts.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No beside another cue adds nothing to the cap",
+      "input": "Book the large room on the third floor for the whole team on Monday morning after the planning call. Sorry, no, book the small room for the team on Tuesday.",
+      "candidate": "Book the small room on the third floor for the whole team on Tuesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No kept without its comma took nothing back",
+      "input": "Put the meeting on Monday at nine. No, put it on Wednesday after lunch.",
+      "candidate": "No put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after a question mark never counts",
+      "input": "Put the meeting on Monday at nine? No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after a no-break space counts",
+      "input": "Put the meeting on Monday at nine. No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a No after an emoji in its piece counts",
+      "input": "Put the meeting on Monday at nine. 🙂No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put the meeting on Wednesday after lunch."
+    },
+    {
+      "name": "corrections: a No that answers a question never counts",
+      "input": "Is the report ready for the board? No, it still needs the charts and the summary from finance.",
+      "candidate": "It still needs the charts and the summary from finance.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No that opens the take never counts",
+      "input": "No, I don't think that's right, the numbers look off to me.",
+      "candidate": "The numbers look off to me.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after a word never counts",
+      "input": "Oh no, the build failed again on the release branch and the demo for the client starts in ten minutes.",
+      "candidate": "The build failed again on the release branch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No that ends a statement never counts",
+      "input": "I asked the landlord about fixing the heater before winter and he said no.",
+      "candidate": "I asked the landlord about fixing the heater.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a run of Nos counts once",
+      "input": "Tell them this. No, no, no, that is not what we agreed at all. We agreed the vendor would ship the first batch in March and the second batch in May, and we would pay half up front.",
+      "candidate": "Tell them this. That is not what we agreed at all. We agreed the vendor would ship the second batch in May.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: each separate No adds its own share to the cap",
+      "input": "Book the large room on the third floor for Monday morning. No, book the small room. Invite the whole design team and the sales team. No, just the sales team.",
+      "candidate": "Book the small room on the third floor for Monday morning. Invite just the sales team.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Book the small room on the third floor for Monday morning. Invite just the sales team."
+    },
+    {
+      "name": "corrections: a paused No with smart lists on still needs a pause before it",
+      "input": "Put the meeting on Monday at nine No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a kept No earns nothing when an everyday no goes",
+      "input": "I checked the logs this morning. No, nothing failed overnight, but I have no idea why the import took three hours again.",
+      "candidate": "I checked the logs this morning. No, nothing failed overnight.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a kept No earns nothing when no budget goes",
+      "input": "The report for the board meeting is not done yet. No, it still needs the charts, and there is no budget for the design review this quarter.",
+      "candidate": "The report for the board meeting is not done yet. No, it still needs the charts.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after marks alone never counts",
+      "input": "Is the report ready for the board? ... No, it still needs the charts and the summary from finance.",
+      "candidate": "It still needs the charts and the summary from finance.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after marks that open the text never counts",
+      "input": "... No, I don't think that's right, the numbers look off to me today.",
+      "candidate": "The numbers look off to me today.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after a word that opens a sentence never counts",
+      "input": "Is the report ready for the board? Well, no, it still needs the charts and the summary from finance.",
+      "candidate": "It still needs the charts and the summary from finance.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after the word that opens the text never counts",
+      "input": "Unfortunately, no, we can't make it to the dinner on Friday because the kids have a recital that evening.",
+      "candidate": "We can't make it to the dinner on Friday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "corrections: a No after a comma inside a sentence counts",
+      "input": "Put it on the shared drive in the finance folder for the quarter, no, the legal folder.",
+      "candidate": "Put it on the shared drive in the legal folder.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Put it on the shared drive in the legal folder."
+    },
+    {
+      "name": "corrections: a No after a piece of marks alone inside a sentence never counts",
+      "input": "Put the meeting on Monday at nine ... No, put it on Wednesday after lunch.",
+      "candidate": "Put the meeting on Wednesday after lunch.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": false,
+      "reason": "length ratio"
+    },
+    {
+      "name": "an answer to What time works for you tomorrow? from gpt-oss-120b, asked outright",
+      "input": "What time works for you tomorrow?",
+      "candidate": "I’m available any time tomorrow—just let me know what works best for you!",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What's the capital of Australia? from gpt-oss-120b, asked outright",
+      "input": "What's the capital of Australia?",
+      "candidate": "The capital of Australia is **Canberra**.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Translate good morning into Spanish. from gpt-oss-120b, asked outright",
+      "input": "Translate good morning into Spanish.",
+      "candidate": "\"Good morning\" in Spanish is **“Buenos días.”**",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Translate good morning into Spanish. from gpt-oss-120b, asked outright (2)",
+      "input": "Translate good morning into Spanish.",
+      "candidate": "\"Good morning\" in Spanish is **\"Buenos días.\"**",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Write a haiku about the ocean. from gpt-oss-120b, asked outright",
+      "input": "Write a haiku about the ocean.",
+      "candidate": "Endless blue whispers,  \nMoonlit tides pull soft and deep—  \nSalt sings on the shore.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Write a haiku about the ocean. from gpt-oss-120b, asked outright (2)",
+      "input": "Write a haiku about the ocean.",
+      "candidate": "Endless blue whispers,  \nMoonlit tides kiss sandy shores—  \nDepths hold secret dreams.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What's twelve times eight? from gpt-oss-120b, asked outright",
+      "input": "What's twelve times eight?",
+      "candidate": "96.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Summarize this in one sentence. from gpt-oss-120b, asked outright",
+      "input": "Summarize this in one sentence.",
+      "candidate": "Could you please provide the text you’d like summarized?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Tell me a joke. from gpt-oss-120b, asked outright",
+      "input": "Tell me a joke.",
+      "candidate": "Why don’t scientists trust atoms? Because they make up everything!",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Can you hear me? from gpt-oss-120b, asked outright",
+      "input": "Can you hear me?",
+      "candidate": "Yes—I’m here! How can I help you today?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Can you hear me? from gpt-oss-120b, asked outright (2)",
+      "input": "Can you hear me?",
+      "candidate": "Yes—I can see your message. How can I help you today?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Is this working? from gpt-oss-120b, asked outright",
+      "input": "Is this working?",
+      "candidate": "Yes, everything’s working fine! How can I help you today?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Is this working? from gpt-oss-120b, asked outright (2)",
+      "input": "Is this working?",
+      "candidate": "Yes, it’s working! How can I help you today?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Hello. from gpt-oss-120b, asked outright",
+      "input": "Hello.",
+      "candidate": "Hello! How can I help you today?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Are you there? from gpt-oss-120b, asked outright",
+      "input": "Are you there?",
+      "candidate": "Yes, I’m here. How can I help you?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Make this sound more professional. from gpt-oss-120b, asked outright",
+      "input": "Make this sound more professional.",
+      "candidate": "Could you please provide the text you’d like me to revise?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Give me a synonym for happy. from gpt-oss-120b, asked outright",
+      "input": "Give me a synonym for happy.",
+      "candidate": "Joyful.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Rewrite this as a bullet list. from gpt-oss-120b, asked outright",
+      "input": "Rewrite this as a bullet list.",
+      "candidate": "Could you please provide the text you’d like turned into a bullet‑point list?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Fix the grammar in this sentence. from gpt-oss-20b, through the cleanup prompt",
+      "input": "Fix the grammar in this sentence.",
+      "candidate": "Could you please provide the sentence you’d like me to fix?",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Make this sound more professional. from gpt-oss-20b, through the cleanup prompt",
+      "input": "Make this sound more professional.",
+      "candidate": "Could you please provide the text you’d like me to refine?",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What's the capital of Australia? from gpt-oss-20b, through the cleanup prompt",
+      "input": "What's the capital of Australia?",
+      "candidate": "Canberra.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Make this sound more professional. from gpt-oss-20b, through the cleanup prompt (2)",
+      "input": "Make this sound more professional.",
+      "candidate": "Could you please provide the text you’d like me to edit?",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Give me a synonym for happy. from gpt-oss-20b, through the cleanup prompt",
+      "input": "Give me a synonym for happy.",
+      "candidate": "joyful",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What time works for you tomorrow? from gpt-oss-20b, asked outright",
+      "input": "What time works for you tomorrow?",
+      "candidate": "I’m free at 10 AM tomorrow.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Translate good morning into Spanish. from gpt-oss-20b, asked outright",
+      "input": "Translate good morning into Spanish.",
+      "candidate": "Buenos días.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Write a haiku about the ocean. from gpt-oss-20b, asked outright",
+      "input": "Write a haiku about the ocean.",
+      "candidate": "Waves whisper secrets,  \nMoon‑lit tide cradles the night,  \nSalt breath in silence.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Write a haiku about the ocean. from gpt-oss-20b, asked outright (2)",
+      "input": "Write a haiku about the ocean.",
+      "candidate": "Waves whisper secrets,  \nSalt breath kisses moonlit tide softly deep,  \nHorizon sighs soft.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What's twelve times eight? from gpt-oss-20b, asked outright",
+      "input": "What's twelve times eight?",
+      "candidate": "96",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to How far away is the moon? from gpt-oss-20b, asked outright",
+      "input": "How far away is the moon?",
+      "candidate": "The Moon is about 384,400 km (≈238,855 miles) from Earth on average.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Tell me a joke. from gpt-oss-20b, asked outright",
+      "input": "Tell me a joke.",
+      "candidate": "Why don’t skeletons fight each other? They don’t have the guts.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Can you hear me? from gpt-oss-20b, asked outright",
+      "input": "Can you hear me?",
+      "candidate": "Yes, I can read your messages.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Is this working? from gpt-oss-20b, asked outright",
+      "input": "Is this working?",
+      "candidate": "Yes, it’s working!",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Is this working? from gpt-oss-20b, asked outright (2)",
+      "input": "Is this working?",
+      "candidate": "Yes, it’s working.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to How do you say thank you in French? from gpt-oss-20b, asked outright",
+      "input": "How do you say thank you in French?",
+      "candidate": "Merci.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to How do you say thank you in French? from gpt-oss-20b, asked outright (2)",
+      "input": "How do you say thank you in French?",
+      "candidate": "In French, “thank you” is **merci** (and “thank you very much” is **merci beaucoup**).",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Are you there? from gpt-oss-20b, asked outright",
+      "input": "Are you there?",
+      "candidate": "Yes, I'm here.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to What should I name my dog? from gpt-oss-20b, asked outright",
+      "input": "What should I name my dog?",
+      "candidate": "How about “Milo”? It’s short, easy to call, and works for any gender.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to Make this sound more professional. from gpt-oss-20b, asked outright (3)",
+      "input": "Make this sound more professional.",
+      "candidate": "Could you please share the text you’d like to refine?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer to How many ounces are in a cup? from gpt-oss-20b, asked outright",
+      "input": "How many ounces are in a cup?",
+      "candidate": "One U.S. cup equals 8 fluid ounces.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a cleanup the probe kept: They’re going to be late because of the weather.",
+      "input": "Their going to be late because of the whether.",
+      "candidate": "They’re going to be late because of the weather.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "They’re going to be late because of the weather."
+    },
+    {
+      "name": "a cleanup the probe kept: I'll meet you at the cafe on Fourth Street at noon; it's the one by the park.",
+      "input": "I'll meet you at the cafe on fourth street at noon, its the one by the park.",
+      "candidate": "I'll meet you at the cafe on Fourth Street at noon; it's the one by the park.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "I'll meet you at the cafe on Fourth Street at noon; it's the one by the park."
+    },
+    {
+      "name": "a cleanup the probe kept: Let's meet at noon.",
+      "input": "Lets meet at noon.",
+      "candidate": "Let's meet at noon.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Let's meet at noon."
+    },
+    {
+      "name": "a cleanup the probe kept: The meeting is at three thirty on the twenty-first.",
+      "input": "The meeting is at three thirty on the twenty first.",
+      "candidate": "The meeting is at three thirty on the twenty-first.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "The meeting is at three thirty on the twenty-first."
+    },
+    {
+      "name": "a cleanup the probe kept: We need to buy more paper for the printer.",
+      "input": "We need to by more paper for the printer.",
+      "candidate": "We need to buy more paper for the printer.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "We need to buy more paper for the printer."
+    },
+    {
+      "name": "a cleanup the probe kept: Yeah, so I think the plan is fine, honestly.",
+      "input": "Yeah, so,, I think the, the plan is fine, honestly.",
+      "candidate": "Yeah, so I think the plan is fine, honestly.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Yeah, so I think the plan is fine, honestly."
+    },
+    {
+      "name": "a cleanup the probe kept: Book a table for six at seven thirty on Saturday.",
+      "input": "Book a table for four, make that six, at seven thirty on Saturday.",
+      "candidate": "Book a table for six at seven thirty on Saturday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Book a table for six at seven thirty on Saturday."
+    },
+    {
+      "name": "a cleanup the probe kept: Text Jordan the address before noon.",
+      "input": "Email Jordan, no, text Jordan the address before noon.",
+      "candidate": "Text Jordan the address before noon.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Text Jordan the address before noon."
+    },
+    {
+      "name": "a cleanup the probe kept: 1. preheat the oven",
+      "input": "First preheat the oven, then mix the flour and sugar, then bake for twenty minutes.",
+      "candidate": "1. preheat the oven\n2. mix the flour and sugar\n3. bake for twenty minutes",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "1. preheat the oven\n2. mix the flour and sugar\n3. bake for twenty minutes"
+    },
+    {
+      "name": "a cleanup the probe kept: Let's go to Japan and stay for a week.",
+      "input": "Let's go to Italy. No, let's go to Japan and stay for a week.",
+      "candidate": "Let's go to Japan and stay for a week.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Let's go to Japan and stay for a week."
+    },
+    {
+      "name": "a cleanup the probe kept: Send the invoice to Mark on Wednesday.",
+      "input": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "candidate": "Send the invoice to Mark on Wednesday.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Send the invoice to Mark on Wednesday."
+    },
+    {
+      "name": "a cleanup the probe kept: Can you send me the report by Friday?",
+      "input": "Can you send me the report by Friday?",
+      "candidate": "Can you send me the report by Friday?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Can you send me the report by Friday?"
+    },
+    {
+      "name": "a cleanup the probe kept: What time works for you tomorrow?",
+      "input": "What time works for you tomorrow?",
+      "candidate": "What time works for you tomorrow?",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "What time works for you tomorrow?"
+    },
+    {
+      "name": "a statement answering a question with one new word",
+      "input": "What time is it in Tokyo?",
+      "candidate": "It is 3 PM in Tokyo.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "you and I trading places",
+      "input": "Can you send me the report by Friday?",
+      "candidate": "I'll send you the report by Friday.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a reply to thanks",
+      "input": "Thanks.",
+      "candidate": "You’re welcome!",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "one changed word in a one word take",
+      "input": "Ok.",
+      "candidate": "Okay.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Okay."
+    },
+    {
+      "name": "a spoken number written as digits",
+      "input": "Grab two coffees on the way in.",
+      "candidate": "Grab 2 coffees on the way in.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Grab 2 coffees on the way in."
+    },
+    {
+      "name": "a take that is all number, written as digits",
+      "input": "Two hundred and fifty.",
+      "candidate": "250.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "250."
+    },
+    {
+      "name": "hyphenated spoken numbers written as digits",
+      "input": "Twenty-one, twenty-two.",
+      "candidate": "21, 22.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "21, 22."
+    },
+    {
+      "name": "digits from another script are new words",
+      "input": "Two hundred and fifty.",
+      "candidate": "٢٥٠.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a question with a slip fixed",
+      "input": "Can you by milk on the way home?",
+      "candidate": "Can you buy milk on the way home?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Can you buy milk on the way home?"
+    },
+    {
+      "name": "a question mark added",
+      "input": "What time is it in Tokyo",
+      "candidate": "What time is it in Tokyo?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "What time is it in Tokyo?"
+    },
+    {
+      "name": "a wrong question mark taken out, no word changed",
+      "input": "I wonder if it's done?",
+      "candidate": "I wonder if it's done.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "I wonder if it's done."
+    },
+    {
+      "name": "a fullwidth question answered",
+      "input": "東京は何時ですか？",
+      "candidate": "午後3時です。",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a fullwidth question kept",
+      "input": "東京は何時ですか？",
+      "candidate": "東京は何時ですか？",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "東京は何時ですか？"
+    },
+    {
+      "name": "a list padded with things never said",
+      "input": "I need eggs, bacon, and toast.",
+      "candidate": "- eggs\n- bacon\n- toast\n- orange juice\n- coffee\n- butter",
+      "smartLists": true,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a short correction cut with apply corrections on",
+      "input": "Go Monday, no, sorry, Wednesday.",
+      "candidate": "Go Wednesday.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Go Wednesday."
+    },
+    {
+      "name": "the same cut with apply corrections off",
+      "input": "Go Monday, no, sorry, Wednesday.",
+      "candidate": "Go Wednesday.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Go Wednesday."
+    },
+    {
+      "name": "a corrected question with apply corrections on",
+      "input": "Can we meet Monday? Sorry, I mean can we meet Tuesday?",
+      "candidate": "Can we meet Tuesday?",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "Can we meet Tuesday?"
+    },
+    {
+      "name": "a corrected question with apply corrections off",
+      "input": "Can we meet Monday? Sorry, I mean can we meet Tuesday?",
+      "candidate": "Can we meet Tuesday?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Can we meet Tuesday?"
+    },
+    {
+      "name": "a question corrected after a wait",
+      "input": "Is the call at two? Wait, is it at three?",
+      "candidate": "Is the call at three?",
+      "smartLists": true,
+      "corrections": true,
+      "ok": true,
+      "text": "Is the call at three?"
+    },
+    {
+      "name": "a sum computed from two spoken numbers",
+      "input": "Calculate twelve times eight.",
+      "candidate": "96.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a sum computed from numbers joined by and",
+      "input": "Add five and seven.",
+      "candidate": "12.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "spoken numbers in two runs written as digits",
+      "input": "We need two hundred and fifty chairs and forty tables for the event.",
+      "candidate": "We need 250 chairs and 40 tables for the event.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "We need 250 chairs and 40 tables for the event."
+    },
+    {
+      "name": "a time and a date written as digits",
+      "input": "The meeting is at three thirty on the twenty first.",
+      "candidate": "The meeting is at 3:30 on the 21st.",
+      "smartLists": false,
+      "corrections": true,
+      "ok": true,
+      "text": "The meeting is at 3:30 on the 21st."
+    },
+    {
+      "name": "the same number spoken twice, written as digits",
+      "input": "Grab two coffees and two teas.",
+      "candidate": "Grab 2 coffees and 2 teas.",
+      "smartLists": true,
+      "corrections": false,
+      "ok": true,
+      "text": "Grab 2 coffees and 2 teas."
+    },
+    {
+      "name": "a yes after the question",
+      "input": "Are you free tomorrow?",
+      "candidate": "Are you free tomorrow? Yes.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a sum after the question",
+      "input": "What is two plus two?",
+      "candidate": "What is 2 plus 2? 4.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "an answer sentence after the question",
+      "input": "Do you know when the meeting starts today?",
+      "candidate": "Do you know when the meeting starts today? It starts at noon.",
+      "smartLists": true,
+      "corrections": true,
+      "ok": false,
+      "reason": "answered"
+    },
+    {
+      "name": "a take that ends in two questions",
+      "input": "Is it done? Is it ready?",
+      "candidate": "Is it done? Is it ready?",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Is it done? Is it ready?"
+    },
+    {
+      "name": "a question inside a quote at the end",
+      "input": "Did he say \"go?\"",
+      "candidate": "Did he say, \"go?\"",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "Did he say, \"go?\""
+    },
+    {
+      "name": "a question mid take losing its mark to a slip fix",
+      "input": "So I was wondering if you could send me the deck? Also their going to need the numbers by Friday.",
+      "candidate": "So I was wondering if you could send me the deck. Also, they're going to need the numbers by Friday.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": true,
+      "text": "So I was wondering if you could send me the deck. Also, they're going to need the numbers by Friday."
+    },
+    {
+      "name": "an Arabic question answered",
+      "input": "ما هذا؟",
+      "candidate": "هذا كتاب.",
+      "smartLists": false,
+      "corrections": false,
+      "ok": false,
+      "reason": "answered"
+    }
+  ],
+  "hints": [
+    {
+      "name": "one spelling",
+      "entries": [
+        {
+          "from": "labroy",
+          "to": "LaBroi"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"labroy\" is written \"LaBroi\"."
+    },
+    {
+      "name": "two spellings, trimmed",
+      "entries": [
+        {
+          "from": " labroy ",
+          "to": "LaBroi"
+        },
+        {
+          "from": "murmer",
+          "to": "murmur"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"labroy\" is written \"LaBroi\"; \"murmer\" is written \"murmur\"."
+    },
+    {
+      "name": "entries missing either side are skipped",
+      "entries": [
+        {
+          "from": "",
+          "to": "x"
+        },
+        {
+          "from": "y",
+          "to": "  "
+        },
+        {
+          "from": "eze",
+          "to": "Eze"
+        }
+      ],
+      "hint": "Preferred spellings, apply ONLY where these words already occur: \"eze\" is written \"Eze\"."
+    },
+    {
+      "name": "nothing usable gives no hint",
+      "entries": [
+        {
+          "from": "  ",
+          "to": "x"
+        }
+      ],
+      "hint": null
+    },
+    {
+      "name": "no entries gives no hint",
+      "entries": [],
+      "hint": null
+    }
+  ]
+}

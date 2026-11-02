@@ -1,0 +1,14 @@
+{
+  "comment": "murmur's App Store listing (ios/prd.json IOS-026), checked by scripts/lib/ios-store.js under npm test. The description is description.txt beside this file, so it pastes with real line breaks. LaBroi pastes the name, subtitle, privacy policy URL, and categories under App Information, and the rest under the version. appStoreUrl is the record's (Apple ID 6821814103): README, docs/download.md, and docs/iphone.md link it once Apple approves murmur. Every claim is true of the build it ships with.",
+  "name": "murmur voice dictation",
+  "subtitle": "A keyboard you talk to",
+  "promotionalText": "Free and open source. Tap the pill on the murmur keyboard, talk, and clean text lands in any app. Bring your own key; typical use costs cents a month.",
+  "keywords": "speech to text,transcribe,talk to text,keyboard,dictate,typing,notes,transcription,open source,stt",
+  "supportUrl": "https://murmurapp.app/support/",
+  "marketingUrl": "https://murmurapp.app/",
+  "privacyPolicyUrl": "https://murmurapp.app/privacy/",
+  "appStoreUrl": "https://apps.apple.com/app/id6821814103",
+  "primaryCategory": "Productivity",
+  "secondaryCategory": "Utilities",
+  "copyright": "2026 Eze Media LLC"
+}

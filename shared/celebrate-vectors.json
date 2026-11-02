@@ -1,0 +1,137 @@
+{
+  "note": "Promotions run through desktop's toCelebrate (src/renderer/settings/celebrate.ts): which new belt gets the ceremony, which stripe gets the tape, and the highest rank reached, as rank ids. seen is the highest rank already celebrated, or null with no record yet. Both platforms run these (IOS-018).",
+  "cases": [
+    {
+      "name": "a new belt gets the ceremony",
+      "promotions": [
+        {"id":"white","at":1787408000000},
+        {"id":"blue","at":1789913600000}
+      ],
+      "seen": "white",
+      "now": 1790000000000,
+      "expect": {"belt":"blue","tape":null,"reached":"blue"}
+    },
+    {
+      "name": "a stripe gets the tape",
+      "promotions": [
+        {"id":"blue","at":1787408000000},
+        {"id":"blue-1","at":1789913600000}
+      ],
+      "seen": "blue",
+      "now": 1790000000000,
+      "expect": {"belt":null,"tape":"blue-1","reached":"blue-1"}
+    },
+    {
+      "name": "a black belt degree gets the tape",
+      "promotions": [
+        {"id":"black-1","at":1789913600000}
+      ],
+      "seen": "black",
+      "now": 1790000000000,
+      "expect": {"belt":null,"tape":"black-1","reached":"black-1"}
+    },
+    {
+      "name": "the first coral belt gets the ceremony",
+      "promotions": [
+        {"id":"coral-7","at":1789913600000}
+      ],
+      "seen": "black-6",
+      "now": 1790000000000,
+      "expect": {"belt":"coral-7","tape":null,"reached":"coral-7"}
+    },
+    {
+      "name": "the first belt with no record yet",
+      "promotions": [
+        {"id":"white","at":1789956800000}
+      ],
+      "seen": null,
+      "now": 1790000000000,
+      "expect": {"belt":"white","tape":null,"reached":"white"}
+    },
+    {
+      "name": "a belt earned a while back still plays before its newer stripe",
+      "promotions": [
+        {"id":"blue","at":1781360000000},
+        {"id":"blue-1","at":1789827200000}
+      ],
+      "seen": "white-4",
+      "now": 1790000000000,
+      "expect": {"belt":"blue","tape":"blue-1","reached":"blue-1"}
+    },
+    {
+      "name": "one take that climbs a stripe, a belt, and a stripe",
+      "promotions": [
+        {"id":"white-4","at":1789913600000},
+        {"id":"blue","at":1789913600000},
+        {"id":"blue-1","at":1789913600000}
+      ],
+      "seen": "white-3",
+      "now": 1790000000000,
+      "expect": {"belt":"blue","tape":"blue-1","reached":"blue-1"}
+    },
+    {
+      "name": "two belts at once play the newer",
+      "promotions": [
+        {"id":"blue","at":1789913600000},
+        {"id":"purple","at":1789913600000}
+      ],
+      "seen": "white-4",
+      "now": 1790000000000,
+      "expect": {"belt":"purple","tape":null,"reached":"purple"}
+    },
+    {
+      "name": "ranks at the mark never replay",
+      "promotions": [
+        {"id":"white","at":1789740800000},
+        {"id":"blue","at":1789913600000}
+      ],
+      "seen": "blue",
+      "now": 1790000000000,
+      "expect": null
+    },
+    {
+      "name": "ranks below the mark never replay",
+      "promotions": [
+        {"id":"white","at":1789913600000}
+      ],
+      "seen": "purple",
+      "now": 1790000000000,
+      "expect": null
+    },
+    {
+      "name": "an old promotion on first open",
+      "promotions": [
+        {"id":"blue","at":1789913599999}
+      ],
+      "seen": null,
+      "now": 1790000000000,
+      "expect": null
+    },
+    {
+      "name": "a promotion exactly a day old on first open",
+      "promotions": [
+        {"id":"blue","at":1789913600000}
+      ],
+      "seen": null,
+      "now": 1790000000000,
+      "expect": {"belt":"blue","tape":null,"reached":"blue"}
+    },
+    {
+      "name": "no promotions",
+      "promotions": [],
+      "seen": null,
+      "now": 1790000000000,
+      "expect": null
+    },
+    {
+      "name": "an unknown rank is ignored",
+      "promotions": [
+        {"id":"white","at":1789913600000},
+        {"id":"gold-9","at":1789956800000}
+      ],
+      "seen": null,
+      "now": 1790000000000,
+      "expect": {"belt":"white","tape":null,"reached":"white"}
+    }
+  ]
+}
