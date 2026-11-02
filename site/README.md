@@ -8,6 +8,7 @@ Since US-092 the site also has:
 - **The Wispr Flow comparison** at `/wispr-flow-alternative/`, written in `content.js`. Every Wispr Flow fact there carries the date it was checked against Wispr's own pages; recheck before changing a word.
 - **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
 - **A 404 page** with the same header.
+- **Short addresses.** `/pro` and `/pro/` forward for good (a 301) to `/docs/pro/` (LaBroi, 2026-11-01). The list is `site/redirects.js`: the build checks each one lands on a page it built and writes them into `dist/_redirects`, which Pages applies, and the preview server answers the same way.
 
 The build checks every link on every page: one that points at a page or a question that does not exist stops it.
 

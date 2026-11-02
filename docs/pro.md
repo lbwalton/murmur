@@ -4,11 +4,15 @@
 
 A one-time purchase that supports murmur's development. The free app is complete and stays complete: dictation, formatting, the journey, every provider. Pro adds conveniences on top and a supporter mark, and it funds the work. Belts and cosmetics are earned by practice and are never for sale.
 
+[**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00) at Stripe's checkout. Through December 31, 2026, enter the code FOUNDERS there for $10 off, so Pro is $39 and you become a [founding member](#what-is-a-founding-member).
+
 ## What does Pro include?
 
 - Provider profiles: save whole provider setups (endpoint and models; the key ring supplies each provider's saved key automatically) under names and switch between them in one click.
 - Early access: new conveniences unlock for Pro first in official builds, then go free for everyone after a window. The source is public the entire time.
 - Priority support and, if you like, your name in SUPPORTERS.md.
+
+All of that for one payment, with no subscription: [**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00). Through December 31, 2026, enter the code FOUNDERS at checkout for $10 off, so it is $39.
 
 ## Where does the Pro mark appear, and what does it mean?
 
@@ -63,3 +67,7 @@ Yes. Click **Deactivate** under Settings, murmur Pro: the app switches to the fr
 ## I lost my key. What do I do?
 
 Email support with your order id or receipt and a fresh key is issued. Keys are free to reissue for the same purchase.
+
+## How do I buy murmur Pro?
+
+[**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00) at Stripe's checkout in your browser; Get Pro under Settings, murmur Pro in the app opens the same page. Through December 31, 2026, enter the code FOUNDERS at checkout for $10 off, so Pro is $39 and you become a founding member. Your license key is sent to the email address you pay with: paste it under Settings, murmur Pro, and click Activate.

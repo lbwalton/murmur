@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { content } from './content'
+import PRO from '../shared/pro.json'
 
 const SITE = 'https://murmurapp.app'
 const EMAIL = 'support@murmurapp.app'
@@ -137,6 +138,36 @@ describe('the site build (IOS-026)', () => {
         expect(read(file)).toContain(`${SITE}/support/`)
       }
     })
+
+    it('forwards /pro and /pro/ to the Pro doc for good', () => {
+      const redirects = read('_redirects')
+      expect(redirects).toContain('/pro /docs/pro/ 301')
+      expect(redirects).toContain('/pro/ /docs/pro/ 301')
+    })
+
+    it('puts the checkout link on the Pro page 3 times', () => {
+      expect(read('docs/pro/index.html').split(`href="${PRO.buyUrl}"`).length - 1).toBe(3)
+    })
+  })
+})
+
+describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {
+  const md = readFileSync(join(__dirname, '..', 'docs', 'pro.md'), 'utf8')
+  const { founders } = content(SITE, { now: Date.parse('2026-12-31T23:00:00-08:00') }).facts
+
+  it('links the checkout from shared/pro.json near the top, after what Pro includes, and at the end', () => {
+    const heads = [...md.matchAll(/^## .*$/gm)]
+    const sectionOf = (at) => heads.filter((h) => h.index < at).at(-1)?.[0]
+    const links = [...md.matchAll(/\]\((https:\/\/buy\.stripe\.com\/[^)\s]*)\)/g)]
+    expect(links.map((m) => m[1])).toEqual([PRO.buyUrl, PRO.buyUrl, PRO.buyUrl])
+    expect(links.map((m) => sectionOf(m.index))).toEqual(['## What is murmur Pro?', '## What does Pro include?', heads.at(-1)[0]])
+  })
+
+  it('names only the price in shared/pro.json and the founders price', () => {
+    const prices = new Set([...md.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])))
+    expect([...prices].sort((a, b) => a - b)).toEqual([PRO.price - founders.price, founders.price, PRO.price].sort((a, b) => a - b))
+    expect(md).toContain(`$${PRO.price} once`)
+    expect(md).toContain(`the code ${founders.code}`)
   })
 })
 

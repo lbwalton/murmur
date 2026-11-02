@@ -7,7 +7,7 @@
 // studio tokens copied from the app, the app's brush engine stripped of
 // its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt and
 // llms-full.txt,
-// the _headers Cloudflare Pages serves, and the icons and preview image
+// the _headers and _redirects Cloudflare Pages serves, and the icons and preview image
 // drawn by the same kit as the app icons. Nothing binary lives in the
 // repo: the display face is fetched at build time (the page falls back
 // to system fonts without it) and the film is copied from FILM_DIR,
@@ -24,6 +24,7 @@ const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
 const { clip, firstParagraph, renderDoc, slugify } = require('./markdown')
 const { headersFile } = require('./headers')
+const { REDIRECTS, redirectsFile } = require('./redirects')
 const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
 const here = __dirname
@@ -841,6 +842,15 @@ function checkLinks(pages) {
   return files
 }
 
+/** Every short address forwards to a page this build wrote, and none
+ *  hides a page of the same address. */
+function checkRedirects(paths) {
+  for (const [from, to] of REDIRECTS) {
+    if (!paths.has(to)) throw new Error(`site: ${from} forwards to ${to}, which is not a page`)
+    if (paths.has(from)) throw new Error(`site: ${from} is a page, so it cannot also forward to ${to}`)
+  }
+}
+
 /** Every file a page points at exists in dist, so a typo in a path
  *  fails the build instead of a visitor's request. */
 function checkFiles(files) {
@@ -979,6 +989,7 @@ async function main() {
     ['/404', '404.html', notFoundPage(font.file)]
   ]
   const linkedFiles = checkLinks([['/', home], ...pages.map(([path, , html]) => [path, html])])
+  checkRedirects(new Set(['/', ...pages.map(([path]) => path)]))
   for (const [, file, html] of pages) {
     mkdirSync(join(out, file, '..'), { recursive: true })
     writeFileSync(join(out, file), html)
@@ -992,6 +1003,7 @@ async function main() {
   writeFileSync(join(out, 'brush.js'), brushJs())
   writeFileSync(join(out, 'paint.css'), paintCss())
   writeFileSync(join(out, '_headers'), headersFile())
+  writeFileSync(join(out, '_redirects'), redirectsFile())
   if (hasFilm()) {
     mkdirSync(join(out, 'film'), { recursive: true })
     copyFileSync(join(FILM_DIR, FILM.video), join(out, 'film', 'one-drop.mp4'))
