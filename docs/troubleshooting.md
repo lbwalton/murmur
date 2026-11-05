@@ -36,6 +36,14 @@ If dictation still fails on a work network:
 2. Press **Test** on the Connection row under Settings, Provider and keys. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
 3. Send diagnostics (above). The log names the same reason for each failed dictation.
 
+## Why did murmur type words I never said, or words in another language, after a quiet take?
+
+Speech models sometimes invent words when they are handed near-silence, and murmur now drops any part of a take that the model itself scores as silence. When nothing is left, nothing pastes, nothing is saved to history, and you hear the low no-speech tone.
+
+How it works: murmur asks Whisper models for a score on each stretch of speech (the chance it was not speech, and how confident the model was in its own words). A stretch is dropped only when the model says it was probably silence and was not confident in what it wrote, which is Whisper's own rule. It needs no word lists, so it works in every language. The scores come from Groq's Whisper models (`whisper-large-v3-turbo`, `whisper-large-v3`), OpenAI's `whisper-1`, and local servers that return `verbose_json` segments (checked 2026-11-01 and 2026-11-05; see [providers](providers.md)). OpenAI's `gpt-transcribe`, `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`, and Mistral's `voxtral-mini-latest`, answer in plain json without the scores, so the guard cannot see them and those takes work exactly as before.
+
+On those models, hold the hotkey only while you are talking, and press Escape on a take you did not mean to start. The diagnostics log shows what the guard saw as numbers only, never your words: `segments=2 dropped=1 noSpeech=0.91 logprob=-1.42` on a delivered line, and `nospeech after transcript` when everything was dropped.
+
 ## Why did murmur hear nothing even though my mic works everywhere else?
 
 Audio software that manages your microphone (Wave Link, Loopback, VoiceMeeter and friends) can reconfigure the device underneath murmur's always-warm capture stream without any signal the OS passes along, leaving murmur receiving pure digital silence while every meter elsewhere moves. murmur catches this in two places. A dictation that measures dead-zero input (a `nospeech` log line with a peak near 0.000) triggers an immediate capture rebuild, so your very next press records normally. And every freshly built capture stream, that rebuild included, has to prove itself: if it flows for a few seconds without ever carrying sound (a quiet room's noise floor counts), it is rebuilt again on its own, up to five times, so a device that hands back a dead stream more than once is still fixed before you press again. No relaunch needed either way.

@@ -48,6 +48,8 @@ Groq is murmur's default because Whisper on Groq is extremely fast and inexpensi
 | Speech model | `whisper-large-v3-turbo` (fastest) or `whisper-large-v3` (highest accuracy) |
 | Cleanup model | `openai/gpt-oss-120b` (thorough) or `openai/gpt-oss-20b` (fastest) |
 
+**Silence scores:** the Groq Whisper models send a score for each stretch of speech, and murmur uses them to drop words the model invented on a silent take (verified 2026-11-01 against [console.groq.com/docs/speech-to-text](https://console.groq.com/docs/speech-to-text)).
+
 Current model list: [console.groq.com/docs/models](https://console.groq.com/docs/models). Note: Groq decommissioned `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on 2026-08-16 ([deprecations](https://console.groq.com/docs/deprecations)); murmur migrates old settings to the replacements automatically.
 
 **Do I pay Groq anything on the free tier?** No. Groq's free tier bills nothing and asks for no card; it enforces rate limits instead. The console still shows dollar-equivalent usage, which can look like a bill accumulating, but on the free tier nothing is ever charged. If you upgrade to their developer tier, which needs a payment method, you are billed at the end of each month or sooner when your total usage reaches 1, 10, 100, 500, and 1,000 dollars ([billing FAQs](https://console.groq.com/docs/billing-faqs), verified 2026-10-03).
@@ -63,6 +65,8 @@ Current model list: [console.groq.com/docs/models](https://console.groq.com/docs
 | Base URL | `https://api.openai.com/v1` |
 | Speech model | `gpt-transcribe` (OpenAI's recommended default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` (cheaper), or `whisper-1` |
 | Cleanup model | any chat model you have access to, a small fast one is plenty (see [their models page](https://platform.openai.com/docs/models)) |
+
+**Silence scores:** only `whisper-1` sends them. The `gpt-transcribe` and gpt-4o transcribe models answer in plain json, so murmur's guard against invented words on a silent take does not apply to them (OpenAI API reference, verified 2026-11-05; `whisper-1` is deprecated and shuts down 2027-02-26).
 
 ## How do I use Mistral with murmur?
 
@@ -98,6 +102,8 @@ Yes. Any server that exposes OpenAI-compatible `/audio/transcriptions` and `/cha
 | Speech model | whatever model id your server registers |
 | Cleanup model | whatever chat model your server hosts |
 | API key | whatever your server expects; murmur always sends one, so use a dummy value if the server ignores it |
+
+**Silence scores:** murmur asks Whisper-named models for `verbose_json` segments, which is how it drops words invented on a silent take. If your server returns them, you get the guard; if it refuses that format, murmur notices and asks for plain json automatically (checked 2026-11-05).
 
 Local servers keep audio entirely on your machine, which is the strongest privacy posture. The Local preset fills `http://localhost:8000/v1` (the speaches default); for a local cleanup model, point the separate cleanup connection at Ollama (`http://localhost:11434/v1`) or LM Studio (`http://localhost:1234/v1`) and use any model id your server has pulled.
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The two silence guards. Before upload: an energy gate that measures
-// voiced time. After transcription: a sanity filter for empty output and
-// the stock phrases Whisper-family models hallucinate on silence.
-// Either one firing means nothing is ever inserted.
+// The three silence guards. Before upload: an energy gate that measures
+// voiced time. After transcription: a filter that drops any segment the
+// model itself scores as silence (US-119), and a sanity filter for empty
+// output and the stock phrases Whisper-family models hallucinate on
+// silence. Any one of them leaving nothing means nothing is ever inserted.
 
 /** The gate's defaults: a 30 ms window whose RMS reaches this counts
  *  as voiced, and a take needs this much voiced time to be speech.
@@ -124,4 +125,79 @@ export function stripTrailingHallucinations(text: string, phrases: readonly stri
     sentences.pop()
   }
   return sentences.join(' ')
+}
+
+/** Whisper's own rule for a segment that is not speech (US-119): the
+ *  model puts the odds of no speech above this AND its average token
+ *  log probability below the second. Both must hold, strictly. */
+export const NO_SPEECH_PROB_THRESHOLD = 0.6
+export const LOW_LOGPROB_THRESHOLD = -1.0
+
+/** One segment of a verbose_json transcription response. */
+export interface SpeechSegment {
+  text?: unknown
+  no_speech_prob?: unknown
+  avg_logprob?: unknown
+}
+
+export interface SilenceStats {
+  segments: number
+  dropped: number
+  /** Highest finite no_speech_prob across all segments. */
+  noSpeech: number
+  /** Lowest finite avg_logprob across all segments. */
+  logprob: number
+}
+
+/** True only when both scores are finite numbers past Whisper's rule. */
+export function isSilentSegment(segment: SpeechSegment): boolean {
+  const { no_speech_prob: noSpeech, avg_logprob: logprob } = segment
+  return (
+    typeof noSpeech === 'number' &&
+    typeof logprob === 'number' &&
+    Number.isFinite(noSpeech) &&
+    Number.isFinite(logprob) &&
+    noSpeech > NO_SPEECH_PROB_THRESHOLD &&
+    logprob < LOW_LOGPROB_THRESHOLD
+  )
+}
+
+/**
+ * Drop the segments the model judges silent. With none dropped the
+ * response's own text is returned untouched; otherwise the kept
+ * segments' texts, trimmed, empties skipped, joined by one space. All
+ * dropped gives '' (which isHallucination treats as no speech).
+ * Stats are null when no segment carried a finite score.
+ */
+export function dropSilentSegments(
+  segments: readonly SpeechSegment[],
+  fullText: string
+): { text: string; stats: SilenceStats | null } {
+  const kept: string[] = []
+  let dropped = 0
+  let noSpeech = -Infinity
+  let logprob = Infinity
+  for (const segment of segments) {
+    const np = segment.no_speech_prob
+    const lp = segment.avg_logprob
+    if (typeof np === 'number' && Number.isFinite(np) && np > noSpeech) noSpeech = np
+    if (typeof lp === 'number' && Number.isFinite(lp) && lp < logprob) logprob = lp
+    if (isSilentSegment(segment)) {
+      dropped += 1
+      continue
+    }
+    if (typeof segment.text === 'string') {
+      const trimmed = segment.text.trim()
+      if (trimmed) kept.push(trimmed)
+    }
+  }
+  const finite = Number.isFinite(noSpeech) && Number.isFinite(logprob)
+  const stats = finite ? { segments: segments.length, dropped, noSpeech, logprob } : null
+  return { text: dropped === 0 ? fullText : kept.join(' '), stats }
+}
+
+/** The diagnostics suffix for a log line: numbers only, never text. */
+export function silenceLogSuffix(silence: SilenceStats | undefined): string {
+  if (!silence) return ''
+  return ` segments=${silence.segments} dropped=${silence.dropped} noSpeech=${silence.noSpeech.toFixed(2)} logprob=${silence.logprob.toFixed(2)}`
 }

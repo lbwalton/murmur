@@ -11,6 +11,7 @@ import {
   isDeadStream,
   isHallucination,
   peakLevel,
+  silenceLogSuffix,
   stripTrailingHallucinations
 } from '../shared/speech-gate'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
@@ -221,6 +222,7 @@ export async function dictationStop(
   const heardText = result.text
   const finalText = await finishTranscript(heardText)
   if (finalText === null) {
+    void logDictation(`nospeech after transcript peak=${peak.toFixed(4)}${silenceLogSuffix(result.silence)}`)
     setOverlayPhase('nospeech')
     playCue('nospeech')
     return 'nospeech'
@@ -234,7 +236,7 @@ export async function dictationStop(
       const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
       // The clipboard stays the user's: Cmd+V keeps pasting what they
       // copied. The words wait in history for the paste-last shortcut.
-      void logDictation(`delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}`)
+      void logDictation(`delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}${silenceLogSuffix(result.silence)}`)
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       refreshOverlayConfig()
@@ -252,7 +254,7 @@ export async function dictationStop(
       // waits on the clipboard: the exact trail the Windows missed
       // insertion reports need. Never the text itself.
       void logDictation(
-        `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}`
+        `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}${silenceLogSuffix(result.silence)}`
       )
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')

@@ -9,7 +9,7 @@ import { app } from 'electron'
 import { getApiKey, getSettings } from '../settings'
 import { appFetch } from '../net'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { type TranscribeResult, transcribe, uploadTimeoutMs } from './provider'
+import { type TranscribeResult, clearFormatMemo, transcribe, uploadTimeoutMs } from './provider'
 import { type TakeKind, type TakeRecord, saveRecovery } from './recovery'
 
 export const SMOKE_TRANSCRIPT = 'smoke transcript from the mock provider'
@@ -105,6 +105,72 @@ export function initTranscribe(): void {
       }) as typeof fetch
     })
 
+    // US-119: a whisper model asks for verbose_json and loses the segment
+    // the model scores as silence; the plain model still asks for json.
+    clearFormatMemo()
+    const formats: string[] = []
+    const record = (init?: RequestInit): void => {
+      formats.push(String((init?.body as FormData).get('response_format')))
+    }
+    const whisperCfg = { baseUrl: 'https://mock.local/v1', model: 'whisper-large-v3-turbo', apiKey: 'k' }
+    const segment = (text: string, noSpeech: number, logprob: number): object => ({
+      text,
+      no_speech_prob: noSpeech,
+      avg_logprob: logprob
+    })
+    const mixed = await transcribe(wav, whisperCfg, {
+      fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+        record(init)
+        return new Response(
+          JSON.stringify({
+            text: ' real words invented words',
+            segments: [segment(' real words', 0.05, -0.2), segment(' invented words', 0.9, -1.5)]
+          }),
+          { status: 200 }
+        )
+      }) as typeof fetch
+    })
+    const silent = await transcribe(wav, whisperCfg, {
+      fetchImpl: (async () =>
+        new Response(
+          JSON.stringify({ text: ' invented', segments: [segment(' invented', 0.95, -1.4)] }),
+          { status: 200 }
+        )) as typeof fetch
+    })
+    // A 400 on verbose_json then 200 on json is ok, and the next take
+    // for the same server and model asks for json first.
+    clearFormatMemo()
+    const fallbackFormats: string[] = []
+    const fallbackFetch = (async (_url: unknown, init?: RequestInit) => {
+      const format = String((init?.body as FormData).get('response_format'))
+      fallbackFormats.push(format)
+      return format === 'verbose_json'
+        ? new Response('{}', { status: 400 })
+        : new Response(JSON.stringify({ text: 'plain' }), { status: 200 })
+    }) as typeof fetch
+    const fellBack = await transcribe(wav, whisperCfg, { fetchImpl: fallbackFetch })
+    const afterFallback = await transcribe(wav, whisperCfg, { fetchImpl: fallbackFetch })
+    clearFormatMemo()
+    const plainFormats: string[] = []
+    await transcribe(wav, cfg, {
+      fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+        plainFormats.push(String((init?.body as FormData).get('response_format')))
+        return new Response(JSON.stringify({ text: 'ok' }), { status: 200 })
+      }) as typeof fetch
+    })
+    clearFormatMemo()
+    const silenceOk =
+      formats[0] === 'verbose_json' &&
+      mixed.ok &&
+      mixed.text === 'real words' &&
+      mixed.silence?.dropped === 1 &&
+      silent.ok &&
+      silent.text === '' &&
+      fellBack.ok &&
+      afterFallback.ok &&
+      fallbackFormats.join() === 'verbose_json,json,json' &&
+      plainFormats[0] === 'json'
+
     return (
       okResult.ok &&
       okResult.text === 'ok' &&
@@ -112,7 +178,8 @@ export function initTranscribe(): void {
       flakyCalls === 2 &&
       !authResult.ok &&
       authResult.kind === 'auth' &&
-      authCalls === 1
+      authCalls === 1 &&
+      silenceOk
     )
   })
 

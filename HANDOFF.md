@@ -4,6 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
+- [ ] US-119 a silent take never types invented words is built on feature/hands-free and waits on your live check on the Mac: the steps sit right after US-117's under Live verification queue.
 - [ ] US-117 hands-free (tap the hotkey twice to keep talking without holding it) is built on feature/hands-free and waits on your live check, on the Mac and on Windows: the steps are the first item under Live verification queue.
 - [x] US-116 file only the item on your TypeSafe sort connection: live-verified 2026-10-30 on the test build (LaBroi: everything worked for the note; ideas.md got "a snow cone stand at the launch." alone). Merged to main; ships in the next release.
 - [x] US-113 paste last waits for the chord to be let go: live-verified 2026-10-27 (LaBroi: it works).
@@ -63,6 +64,16 @@ Live-verification items land here as stories complete. Check them off, then tell
 
   1. Do Mac steps 1 to 9 in Notepad, with Ctrl+V where the Mac uses Cmd+V (skip step 8 or 9 if the PC has no notes or transform hotkey set). Each should look and sound the same.
   2. Check the bare look's timer: in Settings, Look, Overlay look, pick Bare. Double-tap, say a sentence, and look at the timer under the waveform while the loop is drawn: the whole number shows (0:05), not cut off at the bottom. Tap once to stop, then put your usual look back.
+
+- [ ] US-119 a silent take never types invented words (built 2026-11-05 on feature/hands-free; smoke and unit tests pass). Your dictation hotkey is Option+Space on the Mac unless you changed it. Tell Claude what you saw at each step.
+
+  On the Mac, once Claude has installed the build with US-119:
+
+  1. Double-tap your hotkey and stay quiet for about 20 seconds (a tap or two on the desk is fine), then tap once to stop: you hear the low tone, nothing pastes, and nothing new shows on Home.
+  2. Hold the hotkey without talking for about 5 seconds: the same. You hear the low tone, nothing pastes, nothing new on Home.
+  3. Hold the hotkey and say a normal sentence: it pastes as always.
+  4. Double-tap and talk for about a minute with a few long pauses, then tap once: every sentence you said pastes, none dropped.
+  5. Tell Claude when done; Claude reads the scores murmur logged (numbers only, never your words).
 
 - [ ] US-107 the Pro mark, the daily brush fill, and the lift (built 2026-10-22 on feature/pro-mark, merged to main on LaBroi's call, installed on the Mac as a test build; the soft grain he picked the same day is in a second test build installed after it; shipped in v0.1.13 on 2026-10-24). Steps 1 to 7 done on 2026-10-23: the daily fill works, and Reactivate filled the marks, but with no glow (the design has none). Still to do: (a) in the new test build, Settings, murmur Pro: click Deactivate, then Reactivate: the PRO mark at the top grows, paints, and glows bright gold, then the outlined marks below fill and glow one after another from the top down (Profiles, if it is on screen, then the section title, then the rail at the bottom), and each glow fades in about 2 seconds; (b) once the test build is installed, quit murmur and open it the next day: the mark should lift and paint about 2.5 seconds after the window appears (it used to go after about 1 second); (c) Settings, murmur Pro: turn Paint the mark each day back on, since it is off now. (1) Open murmur's window: the first open today, the gold PRO mark after murmur lifts to twice its size, brush strokes paint it in over about 3 seconds while the belt steps aside, and it settles back with the strokes left on it. The grain is the soft one you picked on 2026-10-22: fine, gentle streaks like the painting a day's strokes, with each stroke's angle still showing. (2) Close the window and open it again: the mark sits still with the same strokes. (3) Press the mark: it lifts and paints again. (4) Settings, murmur Pro: Paint the mark each day is on; switch it off and on to see it is there. (5) Click Deactivate: the mark at the top disappears, and outlined PRO marks show beside murmur Pro in the rail, in the section title, and on the Profiles row under Provider and keys; the Pro section shows Reactivate and Forget key (the Keep murmur free for everyone block with Get Pro, $49 once is what people with no key see; never click Forget key). (6) Click Reactivate: the marks fill with gold one after another and the top mark arrives with its brush fill. (7) Go to Home: one thank-you line with the mark shows, once. Tell Claude what you saw; anything that feels off is a design call you can change.
 

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import hallucinations from './hallucinations.json'
-import { hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs, isDeadStream, peakLevel } from './speech-gate'
+import {
+  LOW_LOGPROB_THRESHOLD,
+  NO_SPEECH_PROB_THRESHOLD,
+  dropSilentSegments,
+  silenceLogSuffix,
+  hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs, isDeadStream, peakLevel } from './speech-gate'
 
 const RATE = 16_000
 
@@ -156,5 +161,72 @@ describe('peakLevel and the dead stream threshold', () => {
   it('peak is the true maximum magnitude, sign ignored', () => {
     const samples = new Float32Array([0.01, -0.62, 0.3])
     expect(peakLevel(samples)).toBeCloseTo(0.62, 6)
+  })
+})
+
+describe('dropSilentSegments (US-119)', () => {
+  const seg = (text: unknown, no_speech_prob?: unknown, avg_logprob?: unknown) => ({
+    text,
+    no_speech_prob,
+    avg_logprob
+  })
+
+  it('uses Whisper\'s own thresholds', () => {
+    expect(NO_SPEECH_PROB_THRESHOLD).toBe(0.6)
+    expect(LOW_LOGPROB_THRESHOLD).toBe(-1.0)
+  })
+
+  it('keeps a segment exactly on either boundary', () => {
+    expect(dropSilentSegments([seg(' a', 0.6, -2)], ' a').stats?.dropped).toBe(0)
+    expect(dropSilentSegments([seg(' a', 0.9, -1.0)], ' a').stats?.dropped).toBe(0)
+  })
+
+  it('drops a segment past both boundaries', () => {
+    const out = dropSilentSegments([seg(' a', 0.61, -1.01)], ' a')
+    expect(out.stats?.dropped).toBe(1)
+    expect(out.text).toBe('')
+  })
+
+  it('keeps a high no_speech segment the model was confident about', () => {
+    const out = dropSilentSegments([seg(' a', 0.95, -0.5)], ' a')
+    expect(out.stats?.dropped).toBe(0)
+    expect(out.text).toBe(' a')
+  })
+
+  it('keeps segments with missing, null, or non-finite scores', () => {
+    const segments = [seg(' a'), seg(' b', null, null), seg(' c', Number.NaN, Number.NaN), seg(' d', Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY)]
+    const out = dropSilentSegments(segments, ' a b c d')
+    expect(out.text).toBe(' a b c d')
+    expect(out.stats).toBeNull()
+  })
+
+  it('returns the response text byte for byte when nothing drops', () => {
+    const out = dropSilentSegments([seg(' hello', 0.01, -0.2), seg(' world', 0.02, -0.3)], ' hello world')
+    expect(out.text).toBe(' hello world')
+    expect(out.stats).toEqual({ segments: 2, dropped: 0, noSpeech: 0.02, logprob: -0.3 })
+  })
+
+  it('rebuilds from the kept segments when some drop', () => {
+    const out = dropSilentSegments(
+      [seg(' real one', 0.05, -0.2), seg(' invented', 0.9, -1.5), seg('  ', 0.1, -0.1), seg(' real two ', 0.1, -0.4)],
+      'full text'
+    )
+    expect(out.text).toBe('real one real two')
+    expect(out.stats).toEqual({ segments: 4, dropped: 1, noSpeech: 0.9, logprob: -1.5 })
+  })
+
+  it('gives an empty string when every segment drops, which is no speech', () => {
+    const out = dropSilentSegments([seg('x', 0.9, -1.2), seg('y', 0.8, -1.1)], 'x y')
+    expect(out.text).toBe('')
+    expect(isHallucination(out.text, hallucinations.phrases)).toBe(true)
+  })
+})
+
+describe('silenceLogSuffix', () => {
+  it('is empty without stats and numbers only with them', () => {
+    expect(silenceLogSuffix(undefined)).toBe('')
+    expect(silenceLogSuffix({ segments: 3, dropped: 1, noSpeech: 0.9123, logprob: -1.4249 })).toBe(
+      ' segments=3 dropped=1 noSpeech=0.91 logprob=-1.42'
+    )
   })
 })
