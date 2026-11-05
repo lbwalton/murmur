@@ -232,4 +232,85 @@ describe('silence scores (US-119)', () => {
     expect(await transcribe(wav, cfg, { fetchImpl })).toMatchObject({ ok: true })
     expect(seen).toEqual(['verbose_json', 'verbose_json'])
   })
+
+  it('falls back without using up a retry', async () => {
+    const seen: string[] = []
+    const fetchImpl = (async (_u: unknown, init?: RequestInit) => {
+      const format = formatOf(init)
+      seen.push(format)
+      return format === 'verbose_json' ? jsonResponse(400, {}) : jsonResponse(200, { text: 'plain' })
+    }) as typeof fetch
+    expect(await transcribe(wav, cfg, { fetchImpl, retries: 0 })).toEqual({ ok: true, text: 'plain' })
+  })
+
+  it.each([415, 422])('treats a %i as a refused format', async (status) => {
+    const seen: string[] = []
+    const fetchImpl = (async (_u: unknown, init?: RequestInit) => {
+      const format = formatOf(init)
+      seen.push(format)
+      return format === 'verbose_json' ? jsonResponse(status, {}) : jsonResponse(200, { text: 'plain' })
+    }) as typeof fetch
+    expect(await transcribe(wav, cfg, { fetchImpl })).toMatchObject({ ok: true })
+    expect(seen).toEqual(['verbose_json', 'json'])
+  })
+
+  it.each([429, 413, 408, 498])('a %i on verbose_json is one call and no memo', async (status) => {
+    const seen: string[] = []
+    const failing = (async (_u: unknown, init?: RequestInit) => {
+      seen.push(formatOf(init))
+      return jsonResponse(status, {})
+    }) as typeof fetch
+    expect(await transcribe(wav, cfg, { fetchImpl: failing })).toMatchObject({ ok: false, kind: 'badrequest' })
+    expect(seen).toEqual(['verbose_json'])
+    const next: string[] = []
+    const ok = (async (_u: unknown, init?: RequestInit) => {
+      next.push(formatOf(init))
+      return jsonResponse(200, { text: 'x' })
+    }) as typeof fetch
+    await transcribe(wav, cfg, { fetchImpl: ok })
+    expect(next).toEqual(['verbose_json'])
+  })
+
+  it('has no format fallback for a 403', async () => {
+    const seen: string[] = []
+    const fetchImpl = (async (_u: unknown, init?: RequestInit) => {
+      seen.push(formatOf(init))
+      return jsonResponse(403, {})
+    }) as typeof fetch
+    expect(await transcribe(wav, cfg, { fetchImpl })).toMatchObject({ ok: false, kind: 'auth' })
+    expect(seen).toEqual(['verbose_json'])
+  })
+
+  it('stays on json for the rest of the call after the fallback fires', async () => {
+    const seen: string[] = []
+    const fetchImpl = (async (_u: unknown, init?: RequestInit) => {
+      const format = formatOf(init)
+      seen.push(format)
+      if (format === 'verbose_json') return jsonResponse(400, {})
+      return seen.length === 2 ? jsonResponse(500, {}) : jsonResponse(200, { text: 'ok' })
+    }) as typeof fetch
+    expect(await transcribe(wav, cfg, { fetchImpl })).toMatchObject({ ok: true })
+    expect(seen).toEqual(['verbose_json', 'json', 'json'])
+  })
+
+  it('keys the memo by normalized base URL and model', async () => {
+    const fallback = (async (_u: unknown, init?: RequestInit) =>
+      formatOf(init) === 'verbose_json' ? jsonResponse(400, {}) : jsonResponse(200, { text: 'p' })) as typeof fetch
+    await transcribe(wav, cfg, { fetchImpl: fallback })
+    const seen: string[] = []
+    const watch = (async (_u: unknown, init?: RequestInit) => {
+      seen.push(formatOf(init))
+      return jsonResponse(200, { text: 'x' })
+    }) as typeof fetch
+    await transcribe(wav, { ...cfg, baseUrl: 'https://api.example.com/v1' }, { fetchImpl: watch })
+    await transcribe(wav, { ...cfg, model: 'whisper-other' }, { fetchImpl: watch })
+    expect(seen).toEqual(['json', 'verbose_json'])
+  })
+
+  it('reports a non-JSON answer without quoting its body', async () => {
+    const fetchImpl = (async () => new Response('send the invoice tomorrow', { status: 200 })) as typeof fetch
+    const result = await transcribe(wav, cfg, { fetchImpl, retries: 0 })
+    expect(result).toEqual({ ok: false, kind: 'server', detail: 'response not json' })
+    expect(JSON.stringify(result)).not.toContain('invoice')
+  })
 })

@@ -165,7 +165,9 @@ export function isSilentSegment(segment: SpeechSegment): boolean {
 /**
  * Drop the segments the model judges silent. With none dropped the
  * response's own text is returned untouched; otherwise the kept
- * segments' texts, trimmed, empties skipped, joined by one space. All
+ * segments' raw texts joined with nothing between (Whisper builds its
+ * own text the same way, so English keeps its spaces and Japanese gets
+ * none) and trimmed. All
  * dropped gives '' (which isHallucination treats as no speech).
  * Stats are null when no segment carried a finite score.
  */
@@ -186,14 +188,11 @@ export function dropSilentSegments(
       dropped += 1
       continue
     }
-    if (typeof segment.text === 'string') {
-      const trimmed = segment.text.trim()
-      if (trimmed) kept.push(trimmed)
-    }
+    if (typeof segment.text === 'string') kept.push(segment.text)
   }
   const finite = Number.isFinite(noSpeech) && Number.isFinite(logprob)
   const stats = finite ? { segments: segments.length, dropped, noSpeech, logprob } : null
-  return { text: dropped === 0 ? fullText : kept.join(' '), stats }
+  return { text: dropped === 0 ? fullText : kept.join('').trim(), stats }
 }
 
 /** The diagnostics suffix for a log line: numbers only, never text. */

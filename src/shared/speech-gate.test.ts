@@ -208,11 +208,19 @@ describe('dropSilentSegments (US-119)', () => {
 
   it('rebuilds from the kept segments when some drop', () => {
     const out = dropSilentSegments(
-      [seg(' real one', 0.05, -0.2), seg(' invented', 0.9, -1.5), seg('  ', 0.1, -0.1), seg(' real two ', 0.1, -0.4)],
+      [seg(' real one', 0.05, -0.2), seg(' invented', 0.9, -1.5), seg(' real two ', 0.1, -0.4)],
       'full text'
     )
     expect(out.text).toBe('real one real two')
-    expect(out.stats).toEqual({ segments: 4, dropped: 1, noSpeech: 0.9, logprob: -1.5 })
+    expect(out.stats).toEqual({ segments: 3, dropped: 1, noSpeech: 0.9, logprob: -1.5 })
+  })
+
+  it('keeps Japanese unspaced when some segments drop', () => {
+    const out = dropSilentSegments(
+      [seg('こんにちは。', 0.05, -0.2), seg('おにぎのこ', 0.9, -1.5), seg('元気ですか。', 0.1, -0.3)],
+      'こんにちは。おにぎのこ元気ですか。'
+    )
+    expect(out.text).toBe('こんにちは。元気ですか。')
   })
 
   it('gives an empty string when every segment drops, which is no speech', () => {

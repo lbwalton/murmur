@@ -217,7 +217,8 @@ export async function dictationStop(
     playCue('error')
     return result.saved ? 'retry' : 'failed'
   }
-  // Guard two lives in finishTranscript: empty or hallucinated
+  // Guard two is the provider's segment filter; guard three lives in
+  // finishTranscript: empty or hallucinated
   // transcripts never insert. History records the transcript as heard.
   const heardText = result.text
   const finalText = await finishTranscript(heardText)
