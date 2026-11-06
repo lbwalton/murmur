@@ -438,6 +438,17 @@ body {
   margin: 6px 0 0;
 }
 
+/* Report this take (US-130). */
+.report-field {
+  display: block;
+  margin-top: 8px;
+}
+
+.report-field .field {
+  width: 100%;
+  margin-top: 4px;
+}
+
 /* The note receipt's Home row (US-082). */
 .last-note-row {
   display: flex;

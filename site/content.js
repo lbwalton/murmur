@@ -216,7 +216,7 @@ function privacy(links, supportEmail) {
               "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server."
             ]
           ],
-          ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address.']]
+          ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address. Report this take shows you the whole email first, in your own mail app, and you can change or take out anything before you send it.']]
         ]
       },
       {
@@ -238,7 +238,8 @@ function privacy(links, supportEmail) {
           ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time.']],
           ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
-          ['Support email.', ['3 years after the last message, then cleared within about 30 days.']]
+          ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
+          ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']]
         ]
       },
       {

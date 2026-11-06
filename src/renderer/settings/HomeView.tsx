@@ -19,6 +19,7 @@ import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
 import { ProMark } from './ProMark'
+import { ReportPanel } from './ReportPanel'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -490,6 +491,7 @@ export function HomeView(props: {
   const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [openSaid, setOpenSaid] = useState<number | null>(null)
+  const [openReport, setOpenReport] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   // Clear all asks first (US-099): the whole log's count while the
   // question is open, null while it is closed.
@@ -709,11 +711,29 @@ export function HomeView(props: {
                       what you said
                     </button>
                   )}
+                  {event.kind !== 'transform' && (
+                    <button
+                      className="btn quiet-btn log-said-toggle"
+                      aria-expanded={openReport === event.at}
+                      aria-controls={`report-${event.at}`}
+                      onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
+                    >
+                      report
+                    </button>
+                  )}
                   <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
                     {copiedAt === event.at ? 'copied' : 'copy'}
                   </button>
                 </div>
                 {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} />}
+                {openReport === event.at && (
+                  <ReportPanel
+                    id={`report-${event.at}`}
+                    event={event}
+                    settings={props.settings}
+                    onClose={() => setOpenReport(null)}
+                  />
+                )}
                 {event.kind === 'transform' && !event.unsent && (
                   <p className="log-instruction dim">you said: {event.rawText}</p>
                 )}

@@ -2076,7 +2076,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "iPhone parity needs its own IOS story. A hosted inbox could replace email later; that would change the privacy page and the App Store label, so it is a separate decision."
+      "notes": "iPhone parity needs its own IOS story. A hosted inbox could replace email later; that would change the privacy page and the App Store label, so it is a separate decision. Built 2026-11-06. reportBody takes only the fields it lists, and a unit test with marked values proves keys, base URLs, the dictionary, expansions, and audio cannot reach it. The main process opens only mailto links to the 1 address and subject. The written rule is in security.mdc, /privacy/, and docs/troubleshooting.md. Not seen on screen. Left: the live check, and the panel's sentence names LaBroi as the reader, which he should approve."
     },
     {
       "id": "US-131",

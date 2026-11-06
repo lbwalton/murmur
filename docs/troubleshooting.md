@@ -6,6 +6,14 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## How do I tell you a take came out wrong?
+
+Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. All of it can be edited, so take out anything private.
+
+**Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, dictionary, expansions, and other takes are never included. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
+
+LaBroi reads reports to improve murmur, and they are deleted after 90 days. A report becomes a test case only if you agree, rewritten without names or details.
+
 ## What does a [quality] line in the log mean?
 
 Each take writes 1 line saying how cleanup went, and it never holds your words: the formatting level, whether Smart lists and Apply corrections were on, the model, the outcome (cleaned, skipped, or why cleanup fell back), the word counts before and after, and how many correction cue words there were before and after. `hint=1` means a cue word such as "actually" survived. That is a hint and not a mistake, since many cue words are real.

@@ -402,6 +402,15 @@ app.whenReady().then(async () => {
   })
 
   // Copy for the history view: sandboxed renderers route through main.
+  // Report this take (US-130): the person's own mail app, to 1 address.
+  // murmur sends nothing, and this cannot open anything else.
+  ipcMain.handle('report:mail', async (_event, body: unknown) => {
+    const { shell } = await import('electron')
+    const { blankMailtoUrl, isReportMailto, mailtoUrl } = await import('../shared/report')
+    const url = typeof body === 'string' ? mailtoUrl(body) : blankMailtoUrl()
+    if (isReportMailto(url)) await shell.openExternal(url)
+  })
+
   ipcMain.handle('clipboard:copy', async (_event, text: unknown) => {
     await clipboard.writeText(String(text))
   })

@@ -54,6 +54,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 - `/privacy/` states a period or a test for every kind of record. Changing a period means changing the page, and LaBroi signs off.
 - A new thing leaving the device changes the privacy page and the App Store label first.
 - Never commit a real dictation, a scan report, or a vendor's review. `security-audits/` stays local.
+- A take someone reports becomes a test case only with their yes, rewritten without names or details.
 
 ## Recurring
 
