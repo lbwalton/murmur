@@ -1915,7 +1915,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits. A support email period is still to pick."
+      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise."
     },
     {
       "id": "US-121",
@@ -2070,7 +2070,7 @@
         "A panel shows exactly what would go, and it can be edited: what you said, what murmur typed, an optional what it should have been, plus version, platform, formatting switches, and model names",
         "Audio, keys, base URLs, dictionary, expansions, and other takes are never included; a unit test with marked values proves it",
         "Send opens a prefilled message to support@murmurapp.app in the person's own mail app. A report too long for that offers Copy report, then opens a blank message. murmur itself sends nothing",
-        "The panel says in 1 sentence who reads it and how long it is kept, and /privacy/ and the docs match",
+        "The panel says in 1 sentence who reads it and that it is kept 90 days, and /privacy/ and the docs match. The subject line starts murmur report, which is how the 90 day cleanup finds it",
         "A written rule in the repo says a report becomes a test case only with the sender's yes, rewritten without names or details",
         "Live: LaBroi reports a take and his mail app opens with it filled in"
       ],
