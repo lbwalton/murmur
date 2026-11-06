@@ -275,6 +275,16 @@ Yes. The accent you pick under Settings, Look (any earned belt color, or the spe
 
 Almost always a macOS permission. The Test button on the Daily recap row (Settings, Time back and recap) fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
 
+## How do I control when murmur updates?
+
+Settings, System, **Updates** has 3 choices:
+
+- **Automatic**, the default. murmur checks every few hours, downloads quietly, and installs when you quit.
+- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click the notification, or Download in Settings.
+- **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself.
+
+The provider list has its own switch, because it is a separate request to GitHub. Both are explained on the [privacy page](https://murmurapp.app/privacy/).
+
 ## Where do I see what changed in an update?
 
 The home tab keeps a quiet what's new line; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.

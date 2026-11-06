@@ -2171,7 +2171,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen."
     },
     {
       "id": "US-137",

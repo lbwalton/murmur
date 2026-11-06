@@ -26,6 +26,7 @@ import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { PlainHttpNote } from './PlainHttpNote'
+import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
@@ -1442,6 +1443,8 @@ export function App(): React.JSX.Element {
                 onChange={(autostart) => void update({ autostart })}
               />
             </Row>
+
+            <UpdatesRow settings={settings} onChange={(updates) => void update({ updates })} />
 
             {isMac && (
               <Row

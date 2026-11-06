@@ -12,6 +12,9 @@ import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 import { normalizeZoom } from './zoom'
 
+export const UPDATE_MODES = ['auto', 'ask', 'off'] as const
+export type UpdateMode = (typeof UPDATE_MODES)[number]
+
 export interface Settings {
   hotkey: {
     mode: 'hold' | 'toggle'
@@ -185,6 +188,8 @@ export interface Settings {
   /** Refresh the bundled provider catalog (rates, presets, nuances)
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
+  /** How updates arrive (US-136). Off also stops every update request. */
+  updates: UpdateMode
   catalogRefresh: boolean
   /** Plain http hosts the person confirmed sending to (US-140). */
   trustedHttpHosts: string[]
@@ -322,6 +327,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   showDockIcon: false,
   windowZoom: 1,
+  updates: 'auto',
   catalogRefresh: true,
   trustedHttpHosts: [],
   whatsNewSeenVersion: '',
@@ -384,6 +390,9 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   if (Array.isArray(out.expansions)) {
     out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
   }
+  // Anything unknown means Automatic: a damaged file must never quietly
+  // stop security fixes.
+  if ('updates' in out && !UPDATE_MODES.includes(out.updates as UpdateMode)) out.updates = 'auto'
   if (Array.isArray(out.trustedHttpHosts)) {
     out.trustedHttpHosts = out.trustedHttpHosts.filter((host) => typeof host === 'string')
   }

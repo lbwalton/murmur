@@ -206,7 +206,7 @@ function privacy(links, supportEmail) {
           ['Test connection.', ['It asks your provider for its list of models, with your key.']],
           [
             'Updates, on Mac and Windows.',
-            ['murmur checks GitHub for an update every few hours and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit.']
+            ['murmur checks GitHub for an update every few hours and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit. Settings has a switch for each: Updates can be Automatic, Ask first, or Off, and Off makes no update request at all.']
           ],
           ['The iPhone keyboard.', ['The murmur keyboard sends nothing anywhere. It hands your take to the murmur app on the phone and types only the words you dictated.']],
           ['Your notes, if their folder syncs.', ['Notes are files in the folder you pick. If that folder syncs, like iCloud Drive or a synced vault, the sync service carries them under its own terms.']],
@@ -330,7 +330,7 @@ function security(links, supportEmail) {
       {
         q: 'How are updates and licenses checked?',
         a: [
-          'On Mac and Windows, updates come from murmur\'s GitHub releases and install on their own. Each download is checked against the checksum published with the release, and on Mac against the app\'s signature too. There is no setting to turn updates off yet. Pro license keys are ed25519 signatures checked offline, with no licensing server.'
+          'On Mac and Windows, updates come from murmur\'s GitHub releases, and Settings can make them automatic, ask first, or turn them off. Each download is checked against the checksum published with the release, and on Mac against the app\'s signature too. Pro license keys are ed25519 signatures checked offline, with no licensing server.'
         ]
       },
       {
