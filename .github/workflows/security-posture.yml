@@ -1,0 +1,95 @@
+# Weekly outside check of the live site (US-123). Any failure, or a
+# security.txt within 30 days of expiring, opens 1 issue labeled
+# security-regression; later runs update it, and the first clean run
+# closes it. Needs no secrets. No database and no third-party scripts
+# are true by design here, so those checks stay clean or skip.
+#
+# Runs Mondays 13:00 UTC and by hand from the Actions tab; tick test_alert
+# to test the issue path.
+name: security-posture
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Add a fake failing check, to test the issue path
+        type: boolean
+        default: false
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/security-posture.yml
+      - scripts/posture-check.mjs
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: security-posture
+  cancel-in-progress: false
+
+env:
+  SITE: https://murmurapp.app
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Check the live site
+        id: checks
+        env:
+          TEST_ALERT: ${{ inputs.test_alert && '1' || '' }}
+        run: |
+          set +e
+          node scripts/posture-check.mjs "$SITE" --repo . --report "$RUNNER_TEMP/posture.md"
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then exit 2; fi
+          failed=$([ "$code" -eq 1 ] && echo true || echo false)
+          if grep -q 'update Expires' "$RUNNER_TEMP/posture.md"; then failed=true; fi
+          if [ "$TEST_ALERT" = "1" ]; then
+            failed=true
+            printf '\n- **Test alert**: fake failure requested from the workflow\n' >> "$RUNNER_TEMP/posture.md"
+          fi
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+
+      - name: Open, update or close the security-regression issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          FAILED: ${{ steps.checks.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          report="$RUNNER_TEMP/posture.md"
+          printf '\nRun: %s\n' "$RUN_URL" >> "$report"
+          gh label create security-regression --color B60205 \
+            --description "Opened by the weekly security-posture check" 2>/dev/null || true
+          issue=$(gh issue list --label security-regression --state open --json number --jq '.[0].number // empty')
+          if [ "$FAILED" = "true" ]; then
+            if [ -n "$issue" ]; then
+              gh issue edit "$issue" --body-file "$report"
+              gh issue comment "$issue" --body "Still failing on $(date -u +%Y-%m-%d): $RUN_URL"
+            else
+              gh issue create --title "Security posture check failing" --label security-regression \
+                --assignee "$OWNER" --body-file "$report"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "All checks pass again: $RUN_URL"
+          fi
+
+      - name: Mark the run failed when a check failed
+        if: steps.checks.outputs.failed == 'true' && github.event_name != 'pull_request'
+        run: exit 1

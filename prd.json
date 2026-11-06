@@ -1929,7 +1929,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "LaBroi runs the deploy."
+      "notes": "LaBroi runs the deploy. Built 2026-11-06, not deployed. headers.js sets a year-long immutable cache on the fingerprinted paths and nothing else; the film's absolute links in the structured data are stamped too; a build test fails on any unstamped reference in html, css, or js, including brush.js in hero.js; a real build with the film stamps all 4 film links. Left: after the next deploy, curl -sI each path and read the posture check's cache line."
     },
     {
       "id": "US-122",
@@ -1945,7 +1945,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-11-06. SECURITY.md, ci.yml with read-only permissions and pinned actions, dependabot.yml, and codeql.yml are written; the YAML parses; none has run yet, because nothing is pushed. The 3 business day reply in SECURITY.md is a promise for LaBroi to approve. Left: push, watch CI on macOS and Windows and the first CodeQL run, and LaBroi turns on private vulnerability reporting (off on 2026-11-06), after which SECURITY.md can name it."
     },
     {
       "id": "US-123",
@@ -1960,7 +1960,7 @@
       ],
       "passes": false,
       "needs_human": false,
-      "notes": ""
+      "notes": "Built 2026-11-06, not yet run on GitHub. scripts/posture-check.mjs is copied from the security-hardening skill, and security-posture.yml runs it Mondays. It needs issues: write as well as read, to open the 1 issue. A security.txt within 30 days of expiring counts as a failure. INCIDENT_RESPONSE.md and a trimmed security.mdc are in the repo root, and CLAUDE.md points to them. Left: after the push, run the workflow by hand with test_alert ticked, and see the issue open and close."
     },
     {
       "id": "US-124",

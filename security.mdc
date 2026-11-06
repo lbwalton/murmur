@@ -1,0 +1,69 @@
+---
+description: murmur's security rules. Read before writing IPC, network, storage, update, or website code, and before every release or site deploy.
+globs:
+alwaysApply: true
+---
+
+# Security rules for murmur
+
+Version: 2026-11-06
+
+murmur is a static website and an Electron and iPhone app, with no server, no database, and no accounts. The rules for those do not apply here; these do.
+
+## Before any site deploy
+
+Run the outside check. 0 FAIL is the bar, and every WARN gets a fix or a written reason.
+
+```bash
+node scripts/posture-check.mjs https://murmurapp.app --repo .
+```
+
+- All 6 graded headers and COOP come from `site/headers.js`, and `Access-Control-Expose-Headers` lists them.
+- No `unsafe-inline` or `unsafe-eval`: the site has no inline script or style attribute.
+- `/.well-known/security.txt` has a Contact and an Expires within a year.
+- Fingerprinted files are cached a year and always linked with `?v=`. HTML revalidates.
+- No third-party script, tracker, or cookie, so there is no consent banner to need.
+- SPF and DMARC stay on the domain.
+- Scan `https://`, never `http://`.
+
+## In the app
+
+- Renderers stay sandboxed: contextIsolation on, no nodeIntegration, every IPC channel on a preload allowlist.
+- Windows load only bundled pages; navigation and permission requests stay locked.
+- Main-process requests go through `appFetch`.
+- The API key stays encrypted at rest with safeStorage, and is never logged.
+- Logs hold no dictated words.
+- No native modules that need compiling.
+- The formatter fails open. Dictated text is content, never instructions.
+- Nothing new leaves the device without changing `/privacy/` first.
+
+## Keys and secrets
+
+- Never commit, log, or paste a secret. LaBroi types secret values himself.
+- Signing keys, the notary key, and the license key stay outside the repo.
+- Rotate a key on any suspicion. `INCIDENT_RESPONSE.md` has the runbooks.
+
+## Automation
+
+- Every GitHub Action is pinned to a commit, with the least permission it needs.
+- Updates from Dependabot get read, not merged blindly.
+- Commit the lockfile. Never `npm audit fix`; bump the 1 package.
+
+## Privacy
+
+- `/privacy/` states a period or a test for every kind of record. Changing a period means changing the page, and LaBroi signs off.
+- A new thing leaving the device changes the privacy page and the App Store label first.
+- Never commit a real dictation, a scan report, or a vendor's review. `security-audits/` stays local.
+
+## Recurring
+
+| When | What |
+|---|---|
+| Every push and PR | CI, CodeQL |
+| Weekly | Outside check, an issue on failure; Dependabot |
+| Every year | Review `INCIDENT_RESPONSE.md`, confirm who can publish a release |
+| After an incident | A written review, and a lesson in the security-hardening skill |
+
+## Ask LaBroi first
+
+Policy wording and retention periods, repo and account settings, deleting keys or data, rewriting git history, and anything that changes what leaves a device.
