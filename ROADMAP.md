@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (94/119 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (94/144 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -131,3 +131,28 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-108** murmur Pro on the site: the mark, a pro link, and a /pro/ page
 - [ ] **US-112** Security patches for the dependencies GitHub flagged
 - [ ] **US-117** Hands-free: double-tap the hotkey to keep talking without holding it
+- [ ] **US-120** The privacy page says the important parts first
+- [ ] **US-121** A year-long cache for fingerprinted files
+- [ ] **US-122** The repo's security basics
+- [ ] **US-123** A weekly outside check, an incident plan, and the rules file
+- [ ] **US-124** A public security page
+- [ ] **US-125** A scored test set for messy speech
+- [ ] **US-126** Restarts and restated thoughts come out clean
+- [ ] **US-127** Apply corrections and smart lists on for everyone
+- [ ] **US-128** See what cleanup changed, and take it back
+- [ ] **US-129** A quality log that never holds your words
+- [ ] **US-130** Report this take
+- [ ] **US-131** Long dictation reads like it was written
+- [ ] **US-132** Writing style by kind of app
+- [ ] **US-133** Measure what the recognizer hears
+- [ ] **US-134** Paste on Windows without PowerShell
+- [ ] **US-135** Close the mic between takes, and say so plainly
+- [ ] **US-136** Choose how updates arrive
+- [ ] **US-137** Keep history for 24 hours, or not at all
+- [ ] **US-138** History encrypted on disk
+- [ ] **US-139** Every IPC call proves where it came from
+- [ ] **US-140** Warn before sending over plain http
+- [ ] **US-141** Stronger fuses and fewer Mac permissions
+- [ ] **US-142** Checksums and a parts list with every release
+- [ ] **US-143** A policy file IT can deploy
+- [ ] **US-144** Rescan and sign off
