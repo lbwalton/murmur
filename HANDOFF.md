@@ -67,7 +67,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 - [ ] US-119 a silent take never types invented words (built 2026-11-05 on feature/hands-free; smoke and unit tests pass). Your dictation hotkey is Option+Space on the Mac unless you changed it. Tell Claude what you saw at each step.
 
-  On the Mac, once Claude has installed the build with US-119:
+  On the Mac (the test build with US-119, 5d262d0, was installed 2026-11-05). If every word of a take is dropped as silence, the take does not wait on Home for Retry (LaBroi's call, 2026-11-05):
 
   1. Double-tap your hotkey and stay quiet for about 20 seconds (a tap or two on the desk is fine), then tap once to stop: you hear the low tone, nothing pastes, and nothing new shows on Home.
   2. Hold the hotkey without talking for about 5 seconds: the same. You hear the low tone, nothing pastes, nothing new on Home.
