@@ -91,3 +91,78 @@ describe('HotkeyDispatcher modifier-only combos', () => {
     expect(events).toEqual(['start', 'stop'])
   })
 })
+
+describe('HotkeyDispatcher with a machine that takes interrupts', () => {
+  function fake(withInterrupt = true) {
+    const events: string[] = []
+    let active = false
+    const m = {
+      keyDown: (): void => { events.push('keyDown'); active = true },
+      keyUp: (): void => { events.push('keyUp'); active = false },
+      isActive: (): boolean => active,
+      ...(withInterrupt ? { interrupt: (): void => { events.push('interrupt') } } : {})
+    }
+    return { events, m }
+  }
+  const combo = parseBinding('Ctrl+Alt', keyMap)!
+
+  it('reports a joining key to a machine that takes interrupts, not as a release', () => {
+    const { events, m } = fake()
+    const d = new HotkeyDispatcher(combo, m, MODS)
+    d.keydown(ev(29, { ctrl: true }))
+    d.keydown(ev(56, { ctrl: true, alt: true }))
+    d.keydown(ev(30, { ctrl: true, alt: true }))
+    expect(events).toEqual(['keyDown', 'interrupt'])
+  })
+
+  it('after an interrupt, a press counts again only once every bound modifier is up', () => {
+    const { events, m } = fake()
+    const d = new HotkeyDispatcher(combo, m, MODS)
+    d.keydown(ev(29, { ctrl: true }))
+    d.keydown(ev(56, { ctrl: true, alt: true }))
+    d.keydown(ev(30, { ctrl: true, alt: true }))
+    d.keydown(ev(42, { ctrl: true, alt: true, shift: true }))
+    d.keyup(ev(42, { ctrl: true, alt: true }))
+    expect(events).toEqual(['keyDown', 'interrupt'])
+    d.keyup(ev(29, { alt: true })) // the real release still reaches the machine
+    d.keyup(ev(56))
+    d.keydown(ev(29, { ctrl: true }))
+    d.keydown(ev(56, { ctrl: true, alt: true }))
+    expect(events).toEqual(['keyDown', 'interrupt', 'keyUp', 'keyUp', 'keyDown'])
+  })
+
+  it('typing with no bound modifier held leaves no latch behind', () => {
+    const { events, m } = fake()
+    const d = new HotkeyDispatcher(combo, m, MODS)
+    d.keydown(ev(30))
+    d.keydown(ev(29, { ctrl: true }))
+    d.keydown(ev(56, { ctrl: true, alt: true }))
+    expect(events).toEqual(['interrupt', 'keyDown'])
+  })
+
+  it('a machine without interrupt still gets keyUp for a joining key, as today', () => {
+    const { events, m } = fake(false)
+    const d = new HotkeyDispatcher(combo, m, MODS)
+    d.keydown(ev(29, { ctrl: true }))
+    d.keydown(ev(56, { ctrl: true, alt: true }))
+    d.keydown(ev(30, { ctrl: true, alt: true }))
+    expect(events).toEqual(['keyDown', 'keyUp'])
+  })
+
+  it('both chord shapes reach the machine as two presses', () => {
+    const binding = parseBinding('Ctrl+Space', keyMap)!
+    const a = fake()
+    const d = new HotkeyDispatcher(binding, a.m, MODS)
+    d.keydown(ev(57, { ctrl: true }))
+    d.keyup(ev(57, { ctrl: true }))
+    d.keydown(ev(57, { ctrl: true }))
+    expect(a.events).toEqual(['keyDown', 'keyUp', 'keyDown'])
+    const b = fake()
+    const d2 = new HotkeyDispatcher(binding, b.m, MODS)
+    d2.keydown(ev(29, { ctrl: true }))
+    d2.keydown(ev(57, { ctrl: true }))
+    d2.keyup(ev(57, { ctrl: true }))
+    d2.keydown(ev(57, { ctrl: true }))
+    expect(b.events).toEqual(['keyDown', 'keyUp', 'keyDown'])
+  })
+})

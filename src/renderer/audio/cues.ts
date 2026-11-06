@@ -3,7 +3,15 @@
 // no files anywhere. The palette is quiet on purpose; cues confirm, they
 // never announce.
 
-export type CueName = 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted'
+export type CueName =
+  | 'start'
+  | 'stop'
+  | 'insert'
+  | 'error'
+  | 'nospeech'
+  | 'noteStart'
+  | 'noted'
+  | 'lock'
 
 interface Tone {
   freq: number
@@ -13,7 +21,7 @@ interface Tone {
   type?: OscillatorType
 }
 
-const CUES: Record<CueName, Tone[]> = {
+export const CUES: Record<CueName, Tone[]> = {
   start: [
     { freq: 620, at: 0, duration: 0.07, gain: 0.5 },
     { freq: 880, at: 0.06, duration: 0.09, gain: 0.5 }
@@ -35,6 +43,13 @@ const CUES: Record<CueName, Tone[]> = {
     { freq: 1250, at: 0.07, duration: 0.14, gain: 0.4 }
   ],
   nospeech: [{ freq: 440, at: 0, duration: 0.1, gain: 0.3 }],
+  // Hands-free lock: tap tap, two light ticks on one high note, an echo
+  // of the double-tap, so it never sounds like the rising start blip it
+  // follows.
+  lock: [
+    { freq: 1319, at: 0, duration: 0.06, gain: 0.16 },
+    { freq: 1319, at: 0.12, duration: 0.08, gain: 0.16 }
+  ],
   error: [
     { freq: 220, at: 0, duration: 0.16, gain: 0.5, type: 'square' },
     { freq: 185, at: 0.1, duration: 0.16, gain: 0.4, type: 'square' }

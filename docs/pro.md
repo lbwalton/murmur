@@ -4,11 +4,15 @@
 
 A one-time purchase that supports murmur's development. The free app is complete and stays complete: dictation, formatting, the journey, every provider. Pro adds conveniences on top and a supporter mark, and it funds the work. Belts and cosmetics are earned by practice and are never for sale.
 
+[**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00) at Stripe's checkout. Through December 31, 2026, enter the code FOUNDERS there for $10 off, so Pro is $39 and you become a [founding member](#what-is-a-founding-member).
+
 ## What does Pro include?
 
 - Provider profiles: save whole provider setups (endpoint and models; the key ring supplies each provider's saved key automatically) under names and switch between them in one click.
 - Early access: new conveniences unlock for Pro first in official builds, then go free for everyone after a window. The source is public the entire time.
 - Priority support and, if you like, your name in SUPPORTERS.md.
+
+All of that for one payment, with no subscription: [**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00). Through December 31, 2026, enter the code FOUNDERS at checkout for $10 off, so it is $39.
 
 ## Where does the Pro mark appear, and what does it mean?
 
@@ -39,7 +43,16 @@ Once, quietly. 30 calendar days after you install murmur, Home shows one line un
 
 ## What is a founding member?
 
-Everyone who buys Pro during the founders window (the FOUNDERS code era) is a founding member forever. Founding members keep a permanent ten percent discount on every future paid product, including the cloud subscription and any paid iOS offering, and their license shows the founding member mark in settings.
+Everyone who buys Pro with the code FOUNDERS before the founders window ends, at the end of December 31, 2026, is a founding member forever. The code takes $10 off at the Stripe checkout, so Pro is $39 instead of $49; it works only there, never in the App Store, and stops working when the window ends. Founding members keep a permanent ten percent discount on every future paid product, including the cloud subscription and any paid iOS offering, and their license shows the founding member mark in settings.
+
+## Does murmur Pro cover my iPhone too?
+
+Yes, either way you buy it. Apple does not let an iPhone app unlock anything with a license key, so it works by email:
+
+- **Bought Pro on your Mac or PC?** Email support@murmurapp.app with your order id, from the address on your license. You get a one-time App Store code for murmur Pro on iPhone at no cost; on your iPhone, open murmur, tap the gear, then murmur Pro, and tap Redeem a code. Apple's codes last at most 6 months, so ask when you are ready. Founding members get a founders code, so their iPhone shows Founding member too.
+- **Bought Pro on your iPhone?** Email support@murmurapp.app with the order id from Apple's email receipt. Once Apple confirms the purchase, you get a license key for the Mac and Windows app.
+
+(Checked 2026-10-22 against Apple's App Review Guidelines, 3.1.1, and App Store Connect Help on offer codes.)
 
 ## How do license keys work?
 
@@ -54,3 +67,7 @@ Yes. Click **Deactivate** under Settings, murmur Pro: the app switches to the fr
 ## I lost my key. What do I do?
 
 Email support with your order id or receipt and a fresh key is issued. Keys are free to reissue for the same purchase.
+
+## How do I buy murmur Pro?
+
+[**Get murmur Pro, $49 once**](https://buy.stripe.com/28EeVdclC0oV2GI41o1wY00) at Stripe's checkout in your browser; Get Pro under Settings, murmur Pro in the app opens the same page. Through December 31, 2026, enter the code FOUNDERS at checkout for $10 off, so Pro is $39 and you become a founding member. Your license key is sent to the email address you pay with: paste it under Settings, murmur Pro, and click Activate.

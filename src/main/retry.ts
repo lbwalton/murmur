@@ -106,7 +106,7 @@ export function initRetry(settingsWindow: () => BrowserWindow | null): void {
 
   registerSmokeCheck('retry', async () => {
     // The hermetic smoke profile only: a failed take is saved, listed,
-    // retried into history and the clipboard with its audio removed; a
+    // retried into history with its audio removed and the clipboard left alone; a
     // take saved before records existed lists as a dictation; discard
     // deletes; an id that could leave the folder is refused.
     if (!isSmoke) return false
@@ -123,6 +123,8 @@ export function initRetry(settingsWindow: () => BrowserWindow | null): void {
     const listedOk = listed?.kind === 'dictation' && listed.audioMs === 1000 && listed.failure?.kind === 'auth'
 
     const clipboardBefore = await clipboard.readText()
+    const SENTINEL = 'murmur smoke: the user copied this'
+    await clipboard.writeText(SENTINEL)
     const [first, second] = await Promise.all([retryTake(id), retryTake(id)])
     const last = readHistory().at(-1)
     const onClipboard = await clipboard.readText()
@@ -133,7 +135,8 @@ export function initRetry(settingsWindow: () => BrowserWindow | null): void {
       last?.retried === true &&
       last.at === savedAt &&
       last.rawText.length > 0 &&
-      onClipboard === last.finalText &&
+      last.finalText.length > 0 &&
+      onClipboard === SENTINEL &&
       getRecovery(dir, id) === null
     await clipboard.writeText(clipboardBefore)
 

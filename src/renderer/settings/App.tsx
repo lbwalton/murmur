@@ -30,6 +30,7 @@ import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
+import { LoopLevelSlider } from './LoopLevelRow'
 import { Insignia, TabStroke } from './HeaderMarks'
 import { HeaderProMark, ProMark } from './ProMark'
 import { HISTORY_CLEARED } from './HomeView'
@@ -715,6 +716,7 @@ export function App(): React.JSX.Element {
               onUpdateSettings={update}
               license={license}
               onUpdatePro={updatePro}
+              pasteArmed={hotkeys?.pasteBindingValid !== false}
               onSeePro={() => {
                 setPage('setup')
                 // The settings column is hidden until the page switch paints.
@@ -1026,11 +1028,42 @@ export function App(): React.JSX.Element {
                 value={settings.hotkey.mode}
                 options={[
                   { value: 'hold', label: 'Hold to talk' },
-                  { value: 'toggle', label: 'Toggle' }
+                  { value: 'toggle', label: 'Tap to start, tap to stop' }
                 ]}
                 onChange={(mode) => void update({ hotkey: { mode } as Settings['hotkey'] })}
               />
             </Row>
+
+            {settings.hotkey.mode === 'hold' && (
+              <Row
+                label="Double-tap for hands-free"
+                keywords="hands free double tap lock long"
+                desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to cancel; the take waits on Home to retry."
+              >
+                <Switch
+                  checked={settings.hotkey.doubleTap}
+                  label="Double-tap for hands-free"
+                  onChange={(doubleTap) => void update({ hotkey: { ...settings.hotkey, doubleTap } })}
+                />
+              </Row>
+            )}
+
+            {settings.hotkey.mode === 'hold' && (
+              <Row
+                label="Loop once it settles"
+                keywords="hands free loop ring fade faint strength level double tap"
+                desc="The loop starts at full each time you double-tap, then fades to this."
+              >
+                <LoopLevelSlider
+                  value={settings.overlay.loopLevel}
+                  look={settings.overlay.look}
+                  style={settings.overlay.style}
+                  accent={guiAccent}
+                  disabled={!settings.hotkey.doubleTap}
+                  onCommit={(loopLevel) => void update({ overlay: { ...settings.overlay, loopLevel } })}
+                />
+              </Row>
+            )}
 
             <MicRow settings={settings} onUpdate={update} />
 
