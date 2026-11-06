@@ -922,11 +922,11 @@ async function fetchFont() {
 // ---------------------------------------------------- fingerprints ---
 
 /**
- * Every script, stylesheet, and the font gets a ?v= of its own content
- * in the files that point at it. The page itself is never cached
- * (Pages serves it with max-age=0), so a deploy reaches returning
- * visitors on their next load even though the zone keeps assets for
- * hours, and an old script can never meet a new page.
+ * Every script, stylesheet, the font, and the film get a ?v= of their
+ * own content in the files that point at them. The page itself is never
+ * cached (Pages serves it with max-age=0), so a deploy reaches returning
+ * visitors on their next load even though these files are kept for a
+ * year (headers.js), and an old script can never meet a new page.
  */
 function fingerprint() {
   const { createHash } = require('node:crypto')
@@ -945,6 +945,8 @@ function fingerprint() {
         .join(`'./${ref}?v=${v}'`)
         .split(`(${ref})`)
         .join(`(${ref}?v=${v})`)
+        .split(`${SITE_URL}/${ref}"`)
+        .join(`${SITE_URL}/${ref}?v=${v}"`)
       // A reference written some other way would stay unstamped and
       // stale for hours; the build stops instead.
       if (!text.includes(`${ref}?v=${v}`)) throw new Error(`site: ${file} has no stampable reference to ${ref}`)

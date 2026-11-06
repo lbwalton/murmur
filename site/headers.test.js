@@ -2,7 +2,7 @@
 // What security scanners grade on murmurapp.app, held so a change to
 // headers.js or the build cannot quietly undo it (US-118).
 import { describe, expect, it } from 'vitest'
-import { HEADERS, SECURITY_HEADERS, headersFile } from './headers'
+import { FINGERPRINTED_PATHS, HEADERS, LONG_CACHE, SECURITY_HEADERS, headersFile } from './headers'
 import { SECURITY_CONTACT, VALID_DAYS, securityTxt } from './security-txt'
 
 const header = (name) => HEADERS.find(([key]) => key === name)?.[1]
@@ -21,6 +21,17 @@ describe('security headers', () => {
     const file = headersFile()
     expect(file.startsWith('/*\n')).toBe(true)
     for (const [name, value] of HEADERS) expect(file).toContain(`  ${name}: ${value}\n`)
+  })
+
+  it('keeps fingerprinted files for a year and nothing else', () => {
+    expect(LONG_CACHE).toBe('public, max-age=31536000, immutable')
+    const file = headersFile()
+    for (const path of FINGERPRINTED_PATHS) expect(file).toContain(`\n${path}\n  Cache-Control: ${LONG_CACHE}\n`)
+    // HTML, the favicon, the preview image, robots and the sitemap keep their short default.
+    for (const path of ['/', '/*.html', '/favicon.svg', '/og.png', '/robots.txt', '/sitemap.xml']) {
+      expect(file).not.toContain(`\n${path}\n`)
+    }
+    expect(file.match(/Cache-Control/g)).toHaveLength(FINGERPRINTED_PATHS.length)
   })
 
   it('never lets inline or eval code run', () => {

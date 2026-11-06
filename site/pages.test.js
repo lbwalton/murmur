@@ -2,17 +2,52 @@
 // The privacy and support pages the App Store listing links to (ios/prd.json
 // IOS-026): what they say, and that every page links them.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { content } from './content'
+import { FINGERPRINTED_PATHS } from './headers'
 import PRO from '../shared/pro.json'
 
 const SITE = 'https://murmurapp.app'
 const EMAIL = 'support@murmurapp.app'
 const plain = (pieces) => pieces.map((p) => (typeof p === 'string' ? p : p.text)).join('')
 const allText = (items) => items.map((item) => [item.q, plain(item.a), ...(item.points ?? []).map(([lead, rest]) => `${lead} ${plain(rest)}`)].join(' ')).join(' ')
+
+describe('fingerprinted files (US-121)', () => {
+  const dist = mkdtempSync(join(tmpdir(), 'murmur-cache-'))
+  afterAll(() => rmSync(dist, { recursive: true, force: true }))
+  const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
+    )
+
+  it('are never linked without their fingerprint, or a year of cache would serve the old copy', () => {
+    const run = spawnSync(process.execPath, ['site/build.js'], {
+      cwd: join(__dirname, '..'),
+      encoding: 'utf8',
+      env: { ...process.env, SITE_OFFLINE: '1', FILM_DIR: join(dist, 'no-film'), SITE_OUT: dist, SITE_URL: SITE, SUPPORT_EMAIL: EMAIL }
+    })
+    expect(run.status, run.stderr).toBe(0)
+    const pages = files(dist).filter((file) => /\.(?:html|css|js)$/.test(file))
+    expect(pages.length).toBeGreaterThan(5)
+    const named = FINGERPRINTED_PATHS.filter((path) => !path.endsWith('*')).map((path) => path.slice(1))
+    const reference = new RegExp(
+      `(?<![\\w-])(?:${named.join('|').replace(/\./g, '\\.')}|fonts/[\\w.-]+\\.woff2|film/[\\w.-]+\\.(?:mp4|png))(\\?v=[0-9a-f]{10})?`,
+      'g'
+    )
+    const unstamped = pages.flatMap((file) => {
+      const text = readFileSync(file, 'utf8')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+      return [...text.matchAll(reference)].filter((match) => !match[1]).map((match) => `${file}: ${match[0]}`)
+    })
+    expect(unstamped).toEqual([])
+    expect(readFileSync(join(dist, 'index.html'), 'utf8')).toMatch(/app\.js\?v=[0-9a-f]{10}/)
+    expect(readFileSync(join(dist, 'hero.js'), 'utf8')).toMatch(/brush\.js\?v=[0-9a-f]{10}/)
+  })
+})
 
 describe('the privacy page', () => {
   const { privacy } = content(SITE, { supportEmail: EMAIL })
