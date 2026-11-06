@@ -41,8 +41,8 @@ function sendMicChoice(): void {
 }
 
 // With the mic closed between takes, the listening cue waits until sound
-// is arriving, and this long at most (US-135).
-const LIVE_CUE_WAIT_MS = 1_500
+// is arriving (US-135), however long that takes: a cue on a timer would
+// tell someone to talk into a mic that is not there.
 let cueWhenLive: (() => void) | null = null
 
 export function initAudio(settingsWindow: () => BrowserWindow | null = () => null): void {
@@ -86,7 +86,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   // picked mic is the first one it opens, not a move after launch.
   ipc.handle(IpcChannels.audioMicChoice, async (event) => {
     if (event.sender !== aliveAudio()?.webContents) return { id: '', label: '' }
-    return getSettings().microphone
+    return { ...getSettings().microphone, keepReady: getSettings().micMode !== 'press' }
   })
 
   void import('../settings').then(({ onSettingsChanged }) => {
@@ -586,12 +586,6 @@ export function startRecording(onLive?: () => void): void {
     return
   }
   cueWhenLive = onLive
-  const cue = onLive
-  setTimeout(() => {
-    if (cueWhenLive !== cue) return
-    cueWhenLive = null
-    cue()
-  }, LIVE_CUE_WAIT_MS)
 }
 
 /** Ask the capture window to rebuild its graph now. Safe between
@@ -602,6 +596,7 @@ export function rearmCapture(): void {
 }
 
 export function cancelRecording(): void {
+  cueWhenLive = null
   aliveAudio()?.webContents.send(IpcChannels.audioCancel)
 }
 
@@ -609,6 +604,7 @@ const STOP_TIMEOUT_MS = 5_000
 
 /** Stop and collect the WAV. Resolves null on cancel or timeout. */
 export function stopRecording(): Promise<Uint8Array | null> {
+  cueWhenLive = null
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       ipc.removeListener(IpcChannels.audioResult, onResult)

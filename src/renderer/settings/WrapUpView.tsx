@@ -497,7 +497,11 @@ export function WrapUpView(props: {
                   </span>
                   <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                 </div>
-                <p className="log-text">{event.finalText}</p>
+                {event.finalText.length > 0 ? (
+                  <p className="log-text">{event.finalText}</p>
+                ) : (
+                  <p className="log-text dim">Words not kept.</p>
+                )}
               </div>
             ))}
           </div>

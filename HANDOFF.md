@@ -4,6 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
+- [ ] 2026-11-06 overnight work is on branch chore/hardening-and-quality-stories, not pushed. Every step is in LaBroi's morning summary: Groq key for the private report, OpenRouter credit, security@ test email, Gmail cleanup script, and on-screen checks for US-128, US-130, US-135, US-136, US-137, and US-140.
 - [x] US-118 a security contact and headers every scanner can read: passed 2026-11-06. You created security@murmurapp.app; the site deployed from main with 0.1.17; security.txt is live and the outside check gives 16 pass, 0 fail, Observatory A+.
 - [x] US-119 a silent take never types invented words: live-verified 2026-11-06 on the a12e0df test build (LaBroi: all checks pass). Merged to main with hands-free 2026-11-06.
 - [ ] US-117 hands-free (tap the hotkey twice to keep talking without holding it): every Mac step live-verified by 2026-11-06 (step 13: a full 12 minute take of 833 words uploaded and pasted with paste last), merged to main 2026-11-06 with US-119 and shipped in v0.1.17. Left: the 2 Windows steps under Live verification queue, once your PC has updated itself to 0.1.17.

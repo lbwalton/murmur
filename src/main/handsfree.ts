@@ -11,6 +11,7 @@
 // 12 minute stops still bound the hold. Every way a take ends lets go
 // of it at once, so whichever comes first wins and the rest do nothing.
 // Logs carry numbers and outcomes, never words.
+import { KEEP_NO_TEXT } from '../shared/history'
 import { Notification, app, clipboard, powerMonitor, powerSaveBlocker } from 'electron'
 import { UiohookKey } from 'uiohook-napi'
 import type { FormatSpec } from '../shared/formatter'
@@ -247,7 +248,8 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   const outcome = await dictationStop(take.kind, { save: reason })
   // A take with no speech in it says nothing: the pill already did. A
   // lost take says so, since nobody was watching the pill.
-  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, ...pasteChord()))
+  const untilQuit = getSettings().history.retentionDays === KEEP_NO_TEXT
+  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, ...pasteChord(), untilQuit))
   else if (outcome === 'retry') notify(retryNotice(reason))
   else if (outcome === 'failed') notify(failedNotice(reason))
 }

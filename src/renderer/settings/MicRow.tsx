@@ -91,7 +91,7 @@ export function MicRow(props: {
       keywords="microphone always on privacy orange dot closed open warm"
       desc={
         press
-          ? `The mic is off until you press, and the listening sound plays once it is live, so wait for it before you speak.${
+          ? `The mic is off until you press, and the listening sound plays once it is live, so with sounds on, wait for it before you speak.${
               lastPress === null ? '' : ` Your last press took ${lastPress} ms.`
             }`
           : 'The mic stays ready so your first word is not cut off. The last 300 ms sit in memory, and nothing is saved or sent until you press.'

@@ -84,12 +84,14 @@ export function stopNotice(
   reason: StopReason,
   kind: 'dictation' | 'note',
   pasteLastBinding: string,
-  pasteArmed: boolean
+  pasteArmed: boolean,
+  untilQuit = false
 ): { title: string; body: string } {
+  const until = untilQuit ? ' until you quit murmur' : ''
   const words =
     pasteLastBinding && pasteArmed
-      ? `Your words are in history. Press ${pasteLastBinding} to paste them.`
-      : "Your words are in history on murmur's Home."
+      ? `Your words are in history${until}. Press ${pasteLastBinding} to paste them.`
+      : `Your words are in history on murmur's Home${until}.`
   const where = kind === 'note' ? 'Your note is saved.' : words
   return { title: TITLE, body: `${STOPPED[reason]}${where}` }
 }

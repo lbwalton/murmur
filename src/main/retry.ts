@@ -38,11 +38,23 @@ async function log(line: string): Promise<void> {
   }
 }
 
+const busy = new Set<string>()
+
 /** Tell the settings window the waiting list changed. Only that window
  *  hears about takes, never the overlay or audio windows. */
 function notifyChanged(): void {
   const win = getTargetWindow()
   if (win && !win.isDestroyed()) win.webContents.send('recovery:changed')
+}
+
+/** Tell the home tab a take left the list for another reason. */
+export function recoveryChanged(): void {
+  notifyChanged()
+}
+
+/** Whether a take is running or queued, so nothing removes it meanwhile. */
+export function isRetrying(id: string): boolean {
+  return busy.has(id)
 }
 
 async function retryNow(id: string): Promise<RetryResult> {
@@ -71,7 +83,8 @@ async function retryNow(id: string): Promise<RetryResult> {
 
 /** Retry one take, after any retry already running. */
 export function retryTake(id: string): Promise<RetryResult> {
-  const next = queue.then(() => retryNow(id))
+  busy.add(id)
+  const next = queue.then(() => retryNow(id)).finally(() => busy.delete(id))
   queue = next.catch(() => undefined)
   return next.catch(async (error) => {
     console.error('[murmur] retry threw:', error)

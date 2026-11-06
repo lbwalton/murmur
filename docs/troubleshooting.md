@@ -32,7 +32,7 @@ What a retry does: it sends the saved audio to your provider with your current s
 - **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
 - **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
 
-If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?, in red) and then deletes it on a second click (a quick double click counts as one click, so it never deletes by accident). A retried dictation counts toward your stats on the day you spoke it.
+A recording waits until you retry or discard it, or until the limit you set under Keep history for removes it. If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?, in red) and then deletes it on a second click (a quick double click counts as one click, so it never deletes by accident). A retried dictation counts toward your stats on the day you spoke it.
 
 The audio never leaves your computer except to your own provider when you retry, exactly as for a live dictation. It lives in the recovery folder inside murmur's data folder, and murmur keeps the 20 most recent takes.
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { AUDIO_SENDS, boundedText, channelAllowed, pageRole } from './ipc-rules'
 
@@ -39,6 +40,31 @@ describe('pageRole', () => {
     expect(pageRole(url, bases)).toBeNull()
     expect(pageRole(url, { ...bases, devServer: 'http://localhost:5173/' })).toBe('settings')
     expect(pageRole('http://localhost:9999/settings/index.html', { ...bases, devServer: 'http://localhost:5173' })).toBeNull()
+  })
+
+  // Chromium leaves these raw in a page's address and pathToFileURL
+  // escapes them. Found on real Electron: 1 such folder refused every
+  // window, which would be a total outage for that install.
+  it('knows its own pages on an install path with awkward characters', () => {
+    for (const folder of ['tilde~x', 'brack[et]', 'percent%sign', '100%', 'with space', 'emoji🎙', 'Ñame', "it's", 'a#b', 'q?x']) {
+      const root = pathToFileURL(`/Users/me/${folder}/out/renderer`).href
+      const raw = root.replace(/%7E/g, '~').replace(/%5B/g, '[').replace(/%5D/g, ']').replace(/%25/g, '%')
+      expect(pageRole(`${root}/settings/index.html`, { rendererRoot: root }), folder).toBe('settings')
+      if (!folder.includes('%')) expect(pageRole(`${raw}/audio/index.html`, { rendererRoot: root }), folder).toBe('audio')
+    }
+    const root = pathToFileURL('/Users/me/brack[et]/out/renderer').href
+    expect(pageRole('file:///Users/me/brack[et]/out/renderer/overlay/index.html', { rendererRoot: root })).toBe('overlay')
+  })
+
+  it('reads a network share', () => {
+    const root = 'file://server/share/murmur/out/renderer'
+    expect(pageRole(`${root}/settings/index.html`, { rendererRoot: root })).toBe('settings')
+    expect(pageRole('file://other/share/murmur/out/renderer/settings/index.html', { rendererRoot: root })).toBeNull()
+  })
+
+  it('cannot be walked out of the folder with escaped slashes', () => {
+    expect(pageRole(`${bases.rendererRoot}/..%2f..%2fevil/settings/index.html`, bases)).toBeNull()
+    expect(pageRole(`${bases.rendererRoot}/settings%2findex.html`, bases)).toBeNull()
   })
 
   it('reads a Windows path whatever the case of the drive letter', () => {

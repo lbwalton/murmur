@@ -20,6 +20,7 @@ import {
   receiptTitle,
   revealLabel
 } from '../../shared/receipt'
+import { KEEP_NO_TEXT } from '../../shared/history'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE } from '../../shared/notes'
 import { getSettings, updateSettings } from '../settings'
@@ -78,12 +79,22 @@ export function getLastNote(): LastNote | null {
 function setLastNote(note: LastNote): void {
   lastNote = note
   try {
-    replaceViaTemp(storeFile(), `${JSON.stringify(note)}\n`)
+    // Don't keep holds no words on disk, here included (US-137).
+    const keepsText = getSettings().history.retentionDays !== KEEP_NO_TEXT
+    replaceViaTemp(storeFile(), `${JSON.stringify(keepsText ? note : { ...note, line: '' })}\n`)
   } catch (error) {
     // The record is a convenience; the note itself is already safe.
     say(`remember failed reason=${errorCode(error)}`)
   }
   notify(note)
+}
+
+/** Takes the words out of the stored receipt once it is past the limit.
+ *  The note itself is the person's own file and stays. */
+export function scrubLastNoteLine(cutoff: number): void {
+  const note = getLastNote()
+  if (note === null || note.at >= cutoff || note.line === '') return
+  setLastNote({ ...note, line: '' })
 }
 
 function notify(note: LastNote | null): void {

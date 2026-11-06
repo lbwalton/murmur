@@ -221,11 +221,14 @@ export function initSettings(): void {
   })
   ipc.handle('apikey:statusFor', (_event, baseUrl: unknown) => keyStatusFor(baseUrl))
   ipc.handle('apikey:clearFor', (_event, baseUrl: unknown) => {
-    if (typeof baseUrl === 'string' && baseUrl !== '' && !sharedSlotUrl(baseUrl)) ring?.clear(baseUrl)
+    const url = boundedText(baseUrl, MAX_URL_CHARS)
+    if (url !== null && url !== '' && !sharedSlotUrl(url)) ring?.clear(url)
     return keyStatusFor(baseUrl)
   })
   ipc.handle('provider:testFor', async (_event, baseUrl: unknown) => {
-    if (typeof baseUrl !== 'string' || baseUrl === '') return { ok: false, detail: 'no base URL set' }
+    if (typeof baseUrl !== 'string' || baseUrl === '' || baseUrl.length > MAX_URL_CHARS) {
+      return { ok: false, detail: 'no base URL set' }
+    }
     return probeConnection(baseUrl, ring?.get(baseUrl) ?? null)
   })
 

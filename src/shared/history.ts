@@ -30,6 +30,8 @@ export interface SessionEvent {
   /** Delivered by a retry from the home tab (US-068), after the live
    *  transcription failed; logged at the time it was spoken. */
   retried?: boolean
+  /** A transform's instruction length, kept when its words are removed. */
+  instructionWords?: number
 }
 
 /** The Keep history values with their own meaning (US-137). Every other
@@ -49,8 +51,11 @@ export function textCutoff(retentionDays: number, now: number): number | null {
   return null
 }
 
+/** A transform's stroke weighs its spoken instruction, so that count
+ *  outlives the words. */
 export function withoutText(event: SessionEvent): SessionEvent {
-  return { ...event, rawText: '', finalText: '' }
+  const instruction = event.kind === 'transform' ? { instructionWords: countWords(event.rawText) } : {}
+  return { ...event, rawText: '', finalText: '', ...instruction }
 }
 
 export function hasText(event: SessionEvent): boolean {
@@ -63,13 +68,6 @@ export function hasText(event: SessionEvent): boolean {
 export function recordingLimitMs(retentionDays: number): number | null {
   if (retentionDays === KEEP_NO_TEXT || retentionDays === KEEP_24_HOURS) return DAY_MS
   return retentionDays > 0 ? retentionDays * DAY_MS : null
-}
-
-/** Whether a new Keep history value removes more than the current one. */
-export function isShorterKeep(next: number, current: number): boolean {
-  const reach = (days: number): number =>
-    days === KEEP_FOREVER ? Number.POSITIVE_INFINITY : days === KEEP_NO_TEXT ? 0 : days
-  return reach(next) < reach(current)
 }
 
 /** Whether an event counts toward words, belts, achievements, recaps,

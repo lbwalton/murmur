@@ -13,8 +13,7 @@ import {
   countsTowardStats,
   dayKey,
   groupByDay,
-  hasText,
-  isShorterKeep
+  hasText
 } from '../../shared/history'
 import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
@@ -234,7 +233,11 @@ export function shorterKeepQuestion(retentionDays: number, takes: number, record
     recordings > 0 ? `${recordings.toLocaleString()} ${recordings === 1 ? 'recording' : 'recordings'} waiting to retry` : ''
   ].filter((part) => part.length > 0)
   if (parts.length === 0) return ''
-  const numbers = wordsOnly ? ' Your numbers and belts stay.' : ''
+  const numbers = wordsOnly
+    ? ' Your numbers and belts stay.'
+    : takes > 0
+      ? ' Their numbers go too, so your totals drop.'
+      : ''
   return `This removes ${parts.join(' and ')} now, and it cannot be undone.${numbers}`
 }
 
@@ -276,12 +279,12 @@ function WhatYouSaid(props: { id: string; event: SessionEvent }): React.JSX.Elem
  *  untouched. The paste-last chord is named only while it is armed; a
  *  saved chord that is disarmed (it clashes with another hotkey or no
  *  longer parses) does nothing, so the line points at the log instead. */
-export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean): string {
+export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean, untilQuit = false): string {
   const paste =
     pasteLastBinding && pasteArmed
       ? ` Press ${pasteLastBinding} in any app to paste them there.`
       : ' Click copy on it in the log below.'
-  return `Done: the words are in your log.${paste}`
+  return `Done: the words are in your log${untilQuit ? ' until you quit murmur' : ''}.${paste}`
 }
 
 /**
@@ -294,7 +297,11 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
  * are deleted, so a take that fails while it is open is kept. Keep them
  * has focus, so a double press never deletes. One question at a time.
  */
-function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }): React.JSX.Element | null {
+function WaitingTakes(props: {
+  untilQuit: boolean
+  pasteLastBinding: string
+  pasteArmed: boolean
+}): React.JSX.Element | null {
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -356,16 +363,18 @@ function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }):
       setMessage(
         kind === 'note'
           ? location === 'history'
-            ? 'Transcribed, but the note could not be written to your notes folder or murmur\'s data folder. The words are safe in your log.'
+            ? `Transcribed, but the note could not be written to your notes folder or murmur's data folder. The words are safe in your log${props.untilQuit ? ' until you quit murmur' : ''}.`
             : 'Done: the note is filed under the time you spoke it, and it is in your log.'
           : kind === 'transform'
             ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed)
+            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed, props.untilQuit)
       )
     } else if (done.length > 0) {
-      setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
+      setMessage(
+        `${done.length} delivered to your log${props.untilQuit ? ' until you quit murmur' : ''}${failed > 0 ? `, ${failed} still waiting` : ''}.`
+      )
     } else {
-      setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it.')
+      setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.')
     }
   }
 
@@ -543,15 +552,12 @@ export function HomeView(props: {
   }
   const chooseKeep = async (retentionDays: number): Promise<void> => {
     setKeepAsk(null)
-    if (isShorterKeep(retentionDays, props.settings.history.retentionDays)) {
-      const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
-      const question = shorterKeepQuestion(retentionDays, takes, recordings)
-      if (question !== '') {
-        setKeepAsk({ value: retentionDays, question })
-        return
-      }
-    }
-    applyKeep(retentionDays)
+    // Asked on every change: going from Don't keep to 30 days is longer
+    // for words, and still removes old entries with their numbers.
+    const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
+    const question = shorterKeepQuestion(retentionDays, takes, recordings)
+    if (question === '') applyKeep(retentionDays)
+    else setKeepAsk({ value: retentionDays, question })
   }
   const askClear = (): void => {
     if (counting.current) return
@@ -681,7 +687,7 @@ export function HomeView(props: {
         </p>
       )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
+      <WaitingTakes untilQuit={props.settings.history.retentionDays === KEEP_NO_TEXT} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>
@@ -747,6 +753,9 @@ export function HomeView(props: {
                     <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                   )}
                   {event.retried && <span className="mono-inline dim">retried</span>}
+                  {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
+                    <span className="mono-inline dim">until you quit</span>
+                  )}
                   {offersWhatYouSaid(event) && (
                     <button
                       className="btn quiet-btn log-said-toggle"
@@ -782,7 +791,7 @@ export function HomeView(props: {
                     onClose={() => setOpenReport(null)}
                   />
                 )}
-                {event.kind === 'transform' && !event.unsent && (
+                {event.kind === 'transform' && !event.unsent && hasText(event) && (
                   <p className="log-instruction dim">you said: {event.rawText}</p>
                 )}
                 {event.kind === 'transform' && event.unsent && (
@@ -814,7 +823,7 @@ export function HomeView(props: {
               <div className="row-label">Keep history for</div>
               <div className="row-desc">
                 {props.settings.history.retentionDays === KEEP_NO_TEXT
-                  ? 'No words are saved, and your numbers, belts, and paintings keep counting. The last take stays in memory for paste last, and a recording waiting to retry stays up to 24 hours.'
+                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. Notes still land in your notes folder, and a recording waiting to retry stays up to 24 hours.'
                   : 'Older entries are pruned automatically. Everything stays on this machine.'}
               </div>
             </div>

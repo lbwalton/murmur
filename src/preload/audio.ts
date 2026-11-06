@@ -53,8 +53,9 @@ const api = {
     ipcRenderer.send('audio:live', ms)
   },
   /** The pick, asked for before the first arm so a picked mic opens first. */
-  micChoice: async (): Promise<{ id: string; label: string }> => {
-    return micChoice(await ipcRenderer.invoke('audio:mic-choice'))
+  micChoice: async (): Promise<{ id: string; label: string; keepReady: boolean }> => {
+    const answer = await ipcRenderer.invoke('audio:mic-choice')
+    return { ...micChoice(answer), keepReady: answer?.keepReady !== false }
   },
   /** The inputs by name and the one in use, for the Settings picker. */
   mics: (report: { devices: Array<{ id: string; label: string }>; current: string; standIn: boolean; open: boolean; openMs: number | null }): void => {

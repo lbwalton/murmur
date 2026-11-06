@@ -164,14 +164,23 @@ export class Recorder {
   setKeepReady(keep: boolean): void {
     if (keep === this.keepReady) return
     this.keepReady = keep
-    if (keep) void this.arm().then(() => this.report(), () => undefined)
-    else if (this.active === null) void this.closeMic()
+    if (!keep) {
+      if (this.active === null) void this.closeMic()
+    } else if (this.ctx === null && !this.arming) {
+      // Only when there is no graph: a take in progress keeps the one it
+      // is recording on, and a cold rebuild here would cut out of it.
+      void this.arm().then(() => this.report(), () => undefined)
+    }
   }
 
   // The same release a dead graph gets, and the bump makes any attempt
   // still building give back whatever it acquires.
   private async closeMic(): Promise<void> {
     this.generation++
+    // The abandoned attempt must not stand in for the next press's arm:
+    // it would build nothing, and that press would wait out the watchdog.
+    this.arming = null
+    this.armingSince = null
     this.live = null
     this.liveLabel = ''
     await this.teardown()
@@ -676,6 +685,8 @@ export class Recorder {
     if (!this.keepReady) {
       if (this.ctx === null) {
         this.openAskedAt = Date.now()
+        // A fresh stall window, so a failed open is retried on the next tick.
+        this.lastChunkAt = 0
         void this.arm().catch(() => undefined)
       } else {
         this.opts.onLive?.(0)

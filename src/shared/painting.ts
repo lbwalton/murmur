@@ -113,7 +113,7 @@ export function shiftDay(day: string, offset: number): string {
  *  word count is the selection it rewrote, so it counts its spoken
  *  instruction instead. */
 export function takeWords(event: SessionEvent): number {
-  const words = event.kind === 'transform' ? countWords(event.rawText ?? '') : event.words
+  const words = event.kind === 'transform' ? (event.instructionWords ?? countWords(event.rawText ?? '')) : event.words
   return Number.isFinite(words) && words > 0 ? Math.floor(words) : 0
 }
 

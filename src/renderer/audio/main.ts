@@ -118,11 +118,14 @@ bridge.onCue((cue, volume) => {
 // opened; main answers at once, and a second at most stands in for it.
 const firstChoice = Promise.race([
   bridge.micChoice(),
-  new Promise<{ id: string; label: string }>((resolve) => setTimeout(() => resolve({ id: '', label: '' }), 1_000))
-]).catch(() => ({ id: '', label: '' }))
+  new Promise<{ id: string; label: string; keepReady?: boolean }>((resolve) => setTimeout(() => resolve({ id: '', label: '' }), 1_000))
+]).catch((): { id: string; label: string; keepReady?: boolean } => ({ id: '', label: '' }))
 void firstChoice
   .then((choice) => {
     recorder.setMicChoice(choice)
+    // The address keeps the launch's mode across a revive, so this answer
+    // is what counts, and it arrives before anything opens.
+    if (choice.keepReady !== undefined) recorder.setKeepReady(choice.keepReady)
     return recorder.armIfReady()
   })
   .then(

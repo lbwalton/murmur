@@ -24,7 +24,7 @@ describe('a shorter Keep history', () => {
 
   it('says whole entries go on the day limits', () => {
     expect(shorterKeepQuestion(30, 12, 1)).toBe(
-      'This removes 12 entries and 1 recording waiting to retry now, and it cannot be undone.'
+      'This removes 12 entries and 1 recording waiting to retry now, and it cannot be undone. Their numbers go too, so your totals drop.'
     )
   })
 
