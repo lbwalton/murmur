@@ -730,6 +730,37 @@ h1 {
   color: var(--text-dim);
 }
 
+/* The founders price line (LaBroi, 2026-10-24): under the download on
+   home, and on a panel atop the Pro doc, until the window closes. */
+.founders {
+  margin-top: 12px;
+  max-width: 34em;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.founders strong,
+.doc .founders strong {
+  color: var(--brand);
+  font-weight: 650;
+}
+
+.founders a {
+  color: var(--text);
+  text-decoration-color: var(--brand-edge);
+  text-underline-offset: 3px;
+}
+
+.doc .founders {
+  max-width: none;
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+}
+
 /* app.js names the visitor's computer on the root element before first
    paint. Without it both downloads stay side by side. */
 :root[data-os='mac'] .dl-windows,
