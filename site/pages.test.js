@@ -69,7 +69,7 @@ describe('the privacy page', () => {
   })
 
   it('says how to remove everything on each platform, and what Eze Media keeps', () => {
-    for (const fact of ['Library/Application Support/murmur', '%APPDATA%\\murmur', 'Remove key', 'recordings waiting to be retried', 'tax records', 'deletes them when you ask']) {
+    for (const fact of ['Library/Application Support/murmur', '%APPDATA%\\murmur', 'Remove key', 'recordings waiting to be retried', 'tax and business audits', 'deletes them when you ask']) {
       expect(text).toContain(fact)
     }
     expect(text).not.toContain('uninstalling murmur removes the rest')
@@ -154,6 +154,39 @@ describe('the site build (IOS-026)', () => {
       const run = build({ SITE_URL: SITE, SUPPORT_EMAIL: EMAIL }, dist)
       expect(run.status, run.stderr).toBe(0)
     }, 60_000)
+
+    it('opens the privacy page with the summary, above the first question', () => {
+      const html = read('privacy/index.html')
+      const summary = html.indexOf('id="summary"')
+      const firstQuestion = html.indexOf('<h2 id=')
+      expect(summary).toBeGreaterThan(-1)
+      expect(summary).toBeLessThan(firstQuestion)
+      const top = html.slice(summary, firstQuestion)
+      for (const fact of ['collects', 'kept', 'rights', 'correct', 'delete', 'sold', 'no cookie banner']) {
+        expect(top).toContain(fact)
+      }
+    })
+
+    it('gives every kind of record a period or a rule, and names the laws', () => {
+      const html = read('privacy/index.html')
+      for (const fact of ['Keep history', 'waiting for a retry', '10 years after purchase', '3 years after the last message', 'GDPR', 'CCPA', '300 milliseconds']) {
+        expect(html).toContain(fact)
+      }
+      expect(html).not.toContain('[email protected]')
+    })
+
+    it('writes the security page, says what murmur lacks, and lists it everywhere', () => {
+      const html = read('security/index.html')
+      for (const fact of ['SOC 2', 'ISO 27001', 'penetration test', 'Not code signed', 'HIPAA', 'security@murmurapp.app', 'Checked 2026-11-05']) {
+        expect(html).toContain(fact)
+      }
+      expect(html).not.toMatch(/<script(?![^>]*(?:src=|application\/ld\+json))/)
+      for (const file of ['index.html', 'docs/index.html', 'privacy/index.html', 'security/index.html', '404.html']) {
+        expect(read(file)).toContain('href="/security/"')
+      }
+      expect(read('sitemap.xml')).toContain(`${SITE}/security/`)
+      expect(read('llms.txt')).toContain(`${SITE}/security/`)
+    })
 
     it('writes both pages, with their questions and the address', () => {
       expect(read('privacy/index.html')).toContain('Does murmur collect my data?')

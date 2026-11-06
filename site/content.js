@@ -32,6 +32,7 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
     doc: (name, anchor) => `${site}/docs/${name}/${anchor ? `#${anchor}` : ''}`,
     docSource: (name, ref = 'main') => `${REPO}/blob/${ref}/docs/${name}.md`,
     compare: `${site}/wispr-flow-alternative/`,
+    privacy: `${site}/privacy/`,
     windowsScreen: `${site}/docs/download/#what-does-windows-protected-your-pc-mean-when-i-install-murmur`,
     groqKeys: 'https://console.groq.com/keys',
     license: 'https://www.gnu.org/licenses/gpl-3.0.html'
@@ -151,7 +152,7 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
     }
   ]
 
-  return { links, facts, title, description, faq, compare: compare(links, facts), privacy: privacy(links, supportEmail), support: support(links, supportEmail) }
+  return { links, facts, title, description, faq, compare: compare(links, facts), privacy: privacy(links, supportEmail), security: security(links, supportEmail), support: support(links, supportEmail) }
 }
 
 /** The address as a link, or the issues page when the build has none. */
@@ -170,7 +171,13 @@ function privacy(links, supportEmail) {
     description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-10-22',
+    updated: '2026-11-06',
+    summary: [
+      ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
+      ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
+      ['Your rights.', ['You can see, correct, and delete what Eze Media LLC holds about you. Nothing is sold or shared.']],
+      ['Cookies.', ['The site sets none, so it shows no cookie banner.']]
+    ],
     items: [
       {
         q: 'Does murmur collect my data?',
@@ -219,6 +226,30 @@ function privacy(links, supportEmail) {
         ]
       },
       {
+        q: 'Is the microphone always on?',
+        a: [
+          "The microphone stays ready while murmur runs on Mac and Windows, so your first word is not cut off. The last 300 milliseconds are held in memory and constantly replaced. Nothing is saved or sent until you press your hotkey, and when you do, that short moment becomes the start of your take."
+        ]
+      },
+      {
+        q: 'How long is each kind of record kept?',
+        a: ['Each kind of record has a period or a plain rule:'],
+        points: [
+          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time.']],
+          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it.']],
+          ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
+          ['Support email.', ['3 years after the last message, then cleared within about 30 days.']]
+        ]
+      },
+      {
+        q: 'What rights do I have over my data?',
+        a: [
+          'You can ask Eze Media LLC what it holds about you, and have it corrected or deleted, wherever you live. That includes your rights under the GDPR in the EU and UK and the CCPA in California. Nothing is sold or shared, and no one is treated differently for asking. Write to ',
+          ask(links, supportEmail),
+          '.'
+        ]
+      },
+      {
         q: 'How do I delete my data?',
         a: ['Clear all empties your history (on the home tab on Mac and Windows, above your takes on iPhone). To remove everything murmur keeps:'],
         points: [
@@ -229,7 +260,7 @@ function privacy(links, supportEmail) {
           [
             'Eze Media LLC.',
             [
-              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It keeps them as long as your license and tax records need, and deletes them when you ask, unless the law requires keeping them. Write to ',
+              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It deletes them when you ask, unless the law requires keeping them. Write to ',
               ask(links, supportEmail),
               '.'
             ]
@@ -245,6 +276,110 @@ function privacy(links, supportEmail) {
       {
         q: 'Who do I ask about privacy?',
         a: ['Eze Media LLC makes murmur. Write to ', ask(links, supportEmail), '. If any of this changes, this page changes first, with its date.']
+      }
+    ]
+  }
+}
+
+// The 1 page to send a security reviewer (US-124). It says what murmur
+// lacks as plainly as what it has. Claims were checked against the code
+// on the day in updated: src/main/updater.ts, src/main/license.ts,
+// src/renderer/audio/recorder.ts, and site/headers.js.
+function security(links, supportEmail) {
+  return {
+    title: 'Security: how murmur handles your data',
+    description: 'For security reviewers: what leaves the device, who processes it, how keys and updates are protected, what is signed, what murmur does not have, and how to report a problem.',
+    h1: 'Security at murmur.',
+    lede: 'murmur has no server and no accounts, so there is no murmur database to breach. This page answers what a security review usually asks, including what murmur does not have.',
+    updated: '2026-11-06',
+    items: [
+      {
+        q: 'What leaves the device, and where does it go?',
+        a: [
+          'The audio of a take goes to the transcription provider the person chose, and its words go to the cleanup provider they chose, over encrypted connections and under their own key. Nothing reaches Eze Media LLC. The update check and the provider list come from GitHub. ',
+          { text: 'The full list is on the privacy page', href: links.privacy },
+          '.'
+        ]
+      },
+      {
+        q: 'Who processes the data?',
+        a: [
+          'Only the provider the person picks, under the terms they accepted when they made their key. Groq is the default, and any OpenAI-compatible service works, including a server on their own computer, where the audio never leaves it. ',
+          { text: 'Choosing a provider', href: links.doc('providers') },
+          '.'
+        ]
+      },
+      {
+        q: 'What is stored, and where?',
+        a: [
+          'History, settings, notes, and recordings waiting for a retry stay on the device. Transcripts in history are not encrypted by murmur, so they are protected by the device itself, and Keep history sets how long they stay. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
+        ]
+      },
+      {
+        q: 'Is the microphone always on?',
+        a: [
+          'It stays ready while murmur runs on Mac and Windows, holding the last 300 milliseconds in memory so a first word is not cut off. Nothing is saved or sent until the hotkey is pressed.'
+        ]
+      },
+      {
+        q: 'How are API keys stored?',
+        a: [
+          "Encrypted by the system: Electron's secure storage on Mac and Windows, and the Keychain on iPhone. Keys are never written to logs, and they go only to the provider they belong to."
+        ]
+      },
+      {
+        q: 'How are updates and licenses checked?',
+        a: [
+          'On Mac and Windows, updates come from murmur\'s GitHub releases and install on their own. Each download is checked against the checksum published with the release, and on Mac against the app\'s signature too. There is no setting to turn updates off yet. Pro license keys are ed25519 signatures checked offline, with no licensing server.'
+        ]
+      },
+      {
+        q: 'What is signed on each platform?',
+        a: ['The Mac and iPhone apps are. The Windows installer is not:'],
+        points: [
+          ['Mac.', ['Signed with an Apple Developer ID and notarized by Apple.']],
+          ['iPhone.', ['Signed and distributed through the App Store.']],
+          [
+            'Windows.',
+            [
+              'Not code signed yet, so Windows shows a warning on install, and Smart App Control blocks it on PCs that have it on. ',
+              { text: 'What to do about the warning', href: links.doc('download') },
+              '.'
+            ]
+          ]
+        ]
+      },
+      {
+        q: 'What certifications does murmur have?',
+        a: [
+          'None. murmur has no SOC 2 report, no ISO 27001 certificate, and has had no independent penetration test. With no server, most of what those cover does not apply, but they are not a claim murmur can make. What you can do instead is read the code: it is public under GPL-3.0 on ',
+          { text: 'GitHub', href: links.repo },
+          '.'
+        ]
+      },
+      {
+        q: 'What about HIPAA and similar rules?',
+        a: [
+          'They depend on the provider a person picks, since that is who handles the audio and text. The apps send nothing to Eze Media LLC, so it does not sign a business associate agreement. A team with those duties should use a provider that signs one, or a server of its own.'
+        ]
+      },
+      {
+        q: 'How is this website protected?',
+        a: [
+          'It is static, with no cookies, no analytics, and no scripts but its own, under a strict content security policy. Checked 2026-11-05: A+ from Mozilla Observatory, Qualys SSL Labs, and securityheaders.com. A weekly check watches the live site.'
+        ]
+      },
+      {
+        q: 'How do I report a security problem?',
+        a: [
+          'Email ',
+          { text: 'security@murmurapp.app', href: 'mailto:security@murmurapp.app' },
+          '. You get a reply within 3 business days. The address is also in ',
+          { text: 'security.txt', href: `${links.site}/.well-known/security.txt` },
+          ', and ',
+          { text: 'the security policy', href: `${links.repo}/blob/main/SECURITY.md` },
+          ' says what is in scope.'
+        ]
       }
     ]
   }

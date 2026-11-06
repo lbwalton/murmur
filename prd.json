@@ -1915,7 +1915,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise."
+      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise. Drafted 2026-11-06 on the branch, not deployed: a summary above the first question, a retention list, a rights question naming GDPR and CCPA, and a microphone question, with build tests. Left: LaBroi reads and approves the wording, the Gmail cleanup runs first, and a rescan after deploy."
     },
     {
       "id": "US-121",
@@ -1976,7 +1976,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "LaBroi approves the wording."
+      "notes": "LaBroi approves the wording. Drafted 2026-11-06 on the branch, not deployed: /security/ in the footer, sitemap, and llms.txt, with tests. It states the Windows installer is unsigned, that there is no update off switch yet, and that history is not encrypted, so it changes when US-136 and US-138 ship. It says the file SECURITY.md lives on main, so it needs US-122 merged first. Left: LaBroi approves the wording, and the seo-geo-aeo checklist at deploy."
     },
     {
       "id": "US-125",
