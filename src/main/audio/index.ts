@@ -164,7 +164,10 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
       await new Promise((resolve) => setTimeout(resolve, 300))
       const wav = await stopRecording()
       const closedAgain = await until(() => !micReport.open)
-      return closed && opened && heard && wav !== null && wav.length > 44 && closedAgain
+      const bytes = wav?.length ?? 0
+      const passed = closed && opened && heard && bytes > 44 && closedAgain
+      if (!passed) console.error(`smoke micClosed: ${JSON.stringify({ closed, opened, heard, bytes, closedAgain })}`)
+      return passed
     } finally {
       updateSettings({ micMode: before })
       sendMicChoice()
