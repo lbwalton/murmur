@@ -8,6 +8,7 @@
 import { join } from 'node:path'
 import { BrowserWindow, app, powerMonitor } from 'electron'
 import { ipc } from '../ipc'
+import { getSettings } from '../settings'
 import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { markMicrophoneWindow } from '../hardening'
 import { reviveOnDeath } from '../revive'
@@ -25,7 +26,7 @@ function aliveAudio(): BrowserWindow | null {
 let readyResolvers: Array<() => void> = []
 let ready = false
 // What the capture window last said about the inputs, for the picker.
-let micReport: MicReport = { devices: [], current: '', standIn: false }
+let micReport: MicReport = { devices: [], current: '', standIn: false, open: false, openMs: null }
 
 function whenAudioReady(): Promise<void> {
   if (ready) return Promise.resolve()
@@ -34,10 +35,15 @@ function whenAudioReady(): Promise<void> {
 
 /** Hand the capture window the mic picked in Settings. */
 function sendMicChoice(): void {
-  void import('../settings').then(({ getSettings }) => {
-    aliveAudio()?.webContents.send(IpcChannels.audioMic, getSettings().microphone)
-  })
+  const settings = getSettings()
+  aliveAudio()?.webContents.send(IpcChannels.audioMic, settings.microphone)
+  aliveAudio()?.webContents.send(IpcChannels.audioMicMode, settings.micMode !== 'press')
 }
+
+// With the mic closed between takes, the listening cue waits until sound
+// is arriving, and this long at most (US-135).
+const LIVE_CUE_WAIT_MS = 1_500
+let cueWhenLive: (() => void) | null = null
 
 export function initAudio(settingsWindow: () => BrowserWindow | null = () => null): void {
   audioWindow = new BrowserWindow({
@@ -71,18 +77,22 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     if (win && !win.isDestroyed()) win.webContents.send(IpcChannels.micsChanged)
   })
   ipc.handle(IpcChannels.micsList, (): MicReport => micReport)
+  ipc.on(IpcChannels.audioLive, () => {
+    const cue = cueWhenLive
+    cueWhenLive = null
+    cue?.()
+  })
   // The capture window asks for the pick before its first arm, so a
   // picked mic is the first one it opens, not a move after launch.
   ipc.handle(IpcChannels.audioMicChoice, async (event) => {
     if (event.sender !== aliveAudio()?.webContents) return { id: '', label: '' }
-    const { getSettings } = await import('../settings')
     return getSettings().microphone
   })
 
   void import('../settings').then(({ onSettingsChanged }) => {
     let lastChoice = ''
     onSettingsChanged((settings) => {
-      const key = `${settings.microphone.id}\n${settings.microphone.label}`
+      const key = `${settings.microphone.id}\n${settings.microphone.label}\n${settings.micMode}`
       if (key === lastChoice) return
       lastChoice = key
       sendMicChoice()
@@ -112,15 +122,55 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   // itself inside the per-check timeout.
   const smokeParams =
     'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500&silentMs=250&maxSilentRearms=4&deviceChangeMs=100'
-  const query = isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : undefined
+  // Read here too, so a closed mic never opens for the first arm.
+  const press = getSettings().micMode === 'press'
+  const query = {
+    ...(isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : {}),
+    ...(press ? { micMode: 'press' } : {})
+  }
   watchWindow(audioWindow, 'audio')
   const devServer = devRendererUrl()
   if (devServer) {
-    const suffix = isSmoke ? `?${smokeParams}` : ''
+    const search = new URLSearchParams(query).toString()
+    const suffix = search === '' ? '' : `?${search}`
     void audioWindow.loadURL(`${devServer}/audio/index.html${suffix}`)
   } else {
     void audioWindow.loadFile(join(__dirname, '../renderer/audio/index.html'), { query })
   }
+
+  // The closed mic mode's promise: no capture stream between takes, a
+  // real take on the press, and closed again after it (US-135).
+  registerSmokeCheck('micClosedBetweenTakes', async () => {
+    await whenAudioReady()
+    const { updateSettings } = await import('../settings')
+    const until = async (done: () => boolean): Promise<boolean> => {
+      for (let waited = 0; waited < 3_000; waited += 50) {
+        if (done()) return true
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return false
+    }
+    const before = getSettings().micMode
+    updateSettings({ micMode: 'press' })
+    sendMicChoice()
+    try {
+      const closed = await until(() => !micReport.open)
+      let cued = false
+      startRecording(() => {
+        cued = true
+      })
+      const opened = await until(() => micReport.open)
+      const heard = await until(() => cued)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      const wav = await stopRecording()
+      const closedAgain = await until(() => !micReport.open)
+      return closed && opened && heard && wav !== null && wav.length > 44 && closedAgain
+    } finally {
+      updateSettings({ micMode: before })
+      sendMicChoice()
+      await until(() => micReport.open)
+    }
+  })
 
   registerSmokeCheck('recording', async () => {
     await whenAudioReady()
@@ -528,8 +578,20 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   })
 }
 
-export function startRecording(): void {
+export function startRecording(onLive?: () => void): void {
   aliveAudio()?.webContents.send(IpcChannels.audioStart)
+  if (onLive === undefined) return
+  if (getSettings().micMode !== 'press') {
+    onLive()
+    return
+  }
+  cueWhenLive = onLive
+  const cue = onLive
+  setTimeout(() => {
+    if (cueWhenLive !== cue) return
+    cueWhenLive = null
+    cue()
+  }, LIVE_CUE_WAIT_MS)
 }
 
 /** Ask the capture window to rebuild its graph now. Safe between

@@ -12,6 +12,8 @@ import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 import { normalizeZoom } from './zoom'
 
+export type MicMode = 'ready' | 'press'
+
 export const UPDATE_MODES = ['auto', 'ask', 'off'] as const
 export type UpdateMode = (typeof UPDATE_MODES)[number]
 
@@ -188,6 +190,8 @@ export interface Settings {
   /** Refresh the bundled provider catalog (rates, presets, nuances)
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
+  /** Whether the mic stays ready or opens on the press (US-135). */
+  micMode: MicMode
   /** How updates arrive (US-136). Off also stops every update request. */
   updates: UpdateMode
   catalogRefresh: boolean
@@ -327,6 +331,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   showDockIcon: false,
   windowZoom: 1,
+  micMode: 'ready',
   updates: 'auto',
   catalogRefresh: true,
   trustedHttpHosts: [],
@@ -393,6 +398,7 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   // Anything unknown means Automatic: a damaged file must never quietly
   // stop security fixes.
   if ('updates' in out && !UPDATE_MODES.includes(out.updates as UpdateMode)) out.updates = 'auto'
+  if ('micMode' in out && out.micMode !== 'press') out.micMode = 'ready'
   if (Array.isArray(out.trustedHttpHosts)) {
     out.trustedHttpHosts = out.trustedHttpHosts.filter((host) => typeof host === 'string')
   }

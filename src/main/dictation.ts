@@ -105,8 +105,7 @@ export function dictationStart(kind: DictationKind = 'dictation'): boolean {
   // take (hotkeys/index.ts: hold, or toggle for every chord); keep the
   // two in step if that choice ever changes.
   sessionHeld = getSettings().hotkey.mode === 'hold'
-  startRecording()
-  playCue(kind === 'note' ? 'noteStart' : 'start')
+  startRecording(() => playCue(kind === 'note' ? 'noteStart' : 'start'))
   return true
 }
 

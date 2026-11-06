@@ -63,6 +63,11 @@ export interface RecorderOptions {
   deviceChangeMs?: number
   /** Called with the inputs and the one in use whenever either may have changed. */
   onMics?: (report: MicReport) => void
+  /** False closes the capture stream between takes (US-135). */
+  keepReady?: boolean
+  /** With the mic closed between takes: called with the milliseconds a
+   *  press took to go live, once sound is really arriving. */
+  onLive?: (ms: number) => void
 }
 
 // A device list that does not come back in this long is not waited for:
@@ -132,12 +137,45 @@ export class Recorder {
   private deviceTimer: ReturnType<typeof setTimeout> | null = null
   private syntheticDefault = 0
   private slowNextArmMs = 0
+  // Closed between takes (US-135): whether the stream stays up, when a
+  // press asked for it, and how long the last press took.
+  private keepReady: boolean
+  private openAskedAt: number | null = null
+  private openMs: number | null = null
 
   constructor(private readonly opts: RecorderOptions) {
     this.minSignalChunks = opts.minSignalChunks ?? LIVENESS_DEFAULTS.minSignalChunks
+    this.keepReady = opts.keepReady ?? true
     if (!opts.synthetic && typeof navigator !== 'undefined' && navigator.mediaDevices) {
       navigator.mediaDevices.addEventListener('devicechange', () => this.deviceChanged())
     }
+  }
+
+  /** True between takes with the mic closed: nothing may open it. */
+  private get closedForNow(): boolean {
+    return !this.keepReady && this.active === null
+  }
+
+  /** The first arm after launch, which a closed mic skips. */
+  armIfReady(): Promise<void> {
+    return this.closedForNow ? Promise.resolve() : this.arm()
+  }
+
+  setKeepReady(keep: boolean): void {
+    if (keep === this.keepReady) return
+    this.keepReady = keep
+    if (keep) void this.arm().then(() => this.report(), () => undefined)
+    else if (this.active === null) void this.closeMic()
+  }
+
+  // The same release a dead graph gets, and the bump makes any attempt
+  // still building give back whatever it acquires.
+  private async closeMic(): Promise<void> {
+    this.generation++
+    this.live = null
+    this.liveLabel = ''
+    await this.teardown()
+    this.report()
   }
 
   /** (Re)acquire the source and start feeding the pre-roll buffer.
@@ -279,7 +317,9 @@ export class Recorder {
     this.opts.onMics?.({
       devices: realMics(this.devices).map((d) => ({ id: d.deviceId, label: d.label })),
       current: this.liveLabel,
-      standIn: micTarget(this.devices, this.choice).standIn
+      standIn: micTarget(this.devices, this.choice).standIn,
+      open: this.ctx !== null,
+      openMs: this.openMs
     })
   }
 
@@ -290,6 +330,12 @@ export class Recorder {
    * installs; no graph at all is the watchdog's case.
    */
   private async follow(): Promise<void> {
+    if (this.closedForNow) {
+      // Listing inputs opens nothing, and Settings still wants the names.
+      await this.refreshDevices()
+      this.report()
+      return
+    }
     const devices = await this.refreshDevices()
     this.report()
     if (this.arming) {
@@ -330,7 +376,12 @@ export class Recorder {
 
   /** What a take held back runs once it ends. */
   private afterTake(): void {
-    if (this.rearmAfterTake) {
+    if (!this.keepReady) {
+      this.rearmAfterTake = false
+      this.moveAfterTake = false
+      this.openAskedAt = null
+      void this.closeMic()
+    } else if (this.rearmAfterTake) {
       this.rearmAfterTake = false
       this.moveAfterTake = false
       void this.rearm().catch(() => false)
@@ -340,6 +391,7 @@ export class Recorder {
   }
 
   private tick(): void {
+    if (this.closedForNow) return
     const action = livenessAction(
       { now: Date.now(), lastChunkAt: this.lastChunkAt, armingSince: this.armingSince },
       {
@@ -583,6 +635,12 @@ export class Recorder {
 
   private onChunk(chunk: Float32Array): void {
     this.lastChunkAt = Date.now()
+    if (this.openAskedAt !== null) {
+      this.openMs = Date.now() - this.openAskedAt
+      this.openAskedAt = null
+      this.opts.onLive?.(this.openMs)
+      this.report()
+    }
     // Signal means the stream is real. A quiet room's noise floor clears
     // the dead-stream threshold by design (see speech-gate), so only a
     // stream with nothing behind it fails to count up. The peak scan
@@ -613,6 +671,17 @@ export class Recorder {
     this.active = [
       { rate: this.sampleRate ?? TARGET_SAMPLE_RATE, chunks: [...this.preRoll] }
     ]
+    // Closed between takes: open now. The listening cue waits for onLive,
+    // so nobody starts talking into a mic that is not there yet.
+    if (!this.keepReady) {
+      if (this.ctx === null) {
+        this.openAskedAt = Date.now()
+        void this.arm().catch(() => undefined)
+      } else {
+        this.opts.onLive?.(0)
+      }
+      return
+    }
     // A press on a graph that has never carried signal (the signal
     // watchdog gave up on it, or a gated mic has not spoken since it was
     // installed) rebuilds capture under the take instead of recording
@@ -692,6 +761,7 @@ export class Recorder {
   }
 
   async rearm(): Promise<boolean> {
+    if (this.closedForNow) return true
     // Never under a take: a wake or an unlock can land the instant a
     // press starts, and a cold rebuild then would cut its first words.
     // The re-arm runs as soon as the take ends.

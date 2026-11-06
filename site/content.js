@@ -228,7 +228,7 @@ function privacy(links, supportEmail) {
       {
         q: 'Is the microphone always on?',
         a: [
-          "The microphone stays ready while murmur runs on Mac and Windows, so your first word is not cut off. The last 300 milliseconds are held in memory and constantly replaced. Nothing is saved or sent until you press your hotkey, and when you do, that short moment becomes the start of your take."
+          "The microphone stays ready while murmur runs on Mac and Windows, so your first word is not cut off. The last 300 milliseconds are held in memory and constantly replaced. Nothing is saved or sent until you press your hotkey, and when you do, that short moment becomes the start of your take. To have no mic stream between takes, choose Open the mic only when I press under Settings, Microphone."
         ]
       },
       {
@@ -319,7 +319,7 @@ function security(links, supportEmail) {
       {
         q: 'Is the microphone always on?',
         a: [
-          'It stays ready while murmur runs on Mac and Windows, holding the last 300 milliseconds in memory so a first word is not cut off. Nothing is saved or sent until the hotkey is pressed.'
+          'By default it stays ready while murmur runs on Mac and Windows, holding the last 300 milliseconds in memory so a first word is not cut off. Nothing is saved or sent until the hotkey is pressed. A setting closes the mic completely between takes, at the cost of a short wait on each press.'
         ]
       },
       {

@@ -2155,7 +2155,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-11-06, default unchanged: every new path runs only with the mic set to open on press. In that mode no capture stream exists between takes, the watchdog and device follow stand down, and the listening cue waits for the first real sound, 1.5 s at most. A micClosedBetweenTakes smoke check proves the stream is closed, a take works, and it closes again, on synthetic audio only. The delay is measured on each press and shown in the setting, so no number is written down yet. Left: LaBroi checks both modes on his Mac, watching the orange dot, and the Windows mic icon."
     },
     {
       "id": "US-136",

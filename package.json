@@ -73,7 +73,7 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "murmur records your voice while you hold the hotkey and sends it only to the transcription provider you configured.",
+        "NSMicrophoneUsageDescription": "murmur uses the microphone to hear what you dictate. Unless you choose otherwise in Settings, it keeps the mic ready so your first word is not cut off. Nothing is saved or sent until you press your hotkey, and your voice goes only to the transcription provider you configured.",
         "LSUIElement": true
       },
       "notarize": true

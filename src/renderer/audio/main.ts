@@ -34,6 +34,8 @@ const recorder = new Recorder({
   minSignalChunks: msParam('minSignalChunks'),
   maxSilentRearms: msParam('maxSilentRearms'),
   deviceChangeMs: msParam('deviceChangeMs'),
+  keepReady: params.get('micMode') !== 'press',
+  onLive: (ms) => bridge.live(ms),
   // Settings shows the inputs and the one in use (US-110); names only.
   onMics: (report) => bridge.mics(report),
   onLevel: (rms) => {
@@ -68,6 +70,10 @@ bridge.onRearm(() => {
 
 bridge.onMic((choice) => {
   recorder.setMicChoice(choice)
+})
+
+bridge.onMicMode((keepReady) => {
+  recorder.setKeepReady(keepReady)
 })
 
 if (synthetic) {
@@ -117,7 +123,7 @@ const firstChoice = Promise.race([
 void firstChoice
   .then((choice) => {
     recorder.setMicChoice(choice)
-    return recorder.arm()
+    return recorder.armIfReady()
   })
   .then(
     () => bridge.ready(),

@@ -12,6 +12,7 @@ export const AUDIO_SENDS: readonly string[] = [
   'audio:armed',
   'audio:cue-played',
   'audio:level',
+  'audio:live',
   'audio:mics',
   'audio:ready',
   'audio:result'

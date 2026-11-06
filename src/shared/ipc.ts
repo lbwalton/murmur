@@ -17,6 +17,8 @@ export const IpcChannels = {
   audioSimulateDefaultMove: 'audio:simulate-default-move',
   audioMic: 'audio:mic',
   audioMicChoice: 'audio:mic-choice',
+  audioMicMode: 'audio:mic-mode',
+  audioLive: 'audio:live',
   audioMics: 'audio:mics',
   micsList: 'mics:list',
   micsChanged: 'mics:changed',

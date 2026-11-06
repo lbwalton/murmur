@@ -15,6 +15,14 @@ Open Settings, Dictation, Microphone and pick from the list.
 
 The change takes effect between dictations: murmur never switches microphones in the middle of one. The list comes from murmur's hidden capture window, the only murmur window allowed to use the microphone; the settings window sees the names and nothing else.
 
+## Is the microphone always on?
+
+By default the mic stays ready while murmur runs, so your first word is not cut off. murmur holds the last 300 milliseconds of sound in memory, constantly replacing it, so that a press can start a moment before your finger lands. It is never saved and never sent. Nothing is kept or goes anywhere until you press your hotkey, and then that short moment becomes the start of your take.
+
+To have no mic stream at all between takes, open Settings, Microphone, **Between takes**, and pick **Open the mic only when I press**. Your Mac's orange dot and the Windows mic icon stay off until you press. The cost is a short wait: the mic takes a moment to open, so the listening sound plays once it is live, and you should wait for it before you speak. Settings shows how long your last press took.
+
+Hands-free, notes, and transforms work the same in both.
+
 ## What happens when the mic I picked is unplugged?
 
 Your computer's default stands in until it is back. The Microphone row says so ("USB Microphone is unplugged, so your Mac's default input stands in until it is back"), and when you plug the mic back in, murmur moves back to it on its own, between dictations. Your pick is remembered by its id and by its name, so it is still found if the computer hands it a new id.

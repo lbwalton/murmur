@@ -162,11 +162,16 @@ export interface MicReport {
   current: string
   /** The picked mic is unplugged and the default stands in. */
   standIn: boolean
+  /** Whether a capture stream exists right now. */
+  open: boolean
+  /** With the mic closed between takes, how long the last press took
+   *  to go live. Null before the first one. */
+  openMs: number | null
 }
 
 /** Bound what a renderer report can carry before main stores it. */
 export function sanitizeMicReport(value: unknown): MicReport {
-  const empty: MicReport = { devices: [], current: '', standIn: false }
+  const empty: MicReport = { devices: [], current: '', standIn: false, open: false, openMs: null }
   if (typeof value !== 'object' || value === null) return empty
   const v = value as Record<string, unknown>
   const devices = Array.isArray(v.devices)
@@ -184,6 +189,8 @@ export function sanitizeMicReport(value: unknown): MicReport {
   return {
     devices,
     current: typeof v.current === 'string' ? v.current.slice(0, 256) : '',
-    standIn: v.standIn === true
+    standIn: v.standIn === true,
+    open: v.open === true,
+    openMs: typeof v.openMs === 'number' && Number.isFinite(v.openMs) && v.openMs >= 0 ? Math.round(v.openMs) : null
   }
 }

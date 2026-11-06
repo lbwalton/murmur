@@ -139,7 +139,19 @@ describe('sanitizeMicReport', () => {
       current: 'Elgato Wave:3',
       standIn: 'yes'
     })
-    expect(report).toEqual({ devices: [{ id: 'w1', label: 'Elgato Wave:3' }], current: 'Elgato Wave:3', standIn: false })
-    expect(sanitizeMicReport(null)).toEqual({ devices: [], current: '', standIn: false })
+    expect(report).toEqual({
+      devices: [{ id: 'w1', label: 'Elgato Wave:3' }],
+      current: 'Elgato Wave:3',
+      standIn: false,
+      open: false,
+      openMs: null
+    })
+    expect(sanitizeMicReport(null)).toEqual({ devices: [], current: '', standIn: false, open: false, openMs: null })
+  })
+
+  it('keeps whether the mic is open and a sane press time (US-135)', () => {
+    expect(sanitizeMicReport({ open: true, openMs: 212.6 })).toMatchObject({ open: true, openMs: 213 })
+    expect(sanitizeMicReport({ open: 'yes', openMs: -5 })).toMatchObject({ open: false, openMs: null })
+    expect(sanitizeMicReport({ openMs: Number.NaN })).toMatchObject({ openMs: null })
   })
 })
