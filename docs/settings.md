@@ -126,14 +126,24 @@ Turn on Apply corrections in Settings, Dictation. With it on and formatting at F
 - "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday." types "Send the invoice to Mark on Wednesday."
 - "The budget is fifteen thousand, sorry, fifty thousand for the quarter." types "The budget is fifty thousand for the quarter."
 - "I think we should, we should ship on Friday." types "I think we should ship on Friday."
+- "The printer is on the second floor, on the third floor by the kitchen." types "The printer is on the third floor by the kitchen."
+- "I was thinking we could paint the hallway, you know what, never mind, let's replace the carpet first." types "Let's replace the carpet first."
 
 It is off by default, and off means dictation behaves exactly as it always has: your slip-ups stay in the text.
 
-**What counts as a correction?** A cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one. Restarted phrases and stumbled repeats are dropped too.
+**What counts as a correction?** 3 shapes, and murmur reads the whole take before deciding:
 
-**Will it remove "actually" or "I mean" when I mean them?** No. When nothing is being taken back, the cue word is part of what you said and stays: "Actually, the tests are passing now" and "I mean, it works, but it could be faster" type exactly as spoken.
+- A fix with a cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one.
+- A restatement with no cue word, where you say a phrase and then say it again a better way. The later version stays.
+- An abandoned start, where you begin a thought and drop it: forget that, never mind, you know what, hold on, start over, or just trailing off. The dropped thought goes, and what you said next stays. A reversal counts too: say one thing, then the opposite, and only the last one is typed.
 
-**Can it lose words?** The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech carried a cue word, the cut removed one, the cut is no bigger than those cues explain (about one wrong phrase each), and every word left is a word you said. A rewrite in new words never earns that deeper cut, and no cut may remove more than 60% of what you said. Measured on Groq with gpt-oss-120b (2026-10-17, 23 test sentences, 10 runs each, with Smart lists on and off), it fixed all 280 corrections and kept all 180 cue words that were meant. In an earlier run while the instructions were being tuned, the model once dropped a few real words next to a fix, so read back anything that matters.
+Words you stumbled into repeating go as well.
+
+**Will it remove "actually" or "I mean" when I mean them?** No. When nothing is being taken back, the cue word is part of what you said and stays: "Actually, the tests are passing now" and "I mean, it works, but it could be faster" type exactly as spoken. The same goes for "Never mind the rain, the game is still on."
+
+**Can it lose words?** Rarely, so read back anything that matters. The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech shows it: every typed word was spoken, in the order you spoke it, the take still ends on your last word, and each cut part ends in a cue word or is said again right after. murmur also refuses an answer that kept only what you said before you changed your mind. These checks catch most bad answers, not all of them: they read words, not meaning, so a model can still drop a fact in ordinary cleanup.
+
+**Does the cleanup model matter?** Yes. Catching a restatement with no cue word takes judgment, and models differ. On murmur's scored test set of made-up messy speech, some cleanup models catch far more than others. See [providers](providers.md) if you want to try a different one.
 
 Corrections need the cleanup pass (Full formatting and a working cleanup model). Saying "scratch that" deletes the current sentence at Full formatting with or without this switch.
 

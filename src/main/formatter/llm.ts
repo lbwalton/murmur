@@ -62,25 +62,46 @@ export const SMART_LISTS_PROMPT = [
 // speaker's words: probed 2026-10-17 on gpt-oss-120b, it fixed 10 of
 // 50 spoken corrections. A definition that reaches into the next
 // sentence, the cue words, and examples on both sides (one where the
-// cue is real content) are what made the same model fix them.
+// cue is real content) are what made the same model fix them. US-126
+// named the 2 shapes with no cue word for the same reason: told only
+// about cue words, the model left 2 of 3 restatements and 7 of 8
+// abandoned starts in place (US-125 baseline, 2026-11-06). Never copy a
+// case from shared/cleanup-cases.json into an example here.
 export const CORRECTIONS_PROMPT = [
-  'Self-corrections: when the speaker says something and then corrects it, keep only the corrected version. Delete the wrong words and the correction cue (oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that), and merge the fix into the original sentence so it reads as if they had said it right the first time, keeping every other word of that sentence. This applies even when the correction comes in the next sentence.',
-  'Also drop a phrase the speaker started, abandoned, and restarted, and words they stumbled into repeating.',
-  'Those cue words are a correction only when they take back something just said. When nothing is being taken back, they are part of what the speaker means: keep them, including a sentence that opens with Actually or I mean.',
-  'Corrections are an exception to keeping every word; everything else keeps the speaker’s words exactly.',
+  'Self-corrections: read the whole dictation first, then keep only what the speaker finally meant. When they stop, go back, or change their mind, the first attempt goes and only the last version stays. This comes in 3 shapes.',
+  'Shape 1, a fix with a cue word (oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that). Delete the wrong words and the cue, and merge the fix into the original sentence so it reads as if they had said it right the first time, keeping every other word of that sentence. This applies even when the fix comes in the next sentence.',
+  'Shape 2, a restatement with no cue word. The speaker says a phrase, then says it again a better way, usually right after a comma or a period. When 2 neighboring phrases begin with the same words or fill the same spot in the sentence, they are 1 thought said twice: delete the earlier one, even if it was complete on its own, and keep the later one word for word. Never keep the earlier one and drop the later one.',
+  'Shape 3, an abandoned start. The speaker begins a thought, drops it (forget that, forget it, never mind, you know what, hold on, hang on, start over, let me think, or just trailing off), and goes on to something else. Delete the dropped thought and those words, and keep everything after them. A reversal counts: when they say one thing and then the opposite, only the last one stays, even across sentences. A list entry they take back goes too, along with the words that took it back.',
+  'Also delete words they stumbled into repeating.',
+  'Those cue words are a correction only when they take back something just said. When nothing is being taken back, they are part of what the speaker means: keep them, including a sentence that opens with Actually, I mean, Never mind, or Hold on. Never mind or forget that cancels a thought only when the speaker moves on to something in its place. If they say they will come back to it later, nothing is cancelled and every word stays.',
+  'Corrections are an exception to keeping every word; every word that was not taken back stays exactly as spoken, including the facts around the fix. A dictation with nothing taken back comes out with every word in place, and corrections never turn sentences into a list.',
   'Example: Send it to Mark on Tuesday. Oh wait, actually I mean Wednesday. becomes: Send it to Mark on Wednesday.',
   'Example: The header should be blue on every page. Wait, I mean green instead of blue. becomes: The header should be green on every page.',
   'Example: The budget is fifteen thousand, sorry, fifty thousand for the quarter. becomes: The budget is fifty thousand for the quarter.',
   'Example: Grab two coffees, make that three, on the way in. becomes: Grab three coffees on the way in.',
   'Example: I think we should, we should ship on Friday. becomes: I think we should ship on Friday.',
-  'Example: I mean, it works, but it could be faster. stays exactly as it is.'
+  'Example: The printer is on the second floor, on the third floor by the kitchen. becomes: The printer is on the third floor by the kitchen.',
+  'Example: Would you mind, could you water the plants this week. becomes: Could you water the plants this week.',
+  'Example: Call the office, call the front office and ask for the key. becomes: Call the front office and ask for the key.',
+  'Example: We can leave early. We can leave at noon on Friday. becomes: We can leave at noon on Friday.',
+  'Example: The bus leaves at six, six fifteen, six thirty from the station. becomes: The bus leaves at six thirty from the station.',
+  'Example: I asked him, I asked the manager whether the store opens on Sunday. becomes: I asked the manager whether the store opens on Sunday.',
+  'Example: I was thinking we could paint the hallway, you know what, never mind, let\'s replace the carpet first. becomes: Let\'s replace the carpet first.',
+  'Example: Tell Dana we accept the offer. Hold on, tell Dana we need the weekend to decide. becomes: Tell Dana we need the weekend to decide.',
+  'Example: So the reason I called was, okay, start over, the garage door is stuck again. becomes: The garage door is stuck again.',
+  'Example: Please sell the old car. Wait, don\'t sell it. Park it at my sister\'s house. becomes: Don\'t sell the old car. Park it at my sister\'s house.',
+  'Example: I mean, it works, but it could be faster. stays exactly as it is.',
+  'Example: Never mind the rain, the game is still on. stays exactly as it is.',
+  'Before you answer, reread your text and ask: does any phrase appear in 2 versions, one after the other? If so, delete the earlier version. Is any thought still there that the speaker dropped or reversed? Delete it.'
 ].join(' ')
 
 // The cue words a spoken correction turns on, matched whole and case
 // blind. A correction cut has to remove at least one of them; that is
 // how validation tells a correction from a model deleting content. No
-// stays a prompt cue only: no problem and no one are so common that
-// dropping one must never unlock a deep cut (review gate, 2026-10-17).
+// is not on this list: no problem and no one are so common that dropping
+// one must never unlock a deep cut (review gate, 2026-10-17). Only a no
+// set off by punctuation on both sides counts, at its own place in the
+// speech, and never as the first word (bareNos below).
 const CORRECTION_CUES = [
   'wait',
   'actually',
@@ -89,7 +110,16 @@ const CORRECTION_CUES = [
   'make that',
   'i mean',
   'i meant',
-  'let me rephrase'
+  'let me rephrase',
+  'forget that',
+  'forget it',
+  'never mind',
+  'you know what',
+  'hold on',
+  'hang on',
+  'start over',
+  'well not',
+  'let me think'
 ]
 const CORRECTION_CUE = new RegExp(`\\b(?:${CORRECTION_CUES.join('|')})\\b`, 'g')
 
@@ -147,8 +177,12 @@ function listLineCount(lines: string[]): number {
 // speech itself says how many entries there should be. Overcounting
 // from decorative commas only forces the prose fallback, the safe
 // direction.
-function impliedEntryCount(input: string): number {
-  const enums = input.match(/\b(?:first|then|next|finally)\b/gi)?.length ?? 0
+function enumeratorCount(input: string): number {
+  return input.match(/\b(?:first|then|next|finally)\b/gi)?.length ?? 0
+}
+
+function impliedEntryCount(input: string, takebacks = 0): number {
+  const enums = enumeratorCount(input)
   // Item-separating commas plus one: N items in comma phrasing carry
   // N minus 1 commas, and the plus one reconstructs N. A comma that
   // starts a clause instead of an item (For my grocery list, I want)
@@ -160,22 +194,33 @@ function impliedEntryCount(input: string): number {
   // same day).
   const commas = input.match(/,/g)?.length ?? 0
   const clauseCommas = input.match(/,\s*(?:i|we|you|let's|please)\b/gi)?.length ?? 0
-  const itemCommas = Math.max(0, commas - clauseCommas)
+  const itemCommas = Math.max(0, commas - clauseCommas - 2 * takebacks)
   return Math.max(enums, itemCommas >= 2 ? itemCommas + 1 : 0)
 }
 
+interface SpokenToken {
+  word: string
+  raw: string
+}
+
 // Words as spoken: lowercase, one apostrophe, edge punctuation off, so
-// "Let’s" in the output is the "let's" the speaker said.
-function spokenWords(value: string): string[] {
+// "Let’s" in the output is the "let's" the speaker said. The raw token
+// keeps the punctuation the recognizer put around it.
+function spokenTokens(value: string): SpokenToken[] {
   return value
     .toLowerCase()
     .replace(/[‘’]/g, "'")
+    .replace(/(?<=\p{L})-(?=\p{L})/gu, ' ') // first-time is the first time spoken.
     .split(/\s+/)
-    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
-    .filter((word) => word.length > 0)
+    .map((raw) => ({ raw, word: raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '') }))
+    .filter((token) => token.word.length > 0)
 }
 
-function cueCount(value: string): number {
+function spokenWords(value: string): string[] {
+  return spokenTokens(value).map((token) => token.word)
+}
+
+export function cueCount(value: string): number {
   return spokenWords(value).join(' ').match(CORRECTION_CUE)?.length ?? 0
 }
 
@@ -192,6 +237,165 @@ function onlySpokenWords(input: string, output: string): boolean {
     left.set(word, count - 1)
   }
   return true
+}
+
+// Small words two sentences share by chance, so sharing them says
+// nothing about a restart.
+const SMALL_WORDS = new Set(
+  'a an and are as at be but by for from he her his i if in is it its me my of on or our she so that the their them they this to us was we were will with you your'.split(
+    ' '
+  )
+)
+// Words that can sit in front of a cue without being anything to take back.
+const LIGHT_WORDS = new Set('no nope okay ok so well oh um uh hmm yeah yes right just hey'.split(' '))
+const NUMBER_WORD =
+  /^(?:\d[\d:,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)$/
+// A takeback is a thought, never a page.
+const MAX_CUT_WORDS = 24
+// A cue explains a cut only when it closes the cut: a real hold on to the
+// receipt deep inside a cut explains nothing.
+const MAX_WORDS_AFTER_CUE = 4
+const MAX_RESTATED_NUMBER_WORDS = 3
+// Fewer kept words than this is an answer or an obeyed instruction, not a final thought.
+const MIN_KEPT_WORDS = 3
+
+interface Speech {
+  words: string[]
+  endsSentence: boolean[]
+  bareNos: number[]
+}
+
+function readSpeech(input: string): Speech {
+  const tokens = spokenTokens(input)
+  return {
+    words: tokens.map((token) => token.word),
+    endsSentence: tokens.map((token) => /[.?!]["')\]]*$/.test(token.raw)),
+    // No alone is too common to be a cue, but set off by punctuation on
+    // both sides, after something it could take back, it is 1.
+    bareNos: tokens.flatMap((token, index) =>
+      index > 0 && token.word === 'no' && /[,.;]$/.test(token.raw) && /[,.;?!]$/.test(tokens[index - 1].raw) ? [index] : []
+    )
+  }
+}
+
+/** Where each cue starts, as word positions. */
+function cuePositions(words: string[]): number[] {
+  const joined = words.join(' ')
+  return [...joined.matchAll(CORRECTION_CUE)].map(
+    (match) => joined.slice(0, match.index).split(' ').filter((word) => word.length > 0).length
+  )
+}
+
+// The spans of spoken words the output left out, or null when the output
+// is not the spoken words in spoken order. Walked from the end, since a
+// speaker's later attempt is the one they meant.
+function cutSpans(spoken: string[], kept: string[]): Array<[number, number]> | null {
+  const spans: Array<[number, number]> = []
+  let next = kept.length - 1
+  let spanEnd = -1
+  for (let index = spoken.length - 1; index >= 0; index -= 1) {
+    if (next >= 0 && spoken[index] === kept[next]) {
+      if (spanEnd !== -1) spans.unshift([index + 1, spanEnd + 1])
+      spanEnd = -1
+      next -= 1
+    } else if (spanEnd === -1) {
+      spanEnd = index
+    }
+  }
+  if (next >= 0) return null
+  if (spanEnd !== -1) spans.unshift([0, spanEnd + 1])
+  return spans
+}
+
+// A cut span is a takeback only if the speech shows it: a cue that closes
+// it with something before it to take back, or the words just after it
+// saying the same thing again in the same sentence. Without this, a model
+// that dropped a real sentence would pass as a restart.
+function isTakeback(speech: Speech, [start, end]: [number, number]): boolean {
+  const { words, endsSentence, bareNos } = speech
+  const span = words.slice(start, end)
+  if (span.length > MAX_CUT_WORDS) return false
+  const closes = (at: number): boolean => at >= start && at < end && end - at <= MAX_WORDS_AFTER_CUE + 2
+  const cue = cuePositions(words).filter((at) => at > 0 && closes(at)).at(-1)
+  if (cue !== undefined || bareNos.some((at) => closes(at))) return true
+  // 2 full sentences that open alike are as likely 2 facts as 1 thought
+  // said twice: the server in Ohio is down. The server in Texas is up.
+  if (endsSentence[end - 1]) return false
+  const after = words.slice(end, end + span.length + 2)
+  if (span.length >= 2 && span[0] === after[0] && span[1] === after[1]) return true
+  const content = [...new Set(span)].filter((word) => !SMALL_WORDS.has(word))
+  const repeated = content.filter((word) => after.includes(word))
+  if (content.length > 0 && repeated.length * 2 >= content.length) return true
+  // At two, two thirty, three o'clock: a number restated as a number.
+  return (
+    span.length <= MAX_RESTATED_NUMBER_WORDS &&
+    NUMBER_WORD.test(span[span.length - 1]) &&
+    NUMBER_WORD.test(words[end] ?? '')
+  )
+}
+
+// What came after the last takeback is what the speaker meant, so an
+// answer that fits inside the words before it kept the first attempt:
+// Wire the money. No, do not wire the money. typed as Wire the money.
+function keptOnlyTheFirstAttempt(speech: Speech, output: string): boolean {
+  const pivot = Math.max(-1, ...cuePositions(speech.words), ...speech.bareNos)
+  if (pivot <= 0) return false
+  const kept = spokenWords(output)
+  let matched = 0
+  for (const word of speech.words.slice(0, pivot)) {
+    if (matched < kept.length && kept[matched] === word) matched += 1
+  }
+  return kept.length > 0 && matched === kept.length
+}
+
+// A cue that opens the take has nothing before it to take back, so it is
+// what the speaker meant: You know what, that is a great idea. Never mind
+// the rain, the game is still on. Cutting it is never a correction.
+function cutAnOpeningCue(speech: Speech, output: string): boolean {
+  const spans = cutSpans(speech.words, spokenWords(output))
+  if (spans === null || spans.length === 0 || spans[0][0] !== 0) return false
+  const [, end] = spans[0]
+  const cues = cuePositions(speech.words).filter((at) => at < end)
+  return cues.length === 1 && speech.words.slice(0, cues[0]).every((word) => LIGHT_WORDS.has(word))
+}
+
+// The cut US-126 allows past the usual floors, for a thought dropped or
+// restated: nothing but spoken words in spoken order, the take's last
+// word still its last word, and every cut span shown by the speech to be
+// a takeback. It cannot tell a true cut from a model that happens to
+// keep only spoken words, so it stays narrow: most summaries and answers
+// fail it, and whatever it refuses is typed in full.
+function isFaithfulCut(speech: Speech, output: string): boolean {
+  const kept = spokenWords(output)
+  if (kept.length < MIN_KEPT_WORDS || kept[kept.length - 1] !== speech.words[speech.words.length - 1]) return false
+  const spans = cutSpans(speech.words, kept)
+  return spans !== null && spans.length > 0 && spans.every((span) => isTakeback(speech, span))
+}
+
+// How many entries the speaker took back: a cue with something before
+// it inside its own entry. First hold on to the receipt takes nothing back.
+function entriesTakenBack(input: string): number {
+  return input
+    .split(/\b(?:first|then|next|finally)\b/i)
+    .reduce((sum, entry) => sum + cuePositions(spokenWords(entry)).filter((at) => at > 0).length, 0)
+}
+
+// With an entry taken back, every other word of the list has to stay:
+// what was cut must be a takeback, or a lead-in that dissolves into the
+// list shape, and enumerators never count.
+function listCutIsTakeback(input: string, output: string): boolean {
+  const listed = spokenTokens(input).filter((token) => !/^(?:first|then|next|finally)$/.test(token.word))
+  const speech: Speech = {
+    words: listed.map((token) => token.word),
+    endsSentence: listed.map((token) => /[.?!]["')\]]*$/.test(token.raw)),
+    bareNos: []
+  }
+  const spans = cutSpans(speech.words, spokenWords(output))
+  if (spans === null) return false
+  const leadIn = (word: string): boolean => word === 'want' || word === 'add' || word === 'need' || word === 'have' || SMALL_WORDS.has(word)
+  return spans.every(
+    ([start, end]) => speech.words.slice(start, end).every(leadIn) || isTakeback(speech, [start, end])
+  )
 }
 
 /**
@@ -244,9 +448,26 @@ export function validatePolish(
   // into a fake list, never rides the exception.
   const implied = opts.smartLists && isListShaped(lines) ? impliedEntryCount(input) : 0
   const earnedListFloor = implied >= 2
-  if (earnedListFloor && listLineCount(lines) < implied) {
+  // A dropped cue explains 1 entry the speaker took back (then rent a
+  // car, actually skip the car), and that takeback adds 2 commas that
+  // are not entries, so the count allows for both. Every other word must
+  // still be there (review of US-126).
+  const cuesDropped = opts.corrections ? cueCount(input) - cueCount(countable) : 0
+  const forgiven = Math.min(Math.max(0, cuesDropped), entriesTakenBack(input))
+  const entriesNeeded =
+    forgiven > 0 && listCutIsTakeback(input, countable)
+      ? Math.max(2, impliedEntryCount(input, cuesDropped) - forgiven)
+      : implied
+  if (earnedListFloor && listLineCount(lines) < entriesNeeded) {
     return { ok: false, reason: 'missing entries' }
   }
+  // Both rules below apply only to a cut, with apply corrections on. An
+  // answer that kept the attempt the speaker dropped, or cut a cue with
+  // nothing before it, is refused whatever its length.
+  const speech = readSpeech(input)
+  const cut = opts.corrections === true && outputWords < inputWords
+  if (cut && keptOnlyTheFirstAttempt(speech, countable)) return { ok: false, reason: 'kept first attempt' }
+  if (cut && cutAnOpeningCue(speech, countable)) return { ok: false, reason: 'cut opening cue' }
   // A spoken correction legitimately deletes the wrong words and its
   // cue, often half a short dictation, so with apply corrections on it
   // earns the same deeper floor, but ONLY when the cut looks like a
@@ -254,16 +475,20 @@ export function validatePolish(
   // every output word was spoken. A cut that keeps every cue, or adds
   // words, is held to the strict floor (US-105). Each dropped cue
   // explains one wrong phrase and the cue itself, about 8 words, plus
-  // 4 of slack for a restart; a bigger cut is content, not a fix.
-  const cuesDropped = opts.corrections ? cueCount(input) - cueCount(countable) : 0
+  // 4 of slack for a restart. A bigger cut has to pass as a faithful cut.
   const earnedCorrectionFloor =
     cuesDropped > 0 && inputWords - outputWords <= 4 + 8 * cuesDropped && onlySpokenWords(input, countable)
-  if (inputWords >= 12) {
-    const ratio = outputWords / inputWords
-    const floor = earnedListFloor || earnedCorrectionFloor ? 0.4 : 0.6
-    if (ratio < floor || ratio > 1.4) return { ok: false, reason: 'length ratio' }
-  } else if (Math.abs(outputWords - inputWords) > 8) {
-    return { ok: false, reason: 'length delta' }
+  // A dropped or restated thought can take most of a short take with it,
+  // so it passes on what the speech shows, past every length check.
+  const faithfulCut = cut && isFaithfulCut(speech, countable)
+  if (!faithfulCut) {
+    if (inputWords >= 12) {
+      const ratio = outputWords / inputWords
+      const floor = earnedListFloor || earnedCorrectionFloor ? 0.4 : 0.6
+      if (ratio < floor || ratio > 1.4) return { ok: false, reason: 'length ratio' }
+    } else if (Math.abs(outputWords - inputWords) > 8) {
+      return { ok: false, reason: 'length delta' }
+    }
   }
 
   // A model that appends a polite closing the speaker never said is

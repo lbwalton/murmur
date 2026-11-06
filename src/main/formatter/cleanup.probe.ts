@@ -11,7 +11,8 @@
 // (comma list, default openai/gpt-oss-120b), MURMUR_PROBE_RUNS (default 16,
 // tripled for long-structure),
 // MURMUR_PROBE_CONCURRENCY (default 3), MURMUR_PROBE_ROUTE to pin an
-// OpenRouter provider, MURMUR_PROBE_KINDS (comma list), and
+// OpenRouter provider, MURMUR_PROBE_KINDS (comma list),
+// MURMUR_PROBE_ID_PREFIX (fresh runs the cases written after tuning), and
 // MURMUR_PROBE_SMART_LISTS=0 or MURMUR_PROBE_CORRECTIONS=0 to turn those off.
 // Both default on, unlike the app until US-127, since that is what is
 // being measured.
@@ -36,13 +37,14 @@ const RUNS = Number(process.env.MURMUR_PROBE_RUNS ?? 16)
 const CONCURRENCY = Number(process.env.MURMUR_PROBE_CONCURRENCY ?? 3)
 const ROUTE = process.env.MURMUR_PROBE_ROUTE ?? ''
 const KINDS = (process.env.MURMUR_PROBE_KINDS ?? '').split(',').filter((kind) => kind.length > 0)
+const ID_PREFIX = process.env.MURMUR_PROBE_ID_PREFIX ?? ''
 const OUT = process.env.MURMUR_PROBE_OUT ?? ''
 const REPLAY = process.env.MURMUR_PROBE_REPLAY ?? ''
 
 const RETRIES = 5
 const LONG_RUNS_FACTOR = 3
 const CASES = (cleanupCases.cases as CleanupCase[]).filter(
-  (probe) => KINDS.length === 0 || KINDS.includes(probe.kind)
+  (probe) => (KINDS.length === 0 || KINDS.includes(probe.kind)) && probe.id.startsWith(ID_PREFIX)
 )
 
 interface ProbeSettings {
