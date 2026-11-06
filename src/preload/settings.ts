@@ -171,6 +171,8 @@ const api = {
     return () => ipcRenderer.removeListener('recovery:changed', handler)
   },
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
+  getKeepImpact: (retentionDays: number): Promise<{ takes: number; recordings: number }> =>
+    ipcRenderer.invoke('history:keepImpact', retentionDays),
   /** Null opens a blank message, for a report copied by hand. */
   openReportMail: (body: string | null): Promise<void> => ipcRenderer.invoke('report:mail', body),
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {

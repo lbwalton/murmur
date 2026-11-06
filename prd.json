@@ -2189,7 +2189,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-11-06. 24 hours and Don't keep take the words out and keep the numbers, on a 15 minute timer. A failed take's recording stays up to 24 hours under Don't keep: the criterion says it follows the same limit, but it is the only copy of a take, and the formatter's rule is that a transcription is never lost, so this is LaBroi's call to change. Unit tests and a keepNoText smoke check cover it. Note the day limits still remove whole entries, numbers included, as they always have. Not seen on screen. Left: the live check, dictating in Don't keep and finding no text in history.jsonl."
     },
     {
       "id": "US-138",

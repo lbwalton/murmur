@@ -20,7 +20,15 @@ Settings most people never touch sit under a fold at the bottom of their section
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. **Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
+History lives only on your machine, in murmur's local data folder. **Keep history for**, at the bottom of the home view, sets how long:
+
+- **30 days, 90 days, a year, or forever.** Entries older than that are removed.
+- **24 hours.** The words of a take go after 24 hours, checked every 15 minutes while murmur runs. The numbers stay, so your stats, belts, and paintings keep counting.
+- **Don't keep.** No words are saved at all, only the numbers. The last take stays in memory so paste last works, and it is gone when the next take replaces it or murmur quits.
+
+Choosing a shorter limit tells you what it will remove first. A take with no words says so on its row, and what you said and report are not available for it. A recording waiting to retry follows the same limit, and under Don't keep it stays up to 24 hours, since it is the only copy of a take that failed.
+
+**Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
 
 ## How do I see what cleanup changed, and get my words back?
 

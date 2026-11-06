@@ -2,7 +2,17 @@
 // History wiring: userData path, IPC for the home view, live append
 // notifications to the settings window, retention pruning, smoke.
 import { type BrowserWindow, app, ipcMain } from 'electron'
-import { type SessionEvent, countWords, countsTowardStats, dayKey, wordsPerMinute } from '../../shared/history'
+import {
+  KEEP_NO_TEXT,
+  type SessionEvent,
+  countWords,
+  countsTowardStats,
+  dayKey,
+  recordingLimitMs,
+  textCutoff,
+  withoutText,
+  wordsPerMinute
+} from '../../shared/history'
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { clearPaintings, initPaintings, syncPaintingsWith } from '../paintings'
@@ -18,6 +28,38 @@ let memoryOnly: SessionEvent | null = null
 // Everything that measures speech reads this, never the raw log.
 function statsEvents(): SessionEvent[] {
   return (log?.readAll() ?? []).filter(countsTowardStats)
+}
+
+const RETENTION_CHECK_MS = 15 * 60 * 1000
+
+// Lazy, like the other cross-subsystem reads here, so history never
+// depends on the transcribe stack to start.
+async function recordingTools(): Promise<{
+  waitingPastLimit: (retentionDays: number) => string[]
+  remove: (id: string) => void
+}> {
+  const { recoveryDir } = await import('../transcribe')
+  const { listRecovery, removeRecovery } = await import('../transcribe/recovery')
+  return {
+    waitingPastLimit: (retentionDays) => {
+      const limit = recordingLimitMs(retentionDays)
+      if (limit === null) return []
+      const oldest = Date.now() - limit
+      return listRecovery(recoveryDir())
+        .filter((take) => take.savedAt < oldest)
+        .map((take) => take.id)
+    },
+    remove: (id) => removeRecovery(recoveryDir(), id)
+  }
+}
+
+async function pruneRecordings(retentionDays: number): Promise<void> {
+  try {
+    const { waitingPastLimit, remove } = await recordingTools()
+    for (const id of waitingPastLimit(retentionDays)) remove(id)
+  } catch (error) {
+    console.error('[murmur] recording retention failed:', error)
+  }
 }
 
 /** Record a finished dictation and notify the settings window. */
@@ -57,12 +99,16 @@ export function recordSession(input: {
     memoryOnly = event
     return event
   }
-  memoryOnly = null
-  log.append(event)
+  // With Don't keep, only the numbers reach the disk, and the words stay
+  // in memory for paste-last until the next take replaces them (US-137).
+  const keepsText = getSettings().history.retentionDays !== KEEP_NO_TEXT
+  const stored = keepsText ? event : withoutText(event)
+  memoryOnly = keepsText ? null : event
+  log.append(stored)
   // Transcripts are sensitive: only the settings window (which renders
   // the log) receives them, never the overlay or audio windows.
   const win = getTargetWindow?.()
-  if (win && !win.isDestroyed()) win.webContents.send('history:appended', event)
+  if (win && !win.isDestroyed()) win.webContents.send('history:appended', stored)
   void notifyNewAchievements()
   void notifyNewPromotions()
   void notifyTimeBack(event)
@@ -171,7 +217,11 @@ async function notifyNewPromotions(): Promise<void> {
 export function readHistory(): SessionEvent[] {
   const events = log?.readAll() ?? []
   const last = events[events.length - 1]
-  if (memoryOnly && (!last || memoryOnly.at >= last.at)) events.push(memoryOnly)
+  if (memoryOnly && (!last || memoryOnly.at >= last.at)) {
+    // The same take on disk with no words (Don't keep): this copy has them.
+    if (last?.at === memoryOnly.at) events[events.length - 1] = memoryOnly
+    else events.push(memoryOnly)
+  }
   return events
 }
 
@@ -193,7 +243,8 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // The day's paintings are recorded before retention prunes the takes
   // they came from, so the collection outlives the log (US-098).
   syncPaintingsWith(log.readAll())
-  log.prune(lastRetention)
+  log.applyRetention(lastRetention)
+  void pruneRecordings(lastRetention)
   initPaintings(() => log?.readAll() ?? [])
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
@@ -201,11 +252,27 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     if (settings.history.retentionDays !== lastRetention) {
       lastRetention = settings.history.retentionDays
       if (log) syncPaintingsWith(log.readAll())
-      log?.prune(lastRetention)
+      log?.applyRetention(lastRetention)
+      void pruneRecordings(lastRetention)
     }
   })
+  // A 24 hour limit has to hold while murmur stays open for days.
+  setInterval(() => {
+    if (textCutoff(lastRetention, Date.now()) === null) return
+    log?.applyRetention(lastRetention)
+    void pruneRecordings(lastRetention)
+  }, RETENTION_CHECK_MS).unref()
 
   ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
+  // What a shorter Keep history would remove, for its question (US-137).
+  ipcMain.handle('history:keepImpact', async (_event, retentionDays: unknown) => {
+    if (typeof retentionDays !== 'number') return { takes: 0, recordings: 0 }
+    const { waitingPastLimit } = await recordingTools()
+    return {
+      takes: log?.countAffected(retentionDays) ?? 0,
+      recordings: waitingPastLimit(retentionDays).length
+    }
+  })
   // Every entry in the log, for Clear all's question (US-099): the list
   // above stops at the newest 500.
   const historyCount = (): number => log?.readAll().length ?? 0
@@ -274,6 +341,22 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const { evaluateAchievements } = await import('../../shared/achievements')
     const defs = (await import('../../../shared/achievements.json')).default
     return evaluateAchievements(statsEvents(), defs as never)
+  })
+
+  registerSmokeCheck('keepNoText', async () => {
+    // Don't keep: no words on disk, the numbers counted, and paste-last
+    // still has the take in memory (US-137).
+    const { updateSettings } = await import('../settings')
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const before = getSettings().history.retentionDays
+    updateSettings({ history: { retentionDays: KEEP_NO_TEXT } } as never)
+    const marked = 'smoke keep nothing probe'
+    const recorded = recordSession({ startedAt: Date.now() - 1000, rawText: marked, finalText: marked })
+    const onDisk = readFileSync(join(app.getPath('userData'), 'history.jsonl'), 'utf8')
+    const last = readHistory().at(-1)
+    updateSettings({ history: { retentionDays: before } } as never)
+    return recorded !== null && !onDisk.includes(marked) && last?.finalText === marked && (recorded.words ?? 0) === 4
   })
 
   registerSmokeCheck('whatYouSaid', async () => {

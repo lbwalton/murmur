@@ -235,8 +235,8 @@ function privacy(links, supportEmail) {
         q: 'How long is each kind of record kept?',
         a: ['Each kind of record has a period or a plain rule:'],
         points: [
-          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time.']],
-          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it.']],
+          ['Your history.', ['On your device, for as long as you set under Keep history, from no words at all to forever, and you can clear it any time.']],
+          ['Recordings waiting for a retry.', ['On your device, until the take succeeds, you discard it, or the Keep history limit passes. With Keep history at 24 hours or Don\'t keep, that is 24 hours.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
           ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
           ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']]
@@ -313,7 +313,7 @@ function security(links, supportEmail) {
       {
         q: 'What is stored, and where?',
         a: [
-          'History, settings, notes, and recordings waiting for a retry stay on the device. Transcripts in history are not encrypted by murmur, so they are protected by the device itself, and Keep history sets how long they stay. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
+          'History, settings, notes, and recordings waiting for a retry stay on the device. Transcripts in history are not encrypted by murmur, so they are protected by the device itself. Keep history sets how long they stay, down to not saving any words at all. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
         ]
       },
       {

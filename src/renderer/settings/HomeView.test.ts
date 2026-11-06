@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -9,6 +9,27 @@ describe('clear all', () => {
       'Clear all 1,204 entries from your history? This cannot be undone. Your stats, time back, and belt progress are counted from your history, so they start over. Note files stay in your notes folder.'
     )
     expect(clearAllQuestion(1)).toMatch(/^Clear the 1 entry in your history\? /)
+  })
+})
+
+describe('a shorter Keep history', () => {
+  it('says the words go and the numbers stay', () => {
+    expect(shorterKeepQuestion(1, 1204, 2)).toBe(
+      'This removes the words of 1,204 entries and 2 recordings waiting to retry now, and it cannot be undone. Your numbers and belts stay.'
+    )
+    expect(shorterKeepQuestion(-1, 1, 0)).toBe(
+      'This removes the words of 1 entry now, and it cannot be undone. Your numbers and belts stay.'
+    )
+  })
+
+  it('says whole entries go on the day limits', () => {
+    expect(shorterKeepQuestion(30, 12, 1)).toBe(
+      'This removes 12 entries and 1 recording waiting to retry now, and it cannot be undone.'
+    )
+  })
+
+  it('asks nothing when nothing goes', () => {
+    expect(shorterKeepQuestion(1, 0, 0)).toBe('')
   })
 })
 

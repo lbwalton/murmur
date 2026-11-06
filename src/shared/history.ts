@@ -32,6 +32,46 @@ export interface SessionEvent {
   retried?: boolean
 }
 
+/** The Keep history values with their own meaning (US-137). Every other
+ *  value is days, after which a whole entry goes. */
+export const KEEP_FOREVER = 0
+export const KEEP_24_HOURS = 1
+export const KEEP_NO_TEXT = -1
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Words older than this go while the numbers stay, so belts, stats, and
+ *  the painting keep working. Null when this setting removes whole
+ *  entries or nothing. */
+export function textCutoff(retentionDays: number, now: number): number | null {
+  if (retentionDays === KEEP_NO_TEXT) return Number.POSITIVE_INFINITY
+  if (retentionDays === KEEP_24_HOURS) return now - DAY_MS
+  return null
+}
+
+export function withoutText(event: SessionEvent): SessionEvent {
+  return { ...event, rawText: '', finalText: '' }
+}
+
+export function hasText(event: SessionEvent): boolean {
+  return event.rawText.length > 0 || event.finalText.length > 0
+}
+
+/** How long a recording waiting for a retry may stay. Don't keep is
+ *  about transcripts, and a failed take has no other copy, so it gets
+ *  the same 24 hours to be retried. Null keeps it until it is retried. */
+export function recordingLimitMs(retentionDays: number): number | null {
+  if (retentionDays === KEEP_NO_TEXT || retentionDays === KEEP_24_HOURS) return DAY_MS
+  return retentionDays > 0 ? retentionDays * DAY_MS : null
+}
+
+/** Whether a new Keep history value removes more than the current one. */
+export function isShorterKeep(next: number, current: number): boolean {
+  const reach = (days: number): number =>
+    days === KEEP_FOREVER ? Number.POSITIVE_INFINITY : days === KEEP_NO_TEXT ? 0 : days
+  return reach(next) < reach(current)
+}
+
 /** Whether an event counts toward words, belts, achievements, recaps,
  *  and analytics. Transforms are recoverability records, not speech. */
 export function countsTowardStats(event: SessionEvent): boolean {

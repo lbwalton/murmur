@@ -6,7 +6,16 @@ import { useEffect, useRef, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
-import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
+import {
+  KEEP_24_HOURS,
+  KEEP_NO_TEXT,
+  type SessionEvent,
+  countsTowardStats,
+  dayKey,
+  groupByDay,
+  hasText,
+  isShorterKeep
+} from '../../shared/history'
 import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
 import { heardWords, offersWhatYouSaid } from '../../shared/word-diff'
@@ -209,6 +218,21 @@ export function discardedMessage(gone: number, asked: number): string {
   if (gone === asked) return `Discarded ${recordings(gone)}.`
   if (gone === 0) return `Could not discard ${recordings(asked)}. They are still listed below; try again in a moment.`
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
+}
+
+const entries = (count: number): string => `${count.toLocaleString()} ${count === 1 ? 'entry' : 'entries'}`
+
+/** What a shorter Keep history removes, said before it happens (US-137).
+ *  Empty when it removes nothing. */
+export function shorterKeepQuestion(retentionDays: number, takes: number, recordings: number): string {
+  const wordsOnly = retentionDays === KEEP_24_HOURS || retentionDays === KEEP_NO_TEXT
+  const parts = [
+    takes > 0 ? (wordsOnly ? `the words of ${entries(takes)}` : entries(takes)) : '',
+    recordings > 0 ? `${recordings.toLocaleString()} ${recordings === 1 ? 'recording' : 'recordings'} waiting to retry` : ''
+  ].filter((part) => part.length > 0)
+  if (parts.length === 0) return ''
+  const numbers = wordsOnly ? ' Your numbers and belts stay.' : ''
+  return `This removes ${parts.join(' and ')} now, and it cannot be undone.${numbers}`
 }
 
 /** The words as heard, with what cleanup removed struck through (US-128).
@@ -492,6 +516,7 @@ export function HomeView(props: {
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [openSaid, setOpenSaid] = useState<number | null>(null)
   const [openReport, setOpenReport] = useState<number | null>(null)
+  const [keepAsk, setKeepAsk] = useState<{ value: number; question: string } | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   // Clear all asks first (US-099): the whole log's count while the
   // question is open, null while it is closed.
@@ -507,6 +532,24 @@ export function HomeView(props: {
   useEffect(() => {
     if (cleared) clearedRef.current?.focus()
   }, [cleared])
+  const applyKeep = (retentionDays: number): void => {
+    setKeepAsk(null)
+    void props
+      .onUpdateSettings({ history: { retentionDays } } as Partial<Settings>)
+      .then(async () => setEvents(await bridge().listHistory()))
+  }
+  const chooseKeep = async (retentionDays: number): Promise<void> => {
+    setKeepAsk(null)
+    if (isShorterKeep(retentionDays, props.settings.history.retentionDays)) {
+      const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
+      const question = shorterKeepQuestion(retentionDays, takes, recordings)
+      if (question !== '') {
+        setKeepAsk({ value: retentionDays, question })
+        return
+      }
+    }
+    applyKeep(retentionDays)
+  }
   const askClear = (): void => {
     if (counting.current) return
     if (clearAsk !== null) {
@@ -711,7 +754,7 @@ export function HomeView(props: {
                       what you said
                     </button>
                   )}
-                  {event.kind !== 'transform' && (
+                  {event.kind !== 'transform' && hasText(event) && (
                     <button
                       className="btn quiet-btn log-said-toggle"
                       aria-expanded={openReport === event.at}
@@ -721,9 +764,11 @@ export function HomeView(props: {
                       report
                     </button>
                   )}
-                  <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
-                    {copiedAt === event.at ? 'copied' : 'copy'}
-                  </button>
+                  {hasText(event) && (
+                    <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
+                      {copiedAt === event.at ? 'copied' : 'copy'}
+                    </button>
+                  )}
                 </div>
                 {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} />}
                 {openReport === event.at && (
@@ -745,7 +790,13 @@ export function HomeView(props: {
                   </p>
                 )}
                 {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
-                <p className="log-text">{event.finalText}</p>
+                {hasText(event) ? (
+                  <p className="log-text">{event.finalText}</p>
+                ) : (
+                  <p className="log-text dim">
+                    Words not kept, so what you said and report are not available for this take.
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -758,18 +809,20 @@ export function HomeView(props: {
           <div className="row">
             <div className="row-text">
               <div className="row-label">Keep history for</div>
-              <div className="row-desc">Older entries are pruned automatically. Everything stays on this machine.</div>
+              <div className="row-desc">
+                {props.settings.history.retentionDays === KEEP_NO_TEXT
+                  ? 'No words are saved, and your numbers, belts, and paintings keep counting. The last take stays in memory for paste last, and a recording waiting to retry stays up to 24 hours.'
+                  : 'Older entries are pruned automatically. Everything stays on this machine.'}
+              </div>
             </div>
             <div className="row-control inline">
               <select
                 className="field"
                 value={props.settings.history.retentionDays}
-                onChange={(e) =>
-                  void props.onUpdateSettings({
-                    history: { retentionDays: Number(e.target.value) }
-                  })
-                }
+                onChange={(e) => void chooseKeep(Number(e.target.value))}
               >
+                <option value={KEEP_NO_TEXT}>don't keep</option>
+                <option value={KEEP_24_HOURS}>24 hours</option>
                 <option value={30}>30 days</option>
                 <option value={90}>90 days</option>
                 <option value={365}>a year</option>
@@ -787,6 +840,17 @@ export function HomeView(props: {
               </button>
             </div>
           </div>
+          {keepAsk !== null && (
+            <AskFirst
+              id="keep-shorter-confirm"
+              question={keepAsk.question}
+              confirm="remove them"
+              keep="keep them"
+              busy={false}
+              onConfirm={() => applyKeep(keepAsk.value)}
+              onKeep={() => setKeepAsk(null)}
+            />
+          )}
           {clearAsk !== null && (
             <AskFirst
               id="clear-all-confirm"

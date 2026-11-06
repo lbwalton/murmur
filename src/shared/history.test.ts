@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute } from './history'
+import { countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute, KEEP_24_HOURS, KEEP_FOREVER, KEEP_NO_TEXT, hasText, isShorterKeep, recordingLimitMs, textCutoff, withoutText } from './history'
 
 const event = (at: number, words = 10): ReturnType<typeof make> => make(at, words)
 function make(at: number, words: number) {
@@ -66,5 +66,39 @@ describe('transform entries (US-054)', () => {
     expect(countsTowardStats({ ...base, kind: 'transform' })).toBe(false)
     expect(countsTowardStats({ ...base, kind: 'note' })).toBe(true)
     expect(countsTowardStats(base)).toBe(true)
+  })
+})
+
+describe('Keep history (US-137)', () => {
+  const NOW = 1_800_000_000_000
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('knows which limits take words and which take entries', () => {
+    expect(textCutoff(KEEP_NO_TEXT, NOW)).toBe(Number.POSITIVE_INFINITY)
+    expect(textCutoff(KEEP_24_HOURS, NOW)).toBe(NOW - DAY)
+    expect(textCutoff(30, NOW)).toBeNull()
+    expect(textCutoff(KEEP_FOREVER, NOW)).toBeNull()
+  })
+
+  it('gives a recording the same limit, and 24 hours under Don\'t keep', () => {
+    expect(recordingLimitMs(KEEP_NO_TEXT)).toBe(DAY)
+    expect(recordingLimitMs(KEEP_24_HOURS)).toBe(DAY)
+    expect(recordingLimitMs(30)).toBe(30 * DAY)
+    expect(recordingLimitMs(KEEP_FOREVER)).toBeNull()
+  })
+
+  it('orders limits from longest to shortest', () => {
+    expect(isShorterKeep(30, KEEP_FOREVER)).toBe(true)
+    expect(isShorterKeep(KEEP_24_HOURS, 30)).toBe(true)
+    expect(isShorterKeep(KEEP_NO_TEXT, KEEP_24_HOURS)).toBe(true)
+    expect(isShorterKeep(KEEP_FOREVER, KEEP_NO_TEXT)).toBe(false)
+    expect(isShorterKeep(30, 30)).toBe(false)
+  })
+
+  it('takes out the words and nothing else', () => {
+    const event = { at: 1, durationMs: 2, rawText: 'a', finalText: 'A.', words: 1, wpm: 3, day: '2026-11-06' }
+    expect(withoutText(event)).toEqual({ ...event, rawText: '', finalText: '' })
+    expect(hasText(event)).toBe(true)
+    expect(hasText(withoutText(event))).toBe(false)
   })
 })
