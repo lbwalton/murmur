@@ -10,8 +10,22 @@
 // HTTP cache stay off, as they always were under Node's fetch, so a
 // connection test always asks the server. Outside Electron (unit
 // tests), Node's fetch stands in.
+import { blockedPlainHttp } from '../shared/plain-http'
+
+let trustedHttpHosts: () => readonly string[] = () => []
+
+/** Where appFetch reads the plain http hosts the person confirmed. */
+export function readTrustedHttpHostsFrom(read: () => readonly string[]): void {
+  trustedHttpHosts = read
+}
 
 export const appFetch: typeof fetch = async (input, init) => {
+  // No key and no voice go over plain http until the person says so
+  // (US-140). Every provider request passes here, whichever field the
+  // address came from.
+  const url = input instanceof Request ? input.url : String(input)
+  const held = blockedPlainHttp(url, trustedHttpHosts())
+  if (held !== null) throw new Error(`plain http to ${held} is not confirmed`)
   if (process.versions.electron) {
     const { app, net } = await import('electron')
     await app.whenReady()

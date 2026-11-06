@@ -27,6 +27,7 @@ import { initFormatter } from './formatter'
 import { initHistory } from './history'
 import { initInsertion } from './insertion'
 import { RotatingLog } from './logging'
+import { readTrustedHttpHostsFrom } from './net'
 import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
@@ -309,6 +310,7 @@ app.whenReady().then(async () => {
   }
 
   initSettings()
+  readTrustedHttpHostsFrom(() => getSettings().trustedHttpHosts)
   const { initCatalog } = await import('./catalog')
   initCatalog()
   initHistory(() => settingsWindow)

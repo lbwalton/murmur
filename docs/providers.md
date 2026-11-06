@@ -105,6 +105,8 @@ Yes. Any server that exposes OpenAI-compatible `/audio/transcriptions` and `/cha
 
 **Silence scores:** murmur asks Whisper-named models for `verbose_json` segments, which is how it drops words invented on a silent take. If your server returns them, you get the guard; if it refuses that format, murmur notices and asks for plain json automatically (checked 2026-11-05). A local server running `whisper-large-v3-turbo` sends a no-speech score of about 0 on everything, the same as Groq's, so there murmur's check before upload is what guards against invented words (verified 2026-11-05).
 
+**Why does murmur warn me about an http address?** Plain http is not encrypted, so your API key and what you say would travel in the open, and a 1 letter typo in a base URL is enough to cause it. murmur sends nothing to an http address until you confirm it, under the field where you typed it. Your own computer (`localhost`, `127.0.0.1`) never asks, since that traffic stays on the machine. A server on your home network works once you confirm it, and each host only asks once. You can see or remove a confirmed host in Settings.
+
 Local servers keep audio entirely on your machine, which is the strongest privacy posture. The Local preset fills `http://localhost:8000/v1` (the speaches default); for a local cleanup model, point the separate cleanup connection at Ollama (`http://localhost:11434/v1`) or LM Studio (`http://localhost:1234/v1`) and use any model id your server has pulled.
 
 ## What about other AI labs and gateways?

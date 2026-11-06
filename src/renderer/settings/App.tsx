@@ -25,6 +25,7 @@ import { JourneyView } from './JourneyView'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
+import { PlainHttpNote } from './PlainHttpNote'
 import { MicRow } from './MicRow'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
@@ -948,6 +949,7 @@ export function App(): React.JSX.Element {
                   onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
                 />
               </Row>
+              <PlainHttpNote url={settings.provider.baseUrl} />
 
               <ProfilesRow
                 settings={settings}

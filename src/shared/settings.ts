@@ -186,6 +186,8 @@ export interface Settings {
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
   catalogRefresh: boolean
+  /** Plain http hosts the person confirmed sending to (US-140). */
+  trustedHttpHosts: string[]
   /** Last app version whose what's new section the user opened; the
    *  home tab shows a quiet marker while it trails the running one. */
   whatsNewSeenVersion: string
@@ -321,6 +323,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showDockIcon: false,
   windowZoom: 1,
   catalogRefresh: true,
+  trustedHttpHosts: [],
   whatsNewSeenVersion: '',
   onboarding: {
     completed: false
@@ -380,6 +383,9 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   }
   if (Array.isArray(out.expansions)) {
     out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
+  }
+  if (Array.isArray(out.trustedHttpHosts)) {
+    out.trustedHttpHosts = out.trustedHttpHosts.filter((host) => typeof host === 'string')
   }
   // Reminder times feed a scheduler that runs every minute, so a
   // non-string here would throw on a timer forever (review gate
