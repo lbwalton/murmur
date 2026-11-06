@@ -9,6 +9,7 @@ import { sectionFor } from '../../shared/changelog'
 import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
 import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
+import { heardWords, offersWhatYouSaid } from '../../shared/word-diff'
 import { type ProFacts, shouldOfferPro, thanksDue } from '../../shared/proMark'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
@@ -207,6 +208,40 @@ export function discardedMessage(gone: number, asked: number): string {
   if (gone === asked) return `Discarded ${recordings(gone)}.`
   if (gone === 0) return `Could not discard ${recordings(asked)}. They are still listed below; try again in a moment.`
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
+}
+
+/** The words as heard, with what cleanup removed struck through (US-128).
+ *  The clipboard is touched only on the click. */
+function WhatYouSaid(props: { id: string; event: SessionEvent }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+  const words = heardWords(props.event.rawText, props.event.finalText)
+  const removed = words.filter((word) => word.removed).length
+  return (
+    <div className="log-said" id={props.id}>
+      <p className="micro-label log-original">what you said</p>
+      <p className="log-text dim">
+        {words.map((word, index) => (
+          <span key={index}>
+            {index > 0 && ' '}
+            {word.removed ? <s className="log-removed">{word.text}</s> : word.text}
+          </span>
+        ))}
+      </p>
+      <p className="log-said-foot">
+        <span className="mono-inline dim">{removed === 0 ? 'words changed' : `${removed} removed`}</span>
+        <button
+          className="btn quiet-btn"
+          onClick={() => {
+            void bridge()
+              .copyText(props.event.rawText)
+              .then(() => setCopied(true))
+          }}
+        >
+          {copied ? 'copied' : 'Copy what you said'}
+        </button>
+      </p>
+    </div>
+  )
 }
 
 /** The result line after one retried dictation: the clipboard is
@@ -454,6 +489,7 @@ export function HomeView(props: {
   // the first-run invitation while it loads.
   const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const [openSaid, setOpenSaid] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   // Clear all asks first (US-099): the whole log's count while the
   // question is open, null while it is closed.
@@ -663,10 +699,21 @@ export function HomeView(props: {
                     <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                   )}
                   {event.retried && <span className="mono-inline dim">retried</span>}
+                  {offersWhatYouSaid(event) && (
+                    <button
+                      className="btn quiet-btn log-said-toggle"
+                      aria-expanded={openSaid === event.at}
+                      aria-controls={`said-${event.at}`}
+                      onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
+                    >
+                      what you said
+                    </button>
+                  )}
                   <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
                     {copiedAt === event.at ? 'copied' : 'copy'}
                   </button>
                 </div>
+                {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} />}
                 {event.kind === 'transform' && !event.unsent && (
                   <p className="log-instruction dim">you said: {event.rawText}</p>
                 )}

@@ -2043,7 +2043,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "Built 2026-11-06. word-diff.ts marks the removed words with a longest common run, unit tested with a smoke check; the row uses plain buttons and night studio tokens with no paint or motion. Not seen on screen yet: LaBroi opens a take with a fix in it, sees the struck words, and copies them."
     },
     {
       "id": "US-129",

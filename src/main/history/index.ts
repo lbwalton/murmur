@@ -276,6 +276,17 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return evaluateAchievements(statsEvents(), defs as never)
   })
 
+  registerSmokeCheck('whatYouSaid', async () => {
+    const { heardWords, offersWhatYouSaid } = await import('../../shared/word-diff')
+    const marked = heardWords('send it tuesday sorry wednesday', 'Send it Wednesday.')
+    const event = { at: 1, durationMs: 1, rawText: 'a b', finalText: 'A.', words: 1, wpm: 1 }
+    return (
+      marked.filter((word) => word.removed).length === 2 &&
+      offersWhatYouSaid(event) &&
+      !offersWhatYouSaid({ ...event, kind: 'transform' })
+    )
+  })
+
   registerSmokeCheck('achievements', async () => {
     // Self-contained: a synthetic session earns first-words, an empty
     // log earns nothing. No dependence on other checks' probes.

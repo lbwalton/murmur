@@ -22,6 +22,12 @@ Settings most people never touch sit under a fold at the bottom of their section
 
 History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. **Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
 
+## How do I see what cleanup changed, and get my words back?
+
+Open the home tab. When cleanup changed any of your words, that take shows **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
+
+These are the words your speech provider heard, so if it misheard you, this shows that too.
+
 ## What happens on first launch?
 
 A guided wizard walks the whole setup: welcome, provider key with a live connection test, macOS permissions with deep links and live status, hotkey capture, and a test dictation. Each step gates on actually being done, so finishing the wizard means murmur genuinely works. Skip anytime; the settings tab keeps tracking anything unfinished, and Run wizard under Settings, System starts it over whenever you like.

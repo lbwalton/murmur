@@ -415,6 +415,29 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* What you said (US-128): removed words are struck through as well as
+   dimmed, so the mark never rests on color alone. */
+.log-said-toggle {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.log-said {
+  margin-bottom: 8px;
+}
+
+.log-removed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.log-said-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 0;
+}
+
 /* The note receipt's Home row (US-082). */
 .last-note-row {
   display: flex;
