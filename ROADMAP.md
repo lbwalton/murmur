@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (92/118 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (93/118 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -96,6 +96,7 @@
 - [x] **US-114** A spoken filler is never cut off as its own item
 - [x] **US-115** File only the item: commentary stays in the inbox
 - [x] **US-116** File only the item on a decision connection too
+- [x] **US-119** A silent take never types invented words
 
 ## Built, awaiting live verification
 
@@ -129,4 +130,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-108** murmur Pro on the site: the mark, a pro link, and a /pro/ page
 - [ ] **US-112** Security patches for the dependencies GitHub flagged
 - [ ] **US-117** Hands-free: double-tap the hotkey to keep talking without holding it
-- [ ] **US-119** A silent take never types invented words

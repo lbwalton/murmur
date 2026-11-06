@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-119 a silent take never types invented words is built on feature/hands-free and waits on your live check on the Mac: the steps sit right after US-117's under Live verification queue.
+- [x] US-119 a silent take never types invented words: live-verified 2026-11-06 on the a12e0df test build (LaBroi: all checks pass). It merges to main with hands-free.
 - [ ] US-117 hands-free (tap the hotkey twice to keep talking without holding it) is built on feature/hands-free and waits on your live check, on the Mac and on Windows: the steps are the first item under Live verification queue.
 - [x] US-116 file only the item on your TypeSafe sort connection: live-verified 2026-10-30 on the test build (LaBroi: everything worked for the note; ideas.md got "a snow cone stand at the launch." alone). Merged to main; ships in the next release.
 - [x] US-113 paste last waits for the chord to be let go: live-verified 2026-10-27 (LaBroi: it works).
@@ -65,7 +65,7 @@ Live-verification items land here as stories complete. Check them off, then tell
   1. Do Mac steps 1 to 9 in Notepad, with Ctrl+V where the Mac uses Cmd+V (skip step 8 or 9 if the PC has no notes or transform hotkey set). Each should look and sound the same.
   2. Check the bare look's timer: in Settings, Look, Overlay look, pick Bare. Double-tap, say a sentence, and look at the timer under the waveform while the loop is drawn: the whole number shows (0:05), not cut off at the bottom. Tap once to stop, then put your usual look back.
 
-- [ ] US-119 a silent take never types invented words (built 2026-11-05 on feature/hands-free; step 1 failed on the first test build, 5d262d0, and was fixed the same day; smoke and unit tests pass). Your dictation hotkey is Option+Space on the Mac unless you changed it. Tell Claude what you saw at each step.
+- [x] US-119 a silent take never types invented words, live-verified 2026-11-06 (LaBroi: all checks pass) (built 2026-11-05 on feature/hands-free; step 1 failed on the first test build, 5d262d0, and was fixed the same day; smoke and unit tests pass). Your dictation hotkey is Option+Space on the Mac unless you changed it. Tell Claude what you saw at each step.
 
   On the Mac, on the second US-119 test build (a12e0df, installed 2026-11-06: a hands-free or tap to start take needs a stretch of steady sound before it uploads; held takes work as before; scope change approved by LaBroi 2026-11-06). If every word of a take is dropped as silence, the take does not wait on Home for Retry (LaBroi's call, 2026-11-05):
 
