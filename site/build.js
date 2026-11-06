@@ -456,7 +456,7 @@ Wispr Flow's plans, prices, platforms, and requirements checked ${c.checked} aga
 
 ${qa}
 
-${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM_TEXT}\n\n` : ''}## Contact
+${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4?v=${fileHash('film/one-drop.mp4')}. ${FILM_TEXT}\n\n` : ''}## Contact
 - Issues and support: ${links.issues}${SUPPORT_EMAIL ? `\n- Email: ${SUPPORT_EMAIL}` : ''}
 `
 }
@@ -932,9 +932,13 @@ async function fetchFont() {
  * visitors on their next load even though these files are kept for a
  * year (headers.js), and an old script can never meet a new page.
  */
-function fingerprint() {
+function fileHash(file) {
   const { createHash } = require('node:crypto')
-  const hash = (file) => createHash('sha256').update(readFileSync(join(out, file))).digest('hex').slice(0, 10)
+  return createHash('sha256').update(readFileSync(join(out, file))).digest('hex').slice(0, 10)
+}
+
+function fingerprint() {
+  const hash = fileHash
   const stamp = (file, refs) => {
     let text = readFileSync(join(out, file), 'utf8')
     for (const ref of refs) {
@@ -952,7 +956,7 @@ function fingerprint() {
         .split(`${SITE_URL}/${ref}"`)
         .join(`${SITE_URL}/${ref}?v=${v}"`)
       // A reference written some other way would stay unstamped and
-      // stale for hours; the build stops instead.
+      // stale for a year; the build stops instead.
       if (!text.includes(`${ref}?v=${v}`)) throw new Error(`site: ${file} has no stampable reference to ${ref}`)
     }
     writeFileSync(join(out, file), text)

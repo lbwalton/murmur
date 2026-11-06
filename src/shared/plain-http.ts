@@ -3,9 +3,10 @@
 // that uses it has to be confirmed, and until it is, nothing is sent
 // (US-140). This machine is the 1 exception: traffic to it never leaves.
 
-const LOOPBACK = /^(?:localhost|.+\.localhost|127(?:\.\d{1,3}){3}|::1)$/
+// 0.0.0.0 is what local servers print, and it reaches this machine.
+const LOOPBACK = /^(?:localhost|.+\.localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|::1)$/
 const PRIVATE =
-  /^(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|f[cd][0-9a-f]{2}:.*|fe80:.*|[^.]+|.+\.local|.+\.lan|.+\.home\.arpa)$/
+  /^(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|f[cd][0-9a-f]{2}:.*|fe80:.*|[^.:]+|.+\.local|.+\.lan|.+\.home\.arpa)$/
 
 function parsed(url: string): URL | null {
   try {

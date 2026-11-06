@@ -60,7 +60,7 @@ A user's provider key is theirs: it is encrypted on their device and we never ho
 
 ## Runbook: a bad release
 
-Installed copies check GitHub Releases on launch, download the newest version on their own, and install it when they quit. Stop the release first.
+By default, installed copies check GitHub Releases at launch and every 4 hours, download the newest version, and install it when they quit. Ask first waits for a click, and Off never checks, so those copies will not get a fix on their own. Stop the release first.
 
 **Stop it reaching more copies.** Set the release back to a draft: `gh release edit vX.Y.Z --repo lbwalton/murmur --draft`. The updater then sees the release before it as the newest one. Copies that already downloaded it will still install it on quit.
 

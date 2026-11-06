@@ -66,7 +66,7 @@ Yes. Click **Deactivate** under Settings, murmur Pro: the app switches to the fr
 
 ## I lost my key. What do I do?
 
-Email support with your order id or receipt and a fresh key is issued. Keys are free to reissue for the same purchase.
+Email support with your order id or receipt and a fresh key is issued. Keys are free to reissue for the same purchase, for as long as the purchase record exists, which is 10 years after you bought it.
 
 ## How do I buy murmur Pro?
 

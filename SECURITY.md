@@ -21,4 +21,4 @@ You get a reply within 3 business days saying whether the problem is confirmed. 
 
 ## Which versions get security fixes?
 
-The latest release. murmur updates itself, so fixes reach installed copies on their own.
+The latest release. murmur updates itself by default, so fixes reach most copies on their own. With Updates set to Ask first it takes a click, and with Off nothing arrives until you update by hand.

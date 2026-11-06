@@ -19,16 +19,18 @@ export function PlainHttpNote(props: { url: string }): React.JSX.Element | null 
   }, [host])
 
   if (host === null || trusted === null) return null
-  const save = (hosts: string[]): void => {
+  // Reads the list fresh: 2 of these notes can be on screen at once.
+  const change = (edit: (hosts: string[]) => string[]): void => {
     void bridge()
-      .updateSettings({ trustedHttpHosts: hosts })
+      .getSettings()
+      .then((settings) => bridge().updateSettings({ trustedHttpHosts: edit(settings.trustedHttpHosts) }))
       .then((settings) => setTrusted(settings.trustedHttpHosts))
   }
   if (trusted.includes(host)) {
     return (
       <div className="row-note">
         Sending to {host} without encryption, as you confirmed.{' '}
-        <button type="button" className="btn" onClick={() => save(trusted.filter((item) => item !== host))}>
+        <button type="button" className="btn" onClick={() => change((hosts) => hosts.filter((item) => item !== host))}>
           Stop
         </button>
       </div>
@@ -39,7 +41,7 @@ export function PlainHttpNote(props: { url: string }): React.JSX.Element | null 
       <span className="status-bad">This address is not encrypted.</span> Your API key and what you say would travel in
       the open{isPrivateHost(host) ? ' across your network' : ' across the internet'}. murmur sends nothing to {host}{' '}
       until you confirm.{' '}
-      <button type="button" className="btn" onClick={() => save([...trusted, host])}>
+      <button type="button" className="btn" onClick={() => change((hosts) => [...new Set([...hosts, host])])}>
         Send to {host} anyway
       </button>
     </div>

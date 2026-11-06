@@ -18,7 +18,7 @@ export interface TranscribeConfig {
   apiKey: string
 }
 
-export type TranscribeErrorKind = 'auth' | 'badrequest' | 'server' | 'network' | 'timeout'
+export type TranscribeErrorKind = 'auth' | 'badrequest' | 'plainhttp' | 'server' | 'network' | 'timeout'
 
 export type TranscribeResult =
   | { ok: true; text: string; silence?: SilenceStats }
@@ -128,7 +128,10 @@ async function attempt(
     if (error instanceof Error && error.name === 'AbortError') {
       return { ok: false, kind: 'timeout', detail: `no response in ${timeoutMs}ms` }
     }
-    return { ok: false, kind: 'network', detail: error instanceof Error ? error.message : 'fetch failed' }
+    const detail = error instanceof Error ? error.message : 'fetch failed'
+    // Not an outage, so trying again cannot help (US-140).
+    if (/not confirmed|ERR_BLOCKED/.test(detail)) return { ok: false, kind: 'plainhttp', detail }
+    return { ok: false, kind: 'network', detail }
   } finally {
     clearTimeout(timer)
   }

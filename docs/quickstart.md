@@ -29,4 +29,4 @@ Yes, planned as its own phase after the desktop launch. It will be a fresh app b
 
 ## How does murmur update itself?
 
-Installed builds check GitHub releases for a newer version at launch and every four hours. An update downloads quietly, a notification tells you it is ready, and it installs itself the next time you quit murmur. There is nothing to click and no interruption while you dictate; if an update check fails, murmur just carries on and tries again later. Running from source? Update with git pull instead; the self-updater stays out of the way in development.
+Installed builds check GitHub releases for a newer version at launch and every four hours. An update downloads quietly, a notification tells you it is ready, and it installs itself the next time you quit murmur. There is nothing to click and no interruption while you dictate; if an update check fails, murmur just carries on and tries again later. Running from source? Update with git pull instead; the self-updater stays out of the way in development. That is the default: Settings, System, Updates can also ask first, or turn updates off.

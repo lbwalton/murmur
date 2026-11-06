@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * Outside-in security posture check for any public website: what a security scanner (or
  * an agency's security lead) sees, checked in about 1 minute. Read-only: it only sends

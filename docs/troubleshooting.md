@@ -8,11 +8,11 @@ Settings, System, Diagnostics, **Save report**. That writes one plain text file 
 
 ## How do I tell you a take came out wrong?
 
-Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. All of it can be edited, so take out anything private.
+Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. What you said, what it typed, and what it should have been can all be edited here, and the rest in your mail app, so take out anything private.
 
-**Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, dictionary, expansions, and other takes are never included. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
+**Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, other takes, and your dictionary and expansion lists are never included. What murmur typed can hold an expansion that fired or a dictionary spelling, so read it first. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
 
-LaBroi reads reports to improve murmur, and they are deleted after 90 days. A report becomes a test case only if you agree, rewritten without names or details.
+LaBroi reads reports to improve murmur. They are kept 90 days, then cleared within about 30 days. A report becomes a test case only if you agree, rewritten without names or details.
 
 ## What does a [quality] line in the log mean?
 

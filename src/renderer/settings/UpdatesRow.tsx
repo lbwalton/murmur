@@ -10,12 +10,20 @@ const bridge = (): SettingsApi => window.murmur
 
 type UpdateOffer = Awaited<ReturnType<SettingsApi['getUpdateOffer']>>
 
+const OFFER_POLL_MS = 3_000
+
 export function UpdatesRow(props: { settings: Settings; onChange: (mode: UpdateMode) => void }): React.JSX.Element {
   const mode = props.settings.updates
   const [offer, setOffer] = useState<UpdateOffer | null>(null)
 
+  // A download ends, or a new version turns up, with this row on screen.
   useEffect(() => {
-    void bridge().getUpdateOffer().then(setOffer)
+    const load = (): void => {
+      void bridge().getUpdateOffer().then(setOffer)
+    }
+    load()
+    const timer = setInterval(load, OFFER_POLL_MS)
+    return () => clearInterval(timer)
   }, [mode])
 
   return (

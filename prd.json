@@ -1915,7 +1915,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise. Drafted 2026-11-06 on the branch, not deployed: a summary above the first question, a retention list, a rights question naming GDPR and CCPA, and a microphone question, with build tests. Left: LaBroi reads and approves the wording, the Gmail cleanup runs first, and a rescan after deploy."
+      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise. Drafted 2026-11-06 on the branch, not deployed: a summary above the first question, a retention list, a rights question naming GDPR and CCPA, and a microphone question, with build tests. Left: LaBroi reads and approves the wording, the Gmail cleanup runs first, and a rescan after deploy. Review gate 2026-11-06: the pages now say nothing reaches Eze Media on its own, and name the http exception. Open for LaBroi: deleting on request vs a 10 year business period needs a legal answer; the retention list leaves out logs (capped by size) and paintings (about 400 days); and SECURITY.md promises no legal action for good faith research."
     },
     {
       "id": "US-121",
@@ -1929,7 +1929,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "LaBroi runs the deploy. Built 2026-11-06, not deployed. headers.js sets a year-long immutable cache on the fingerprinted paths and nothing else; the film's absolute links in the structured data are stamped too; a build test fails on any unstamped reference in html, css, or js, including brush.js in hero.js; a real build with the film stamps all 4 film links. Left: after the next deploy, curl -sI each path and read the posture check's cache line."
+      "notes": "LaBroi runs the deploy. Built 2026-11-06, not deployed. headers.js sets a year-long immutable cache on the fingerprinted paths and nothing else; the film's absolute links in the structured data are stamped too; a build test fails on any unstamped reference in html, css, or js, including brush.js in hero.js; a real build with the film stamps all 4 film links. Left: after the next deploy, curl -sI each path and read the posture check's cache line. Review gate 2026-11-06: the film link in llms.txt is stamped too, and the test now scans text files."
     },
     {
       "id": "US-122",
@@ -2043,7 +2043,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-11-06. word-diff.ts marks the removed words with a longest common run, unit tested with a smoke check; the row uses plain buttons and night studio tokens with no paint or motion. Not seen on screen yet: LaBroi opens a take with a fix in it, sees the struck words, and copies them."
+      "notes": "Built 2026-11-06. word-diff.ts marks the removed words with a longest common run, unit tested with a smoke check; the row uses plain buttons and night studio tokens with no paint or motion. Not seen on screen yet: LaBroi opens a take with a fix in it, sees the struck words, and copies them. Review gate 2026-11-06: list marks no longer count as a change."
     },
     {
       "id": "US-129",
@@ -2059,7 +2059,7 @@
       ],
       "passes": true,
       "needs_human": false,
-      "notes": "Verified 2026-11-06. quality.ts writes 1 [quality] line per take from maybePolish, fire and forget, through the capped log. A unit test feeds marked text through every field. The diagnostics report sums the last 30 days from the log and its rotated copies, and smoke checks both. Docs: troubleshooting."
+      "notes": "Verified 2026-11-06. quality.ts writes 1 [quality] line per take from maybePolish, fire and forget, through the capped log. A unit test feeds marked text through every field. The diagnostics report sums the last 30 days from the log and its rotated copies, and smoke checks both. Docs: troubleshooting. Review gate 2026-11-06: the first test could not fail, since swapping spaces for underscores kept the words. Each field now has a closed shape, anything else logs as other, a test reads every fallback reason out of llm.ts, and the marked text is proven absent."
     },
     {
       "id": "US-130",
@@ -2076,7 +2076,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "iPhone parity needs its own IOS story. A hosted inbox could replace email later; that would change the privacy page and the App Store label, so it is a separate decision. Built 2026-11-06. reportBody takes only the fields it lists, and a unit test with marked values proves keys, base URLs, the dictionary, expansions, and audio cannot reach it. The main process opens only mailto links to the 1 address and subject. The written rule is in security.mdc, /privacy/, and docs/troubleshooting.md. Not seen on screen. Left: the live check, and the panel's sentence names LaBroi as the reader, which he should approve."
+      "notes": "iPhone parity needs its own IOS story. A hosted inbox could replace email later; that would change the privacy page and the App Store label, so it is a separate decision. Built 2026-11-06. reportBody takes only the fields it lists, and a unit test with marked values proves keys, base URLs, the dictionary, expansions, and audio cannot reach it. The main process opens only mailto links to the 1 address and subject. The written rule is in security.mdc, /privacy/, and docs/troubleshooting.md. Not seen on screen. Left: the live check, and the panel's sentence names LaBroi as the reader, which he should approve. Review gate 2026-11-06: wording now matches the privacy page, and says a typed expansion can appear in what murmur typed."
     },
     {
       "id": "US-131",
@@ -2171,7 +2171,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen."
+      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen. Review gate 2026-11-06: leaving Automatic now cancels a running download, Off also stops install on quit where the platform allows it (Windows yes, Mac no, since the file is with the system once downloaded, and the docs say so), a click after Off does nothing, Ask first offers a version once, and the row refreshes."
     },
     {
       "id": "US-137",
@@ -2235,7 +2235,7 @@
       ],
       "passes": false,
       "needs_human": false,
-      "notes": "Built 2026-11-06. plainHttpHost decides, appFetch refuses before any request goes, so every provider call is covered from 1 place, and the note sits under all 4 base URL fields. Unit tests and a smoke check pass. Not seen on screen yet, so passes stays false. Left: type http://192.168.1.5/v1 in a base URL field, see the warning, confirm, and see the note change."
+      "notes": "Built 2026-11-06. plainHttpHost decides, appFetch refuses before any request goes, so every provider call is covered from 1 place, and the note sits under all 4 base URL fields. Unit tests and a smoke check pass. Not seen on screen yet, so passes stays false. Left: type http://192.168.1.5/v1 in a base URL field, see the warning, confirm, and see the note change. Review gate 2026-11-06: a redirect carried the key and audio past the first check, reproduced on Electron, so holdPlainHttpHops now checks every hop, with a plainHttpRedirect smoke check. An https to https redirect still carries the key to the new host, as any client does. A held take now says so plainly and is not retried, and the fold opens when a warning is inside."
     },
     {
       "id": "US-141",

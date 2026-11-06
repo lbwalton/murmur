@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { type TakeQuality, qualityLine, qualityReport, summarizeQuality, wordCount } from './quality'
 
@@ -27,9 +29,34 @@ describe('qualityLine', () => {
 
   it('cannot carry a sentence, whatever reaches its fields', () => {
     const marked = 'SECRET WORDS I said out loud, sk-MARKED, dictionary-entry'
-    const line = qualityLine({ ...take, level: marked, model: marked, outcome: marked })
-    expect(line).not.toMatch(/ WORDS | said /)
-    expect(line).toMatch(/^\[quality\] (?:\w+=\S+ ?)+$/)
+    const joined = 'SECRET_WORDS_I_said_out_loud'
+    for (const value of [marked, joined]) {
+      const line = qualityLine({ ...take, level: value, outcome: value })
+      expect(line).not.toMatch(/SECRET|said|MARKED|dictionary/)
+      expect(line).toContain('level=other')
+      expect(line).toContain('outcome=other')
+    }
+    expect(qualityLine({ ...take, model: marked })).toContain('model=other')
+    expect(qualityLine({ ...take, model: marked })).not.toMatch(/SECRET|MARKED/)
+  })
+
+  it('knows every reason llm.ts can fall back with', () => {
+    const source = readFileSync(join(__dirname, 'llm.ts'), 'utf8')
+    const reasons = [
+      ...[...source.matchAll(/reason: '([^']+)'/g)].map((match) => `validate: ${match[1]}`),
+      ...[...source.matchAll(/fallback\('([^']+)'\)/g)].map((match) => match[1]),
+      'http 500',
+      'timeout',
+      'network'
+    ]
+    expect(reasons.length).toBeGreaterThan(8)
+    for (const reason of reasons) expect(qualityLine({ ...take, outcome: reason }), reason).not.toContain('outcome=other')
+  })
+
+  it('keeps real model ids', () => {
+    for (const id of ['openai/gpt-oss-120b', 'whisper-large-v3-turbo', 'jev-latest', 'accounts/fireworks/models/x']) {
+      expect(qualityLine({ ...take, model: id })).toContain(`model=${id} `)
+    }
   })
 
   it('keeps a fallback reason readable as 1 field', () => {

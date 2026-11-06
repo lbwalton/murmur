@@ -182,6 +182,30 @@ export function initFormatter(): void {
     return refused
   })
 
+  // The hold has to cover every hop: a local server that redirects to an
+  // unconfirmed host gets cancelled at once, before any connection.
+  registerSmokeCheck('plainHttpRedirect', async () => {
+    const { createServer } = await import('node:http')
+    const { appFetch } = await import('../net')
+    const server = createServer((_request, response) => {
+      response.writeHead(307, { Location: 'http://192.0.2.1/v1/audio' })
+      response.end()
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    const port = typeof address === 'object' && address !== null ? address.port : 0
+    const started = Date.now()
+    try {
+      const outcome = await appFetch(`http://127.0.0.1:${port}/`, { method: 'POST', body: 'probe' }).then(
+        () => 'reached',
+        (error: Error) => error.message
+      )
+      return outcome.includes('BLOCKED') && Date.now() - started < 2_000
+    } finally {
+      server.close()
+    }
+  })
+
   registerSmokeCheck('llmFormatter', async () => {
     const cfg = { baseUrl: 'https://mock.local/v1', model: 'm', apiKey: 'k' }
     const input = 'Send the report tomorrow and copy the whole team on it please.'

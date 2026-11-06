@@ -20,12 +20,15 @@ const plain = (word: string): string =>
 
 const wordsOf = (text: string): string[] => text.split(/\s+/).filter((word) => word.length > 0)
 
+// A list's markers are its shape, not words anyone said.
+const finalWords = (text: string): string[] => wordsOf(text).filter((word) => !/^(?:-|\d+\.)$/.test(word))
+
 /** The raw words in order, each marked when no longest common run with
  *  the final text keeps it. Punctuation and case never count as a change. */
 export function heardWords(raw: string, final: string): HeardWord[] {
   const heard = wordsOf(raw)
   const a = heard.map(plain)
-  const b = wordsOf(final).map(plain)
+  const b = finalWords(final).map(plain)
   if (a.length * b.length > MAX_CELLS) return heard.map((text) => ({ text, removed: false }))
   const width = b.length + 1
   const table = new Uint32Array((a.length + 1) * width)
@@ -59,5 +62,5 @@ export function heardWords(raw: string, final: string): HeardWord[] {
  *  not just punctuation, on a real dictation. */
 export function offersWhatYouSaid(event: SessionEvent): boolean {
   if (event.kind === 'transform' || event.rawText.trim().length === 0) return false
-  return wordsOf(event.rawText).map(plain).join(' ') !== wordsOf(event.finalText).map(plain).join(' ')
+  return wordsOf(event.rawText).map(plain).join(' ') !== finalWords(event.finalText).map(plain).join(' ')
 }

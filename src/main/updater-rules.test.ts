@@ -5,15 +5,15 @@ import { updatePlan } from './updater-rules'
 
 describe('updatePlan', () => {
   it('Automatic checks and downloads', () => {
-    expect(updatePlan('auto')).toEqual({ check: true, autoDownload: true })
+    expect(updatePlan('auto')).toEqual({ check: true, autoDownload: true, installOnQuit: true })
   })
 
   it('Ask first checks, and downloads only after a click', () => {
-    expect(updatePlan('ask')).toEqual({ check: true, autoDownload: false })
+    expect(updatePlan('ask')).toEqual({ check: true, autoDownload: false, installOnQuit: true })
   })
 
   it('Off makes no request at all', () => {
-    expect(updatePlan('off')).toEqual({ check: false, autoDownload: false })
+    expect(updatePlan('off')).toEqual({ check: false, autoDownload: false, installOnQuit: false })
   })
 })
 

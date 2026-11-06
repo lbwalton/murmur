@@ -26,16 +26,26 @@ export interface QualitySummary {
 const SUMMARY_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// Anything else in a field is dropped, so a stray value can never carry
-// text into the log.
-const safe = (value: string): string => value.replace(/[^\w./:-]+/g, '_').slice(0, 80)
+// Each field has a closed shape, and anything outside it is logged as
+// other, so a stray value can never carry words into the log. Keeping
+// the characters and swapping the spaces would still hold the words.
+const LEVELS = new Set(['off', 'light', 'full'])
+const OUTCOME =
+  /^(?:cleaned|skipped|timeout|network|hint echo|response missing text|http \d{3}|validate: (?:empty|meta chatter|refusal|preamble line|missing entries|kept first attempt|cut opening cue|length ratio|length delta|appended chatter))$/
+// A model id: a word or 2 joined by these marks, with no spaces, and
+// short, since an id is typed into settings and never said aloud.
+const MODEL = /^[\w.:-]{1,48}(?:\/[\w.:-]{1,48}){0,4}$/
+
+const level = (value: string): string => (LEVELS.has(value) ? value : 'other')
+const outcome = (value: string): string => (OUTCOME.test(value) ? value.replace(/ /g, '_') : 'other')
+const model = (value: string): string => (MODEL.test(value) ? value : 'other')
 
 export function qualityLine(take: TakeQuality): string {
   // A cue word that survives is a hint, not a verdict: real ones should stay.
   const hint = take.cuesOut > 0 ? 1 : 0
   return (
-    `[quality] level=${safe(take.level)} lists=${take.smartLists ? 'on' : 'off'} ` +
-    `corrections=${take.corrections ? 'on' : 'off'} model=${safe(take.model)} outcome=${safe(take.outcome)} ` +
+    `[quality] level=${level(take.level)} lists=${take.smartLists ? 'on' : 'off'} ` +
+    `corrections=${take.corrections ? 'on' : 'off'} model=${model(take.model)} outcome=${outcome(take.outcome)} ` +
     `wordsIn=${take.wordsIn} wordsOut=${take.wordsOut} cuesIn=${take.cuesIn} cuesOut=${take.cuesOut} hint=${hint}`
   )
 }

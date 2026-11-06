@@ -30,7 +30,7 @@ describe('fingerprinted files (US-121)', () => {
       env: { ...process.env, SITE_OFFLINE: '1', FILM_DIR: join(dist, 'no-film'), SITE_OUT: dist, SITE_URL: SITE, SUPPORT_EMAIL: EMAIL }
     })
     expect(run.status, run.stderr).toBe(0)
-    const pages = files(dist).filter((file) => /\.(?:html|css|js)$/.test(file))
+    const pages = files(dist).filter((file) => /\.(?:html|css|js|txt)$/.test(file))
     expect(pages.length).toBeGreaterThan(5)
     const named = FINGERPRINTED_PATHS.filter((path) => !path.endsWith('*')).map((path) => path.slice(1))
     const reference = new RegExp(

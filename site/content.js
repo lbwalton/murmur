@@ -170,7 +170,7 @@ function privacy(links, supportEmail) {
     title: 'Privacy: murmur collects nothing',
     description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
-    lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
+    lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
     updated: '2026-11-06',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
@@ -182,13 +182,13 @@ function privacy(links, supportEmail) {
       {
         q: 'Does murmur collect my data?',
         a: [
-          "No. murmur has no server, no account, no analytics, no ads, and no tracking, on Mac, Windows, or iPhone. Nothing you say or type reaches Eze Media LLC. For the App Store's privacy label, the iPhone app answers Data Not Collected."
+          "No. murmur has no server, no account, no analytics, no ads, and no tracking, on Mac, Windows, or iPhone. Nothing you say or type reaches Eze Media LLC on its own. For the App Store's privacy label, the iPhone app answers Data Not Collected."
         ]
       },
       {
         q: 'Where does my voice go when I dictate?',
         a: [
-          'To the transcription provider you chose (Groq unless you picked another), over an encrypted connection, under your own key, and only what you recorded while dictating. The provider handles it under its own privacy terms, which you agreed to when you made your key. Pointed at a server on your own computer, your voice never leaves it. ',
+          'To the transcription provider you chose (Groq unless you picked another), over an encrypted connection, under your own key, and only what you recorded while dictating. The one exception is an unencrypted http address you type yourself, which murmur refuses until you confirm it. The provider handles it under its own privacy terms, which you agreed to when you made your key. Pointed at a server on your own computer, your voice never leaves it. ',
           { text: 'Choosing a provider', href: links.doc('providers') },
           '.'
         ]
@@ -297,7 +297,7 @@ function security(links, supportEmail) {
       {
         q: 'What leaves the device, and where does it go?',
         a: [
-          'The audio of a take goes to the transcription provider the person chose, and its words go to the cleanup provider they chose, over encrypted connections and under their own key. Nothing reaches Eze Media LLC. The update check and the provider list come from GitHub. ',
+          'The audio of a take goes to the transcription provider the person chose, and its words go to the cleanup provider they chose, under their own key. Connections are encrypted, unless someone types an unencrypted http address and confirms it after a warning. Nothing reaches Eze Media LLC on its own. The update check and the provider list come from GitHub. ',
           { text: 'The full list is on the privacy page', href: links.privacy },
           '.'
         ]
@@ -325,13 +325,13 @@ function security(links, supportEmail) {
       {
         q: 'How are API keys stored?',
         a: [
-          "Encrypted by the system: Electron's secure storage on Mac and Windows, and the Keychain on iPhone. Keys are never written to logs, and they go only to the provider they belong to."
+          "Encrypted by the system: Electron's secure storage on Mac and Windows, and the Keychain on iPhone. Keys are never written to logs, and they go only to the address saved with them, or to wherever a provider redirects that address. murmur refuses a redirect to unencrypted http."
         ]
       },
       {
         q: 'How are updates and licenses checked?',
         a: [
-          'On Mac and Windows, updates come from murmur\'s GitHub releases, and Settings can make them automatic, ask first, or turn them off. Each download is checked against the checksum published with the release, and on Mac against the app\'s signature too. Pro license keys are ed25519 signatures checked offline, with no licensing server.'
+          'On Mac and Windows, updates come from murmur\'s GitHub releases, and Settings can make them automatic, ask first, or turn them off. Each download is checked against the checksum published with the release, and on Mac against the app\'s signature too. Pro license keys are ed25519 signatures checked offline, with no licensing server. On a Mac, an update already downloaded still installs if updates are turned off afterward.'
         ]
       },
       {
@@ -339,7 +339,7 @@ function security(links, supportEmail) {
         a: ['The Mac and iPhone apps are. The Windows installer is not:'],
         points: [
           ['Mac.', ['Signed with an Apple Developer ID and notarized by Apple.']],
-          ['iPhone.', ['Signed and distributed through the App Store.']],
+          ['iPhone.', ['Signed and distributed through the App Store once it is listed there.']],
           [
             'Windows.',
             [

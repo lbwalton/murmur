@@ -8,10 +8,13 @@ export interface UpdatePlan {
   check: boolean
   /** Fetch the update without asking. */
   autoDownload: boolean
+  /** Install what was downloaded when murmur quits. Windows honors this
+   *  at quit; on a Mac the file is already with the system by then. */
+  installOnQuit: boolean
 }
 
 export function updatePlan(mode: UpdateMode): UpdatePlan {
-  return { check: mode !== 'off', autoDownload: mode === 'auto' }
+  return { check: mode !== 'off', autoDownload: mode === 'auto', installOnQuit: mode !== 'off' }
 }
 
 export interface UpdateOffer {

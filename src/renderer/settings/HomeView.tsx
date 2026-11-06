@@ -89,6 +89,9 @@ function reasonText(take: WaitingTake): string {
     return f.detail === 'no API key configured' ? 'no API key was saved' : 'the provider did not accept the key'
   }
   if (f.kind === 'network') return 'murmur could not reach the provider'
+  if (f.kind === 'plainhttp') {
+    return 'the provider address is not encrypted, so nothing was sent; confirm it under Base URL in Settings'
+  }
   if (f.kind === 'timeout') return 'the provider did not answer in time'
   if (f.kind === 'server') return 'the provider had a problem on its end'
   if (f.kind === 'badrequest') return 'the provider refused the audio or the model name'

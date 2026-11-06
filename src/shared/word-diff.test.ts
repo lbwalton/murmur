@@ -59,6 +59,11 @@ describe('offersWhatYouSaid', () => {
     expect(offersWhatYouSaid(event('send it today', 'Send it today.'))).toBe(false)
   })
 
+  it('does not count list marks as a change', () => {
+    expect(offersWhatYouSaid(event('milk eggs bread', '- milk\n- eggs\n- bread'))).toBe(false)
+    expect(offersWhatYouSaid(event('milk eggs bread', '1. milk\n2. eggs\n3. bread'))).toBe(false)
+  })
+
   it('never offers it on a transform or an empty row', () => {
     expect(offersWhatYouSaid(event('make it shorter', 'the original', 'transform'))).toBe(false)
     expect(offersWhatYouSaid(event('  ', 'x'))).toBe(false)

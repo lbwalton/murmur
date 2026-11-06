@@ -295,7 +295,7 @@ Settings, System, **Updates** has 3 choices:
 
 - **Automatic**, the default. murmur checks every few hours, downloads quietly, and installs when you quit.
 - **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click the notification, or Download in Settings.
-- **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself.
+- **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself. On a Mac, an update that had already finished downloading still installs when you quit.
 
 The provider list has its own switch, because it is a separate request to GitHub. Both are explained on the [privacy page](https://murmurapp.app/privacy/).
 

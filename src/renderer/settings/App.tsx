@@ -26,6 +26,7 @@ import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
 import { PlainHttpNote } from './PlainHttpNote'
+import { plainHttpHost } from '../../shared/plain-http'
 import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
 import { NotesPanel } from './NotesPanel'
@@ -936,7 +937,10 @@ export function App(): React.JSX.Element {
               </p>
             )}
 
-            <Advanced hint="base URL, profiles, price refresh, defaults">
+            <Advanced
+              hint="base URL, profiles, price refresh, defaults"
+              open={plainHttpHost(settings.provider.baseUrl) !== null}
+            >
               <Row
                 label="Base URL"
                 anchor="row-base-url"

@@ -9,7 +9,7 @@ describe('plainHttpHost', () => {
   })
 
   it('never asks about this machine', () => {
-    for (const url of ['http://localhost:8000/v1', 'http://127.0.0.1:1234', 'http://[::1]:8000/v1', 'http://whisper.localhost/v1']) {
+    for (const url of ['http://localhost:8000/v1', 'http://127.0.0.1:1234', 'http://0.0.0.0:8000/v1', 'http://[::1]:8000/v1', 'http://whisper.localhost/v1']) {
       expect(plainHttpHost(url), url).toBeNull()
     }
   })
@@ -38,7 +38,7 @@ describe('isPrivateHost', () => {
     for (const host of ['192.168.1.20', '10.0.0.5', '172.16.0.9', '172.31.255.1', 'nas.local', 'server', 'fd12:3456::1']) {
       expect(isPrivateHost(host), host).toBe(true)
     }
-    for (const host of ['8.8.8.8', '172.32.0.1', '11.0.0.1', 'api.groq.com', '192.169.1.1']) {
+    for (const host of ['8.8.8.8', '172.32.0.1', '11.0.0.1', 'api.groq.com', '192.169.1.1', '2001:4860:4860::8888']) {
       expect(isPrivateHost(host), host).toBe(false)
     }
   })
