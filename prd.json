@@ -2265,7 +2265,7 @@
       ],
       "passes": false,
       "needs_human": false,
-      "notes": ""
+      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. Left: the next release carries both."
     },
     {
       "id": "US-143",

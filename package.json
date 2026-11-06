@@ -23,6 +23,7 @@
     "check:headers": "node scripts/check-headers.js",
     "notices": "node scripts/gen-notices.js",
     "release:stable": "node scripts/stable-assets.js",
+    "release:manifest": "node scripts/release-manifest.js",
     "site": "node site/build.js"
   },
   "build": {
