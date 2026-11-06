@@ -8,8 +8,13 @@ Pick your computer:
 
 - **Mac:** [murmur-mac.dmg](https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg)
 - **Windows:** [murmur-windows.exe](https://github.com/lbwalton/murmur/releases/latest/download/murmur-windows.exe)
+- **iPhone:** on its way to the App Store; see below.
 
-Both links always serve the newest release, so they are safe to bookmark and share. murmur is free to download and open source (GPL-3.0). You bring your own transcription key; the setup wizard walks you through getting a free one. Every version, with its release notes, is also listed on the [releases page](https://github.com/lbwalton/murmur/releases).
+The Mac and Windows links always serve the newest release, so they are safe to bookmark and share. murmur is free to download and open source (GPL-3.0). You bring your own transcription key; the setup wizard walks you through getting a free one. Every version, with its release notes, is also listed on the [releases page](https://github.com/lbwalton/murmur/releases).
+
+## How do I get murmur on iPhone?
+
+murmur for iPhone, murmur voice dictation, is on its way to the App Store: free, for iPhones with iOS 26 or later, and updated through the App Store like any app. Open it once and it walks you through the microphone, your key, and adding the murmur keyboard. Everything else is in [murmur on iPhone](./iphone.md).
 
 ## How do I install murmur on a Mac?
 
