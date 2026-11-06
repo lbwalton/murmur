@@ -6,7 +6,7 @@
 // comparison, and a 404, all under one header and footer. Also the night
 // studio tokens copied from the app, the app's brush engine stripped of
 // its types for the brushwork hero, robots.txt, sitemap.xml, llms.txt and
-// llms-full.txt,
+// llms-full.txt, the security contact at /.well-known/security.txt (US-118),
 // the _headers Cloudflare Pages serves, and the icons and preview image
 // drawn by the same kit as the app icons. Nothing binary lives in the
 // repo: the display face is fetched at build time (the page falls back
@@ -24,6 +24,7 @@ const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
 const { clip, firstParagraph, renderDoc } = require('./markdown')
 const { headersFile } = require('./headers')
+const { securityTxt } = require('./security-txt')
 const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
 const here = __dirname
@@ -934,6 +935,8 @@ async function main() {
   writeFileSync(join(out, 'favicon.svg'), faviconSvg(tokens))
   writeFileSync(join(out, 'apple-touch-icon.png'), touchIconPng(brush))
   writeFileSync(join(out, 'og.png'), previewPng(brush))
+  mkdirSync(join(out, '.well-known'), { recursive: true })
+  writeFileSync(join(out, '.well-known', 'security.txt'), securityTxt(SITE_URL))
   writeFileSync(join(out, 'robots.txt'), robotsTxt())
   writeFileSync(join(out, 'sitemap.xml'), sitemapXml(docs))
   writeFileSync(join(out, 'llms.txt'), llmsTxt(docs))
