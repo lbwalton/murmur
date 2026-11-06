@@ -2,7 +2,7 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
-## 0.1.17 (unreleased)
+## 0.1.17 (2026-11-06)
 
 - Hands-free: tap your hotkey twice and keep talking without holding it; one more tap stops the take and pastes your words. A brush loop around the pill shows the take is locked, and Escape cancels it while keeping the take for Retry on Home. A take also stops on its own after 2 minutes of quiet, at 12 minutes, when your screen locks, or from Stop hands-free in the tray menu; then nothing pastes, and your words wait in history. If your computer sleeps or murmur quits during a take, the take waits on Home for Retry. Turn it off under Settings, Dictation, Double-tap for hands-free; Loop once it settles sets how faint the loop gets.
 - murmur leaves your clipboard alone: Retry, a hands-free take that stops on its own, and Stop hands-free in the tray never put your words on the clipboard, so Cmd+V (Ctrl+V on Windows) keeps pasting what you copied. Press your paste last dictation shortcut to paste the words.
