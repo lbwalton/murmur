@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type BrowserWindow, app, ipcMain } from 'electron'
+import { qualityReport, summarizeQuality } from './formatter/quality'
 import { getHotkeysStatus } from './hotkeys'
 import { getSettings, listSavedKeyBaseUrls, updateSettings } from './settings'
 import { registerSmokeCheck } from './smoke'
@@ -25,6 +26,18 @@ function logTail(): string {
   } catch {
     return '(no log file yet)'
   }
+}
+
+// The current log and its rotated copies, for the 30 day quality count.
+function allLogs(): string {
+  const read = (file: string): string => {
+    try {
+      return readFileSync(file, 'utf8')
+    } catch {
+      return ''
+    }
+  }
+  return [`${logFile()}.2`, `${logFile()}.1`, logFile()].map(read).join('\n')
 }
 
 /** The report body. Exported so smoke can assert its shape offline. */
@@ -55,6 +68,8 @@ export function buildDiagnosticsReport(): string {
     `dictionaryEntries: ${settings.dictionary.length}`,
     `expansionEntries: ${settings.expansions.length}`,
     `catalogRefresh: ${settings.catalogRefresh}`,
+    ``,
+    ...qualityReport(summarizeQuality(allLogs(), new Date())),
     ``,
     `recent log (${LOG_TAIL_LINES} lines max):`,
     logTail()
@@ -98,10 +113,12 @@ export function initDiagnostics(settingsWindow: () => BrowserWindow | null): voi
       report.includes('murmur diagnostics report') &&
       report.includes('hookStarted:') &&
       report.includes('dictionaryEntries: 1') &&
+      report.includes('quality, last 30 days') &&
       !report.includes('smokeleakprobe') &&
       // The dictation loop ran earlier in this same smoke boot, so its
       // breadcrumb must already be in the log tail.
-      report.includes('[dictation] delivered outcome=')
+      report.includes('[dictation] delivered outcome=') &&
+      report.includes('[quality] level=')
     )
   })
 }

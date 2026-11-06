@@ -6,6 +6,12 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## What does a [quality] line in the log mean?
+
+Each take writes 1 line saying how cleanup went, and it never holds your words: the formatting level, whether Smart lists and Apply corrections were on, the model, the outcome (cleaned, skipped, or why cleanup fell back), the word counts before and after, and how many correction cue words there were before and after. `hint=1` means a cue word such as "actually" survived. That is a hint and not a mistake, since many cue words are real.
+
+The diagnostics report adds these up for the last 30 days, or as far back as the log reaches: takes, how often cleanup fell back and why, and how often a cue word survived. The log stays on your computer, and it leaves only if you send it yourself.
+
 ## What happens when a dictation fails, and how do I retry it?
 
 murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the API keys list under Settings, Provider and keys), then click **retry** beside the take, or **retry all** when several are waiting.
