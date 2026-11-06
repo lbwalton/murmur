@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (94/144 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (95/144 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -98,6 +98,7 @@
 - [x] **US-116** File only the item on a decision connection too
 - [x] **US-118** A security contact, headers every scanner can read, and the HSTS preload written down
 - [x] **US-119** A silent take never types invented words
+- [x] **US-125** A scored test set for messy speech
 
 ## Built, awaiting live verification
 
@@ -136,7 +137,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-122** The repo's security basics
 - [ ] **US-123** A weekly outside check, an incident plan, and the rules file
 - [ ] **US-124** A public security page
-- [ ] **US-125** A scored test set for messy speech
 - [ ] **US-126** Restarts and restated thoughts come out clean
 - [ ] **US-127** Apply corrections and smart lists on for everyone
 - [ ] **US-128** See what cleanup changed, and take it back

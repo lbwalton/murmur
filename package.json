@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node scripts/check-headers.js && node scripts/check-design.js && vitest run",
     "test:watch": "vitest",
+    "probe:cleanup": "vitest run --config vitest.probe.config.ts",
     "smoke": "npm run build && node scripts/smoke.js",
     "roadmap": "node scripts/roadmap.js",
     "dist:mac": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --mac",

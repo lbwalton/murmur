@@ -1906,7 +1906,7 @@
       "acceptance": [
         "/privacy/ opens with a summary, above the first question, covering: what murmur collects, how long each kind of record is kept, what rights a person has (see, correct, delete, no sale or sharing), and that the site sets no cookies, so it shows no cookie banner",
         "A retention list covers every kind of record: history on the device (the Keep history setting), recordings waiting for a retry, purchase and license records, and support email. Each has a period or a stated test",
-        "Purchase and license records are kept as long as the license is valid, so it can be reissued, and at least 7 years after purchase for tax and audit needs",
+        "Purchase and license records are kept for 10 years after purchase, for tax and business audits, then deleted. The page says Stripe keeps its own copy under its own policy, and docs/pro.md says a lost key can be reissued while that record exists",
         "The page says plainly that the mic stays ready while murmur runs, that the last 300 ms live in memory only, and that nothing is saved or sent until you press",
         "Rights mention GDPR and California's CCPA by name, and every contact on the page is a real readable address in the served HTML",
         "A build test fails if the summary is removed or falls below the first question",
@@ -1915,7 +1915,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). A support email period is still to pick."
+      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits. A support email period is still to pick."
     },
     {
       "id": "US-121",
@@ -1991,9 +1991,9 @@
         "Rerunning with the same prompt moves each kind's pass rate by 5 points or less, or the run count rises until it does",
         "The baseline for the default model is recorded in notes before US-126 starts"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": ""
+      "notes": "Verified 2026-11-06. shared/cleanup-cases.json holds 98 made-up cases: cue-fix 17, restatement 16, abandoned-start 15, real-cue-word 21, list 11, long-structure 8, plain-prose 10. npm run probe:cleanup runs them through formatTranscript, polishTranscript, validatePolish, and the app's 8 s limit; the file name is outside the unit globs, a guard test proves it, and it skips without a key. It prints pass rate, lost content by name, fallback reasons, passes that only came from falling back, and a held out rate per kind, per model. MURMUR_PROBE_OUT and MURMUR_PROBE_REPLAY regrade saved answers for free. Stability: at 3 runs abandoned starts moved 7 points and long structure 9. Runs now spread over whole passes, default 16, tripled for long structure, since at 16 it still moved 7. Baseline, 2 reruns, openai/gpt-oss-120b on Groq via OpenRouter, corrections and smart lists on, 16 runs (48 for long structure): cue-fix 100, 100. restatement 34.8, 37.1 (held out 30, 33). abandoned-start 13.3, 11.7. real-cue-word 100, 100. list 79.0, 78.4. long-structure 77.3, 76.0. plain-prose 100, 100. Largest move 2.3 points. Fell back 8% of takes, 6% for length, against the US-126 target of under 2%. Lost content: start-cancel-order 14 of 16 (Move it to the following Tuesday instead, with no order named), long-change-of-plan, long-bug-report, long-support-reply. Review gate: 2 rounds, 11 findings then 5, all fixed or recorded; the reviewer's 98 correct answers all pass the grader, and validatePolish refuses 13 of them today (11 length, 2 list entries), which is US-126's work. Smoke: 84 of 84 on the rerun; the first run failed recording once with load at 6, the known audio flake, and no app code changed."
     },
     {
       "id": "US-126",
@@ -2012,7 +2012,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "iPhone parity needs an IOS story once these rules move to shared/polish.json (feature/ios). Also check the 8 validate: meta chatter fallbacks in LaBroi's log, the most common reason there, for false rejections of real dictation."
+      "notes": "iPhone parity needs an IOS story once these rules move to shared/polish.json (feature/ios). Also check the 8 validate: meta chatter fallbacks in LaBroi's log, the most common reason there, for false rejections of real dictation. Review of US-125 found 2 list cases that cannot pass today: list-fix-inside and list-dropped-entry hold a correction inside a list, impliedEntryCount counts the cut words as entries and refuses the right answer as missing entries, and SMART_LISTS_PROMPT says never drop an entry. Fix them here or say why not. Do not copy a case into a prompt example: the unit test makes a case that close carry tuned true."
     },
     {
       "id": "US-127",
@@ -2092,7 +2092,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": ""
+      "notes": "The long structure cases in US-125 grade words only: every single paragraph answer passes them. This story adds the paragraph and greeting check to the grader before it counts that 85%."
     },
     {
       "id": "US-132",

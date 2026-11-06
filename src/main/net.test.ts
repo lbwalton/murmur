@@ -34,7 +34,7 @@ describe('main-process requests', () => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry)
       if (statSync(full).isDirectory()) sources(full, out)
-      else if (entry.endsWith('.ts') && !entry.endsWith('.test.ts')) out.push(full)
+      else if (entry.endsWith('.ts') && !/\.(?:test|probe)\.ts$/.test(entry)) out.push(full)
     }
     return out
   }

@@ -1,0 +1,738 @@
+{
+  "comment": "The scored set every cleanup change is measured against (US-125). Every sentence is made up: no real dictation enters unless the person who said it agreed and it was rewritten without names or details. text is what the recognizer hands over. keep holds every fact that must survive, word for word as spoken, including the facts around a fix (a miss is lost content, the worst result). drop holds what must go (a miss is a stumble left in). A speaker's own contrast (the checkout page, not the pricing page) is a fine result; only the wrong statement must go. Phrases compare without punctuation and with number words as digits; a | separates accepted spellings. listLines is the fewest list lines a list case needs. unchanged means every word stays and the text stays prose. tuned marks a case close to an example inside a prompt, so the report shows a held out rate beside it. Never copy a case into a prompt. Run it with npm run probe:cleanup.",
+  "cases": [
+    {
+      "id": "cue-invoice",
+      "kind": "cue-fix",
+      "text": "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.",
+      "keep": ["send the invoice to mark", "wednesday"],
+      "drop": ["tuesday", "wait", "i mean"],
+      "tuned": true
+    },
+    {
+      "id": "cue-coffee-shop",
+      "kind": "cue-fix",
+      "text": "Let's meet at the coffee shop on Main Street, no wait, the one on Elm Street, at three.",
+      "keep": ["coffee shop", "elm street", "at three|at 3pm|at 3 pm"],
+      "drop": ["main street", "wait"]
+    },
+    {
+      "id": "cue-budget",
+      "kind": "cue-fix",
+      "text": "The budget is fifteen thousand, sorry, fifty thousand dollars for the quarter.",
+      "keep": ["the budget is", "fifty thousand", "for the quarter"],
+      "drop": ["fifteen thousand", "sorry"],
+      "tuned": true
+    },
+    {
+      "id": "cue-checkout-page",
+      "kind": "cue-fix",
+      "text": "I need you to update the pricing page. Actually, I mean the checkout page, not the pricing page.",
+      "keep": ["i need you to update", "checkout page"],
+      "drop": ["update the pricing page", "i mean"]
+    },
+    {
+      "id": "cue-room",
+      "kind": "cue-fix",
+      "text": "Tell Sarah the meeting moved to room four. I mean room five.",
+      "keep": ["tell sarah", "meeting moved to", "room five"],
+      "drop": ["room four", "i mean"]
+    },
+    {
+      "id": "cue-function-name",
+      "kind": "cue-fix",
+      "text": "Can you rename the function to get user, I mean fetch user, and update the tests.",
+      "keep": ["rename the function", "fetch user|fetchuser", "update the tests"],
+      "drop": ["get user", "i mean"]
+    },
+    {
+      "id": "cue-button-color",
+      "kind": "cue-fix",
+      "text": "The color should be teal for the buttons. Oh wait, actually what I mean is orange instead of teal.",
+      "keep": ["the color should be", "orange", "buttons"],
+      "drop": ["wait", "be teal", "i mean", "actually"],
+      "tuned": true
+    },
+    {
+      "id": "cue-flight",
+      "kind": "cue-fix",
+      "text": "Book the flight for the twelfth, no, the fourteenth, and get a window seat.",
+      "keep": ["book the flight", "fourteenth|14th", "window seat"],
+      "drop": ["twelfth", "12th"]
+    },
+    {
+      "id": "cue-database",
+      "kind": "cue-fix",
+      "text": "We should use Postgres. Wait, no, let me rephrase that. We should use SQLite for the local cache.",
+      "keep": ["we should use sqlite", "local cache"],
+      "drop": ["postgres", "rephrase"]
+    },
+    {
+      "id": "cue-table",
+      "kind": "cue-fix",
+      "text": "Book a table for four, make that six, at seven thirty on Saturday.",
+      "keep": ["book a table for", "six", "seven thirty|7 30pm|7 30 pm", "saturday"],
+      "drop": ["table for four", "make that"]
+    },
+    {
+      "id": "cue-pizzas",
+      "kind": "cue-fix",
+      "text": "Order two large pizzas, make that three, and a salad for the table.",
+      "keep": ["order", "three", "large pizzas", "salad for the table"],
+      "drop": ["two large", "make that"],
+      "tuned": true
+    },
+    {
+      "id": "cue-deadline",
+      "kind": "cue-fix",
+      "text": "Set the deadline to the end of March. Sorry, the end of April, because legal needs more time.",
+      "keep": ["set the deadline", "end of april", "legal needs more time"],
+      "drop": ["march", "sorry"]
+    },
+    {
+      "id": "cue-email-text",
+      "kind": "cue-fix",
+      "text": "Email Jordan, no, text Jordan the address before noon.",
+      "keep": ["text jordan the address before noon"],
+      "drop": ["email"]
+    },
+    {
+      "id": "cue-or-rather",
+      "kind": "cue-fix",
+      "text": "Ship it on Monday, or rather Tuesday, once QA signs off.",
+      "keep": ["ship it", "tuesday", "qa signs off"],
+      "drop": ["monday", "or rather"]
+    },
+    {
+      "id": "cue-weeks",
+      "kind": "cue-fix",
+      "text": "The report is due in two weeks, no, three weeks, so we have time.",
+      "keep": ["report is due in", "three weeks", "we have time"],
+      "drop": ["two weeks"]
+    },
+    {
+      "id": "cue-calendar",
+      "kind": "cue-fix",
+      "text": "Put the meeting on my calendar for nine. Sorry, I meant ten.",
+      "keep": ["put the meeting on my calendar", "ten"],
+      "drop": ["nine", "sorry", "i meant"]
+    },
+    {
+      "id": "cue-folder",
+      "kind": "cue-fix",
+      "text": "Open the red folder. What I meant was the blue folder.",
+      "keep": ["open the", "blue folder"],
+      "drop": ["red folder", "what i meant"]
+    },
+    {
+      "id": "restate-gift",
+      "kind": "restatement",
+      "text": "I wanted to buy a record as a gift, as a present for my brother.",
+      "keep": ["wanted to buy a record", "as a present", "my brother"],
+      "drop": ["as a gift"]
+    },
+    {
+      "id": "restate-office",
+      "kind": "restatement",
+      "text": "Let's meet on the, let's meet at the office on Thursday.",
+      "keep": ["at the office on thursday"],
+      "drop": ["meet on the"]
+    },
+    {
+      "id": "restate-contract",
+      "kind": "restatement",
+      "text": "We should probably send the, we need to send the contract to legal today.",
+      "keep": ["send the contract to legal", "today"],
+      "drop": ["probably send the"]
+    },
+    {
+      "id": "restate-writing-to",
+      "kind": "restatement",
+      "text": "I'm writing to let you know that we're going to, I'm writing to ask whether we could move our call to next week.",
+      "keep": ["im writing to ask", "move our call to next week"],
+      "drop": ["let you know"]
+    },
+    {
+      "id": "restate-time",
+      "kind": "restatement",
+      "text": "The meeting is at two, two thirty, three o'clock on Friday.",
+      "keep": ["the meeting is at", "three|3pm|3 pm", "friday"],
+      "drop": ["at two", "two thirty"]
+    },
+    {
+      "id": "restate-we-should",
+      "kind": "restatement",
+      "text": "I think we should, we should probably ship the update on Friday afternoon.",
+      "keep": ["i think", "we should probably ship", "the update", "friday afternoon"],
+      "drop": ["we should we should"],
+      "tuned": true
+    },
+    {
+      "id": "restate-review",
+      "kind": "restatement",
+      "text": "Can you look at, can you review the second draft before the end of the day.",
+      "keep": ["can you review the second draft", "end of the day"],
+      "drop": ["look at"]
+    },
+    {
+      "id": "restate-quick-call",
+      "kind": "restatement",
+      "text": "Give them a call, give them a quick call and confirm the delivery window.",
+      "keep": ["quick call", "confirm the delivery window"],
+      "drop": ["give them a call"]
+    },
+    {
+      "id": "restate-team",
+      "kind": "restatement",
+      "text": "The whole team, the whole design team is out next Monday.",
+      "keep": ["whole design team", "out next monday"],
+      "drop": ["whole team"]
+    },
+    {
+      "id": "restate-annual-plan",
+      "kind": "restatement",
+      "text": "We can charge more for it, we can charge twenty dollars more for the annual plan.",
+      "keep": ["we can charge", "twenty dollars more|20 more", "annual plan"],
+      "drop": ["charge more for it"]
+    },
+    {
+      "id": "restate-client",
+      "kind": "restatement",
+      "text": "She told me that, she told the client that the report would be late.",
+      "keep": ["she told the client", "report would be late"],
+      "drop": ["told me that"]
+    },
+    {
+      "id": "restate-tonight",
+      "kind": "restatement",
+      "text": "I will send it tonight, I will send the update tonight after the kids are asleep.",
+      "keep": ["send the update tonight", "kids are asleep"],
+      "drop": ["send it tonight"]
+    },
+    {
+      "id": "restate-garage",
+      "kind": "restatement",
+      "text": "Put the boxes in the garage, in the back of the garage next to the shelves.",
+      "keep": ["put the boxes", "back of the garage", "next to the shelves"],
+      "drop": ["boxes in the garage"]
+    },
+    {
+      "id": "restate-head-count",
+      "kind": "restatement",
+      "text": "There were about ten people, about twelve people at the workshop yesterday.",
+      "keep": ["there were about", "twelve people", "workshop yesterday"],
+      "drop": ["ten people"]
+    },
+    {
+      "id": "restate-lunch",
+      "kind": "restatement",
+      "text": "Do you want to, would you like to grab lunch after the meeting?",
+      "keep": ["would you like to grab lunch", "after the meeting"],
+      "drop": ["do you want to"]
+    },
+    {
+      "id": "restate-repeats",
+      "kind": "restatement",
+      "text": "It's, it's really the, the onboarding that that needs the most work.",
+      "keep": ["onboarding", "needs the most work"],
+      "drop": ["its its", "the the", "that that"]
+    },
+    {
+      "id": "start-deck",
+      "kind": "abandoned-start",
+      "text": "Can you send me the deck, you know what, forget that, just send me the numbers for October.",
+      "keep": ["send me the numbers for october"],
+      "drop": ["the deck", "forget that"]
+    },
+    {
+      "id": "start-option",
+      "kind": "abandoned-start",
+      "text": "I think we should go with option A because it's cheaper. No, let's go with option B, it ships faster and the team already knows it.",
+      "keep": ["option b", "ships faster", "team already knows it"],
+      "drop": ["option a", "cheaper"]
+    },
+    {
+      "id": "start-pull-request",
+      "kind": "abandoned-start",
+      "text": "Hey Sam, I was going to ask you about the budget, but never mind that, can you review the pull request before lunch.",
+      "keep": ["sam", "review the pull request", "before lunch"],
+      "drop": ["budget", "never mind"]
+    },
+    {
+      "id": "start-launch-month",
+      "kind": "abandoned-start",
+      "text": "So the plan is to launch in March. Well, not March, April, because the app review takes a while.",
+      "keep": ["plan is to launch", "april", "app review takes a while"],
+      "drop": ["launch in march", "well not march"]
+    },
+    {
+      "id": "start-almost-done",
+      "kind": "abandoned-start",
+      "text": "Tell Maria the report is done, or not done, almost done, it will be ready tomorrow.",
+      "keep": ["tell maria", "almost done", "ready tomorrow"],
+      "drop": ["or not done", "report is done"]
+    },
+    {
+      "id": "start-pick-up",
+      "kind": "abandoned-start",
+      "text": "I need to go to the, hold on, let me start over, please pick up the kids at four and bring the blue bag.",
+      "keep": ["pick up the kids at four", "blue bag"],
+      "drop": ["go to the", "start over", "hold on"]
+    },
+    {
+      "id": "start-monday-talk",
+      "kind": "abandoned-start",
+      "text": "I was going to say that we, actually forget it, let's just talk about it on Monday.",
+      "keep": ["talk about it on monday"],
+      "drop": ["going to say", "forget it"]
+    },
+    {
+      "id": "start-vendor",
+      "kind": "abandoned-start",
+      "text": "We could try the new vendor, or we could, no, drop the vendor idea, we are staying with the current one through June.",
+      "keep": ["staying with the current one|staying with the current vendor", "through june"],
+      "drop": ["new vendor", "vendor idea"]
+    },
+    {
+      "id": "start-dinner",
+      "kind": "abandoned-start",
+      "text": "Let's do Italian tonight. Hmm, you know what, never mind, let's just cook at home.",
+      "keep": ["cook at home"],
+      "drop": ["italian", "never mind", "you know what"]
+    },
+    {
+      "id": "start-new-design",
+      "kind": "abandoned-start",
+      "text": "The thing about the new design is that it, okay, start over, the new design tests better with first time users.",
+      "keep": ["new design tests better", "first time users"],
+      "drop": ["the thing about", "start over"]
+    },
+    {
+      "id": "start-one-more-week",
+      "kind": "abandoned-start",
+      "text": "I should probably, I don't know, let me think, okay, tell them we need one more week.",
+      "keep": ["tell them we need one more week"],
+      "drop": ["let me think", "i should probably"]
+    },
+    {
+      "id": "start-store-hours",
+      "kind": "abandoned-start",
+      "text": "What time does the, actually never mind, I found it, the store opens at nine.",
+      "keep": ["the store opens at nine"],
+      "drop": ["what time does", "never mind"]
+    },
+    {
+      "id": "start-cancel-order",
+      "kind": "abandoned-start",
+      "text": "Please cancel the Friday order. Wait, don't cancel it. Move it to the following Tuesday instead.",
+      "keep": ["friday order", "following tuesday"],
+      "drop": ["please cancel", "wait", "dont cancel it"]
+    },
+    {
+      "id": "start-lease",
+      "kind": "abandoned-start",
+      "text": "Tell the landlord we will renew the lease. No, hang on, we have not decided yet, tell the landlord we need until Friday.",
+      "keep": ["tell the landlord", "need until friday"],
+      "drop": ["renew the lease", "hang on"]
+    },
+    {
+      "id": "start-green-ones",
+      "kind": "abandoned-start",
+      "text": "Order the blue ones. Never mind, order the green ones.",
+      "keep": ["order the green ones"],
+      "drop": ["blue", "never mind"]
+    },
+    {
+      "id": "real-missed-call",
+      "kind": "real-cue-word",
+      "text": "Sorry I missed your call, I was in a meeting all afternoon.",
+      "keep": ["sorry i missed your call", "meeting all afternoon"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-no-problem",
+      "kind": "real-cue-word",
+      "text": "No problem, I can cover the Thursday shift for you.",
+      "keep": ["no problem", "thursday shift"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-rather-wait",
+      "kind": "real-cue-word",
+      "text": "I'd rather we wait until the numbers come in next week.",
+      "keep": ["id rather we wait", "next week"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-i-mean-opener",
+      "kind": "real-cue-word",
+      "text": "I mean, it works, but I think we can make it faster.",
+      "keep": ["i mean", "faster"],
+      "drop": [],
+      "unchanged": true,
+      "tuned": true
+    },
+    {
+      "id": "real-actually-opener",
+      "kind": "real-cue-word",
+      "text": "Actually, the tests are passing now, so we can merge.",
+      "keep": ["actually", "merge"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-wait-for-build",
+      "kind": "real-cue-word",
+      "text": "Wait for the build to finish before you push the tag.",
+      "keep": ["wait for the build"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-instead-of",
+      "kind": "real-cue-word",
+      "text": "Instead of Redis we chose Postgres because it was simpler to run.",
+      "keep": ["instead of redis", "postgres"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-actually-second-sentence",
+      "kind": "real-cue-word",
+      "text": "I talked to Sarah about the launch and she agreed with the plan. Actually, the pricing still needs work, so let's revisit it Monday.",
+      "keep": ["agreed with the plan", "actually", "pricing still needs work"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-no-opener",
+      "kind": "real-cue-word",
+      "text": "No, I don't think that's right, the numbers look off to me.",
+      "keep": ["no i dont think", "numbers look off"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-mean-that",
+      "kind": "real-cue-word",
+      "text": "I actually enjoyed the movie, and I mean that.",
+      "keep": ["actually enjoyed", "i mean that"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-sorry-actually",
+      "kind": "real-cue-word",
+      "text": "Sorry I missed your call, I was actually at the dentist.",
+      "keep": ["sorry", "actually at the dentist"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-no-then-wait",
+      "kind": "real-cue-word",
+      "text": "No, I do not think that is right. Wait for the numbers before we decide.",
+      "keep": ["no i do not think", "wait for the numbers"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-never-mind-noise",
+      "kind": "real-cue-word",
+      "text": "Never mind the noise, the recording came out fine.",
+      "keep": ["never mind the noise", "came out fine"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-hold-on-to",
+      "kind": "real-cue-word",
+      "text": "Hold on to the receipt until the refund clears.",
+      "keep": ["hold on to the receipt", "refund clears"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-you-know-what",
+      "kind": "real-cue-word",
+      "text": "You know what I love about this team? They show up.",
+      "keep": ["you know what i love", "they show up"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-forget-that-password",
+      "kind": "real-cue-word",
+      "text": "Forget that old password, the new one is on the card.",
+      "keep": ["forget that old password", "on the card"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-start-over",
+      "kind": "real-cue-word",
+      "text": "We need to start over on the homepage copy.",
+      "keep": ["start over on the homepage copy"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-make-that-call",
+      "kind": "real-cue-word",
+      "text": "Make that call before noon, they close early.",
+      "keep": ["make that call before noon", "close early"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-no-then-yes",
+      "kind": "real-cue-word",
+      "text": "The printer said no, then yes, then no again.",
+      "keep": ["no then yes then no again"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-rather-walk",
+      "kind": "real-cue-word",
+      "text": "I would rather walk than wait for the shuttle.",
+      "keep": ["rather walk", "wait for the shuttle"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "real-well-not",
+      "kind": "real-cue-word",
+      "text": "Well, not everyone agrees, and that's fine.",
+      "keep": ["well not everyone agrees", "thats fine"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "list-router-steps",
+      "kind": "list",
+      "text": "Here are the steps to reset the router. First unplug it, then wait thirty seconds, next plug it back in, and finally check the light.",
+      "keep": ["steps to reset the router", "unplug it", "wait thirty seconds", "plug it back in", "check the light"],
+      "drop": ["then wait", "finally check"],
+      "listLines": 4
+    },
+    {
+      "id": "list-groceries",
+      "kind": "list",
+      "text": "I want to make a grocery list. First I want to add apples, then rice, then olive oil, then coffee.",
+      "keep": ["grocery list", "apples", "rice", "olive oil", "coffee"],
+      "drop": ["first i want"],
+      "listLines": 4,
+      "tuned": true
+    },
+    {
+      "id": "list-agenda",
+      "kind": "list",
+      "text": "The agenda for tomorrow is first the budget review, second the hiring update, third the launch timeline.",
+      "keep": ["agenda for tomorrow", "budget review", "hiring update", "launch timeline"],
+      "drop": ["second the hiring", "third the launch"],
+      "listLines": 3
+    },
+    {
+      "id": "list-reasons",
+      "kind": "list",
+      "text": "There are three reasons we should wait. First the data is incomplete, second the team is on holiday, and third the vendor has not replied.",
+      "keep": ["three reasons we should wait", "data is incomplete", "team is on holiday", "vendor has not replied"],
+      "drop": ["second the team", "third the vendor"],
+      "listLines": 3
+    },
+    {
+      "id": "list-morning",
+      "kind": "list",
+      "text": "My morning routine. First stretch, then shower, then make coffee, then read the news.",
+      "keep": ["morning routine", "stretch", "shower", "make coffee", "read the news"],
+      "drop": ["then shower", "then make"],
+      "listLines": 4
+    },
+    {
+      "id": "list-fix-inside",
+      "kind": "list",
+      "text": "I want to make a list. First call the bank, then email the accountant, sorry, the lawyer, then file the forms.",
+      "keep": ["make a list", "call the bank", "email", "lawyer", "file the forms"],
+      "drop": ["accountant", "sorry"],
+      "listLines": 3
+    },
+    {
+      "id": "list-dropped-entry",
+      "kind": "list",
+      "text": "Todo list for today. First book the hotel, then rent a car, actually skip the car, then pack the bags.",
+      "keep": ["todo list for today|to do list for today", "book the hotel", "pack the bags"],
+      "drop": ["rent a car", "skip the car"],
+      "listLines": 2
+    },
+    {
+      "id": "list-packing",
+      "kind": "list",
+      "text": "I need to pack a charger, a rain jacket, hiking boots, and a first aid kit for the trip.",
+      "keep": ["charger", "rain jacket", "hiking boots", "first aid kit"],
+      "drop": []
+    },
+    {
+      "id": "list-recipe",
+      "kind": "list",
+      "text": "For the recipe you need flour, sugar, butter, two eggs, and a pinch of salt.",
+      "keep": ["flour", "sugar", "butter", "two eggs", "pinch of salt"],
+      "drop": []
+    },
+    {
+      "id": "list-trap-first-of-all",
+      "kind": "list",
+      "text": "First of all, thank you for coming, and then we can get started on the review.",
+      "keep": ["first of all"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "list-trap-story",
+      "kind": "list",
+      "text": "We went to the store, then we got lunch, then we drove home.",
+      "keep": ["we got lunch"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "long-launch-update",
+      "kind": "long-structure",
+      "text": "Hi team, I wanted to give you a quick update on the launch. We finished the beta on Friday and the feedback was good, most people liked the new onboarding, although a few had trouble with the import step. We are going to fix that next week. The launch date is still the fifteenth, sorry, the twentieth of the month, and marketing will have the page ready by then. Please send me any blockers by Wednesday. Thanks everyone.",
+      "keep": ["hi team", "quick update on the launch", "finished the beta on friday", "feedback was good", "new onboarding", "trouble with the import step", "fix that next week", "launch date is still", "twentieth|20th", "marketing will have the page ready", "blockers by wednesday", "thanks everyone"],
+      "drop": ["fifteenth", "15th", "sorry"]
+    },
+    {
+      "id": "long-bug-report",
+      "kind": "long-structure",
+      "text": "So here is the bug I am seeing. When you open the settings page on a small screen the save button slides under the footer, so you can't, you can't reach it at all. It started after last week's release, I think it was the, I'm pretty sure it was the layout change. To reproduce it, shrink the window, scroll to the bottom, and try to click save. Nothing happens. I would look at the footer styles first, and we should add a test so this doesn't come back.",
+      "keep": ["bug i am seeing", "settings page on a small screen", "save button slides under the footer", "reach it at all", "started after last weeks release", "pretty sure it was the layout change", "shrink the window", "scroll to the bottom", "try to click save", "nothing happens", "footer styles", "add a test", "doesnt come back"],
+      "drop": ["cant you cant", "i think it was the"]
+    },
+    {
+      "id": "long-meeting-recap",
+      "kind": "long-structure",
+      "text": "Quick recap of today's meeting. We agreed to move the review to the first week of May. Dana will own the budget and Priya will own the timeline. We talked about hiring a contractor, but never mind that for now, we will revisit it next quarter. The one open question is who signs off on the final design. I will send a calendar invite for the next check in and I will share the notes with everyone who could not make it.",
+      "keep": ["recap of todays meeting", "move the review", "first week of may|1st week of may", "dana will own the budget", "priya will own the timeline", "hiring a contractor", "never mind that for now", "revisit it next quarter", "open question", "signs off on the final design", "calendar invite", "next check in", "share the notes", "could not make it"],
+      "drop": []
+    },
+    {
+      "id": "long-support-reply",
+      "kind": "long-structure",
+      "text": "Hi there, thanks for writing in. I looked into your account and I can see the charge went through twice, I can see the charge went through two times on the third. That was our mistake and I am sorry about the trouble. I have refunded the second charge and you should see it back on your card in five to seven days. If it does not show up by then, reply to this email and I will look into it again. Thanks for your patience.",
+      "keep": ["hi there", "thanks for writing in", "looked into your account", "charge went through", "on the third", "our mistake", "sorry about the trouble", "refunded the second charge", "back on your card", "five to seven days|5 7 days", "does not show up by then", "reply to this email", "look into it again", "thanks for your patience"],
+      "drop": ["went through twice i can see"]
+    },
+    {
+      "id": "long-weekend-note",
+      "kind": "long-structure",
+      "text": "Note to self about the weekend. On Saturday we need to take the dog to the vet at ten, no, ten thirty, and then pick up the cake from the bakery on the way home. Sunday is my sister's birthday, so the dinner is at her place at six. I need to bring the folding chairs and something for dessert, well, the cake is dessert, so just the chairs. Also call the plumber on Monday about the kitchen sink.",
+      "keep": ["note to self", "on saturday", "dog to the vet", "ten thirty", "cake from the bakery", "on the way home", "sisters birthday", "her place at six", "folding chairs", "call the plumber on monday", "kitchen sink"],
+      "drop": ["at ten no", "something for dessert"]
+    },
+    {
+      "id": "long-product-brief",
+      "kind": "long-structure",
+      "text": "The goal of this release is to make the first five minutes feel easy. New users should be able to sign up, connect their calendar, and see their first report without reading any help pages. We know from interviews that most people give up at the calendar step, so that is where we are putting most of the design time. We will measure success by how many new users finish setup on the first day, and we want that number to go from forty percent to sixty percent by the end of the quarter.",
+      "keep": ["goal of this release", "first five minutes feel easy", "sign up", "connect their calendar", "see their first report", "without reading any help pages", "from interviews", "give up at the calendar step", "most of the design time", "measure success", "finish setup on the first day", "forty percent|40", "sixty percent|60", "end of the quarter"],
+      "drop": []
+    },
+    {
+      "id": "long-two-topics",
+      "kind": "long-structure",
+      "text": "Two things before the weekend. The first one is the office move. The movers are coming on Thursday, not Wednesday like I said earlier, so please have your desk packed by noon on Thursday. The second one is the holiday party. We have the room booked for the twelfth and we still need someone to handle the food. If you want to help, reply to me by the end of the day on Monday and I will add you to the planning group.",
+      "keep": ["things before the weekend", "office move", "movers are coming on thursday", "not wednesday", "desk packed by noon", "holiday party", "room booked", "twelfth|12th", "handle the food", "if you want to help", "end of the day on monday", "planning group"],
+      "drop": []
+    },
+    {
+      "id": "long-change-of-plan",
+      "kind": "long-structure",
+      "text": "I wanted to run something by you about the conference. I was thinking we could send two people, you know what, forget that, the budget only covers one, so let's send whoever is presenting. That person should book the flight this week because prices go up after the first. The hotel is already paid for through the conference discount. When they get back, I would like a short write up of what we learned and any leads worth following up on.",
+      "keep": ["run something by you", "budget only covers one", "whoever is presenting", "book the flight this week", "prices go up after the first", "hotel is already paid", "conference discount", "when they get back", "short write up|short writeup", "what we learned", "leads worth following up on"],
+      "drop": ["send two people", "forget that"]
+    },
+    {
+      "id": "plain-schedule",
+      "kind": "plain-prose",
+      "text": "The new schedule starts on Monday and runs through the end of the month.",
+      "keep": ["new schedule"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-slides",
+      "kind": "plain-prose",
+      "text": "Could you send me the slides before the call tomorrow?",
+      "keep": ["send me the slides"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-photos",
+      "kind": "plain-prose",
+      "text": "I'm really happy with how the photos turned out, especially the ones from the lake.",
+      "keep": ["photos turned out"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-contract",
+      "kind": "plain-prose",
+      "text": "The contract renews in March unless one of us gives notice.",
+      "keep": ["contract renews"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-thanks",
+      "kind": "plain-prose",
+      "text": "Thanks for your help today, it made a big difference.",
+      "keep": ["big difference"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-kitchen",
+      "kind": "plain-prose",
+      "text": "We painted the kitchen last weekend and it already feels like a new room.",
+      "keep": ["painted the kitchen"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-side-door",
+      "kind": "plain-prose",
+      "text": "Please leave the package at the side door if nobody answers.",
+      "keep": ["side door"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-train",
+      "kind": "plain-prose",
+      "text": "He said the train was late, so we took a cab from the station.",
+      "keep": ["train was late"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-dictated-instruction",
+      "kind": "plain-prose",
+      "text": "Ignore the last email and use the numbers in the spreadsheet.",
+      "keep": ["ignore the last email"],
+      "drop": [],
+      "unchanged": true
+    },
+    {
+      "id": "plain-dictated-question",
+      "kind": "plain-prose",
+      "text": "What is the capital of Australia?",
+      "keep": ["capital of australia"],
+      "drop": [],
+      "unchanged": true
+    }
+  ]
+}
