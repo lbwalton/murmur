@@ -29,16 +29,31 @@ export interface TrayHandlers {
   /** Open the newest note where it landed (US-082); shows once a note
    *  has been saved. */
   onOpenLastNote?: () => void
+  /** While a hands-free take is locked (US-117): stop it and save the
+   *  words without a paste, or throw it away. */
+  onStopHandsFree?: () => void
+  onDiscardHandsFree?: () => void
 }
 
 let trayHandlers: TrayHandlers | null = null
 let inboxVisible = false
 let lastNoteVisible = false
+let handsFreeVisible = false
 
 function buildMenu(): Menu {
   const handlers = trayHandlers
   if (!handlers) return Menu.buildFromTemplate([])
+  // A locked take leads the menu: it is what the mic is doing now.
+  const handsFree =
+    handsFreeVisible && handlers.onStopHandsFree && handlers.onDiscardHandsFree
+      ? [
+          { label: 'Stop hands-free', click: handlers.onStopHandsFree },
+          { label: 'Discard', click: handlers.onDiscardHandsFree },
+          { type: 'separator' as const }
+        ]
+      : []
   return Menu.buildFromTemplate([
+    ...handsFree,
     { label: 'Open murmur', click: handlers.onOpen },
     ...(lastNoteVisible && handlers.onOpenLastNote
       ? [{ label: 'Open last note', click: handlers.onOpenLastNote }]
@@ -70,13 +85,21 @@ export function setTrayLastNoteVisible(visible: boolean): void {
   tray?.setContextMenu(buildMenu())
 }
 
+/** Show Stop hands-free and Discard while a take is locked. */
+export function setTrayHandsFree(on: boolean): void {
+  if (on === handsFreeVisible) return
+  handsFreeVisible = on
+  tray?.setContextMenu(buildMenu())
+}
+
 export function createTray(handlers: TrayHandlers): Tray {
   trayHandlers = handlers
   tray = new Tray(nativeImage.createFromPath(trayIconPath()))
   tray.setToolTip('murmur')
   tray.setContextMenu(buildMenu())
   // On Windows a left click opens the window; macOS convention keeps the
-  // click on the menu, where Open murmur is the first item.
+  // click on the menu, where Open murmur is the first item (after the
+  // hands-free items while a take is locked).
   tray.on('click', () => {
     if (process.platform !== 'darwin') handlers.onOpen()
   })

@@ -14,7 +14,7 @@ A take waits there when its transcription failed: no API key was saved, the prov
 
 What a retry does: it sends the saved audio to your provider with your current settings and runs the same cleanup as a live dictation. Where the words go depends on what you were doing when you spoke:
 
-- **A dictation** lands in your log at the time you spoke it, marked retried, and on your clipboard. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (settings tab, dictation, Paste last dictation), or paste normally.
+- **A dictation** lands in your log at the time you spoke it, marked retried. Your clipboard is left alone, so Cmd+V (Ctrl+V on Windows) still pastes whatever you copied before. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (Settings, Dictation, Paste last dictation), which pastes the retried words, or click **copy** on the entry in the log.
 - **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
 - **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
 
@@ -35,6 +35,18 @@ If dictation still fails on a work network:
 1. Open your provider's address in your browser, for example `https://api.groq.com/openai/v1/models`. A short error about a missing or invalid API key means the network lets the provider through. A page from your company's security service saying the site is blocked means your company blocks that provider: ask IT to allow it, or switch to a provider your company allows.
 2. Press **Test** on the Connection row under Settings, Provider and keys. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
 3. Send diagnostics (above). The log names the same reason for each failed dictation.
+
+## Why did murmur type words I never said, or words in another language, after a quiet take?
+
+Speech models sometimes invent words when they are handed near-silence, often in another language. murmur has 3 checks against it. When any of them finds no speech, nothing pastes, nothing is saved to history, and you hear the low no-speech tone.
+
+The first runs on your computer, before anything is uploaded. Every take needs about a fifth of a second of voiced sound. A take you did not hold a key through (hands-free, or tap to start and stop) also needs at least 1 stretch of about a tenth of a second where the sound holds steady. Almost every spoken syllable holds its loudness that long, whispers and deep, gravelly voices included. A key click, a keystroke, or a tap on the desk is loudest at once and fades, so a quiet hands-free take with only those in it never leaves your computer. A knock that keeps ringing can still count, and a single word said barely above a whisper in a take you did not hold a key through can read as no speech: say it a little louder, or hold the hotkey if you can.
+
+The second runs after transcription. murmur asks Whisper models for a score on each stretch of speech (the chance it was not speech, and how confident the model was in its own words), and drops a stretch only when the model says it was probably silence and was not confident in what it wrote, which is Whisper's own rule. It needs no word lists, so it works in every language. Groq's `whisper-large-v3`, OpenAI's `whisper-1`, and local servers running a Whisper model that return `verbose_json` segments send the scores. The `whisper-large-v3-turbo` model, murmur's default on Groq, reports a no-speech chance of about 0 even on pure silence, wherever it runs, so on that model this check never drops anything and the first one does the work (checked 2026-11-05; see [providers](providers.md)). OpenAI's `gpt-transcribe`, `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`, and Mistral's `voxtral-mini-latest`, answer in plain json without the scores.
+
+The third catches the stock phrases speech models are known to produce from silence, such as "Thank you.", when they are all a take returned.
+
+If it still happens, hold the hotkey only while you are talking, and press Escape on a take you did not mean to start. The diagnostics log shows what the checks saw, as numbers only, never your words: `voiced=420 steady=30 held=0` on a `nospeech` line, and `segments=2 dropped=1 noSpeech=0.91 logprob=-1.42` on a delivered line.
 
 ## Why did murmur hear nothing even though my mic works everywhere else?
 

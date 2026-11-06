@@ -9,8 +9,8 @@ import { app } from 'electron'
 import { getApiKey, getSettings } from '../settings'
 import { appFetch } from '../net'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { type TranscribeResult, transcribe } from './provider'
-import { type TakeKind, saveRecovery } from './recovery'
+import { type TranscribeResult, clearFormatMemo, transcribe, uploadTimeoutMs } from './provider'
+import { type TakeKind, type TakeRecord, saveRecovery } from './recovery'
 
 export const SMOKE_TRANSCRIPT = 'smoke transcript from the mock provider'
 
@@ -26,42 +26,53 @@ export function setRecoveryListener(listener: () => void): void {
   onRecoverySaved = listener
 }
 
+/** Keep a take's audio on the home tab's waiting list, with what it
+ *  was and why it waits, and tell the list. Returns the WAV's path.
+ *  Throws when the folder cannot be written; callers decide. */
+export function saveTakeForRetry(wav: Uint8Array, take: TakeRecord): string {
+  const file = saveRecovery(wav, recoveryDir(), { take })
+  onRecoverySaved()
+  return file
+}
+
 /**
  * Transcribe a finished recording. On failure a live take's WAV is
  * saved for recovery with what it was and why it failed (US-068), and
- * the failure is returned, never thrown. A retry passes recover: false:
+ * the failure is returned, never thrown, with saved saying whether the
+ * audio made it onto the waiting list. A retry passes recover: false:
  * its audio is already saved.
  */
 export async function transcribeWav(
   wav: Uint8Array,
   recover: { kind: TakeKind; startedAt: number } | false
-): Promise<TranscribeResult> {
+): Promise<TranscribeResult & { saved?: boolean }> {
   if (isSmoke) return { ok: true, text: SMOKE_TRANSCRIPT }
 
-  const save = (failure: { kind: string; detail: string }): void => {
-    if (recover === false) return
+  const save = (failure: { kind: string; detail: string }): boolean => {
+    if (recover === false) return false
     try {
-      saveRecovery(wav, recoveryDir(), { take: { ...recover, failure } })
-      onRecoverySaved()
+      saveTakeForRetry(wav, { ...recover, failure })
+      return true
     } catch (error) {
       console.error('[murmur] recovery save failed:', error)
+      return false
     }
   }
 
   const key = getApiKey()
   if (!key) {
     const failure = { kind: 'auth' as const, detail: 'no API key configured' }
-    save(failure)
-    return { ok: false, ...failure }
+    return { ok: false, ...failure, saved: save(failure) }
   }
 
   const settings = getSettings()
-  const result = await transcribe(wav, {
-    baseUrl: settings.provider.baseUrl,
-    model: settings.provider.sttModel,
-    apiKey: key
-  })
-  if (!result.ok) save({ kind: result.kind, detail: result.detail })
+  // A long take needs longer to upload: live takes and retries alike.
+  const result = await transcribe(
+    wav,
+    { baseUrl: settings.provider.baseUrl, model: settings.provider.sttModel, apiKey: key },
+    { timeoutMs: uploadTimeoutMs(wav.byteLength) }
+  )
+  if (!result.ok) return { ...result, saved: save({ kind: result.kind, detail: result.detail }) }
   return result
 }
 
@@ -94,6 +105,72 @@ export function initTranscribe(): void {
       }) as typeof fetch
     })
 
+    // US-119: a whisper model asks for verbose_json and loses the segment
+    // the model scores as silence; the plain model still asks for json.
+    clearFormatMemo()
+    const formats: string[] = []
+    const record = (init?: RequestInit): void => {
+      formats.push(String((init?.body as FormData).get('response_format')))
+    }
+    const whisperCfg = { baseUrl: 'https://mock.local/v1', model: 'whisper-large-v3-turbo', apiKey: 'k' }
+    const segment = (text: string, noSpeech: number, logprob: number): object => ({
+      text,
+      no_speech_prob: noSpeech,
+      avg_logprob: logprob
+    })
+    const mixed = await transcribe(wav, whisperCfg, {
+      fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+        record(init)
+        return new Response(
+          JSON.stringify({
+            text: ' real words invented words',
+            segments: [segment(' real words', 0.05, -0.2), segment(' invented words', 0.9, -1.5)]
+          }),
+          { status: 200 }
+        )
+      }) as typeof fetch
+    })
+    const silent = await transcribe(wav, whisperCfg, {
+      fetchImpl: (async () =>
+        new Response(
+          JSON.stringify({ text: ' invented', segments: [segment(' invented', 0.95, -1.4)] }),
+          { status: 200 }
+        )) as typeof fetch
+    })
+    // A 400 on verbose_json then 200 on json is ok, and the next take
+    // for the same server and model asks for json first.
+    clearFormatMemo()
+    const fallbackFormats: string[] = []
+    const fallbackFetch = (async (_url: unknown, init?: RequestInit) => {
+      const format = String((init?.body as FormData).get('response_format'))
+      fallbackFormats.push(format)
+      return format === 'verbose_json'
+        ? new Response('{}', { status: 400 })
+        : new Response(JSON.stringify({ text: 'plain' }), { status: 200 })
+    }) as typeof fetch
+    const fellBack = await transcribe(wav, whisperCfg, { fetchImpl: fallbackFetch })
+    const afterFallback = await transcribe(wav, whisperCfg, { fetchImpl: fallbackFetch })
+    clearFormatMemo()
+    const plainFormats: string[] = []
+    await transcribe(wav, cfg, {
+      fetchImpl: (async (_url: unknown, init?: RequestInit) => {
+        plainFormats.push(String((init?.body as FormData).get('response_format')))
+        return new Response(JSON.stringify({ text: 'ok' }), { status: 200 })
+      }) as typeof fetch
+    })
+    clearFormatMemo()
+    const silenceOk =
+      formats[0] === 'verbose_json' &&
+      mixed.ok &&
+      mixed.text === 'real words' &&
+      mixed.silence?.dropped === 1 &&
+      silent.ok &&
+      silent.text === '' &&
+      fellBack.ok &&
+      afterFallback.ok &&
+      fallbackFormats.join() === 'verbose_json,json,json' &&
+      plainFormats[0] === 'json'
+
     return (
       okResult.ok &&
       okResult.text === 'ok' &&
@@ -101,7 +178,8 @@ export function initTranscribe(): void {
       flakyCalls === 2 &&
       !authResult.ok &&
       authResult.kind === 'auth' &&
-      authCalls === 1
+      authCalls === 1 &&
+      silenceOk
     )
   })
 

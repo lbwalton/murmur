@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { buildKeyMap, chordRefusal, isSafeBinding, matchesEvent, parseBinding, sameBinding } from './binding'
+import {
+  buildKeyMap,
+  chordRefusal,
+  isPlainPress,
+  isSafeBinding,
+  matchesEvent,
+  parseBinding,
+  sameBinding
+} from './binding'
 
 const keyMap = { space: 57, a: 30, f19: 102 }
 
@@ -135,5 +143,26 @@ describe('sameBinding', () => {
     expect(sameBinding(parse('Ctrl+F12'), parse('Ctrl+Shift+F12'))).toBe(false)
     expect(sameBinding(parse('Ctrl+Alt'), parse('Ctrl+Alt'))).toBe(true)
     expect(sameBinding(parse('Ctrl+Alt'), parse('Ctrl'))).toBe(false)
+  })
+})
+
+describe('isPlainPress', () => {
+  const ev = (mods: Partial<Record<'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey', boolean>> = {}) => ({
+    keycode: 1,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    metaKey: false,
+    ...mods
+  })
+
+  it('is true only with no modifier held', () => {
+    expect(isPlainPress(ev())).toBe(true)
+    expect(isPlainPress(ev({ ctrlKey: true }))).toBe(false)
+    expect(isPlainPress(ev({ altKey: true }))).toBe(false)
+    expect(isPlainPress(ev({ shiftKey: true }))).toBe(false)
+    expect(isPlainPress(ev({ metaKey: true }))).toBe(false)
+    // Force Quit on the Mac.
+    expect(isPlainPress(ev({ metaKey: true, altKey: true }))).toBe(false)
   })
 })

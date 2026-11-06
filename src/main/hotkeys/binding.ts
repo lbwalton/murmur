@@ -132,6 +132,13 @@ export function matchesEvent(binding: ParsedBinding, event: KeyEventLike): boole
   )
 }
 
+/** A key pressed with no modifier held, by the event's own flags. Escape
+ *  cancels a hands-free take only this way: Cmd+Option+Escape is Force
+ *  Quit on the Mac and Ctrl+Escape opens Start on Windows. */
+export function isPlainPress(event: KeyEventLike): boolean {
+  return !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey
+}
+
 /** Build a lowercase name to code map from the uiohook UiohookKey enum. */
 export function buildKeyMap(uiohookKeys: Record<string, unknown>): KeyMap {
   const map: KeyMap = {}

@@ -7,7 +7,7 @@
 // screen and the window is showing; reduced motion gets a still frame.
 import { memo, useEffect, useRef, useState } from 'react'
 import type { CosmeticItem } from '../../shared/cosmetics'
-import { isInkStyle } from '../../shared/overlay-state'
+import { type OverlayLook, isInkStyle } from '../../shared/overlay-state'
 import { BAR_COUNT, Bars } from '../overlay/Bars'
 import { InkWave } from '../overlay/InkWave'
 import { PulseWave } from '../overlay/PulseWave'
@@ -163,15 +163,24 @@ export function WaveTiles(props: {
  * the grid is live; when it goes off screen the last frame is copied to
  * a still canvas and the renderer unmounts, so nothing animates unseen.
  * Under reduced motion the renderer paints once at a mid-speech level,
- * the frame is kept, and it never moves.
+ * the frame is kept, and it never moves. The loop level tile (US-117)
+ * shows it the same still way, as a locked recording in the user's own
+ * look: the red live dot, the timer, and compact or bare drawn as the
+ * overlay draws them.
  */
-const MiniPill = memo(function MiniPill(props: {
+export const MiniPill = memo(function MiniPill(props: {
   style: string
   active: boolean
   reduced: boolean
   levelRef: React.MutableRefObject<number>
   levels: number[]
   accent: string
+  /** The overlay look to draw; the waveform tiles use the pill. */
+  look?: OverlayLook
+  /** A recording's dot: red, as the live pill shows it. */
+  live?: boolean
+  /** The timer a recording shows beside the waveform (under it in bare). */
+  timer?: string
 }): React.JSX.Element {
   const holderRef = useRef<HTMLDivElement>(null)
   const stillRef = useRef<HTMLCanvasElement>(null)
@@ -230,24 +239,38 @@ const MiniPill = memo(function MiniPill(props: {
     // a reason to run again.
   }, [props.active, props.reduced, isCanvas])
 
+  const look = props.look ?? 'pill'
+  const bare = look === 'bare'
   return (
-    <span className="mini-pill" aria-hidden="true">
-      <span className="dot" />
-      <span className="wave" ref={holderRef} style={{ '--wave-accent': props.accent } as React.CSSProperties}>
-        {!isCanvas && <Bars levels={props.levels} />}
-        {isCanvas && drawing && (
-          <>
-            {isInkStyle(props.style) ? (
-              <InkWave key={width} kind={props.style} levelRef={props.levelRef} phase="recording" accent={props.accent} />
-            ) : props.style === 'pulse' ? (
-              <PulseWave key={width} levelRef={props.levelRef} muted={false} accent={props.accent} />
-            ) : (
-              <SpeckleWave key={width} levelRef={props.levelRef} muted={false} accent={props.accent} />
-            )}
-          </>
-        )}
-        {isCanvas && <canvas ref={stillRef} className="wave-still" hidden={drawing || !kept} />}
+    <span className={`mini-pill${look === 'pill' ? '' : ` mini-${look}`}`} aria-hidden="true">
+      {/* The needle is the dot and the wave together, as in the overlay:
+          one row with the timer in the boxed looks, over it in bare. */}
+      <span className="needle">
+        <span className={props.live ? 'dot dot-live' : 'dot'} />
+        <span className="wave" ref={holderRef} style={{ '--wave-accent': props.accent } as React.CSSProperties}>
+          {!isCanvas && <Bars levels={props.levels} compact={look === 'compact'} />}
+          {isCanvas && drawing && (
+            <>
+              {isInkStyle(props.style) ? (
+                <InkWave
+                  key={width}
+                  kind={props.style}
+                  levelRef={props.levelRef}
+                  phase="recording"
+                  accent={props.accent}
+                  bare={bare}
+                />
+              ) : props.style === 'pulse' ? (
+                <PulseWave key={width} levelRef={props.levelRef} muted={false} accent={props.accent} bare={bare} />
+              ) : (
+                <SpeckleWave key={width} levelRef={props.levelRef} muted={false} accent={props.accent} bare={bare} />
+              )}
+            </>
+          )}
+          {isCanvas && <canvas ref={stillRef} className="wave-still" hidden={drawing || !kept} />}
+        </span>
       </span>
+      {props.timer !== undefined && <span className="mini-timer">{props.timer}</span>}
     </span>
   )
 })
