@@ -4,8 +4,8 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [x] US-119 a silent take never types invented words: live-verified 2026-11-06 on the a12e0df test build (LaBroi: all checks pass). It merges to main with hands-free.
-- [ ] US-117 hands-free (tap the hotkey twice to keep talking without holding it) is built on feature/hands-free and waits on your live check, on the Mac and on Windows: the steps are the first item under Live verification queue.
+- [x] US-119 a silent take never types invented words: live-verified 2026-11-06 on the a12e0df test build (LaBroi: all checks pass). Merged to main with hands-free 2026-11-06.
+- [ ] US-117 hands-free (tap the hotkey twice to keep talking without holding it): every Mac step live-verified by 2026-11-06 (step 13: a full 12 minute take of 833 words uploaded and pasted with paste last), merged to main 2026-11-06 with US-119. Left: the 2 Windows steps under Live verification queue, once a release with hands-free reaches the PC.
 - [x] US-116 file only the item on your TypeSafe sort connection: live-verified 2026-10-30 on the test build (LaBroi: everything worked for the note; ideas.md got "a snow cone stand at the launch." alone). Merged to main; ships in the next release.
 - [x] US-113 paste last waits for the chord to be let go: live-verified 2026-10-27 (LaBroi: it works).
 - [ ] US-112 security patches (built 2026-10-25; Electron 44.9.3 blocks the compromised eMudhra certificates, plus build-tool fixes; shipped in v0.1.14 on 2026-10-25). On the Mac, once murmur has updated itself: (1) let murmur update itself (or quit and reopen it), and check the home tab's what's new line reads 0.1.14. (2) Dictate a sentence into any app: the words land. (3) Press your notes hotkey and say a short note: the note receipt appears. (4) Open Settings, Provider and keys, and press Test on the Connection row: it says connected. Tell Claude if anything is off.
@@ -39,7 +39,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Live verification queue
 
-- [ ] US-117 hands-free (built 2026-10-30 on feature/hands-free; smoke and unit tests pass). Your dictation hotkey is Option+Space on the Mac and Ctrl+Space on Windows unless you changed it. A double-tap is 2 quick taps, like a double-click. Tell Claude what you saw at each step; anything that feels off (the chime's volume, how quick the taps must be) is a design call you can change.
+- [ ] US-117 hands-free (built 2026-10-30 on feature/hands-free; smoke and unit tests pass; Mac steps all live-verified by 2026-11-06 and merged to main; only the Windows steps are left). Your dictation hotkey is Option+Space on the Mac and Ctrl+Space on Windows unless you changed it. A double-tap is 2 quick taps, like a double-click. Tell Claude what you saw at each step; anything that feels off (the chime's volume, how quick the taps must be) is a design call you can change.
 
   On the Mac, once Claude has installed the hands-free test build:
 
