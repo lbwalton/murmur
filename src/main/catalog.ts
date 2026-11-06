@@ -6,7 +6,8 @@
 // a refresh failure costs a log line and the rates stay as shipped.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
+import { ipc } from './ipc'
 import bundledJson from '../../shared/provider-catalog.json'
 import { type ProviderCatalog, catalogRefusal, costPer1kWords, validateCatalog } from '../shared/catalog'
 import { appFetch } from './net'
@@ -79,7 +80,7 @@ export function getCatalog(): ProviderCatalog {
 
 export function initCatalog(): void {
   current = loadInitial()
-  ipcMain.handle('catalog:get', () => current)
+  ipc.handle('catalog:get', () => current)
 
   // One refresh per launch, honoring the setting; smoke never fetches.
   if (!isSmoke && getSettings().catalogRefresh) void refresh()

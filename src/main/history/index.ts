@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // History wiring: userData path, IPC for the home view, live append
 // notifications to the settings window, retention pruning, smoke.
-import { type BrowserWindow, app, ipcMain } from 'electron'
+import { type BrowserWindow, app } from 'electron'
+import { ipc } from '../ipc'
 import {
   KEEP_NO_TEXT,
   type SessionEvent,
@@ -263,9 +264,9 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     void pruneRecordings(lastRetention)
   }, RETENTION_CHECK_MS).unref()
 
-  ipcMain.handle('history:list', () => log?.readAll().slice(-500) ?? [])
+  ipc.handle('history:list', () => log?.readAll().slice(-500) ?? [])
   // What a shorter Keep history would remove, for its question (US-137).
-  ipcMain.handle('history:keepImpact', async (_event, retentionDays: unknown) => {
+  ipc.handle('history:keepImpact', async (_event, retentionDays: unknown) => {
     if (typeof retentionDays !== 'number') return { takes: 0, recordings: 0 }
     const { waitingPastLimit } = await recordingTools()
     return {
@@ -276,9 +277,9 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // Every entry in the log, for Clear all's question (US-099): the list
   // above stops at the newest 500.
   const historyCount = (): number => log?.readAll().length ?? 0
-  ipcMain.handle('history:count', () => historyCount())
+  ipc.handle('history:count', () => historyCount())
   // Answers with how many entries it removed, for Home's Cleared N line.
-  ipcMain.handle('history:clear', async () => {
+  ipc.handle('history:clear', async () => {
     const removed = historyCount()
     log?.clear()
     memoryOnly = null
@@ -299,7 +300,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // Belt progression: computed in main from the log. The founder marker
   // is a file named founder in userData; it grants the 10th degree and
   // nothing else can (see shared/ranks.json).
-  ipcMain.handle('ranks:progress', async () => {
+  ipc.handle('ranks:progress', async () => {
     const { computeProgress } = await import('../../shared/ranks')
     const { existsSync } = await import('node:fs')
     const { join } = await import('node:path')
@@ -308,12 +309,12 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return computeProgress(statsEvents(), ranksSpec as never, { founder })
   })
 
-  ipcMain.handle('achievements:defs', async () => {
+  ipc.handle('achievements:defs', async () => {
     const defs = (await import('../../../shared/achievements.json')).default
     return (defs as never as { achievements: unknown[] }).achievements
   })
 
-  ipcMain.handle('cosmetics:report', async () => {
+  ipc.handle('cosmetics:report', async () => {
     const { computeCosmetics } = await import('../../shared/cosmetics')
     const { computeProgress } = await import('../../shared/ranks')
     const { evaluateAchievements } = await import('../../shared/achievements')
@@ -329,7 +330,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return computeCosmetics(cosmeticsSpec as never, progress, earned)
   })
 
-  ipcMain.handle('equivalents:line', async (_event, pick: unknown) => {
+  ipc.handle('equivalents:line', async (_event, pick: unknown) => {
     const { equivalentLine } = await import('../../shared/equivalents')
     const spec = (await import('../../../shared/equivalents.json')).default
     const words = statsEvents().reduce((n, e) => n + e.words, 0)
@@ -337,7 +338,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return equivalentLine(words, spec as never, p)
   })
 
-  ipcMain.handle('achievements:earned', async () => {
+  ipc.handle('achievements:earned', async () => {
     const { evaluateAchievements } = await import('../../shared/achievements')
     const defs = (await import('../../../shared/achievements.json')).default
     return evaluateAchievements(statsEvents(), defs as never)
@@ -423,7 +424,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
 
   // Analytics travel as a computed summary: the renderer never needs
   // the full transcript log to draw charts and the cost card.
-  ipcMain.handle('analytics:summary', async () => {
+  ipc.handle('analytics:summary', async () => {
     const { aggregate } = await import('../../shared/analytics')
     const { ratesFromCatalog, validateCatalog } = await import('../../shared/catalog')
     const { effectiveLlmModel } = await import('../formatter')
@@ -441,7 +442,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
 
   // The activity wall gets its own channel: it spans up to a full year
   // and the renderer picks the period (rolling year or a calendar year).
-  ipcMain.handle('analytics:heatmap', async (_event, year: unknown) => {
+  ipc.handle('analytics:heatmap', async (_event, year: unknown) => {
     const { heatmap } = await import('../../shared/analytics')
     const picked = typeof year === 'number' && Number.isInteger(year) ? year : null
     return heatmap(statsEvents(), { year: picked })
@@ -449,7 +450,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
 
   // The share card's month (US-078): the last 30 days' words and
   // sessions, totaled here from the whole log.
-  ipcMain.handle('analytics:days', async () => {
+  ipc.handle('analytics:days', async () => {
     const { dailyTotals } = await import('../../shared/analytics')
     return dailyTotals(statsEvents(), 30)
   })

@@ -2220,7 +2220,7 @@
       ],
       "passes": false,
       "needs_human": false,
-      "notes": ""
+      "notes": "Built 2026-11-06. src/main/ipc.ts registers every handler and checks the main frame is 1 of murmur's own pages and that page may use the channel; a refused call is logged by channel and protocol only. A unit test fails on ipcMain.handle, on, or once anywhere else, and another compares the audio channel list with its preload. Arguments were reviewed handler by handler, with length limits added on keys, base URLs, names, clipboard and mail text, and the share card. The ipcSender smoke check loads a throwaway page holding the real settings bridge and it is refused. Smoke is green twice on macOS. Left: CI on Windows after a push, which is why passes stays false."
     },
     {
       "id": "US-140",

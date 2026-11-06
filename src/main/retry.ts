@@ -6,7 +6,8 @@
 // (see deliverRetried). Retries run one at a time, so Retry all and a
 // double click can never deliver the same take twice, and the audio is
 // removed only after its words are safe.
-import { type BrowserWindow, clipboard, ipcMain } from 'electron'
+import { type BrowserWindow, clipboard } from 'electron'
+import { ipc } from './ipc'
 import { deliverRetried } from './dictation'
 import { readHistory } from './history'
 import { isSmoke, registerSmokeCheck } from './smoke'
@@ -92,13 +93,13 @@ export function initRetry(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   setRecoveryListener(notifyChanged)
 
-  ipcMain.handle('recovery:list', () => listRecovery(recoveryDir()))
-  ipcMain.handle('recovery:retry', (_event, id: unknown) => {
+  ipc.handle('recovery:list', () => listRecovery(recoveryDir()))
+  ipc.handle('recovery:retry', (_event, id: unknown) => {
     const valid = asId(id)
     if (!valid) return { ok: false, failure: { kind: 'gone', detail: 'not a saved take' } }
     return retryTake(valid)
   })
-  ipcMain.handle('recovery:discard', (_event, id: unknown) => {
+  ipc.handle('recovery:discard', (_event, id: unknown) => {
     const valid = asId(id)
     if (valid) discardTake(valid)
     return listRecovery(recoveryDir())

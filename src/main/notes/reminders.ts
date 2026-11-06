@@ -6,7 +6,8 @@
 // closes an item. Counts reach the log, never task text.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Notification, app, ipcMain, shell } from 'electron'
+import { Notification, app, shell } from 'electron'
+import { ipc } from '../ipc'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_TASKS_TEMPLATE } from '../../shared/notes'
 import { dueReminders, markFired, openItems, parseTodo, reminderBody, resettleFired } from '../../shared/todo'
@@ -179,7 +180,7 @@ export function initReminders(): void {
 
   // The Test button reads the real file and shows the real reminder
   // without consuming any of today's scheduled ones.
-  ipcMain.handle(IpcChannels.notesTestReminder, () => runReminder())
+  ipc.handle(IpcChannels.notesTestReminder, () => runReminder())
 
   registerSmokeCheck('notesReminder', () => {
     // The read path end to end against a real file: open items counted

@@ -4,6 +4,7 @@
 // tries to leave, open another window, attach a webview, or use a
 // browser permission it does not need is refused, and only the hidden
 // audio window may open the microphone macOS granted to murmur.
+import { join } from 'node:path'
 import { BrowserWindow, type WebContents, app, session, webContents } from 'electron'
 import { navigationAllowed, permissionAllowed } from './hardening-rules'
 import { registerSmokeCheck } from './smoke'
@@ -85,6 +86,29 @@ export function installHardening(): void {
         probe.webContents.getURL() === start &&
         BrowserWindow.getAllWindows().length === windowsBefore
       )
+    } finally {
+      probe.destroy()
+    }
+  })
+
+  // A page that is not murmur's own, even holding the real settings
+  // bridge, reaches no handler (US-139).
+  registerSmokeCheck('ipcSender', async () => {
+    const probe = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        preload: join(__dirname, '../preload/settings.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true
+      }
+    })
+    try {
+      await probe.loadURL('data:text/html,<p>probe</p>')
+      const outcome = await probe.webContents.executeJavaScript(
+        "window.murmur.getSettings().then(() => 'reached', () => 'refused')"
+      )
+      return outcome === 'refused'
     } finally {
       probe.destroy()
     }

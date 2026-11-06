@@ -3,7 +3,8 @@
 // bottom center of the active display. Focus stealing would break
 // insertion into the target app, so focusable stays false forever.
 import { join } from 'node:path'
-import { BrowserWindow, app, ipcMain, screen } from 'electron'
+import { BrowserWindow, app, screen } from 'electron'
+import { ipc } from '../ipc'
 import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { reviveOnDeath } from '../revive'
 import { IpcChannels } from '../../shared/ipc'
@@ -267,7 +268,7 @@ export function initOverlay(): void {
     overlayWindow = null
   })
 
-  ipcMain.handle('overlay:preview', () => {
+  ipc.handle('overlay:preview', () => {
     overlayPreviewBurst()
   })
 
@@ -314,7 +315,8 @@ export function initOverlay(): void {
 
   // Live waveform: audio renderer posts levels, the overlay paints them,
   // and a level listener (the hands-free silence watch) hears them too.
-  ipcMain.on(IpcChannels.audioLevel, (_event, level: number) => {
+  ipc.on(IpcChannels.audioLevel, (_event, level: number) => {
+    if (typeof level !== 'number' || !Number.isFinite(level)) return
     if (machine.get().phase === 'recording') {
       aliveOverlay()?.webContents.send(IpcChannels.overlayLevel, level)
       // A listener that throws must never become an uncaught error in
@@ -1012,17 +1014,17 @@ export function initOverlay(): void {
       await wait(150)
       const stillHolding = await read()
       setAudioLevelListener((level) => heard.push(level))
-      ipcMain.emit(IpcChannels.audioLevel, {}, 0.31)
+      ipc.simulate(IpcChannels.audioLevel, 0.31)
       setOverlayLocked(true)
       const locked = await until((ring) => ring.locked === 'true' && ring.ring && ring.painted > 200)
       const sameTake = machine.get().startedAt === startedAt
-      ipcMain.emit(IpcChannels.audioLevel, {}, 0.42)
+      ipc.simulate(IpcChannels.audioLevel, 0.42)
       setAudioLevelListener(null)
-      ipcMain.emit(IpcChannels.audioLevel, {}, 0.53)
+      ipc.simulate(IpcChannels.audioLevel, 0.53)
       setOverlayPhase('processing')
       const processing = await until((ring) => ring.phase === 'processing' && !ring.ring)
       setAudioLevelListener((level) => heard.push(level))
-      ipcMain.emit(IpcChannels.audioLevel, {}, 0.64)
+      ipc.simulate(IpcChannels.audioLevel, 0.64)
       setAudioLevelListener(null)
       setOverlayPhase('idle')
       await until((ring) => ring.phase === 'idle')

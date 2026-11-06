@@ -3,7 +3,9 @@
 // paths, safeStorage cipher, IPC handlers, and smoke checks. Keys live
 // one per provider base URL; the legacy single-slot files migrate into
 // the ring at boot.
-import { app, ipcMain, safeStorage } from 'electron'
+import { app, safeStorage } from 'electron'
+import { ipc } from '../ipc'
+import { MAX_KEY_CHARS, MAX_URL_CHARS, boundedText } from '../ipc-rules'
 import bundledCatalog from '../../../shared/provider-catalog.json'
 import { validateCatalog } from '../../shared/catalog'
 import { IpcChannels } from '../../shared/ipc'
@@ -88,8 +90,8 @@ export function initSettings(): void {
       .map((p) => ({ baseUrl: p.baseUrl, prefixes: p.keyPrefixes ?? [] }))
   })
 
-  ipcMain.handle(IpcChannels.settingsGet, () => settingsStore?.get())
-  ipcMain.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
+  ipc.handle(IpcChannels.settingsGet, () => settingsStore?.get())
+  ipc.handle(IpcChannels.settingsUpdate, (_event, partial: unknown) => {
     // provider.profiles is written ONLY by the dedicated Pro-gated
     // profiles handlers; the generic channel must never carry it, or a
     // renderer could inject entries whose ids feed file paths.
@@ -102,23 +104,25 @@ export function initSettings(): void {
 
   // The ring speaks for the ACTIVE provider: saving files the key
   // under the current base URL, clearing removes only that one.
-  ipcMain.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {
+  ipc.handle(IpcChannels.apiKeySet, (_event, key: unknown) => {
     const baseUrl = settingsStore?.get().provider.baseUrl ?? ''
-    if (baseUrl !== '') ring?.set(baseUrl, String(key))
+    const value = boundedText(key, MAX_KEY_CHARS)
+    if (baseUrl !== '' && value !== null) ring?.set(baseUrl, value)
     return ringStatus()
   })
-  ipcMain.handle(IpcChannels.apiKeyClear, () => {
+  ipc.handle(IpcChannels.apiKeyClear, () => {
     ring?.clear(settingsStore?.get().provider.baseUrl ?? '')
     return ringStatus()
   })
-  ipcMain.handle(IpcChannels.apiKeyStatus, () => ringStatus())
-  ipcMain.handle('apikey:removeFor', (_event, baseUrl: unknown) => {
-    if (typeof baseUrl === 'string' && baseUrl !== '') ring?.clear(baseUrl)
+  ipc.handle(IpcChannels.apiKeyStatus, () => ringStatus())
+  ipc.handle('apikey:removeFor', (_event, baseUrl: unknown) => {
+    const url = boundedText(baseUrl, MAX_URL_CHARS)
+    if (url !== null && url !== '') ring?.clear(url)
     return ringStatus()
   })
   // The unassigned pre-ring key: the user assigns it to whatever
   // provider is active, or removes it entirely.
-  ipcMain.handle('apikey:assignLegacy', () => {
+  ipc.handle('apikey:assignLegacy', () => {
     const key = legacyStore?.get()
     const baseUrl = settingsStore?.get().provider.baseUrl ?? ''
     // Assigning must never overwrite a provider's existing key: that
@@ -131,19 +135,20 @@ export function initSettings(): void {
     }
     return ringStatus()
   })
-  ipcMain.handle('apikey:removeLegacy', () => {
+  ipc.handle('apikey:removeLegacy', () => {
     legacyStore?.clear()
     return ringStatus()
   })
 
   // The cleanup connection's key rides the same ring, keyed by the
   // cleanup base URL; a not-yet-migrated polish key still answers.
-  ipcMain.handle('polishkey:set', (_event, key: unknown) => {
+  ipc.handle('polishkey:set', (_event, key: unknown) => {
     const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
-    if (baseUrl !== '') ring?.set(baseUrl, String(key))
+    const value = boundedText(key, MAX_KEY_CHARS)
+    if (baseUrl !== '' && value !== null) ring?.set(baseUrl, value)
     return polishKeyStatus()
   })
-  ipcMain.handle('polishkey:clear', () => {
+  ipc.handle('polishkey:clear', () => {
     const current = settingsStore?.get()
     const polishUrl = current?.polish.baseUrl ?? ''
     const strip = (u: string): string => u.replace(/\/$/, '')
@@ -155,7 +160,7 @@ export function initSettings(): void {
     polishLegacyStore?.clear()
     return polishKeyStatus()
   })
-  ipcMain.handle('polishkey:status', () => polishKeyStatus())
+  ipc.handle('polishkey:status', () => polishKeyStatus())
 
   function polishKeyStatus(): { present: boolean; masked: string | null } {
     const baseUrl = settingsStore?.get().polish.baseUrl ?? ''
@@ -196,10 +201,10 @@ export function initSettings(): void {
       clearTimeout(timer)
     }
   }
-  ipcMain.handle('provider:test', async () => {
+  ipc.handle('provider:test', async () => {
     return probeConnection(settingsStore?.get().provider.baseUrl ?? '', getApiKey())
   })
-  ipcMain.handle('provider:testPolish', async () => {
+  ipc.handle('provider:testPolish', async () => {
     const polish = settingsStore?.get().polish
     if (!polish?.baseUrl) return { ok: false, detail: 'no cleanup base URL set' }
     return probeConnection(polish.baseUrl, getPolishApiKey())
@@ -208,23 +213,25 @@ export function initSettings(): void {
   // Generic slot access for connections that are not the speech or
   // cleanup slot (the sort connection, US-051): the ring keyed by base
   // URL, and a clear that never deletes a key another slot shares.
-  ipcMain.handle('apikey:setFor', (_event, baseUrl: unknown, key: unknown) => {
-    if (typeof baseUrl === 'string' && baseUrl !== '') ring?.set(baseUrl, String(key))
+  ipc.handle('apikey:setFor', (_event, baseUrl: unknown, key: unknown) => {
+    const url = boundedText(baseUrl, MAX_URL_CHARS)
+    const value = boundedText(key, MAX_KEY_CHARS)
+    if (url !== null && url !== '' && value !== null) ring?.set(url, value)
     return keyStatusFor(baseUrl)
   })
-  ipcMain.handle('apikey:statusFor', (_event, baseUrl: unknown) => keyStatusFor(baseUrl))
-  ipcMain.handle('apikey:clearFor', (_event, baseUrl: unknown) => {
+  ipc.handle('apikey:statusFor', (_event, baseUrl: unknown) => keyStatusFor(baseUrl))
+  ipc.handle('apikey:clearFor', (_event, baseUrl: unknown) => {
     if (typeof baseUrl === 'string' && baseUrl !== '' && !sharedSlotUrl(baseUrl)) ring?.clear(baseUrl)
     return keyStatusFor(baseUrl)
   })
-  ipcMain.handle('provider:testFor', async (_event, baseUrl: unknown) => {
+  ipc.handle('provider:testFor', async (_event, baseUrl: unknown) => {
     if (typeof baseUrl !== 'string' || baseUrl === '') return { ok: false, detail: 'no base URL set' }
     return probeConnection(baseUrl, ring?.get(baseUrl) ?? null)
   })
 
   function keyStatusFor(baseUrl: unknown): { present: boolean; masked: string | null } {
-    if (typeof baseUrl !== 'string' || baseUrl === '') return { present: false, masked: null }
-    return ring?.status(baseUrl) ?? { present: false, masked: null }
+    if (boundedText(baseUrl, MAX_URL_CHARS) === null || baseUrl === '') return { present: false, masked: null }
+    return ring?.status(baseUrl as string) ?? { present: false, masked: null }
   }
 
   // The speech slot and an enabled cleanup slot own their keys; a

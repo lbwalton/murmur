@@ -5,7 +5,8 @@
 // download quietly and install on quit; a notification says one is
 // ready. Ask first waits for a click, and Off asks GitHub for nothing
 // (US-136). Dev, smoke, and unpublished builds all no-op.
-import { Notification, app, ipcMain } from 'electron'
+import { Notification, app } from 'electron'
+import { ipc } from './ipc'
 import { getSettings, onSettingsChanged } from './settings'
 import { isSmoke, registerSmokeCheck } from './smoke'
 import { NO_UPDATE, type UpdateOffer, updatePlan } from './updater-rules'
@@ -27,12 +28,12 @@ async function loadAutoUpdater(): Promise<import('electron-updater').AppUpdater 
 }
 
 export function initUpdater(): void {
-  ipcMain.handle('updates:offer', (): UpdateOffer => offer)
-  ipcMain.handle('updates:download', (): UpdateOffer => {
+  ipc.handle('updates:offer', (): UpdateOffer => offer)
+  ipc.handle('updates:download', (): UpdateOffer => {
     download?.()
     return offer
   })
-  ipcMain.handle('updates:openReleases', async () => {
+  ipc.handle('updates:openReleases', async () => {
     const { shell } = await import('electron')
     await shell.openExternal('https://github.com/lbwalton/murmur/releases')
   })

@@ -3,7 +3,9 @@
 import { readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, clipboard, ipcMain } from 'electron'
+import { BrowserWindow, Menu, app, clipboard } from 'electron'
+import { ipc, setRendererRoot } from './ipc'
+import { MAX_TEXT_CHARS, boundedText } from './ipc-rules'
 import { initAudio } from './audio'
 import { dictationStart, dictationStop, initDictation, pasteLastDictation } from './dictation'
 import {
@@ -43,6 +45,9 @@ import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
 import { attachSettingsZoom, stepSettingsZoom } from './zoom'
+
+// The biggest share card a page can hand over, as a data URL.
+const MAX_CARD_CHARS = 64 * 1024 * 1024
 
 // A packaged murmur never starts with a Chromium remote debugging port
 // or pipe (US-072): either hands any program that can launch murmur a
@@ -238,6 +243,7 @@ app.on('window-all-closed', () => {})
 app.whenReady().then(async () => {
   // Before any window exists: every page is held to its own file and
   // only the audio window may open the microphone (US-072).
+  setRendererRoot(join(__dirname, '../renderer'))
   installHardening()
 
   // Widget-first on macOS: menu bar resident, no Dock icon. A visible
@@ -374,8 +380,10 @@ app.whenReady().then(async () => {
 
   // Share card: the journey page draws a PNG locally; main only offers
   // the save dialog and writes bytes. Nothing leaves the machine.
-  ipcMain.handle('sharecard:save', async (_event, dataUrl: unknown, kind: unknown, day: unknown) => {
-    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return false
+  ipc.handle('sharecard:save', async (_event, dataUrl: unknown, kind: unknown, day: unknown) => {
+    if (typeof dataUrl !== 'string' || dataUrl.length > MAX_CARD_CHARS || !dataUrl.startsWith('data:image/png;base64,')) {
+      return false
+    }
     // The wrap-up's day card (US-088) is named for the day it shows and
     // the week's scroll (US-102) for the day it ends on, a plain
     // YYYY-MM-DD and nothing else; anything else is the belt card.
@@ -395,8 +403,8 @@ app.whenReady().then(async () => {
     return true
   })
 
-  ipcMain.handle('app:version', () => app.getVersion())
-  ipcMain.handle('app:license', async () => {
+  ipc.handle('app:version', () => app.getVersion())
+  ipc.handle('app:license', async () => {
     const { shell } = await import('electron')
     await shell.openExternal('https://www.gnu.org/licenses/gpl-3.0.html')
   })
@@ -404,15 +412,17 @@ app.whenReady().then(async () => {
   // Copy for the history view: sandboxed renderers route through main.
   // Report this take (US-130): the person's own mail app, to 1 address.
   // murmur sends nothing, and this cannot open anything else.
-  ipcMain.handle('report:mail', async (_event, body: unknown) => {
+  ipc.handle('report:mail', async (_event, body: unknown) => {
     const { shell } = await import('electron')
     const { blankMailtoUrl, isReportMailto, mailtoUrl } = await import('../shared/report')
-    const url = typeof body === 'string' ? mailtoUrl(body) : blankMailtoUrl()
+    const text = boundedText(body, MAX_TEXT_CHARS)
+    const url = text !== null ? mailtoUrl(text) : blankMailtoUrl()
     if (isReportMailto(url)) await shell.openExternal(url)
   })
 
-  ipcMain.handle('clipboard:copy', async (_event, text: unknown) => {
-    await clipboard.writeText(String(text))
+  ipc.handle('clipboard:copy', async (_event, text: unknown) => {
+    const value = boundedText(text, MAX_TEXT_CHARS)
+    if (value !== null) await clipboard.writeText(value)
   })
 
   // Capture a new hotkey: global trigger paused, keys intercepted ahead
@@ -420,7 +430,7 @@ app.whenReady().then(async () => {
   // and saved through the normal settings path on success. The target
   // picks which binding is being set: the dictation trigger, or one of
   // the chords (paste-last, note) with their stricter rules.
-  ipcMain.handle('hotkeys:capture', async (_event, target: unknown) => {
+  ipc.handle('hotkeys:capture', async (_event, target: unknown) => {
     if (!settingsWindow || settingsWindow.isDestroyed()) return { ok: false }
     const forPasteLast = target === 'pasteLast'
     const forNote = target === 'note'

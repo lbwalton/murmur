@@ -10,7 +10,9 @@
 import { createPublicKey, verify as cryptoVerify } from 'node:crypto'
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
+import { ipc } from './ipc'
+import { MAX_KEY_CHARS } from './ipc-rules'
 import pro from '../../shared/pro.json'
 import { registerSmokeCheck } from './smoke'
 
@@ -115,15 +117,15 @@ export function removeLicense(): LicenseStatus {
 }
 
 export function initLicense(): void {
-  ipcMain.handle('license:status', () => readStatus())
-  ipcMain.handle('license:buy', async () => {
+  ipc.handle('license:status', () => readStatus())
+  ipc.handle('license:buy', async () => {
     // Only ever the configured Payment Link, never an arbitrary URL.
     if (!pro.buyUrl) return
     const { shell } = await import('electron')
     await shell.openExternal(pro.buyUrl)
   })
-  ipcMain.handle('license:set', (_event, key: unknown) => {
-    if (typeof key !== 'string') return readStatus()
+  ipc.handle('license:set', (_event, key: unknown) => {
+    if (typeof key !== 'string' || key.length > MAX_KEY_CHARS) return readStatus()
     const payload = verifyLicense(key, pro.publicKey)
     if (!payload) return readStatus()
     writeFileSync(licenseFile(), key.trim())
@@ -132,9 +134,9 @@ export function initLicense(): void {
     rmSync(retainedFile(), { force: true })
     return readStatus()
   })
-  ipcMain.handle('license:deactivate', () => deactivateLicense())
-  ipcMain.handle('license:reactivate', () => reactivateLicense())
-  ipcMain.handle('license:remove', () => removeLicense())
+  ipc.handle('license:deactivate', () => deactivateLicense())
+  ipc.handle('license:reactivate', () => reactivateLicense())
+  ipc.handle('license:remove', () => removeLicense())
 
   registerSmokeCheck('licenseSwitch', () => {
     // Pure file mechanics on the hermetic smoke profile: a deactivate

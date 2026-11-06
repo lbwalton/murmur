@@ -10,7 +10,8 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { randomInt } from 'node:crypto'
 import { join } from 'node:path'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
+import { ipc } from './ipc'
 import type { SessionEvent } from '../shared/history'
 import { type PaintingBook, asRecord, isDayKey, shiftDay, syncPaintings } from '../shared/painting'
 import { dayKey } from '../shared/history'
@@ -105,7 +106,7 @@ export function clearPaintings(): void {
 export function initPaintings(readEvents: () => SessionEvent[]): void {
   // Today and the four weeks before it, synced first so today's newest
   // take is in it.
-  ipcMain.handle('paintings:list', () => {
+  ipc.handle('paintings:list', () => {
     syncPaintingsWith(readEvents())
     const today = dayKey(Date.now())
     const days = load().days

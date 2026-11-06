@@ -6,7 +6,8 @@
 // sleeping only ever sees the unlock). The mic picked in Settings rides
 // to the capture window, and the inputs it sees ride back (US-110).
 import { join } from 'node:path'
-import { BrowserWindow, app, ipcMain, powerMonitor } from 'electron'
+import { BrowserWindow, app, powerMonitor } from 'electron'
+import { ipc } from '../ipc'
 import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { markMicrophoneWindow } from '../hardening'
 import { reviveOnDeath } from '../revive'
@@ -53,7 +54,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   // The one window allowed the microphone (US-072).
   markMicrophoneWindow(audioWindow.webContents)
 
-  ipcMain.on(IpcChannels.audioReady, () => {
+  ipc.on(IpcChannels.audioReady, () => {
     ready = true
     for (const resolve of readyResolvers) resolve()
     readyResolvers = []
@@ -63,16 +64,16 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
 
   // Only the capture window speaks for the inputs; the report is bounded
   // before it is kept, and only Settings hears that it changed.
-  ipcMain.on(IpcChannels.audioMics, (event, report: unknown) => {
+  ipc.on(IpcChannels.audioMics, (event, report: unknown) => {
     if (event.sender !== aliveAudio()?.webContents) return
     micReport = sanitizeMicReport(report)
     const win = settingsWindow()
     if (win && !win.isDestroyed()) win.webContents.send(IpcChannels.micsChanged)
   })
-  ipcMain.handle(IpcChannels.micsList, (): MicReport => micReport)
+  ipc.handle(IpcChannels.micsList, (): MicReport => micReport)
   // The capture window asks for the pick before its first arm, so a
   // picked mic is the first one it opens, not a move after launch.
-  ipcMain.handle(IpcChannels.audioMicChoice, async (event) => {
+  ipc.handle(IpcChannels.audioMicChoice, async (event) => {
     if (event.sender !== aliveAudio()?.webContents) return { id: '', label: '' }
     const { getSettings } = await import('../settings')
     return getSettings().microphone
@@ -149,7 +150,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   registerSmokeCheck('cues', async () => {
     await whenAudioReady()
     const played = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioCuePlayed, (_event, cue: string) => resolve(cue === 'insert'))
+      ipc.once(IpcChannels.audioCuePlayed, (_event, cue: string) => resolve(cue === 'insert'))
     })
     // Near-silent volume: proves the synth path without waking anyone.
     aliveAudio()?.webContents.send(IpcChannels.audioCue, 'insert', 0.01)
@@ -159,7 +160,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   registerSmokeCheck('recordingRearm', async () => {
     await whenAudioReady()
     const armed = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(Boolean(ok)))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(Boolean(ok)))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioRearm)
     return armed
@@ -174,7 +175,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // The renderer acks the outage with armed=false; without the ack the
     // check cannot distinguish "recovered" from "never damaged".
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateOutage, 2)
     if (!(await acked)) {
@@ -203,7 +204,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // main after the seam. Three silent graphs against a budget of four.
     await whenAudioReady()
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 3)
     if (!(await acked)) {
@@ -262,7 +263,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     const exhaustedBefore = count('stayed silent after')
     const pressBefore = count('press found a silent stream')
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
     if (!(await acked)) {
@@ -311,7 +312,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     const exhaustedBefore = count('stayed silent after')
     const ack = (): Promise<boolean> =>
       new Promise<boolean>((resolve) => {
-        ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+        ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
       })
     const silenced = ack()
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
@@ -509,7 +510,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // must come back on its own, and with it the warm mic.
     await whenAudioReady()
     const revived = new Promise<void>((resolve) => {
-      ipcMain.once(IpcChannels.audioReady, () => resolve())
+      ipc.once(IpcChannels.audioReady, () => resolve())
     })
     aliveAudio()?.webContents.forcefullyCrashRenderer()
     await revived
@@ -548,14 +549,14 @@ const STOP_TIMEOUT_MS = 5_000
 export function stopRecording(): Promise<Uint8Array | null> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
-      ipcMain.removeListener(IpcChannels.audioResult, onResult)
+      ipc.removeListener(IpcChannels.audioResult, onResult)
       resolve(null)
     }, STOP_TIMEOUT_MS)
     const onResult = (_event: Electron.IpcMainEvent, wav: Uint8Array | null): void => {
       clearTimeout(timer)
       resolve(wav ? Uint8Array.from(wav) : null)
     }
-    ipcMain.once(IpcChannels.audioResult, onResult)
+    ipc.once(IpcChannels.audioResult, onResult)
     aliveAudio()?.webContents.send(IpcChannels.audioStop)
   })
 }

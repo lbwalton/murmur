@@ -10,7 +10,8 @@
 // never reach the log.
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type BrowserWindow, Notification, app, ipcMain, shell } from 'electron'
+import { type BrowserWindow, Notification, app, shell } from 'electron'
+import { ipc } from '../ipc'
 import {
   type LastNote,
   parseLastNote,
@@ -331,9 +332,9 @@ export function initReceipts(options: {
   chooseFolder: () => Promise<void>
 }): void {
   chooseFolder = options.chooseFolder
-  ipcMain.handle(IpcChannels.notesLast, () => getLastNote())
-  ipcMain.handle(IpcChannels.notesOpenLast, () => openLastNote('home'))
-  ipcMain.handle(IpcChannels.notesRevealLast, () => revealLastNote('home'))
+  ipc.handle(IpcChannels.notesLast, () => getLastNote())
+  ipc.handle(IpcChannels.notesOpenLast, () => openLastNote('home'))
+  ipc.handle(IpcChannels.notesRevealLast, () => revealLastNote('home'))
   // Only the settings window hears about notes, never the overlay.
   onLastNoteChanged(() => {
     const win = options.settingsWindow()

@@ -7,7 +7,8 @@
 // material in any form.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type BrowserWindow, app, ipcMain } from 'electron'
+import { type BrowserWindow, app } from 'electron'
+import { ipc } from './ipc'
 import { qualityReport, summarizeQuality } from './formatter/quality'
 import { getHotkeysStatus } from './hotkeys'
 import { getSettings, listSavedKeyBaseUrls, updateSettings } from './settings'
@@ -78,7 +79,7 @@ export function buildDiagnosticsReport(): string {
 }
 
 export function initDiagnostics(settingsWindow: () => BrowserWindow | null): void {
-  ipcMain.handle('diag:save', async () => {
+  ipc.handle('diag:save', async () => {
     // Parented to the settings window: a parentless dialog from a
     // Dock-hidden accessory app can open buried behind the active app,
     // the same failure the tray raise fix closed (review gate finding).
@@ -95,7 +96,7 @@ export function initDiagnostics(settingsWindow: () => BrowserWindow | null): voi
     return true
   })
 
-  ipcMain.handle('diag:openLogs', async () => {
+  ipc.handle('diag:openLogs', async () => {
     const { shell } = await import('electron')
     shell.showItemInFolder(logFile())
   })

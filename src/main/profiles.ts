@@ -11,7 +11,9 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, ipcMain, safeStorage } from 'electron'
+import { app, safeStorage } from 'electron'
+import { ipc } from './ipc'
+import { MAX_NAME_CHARS } from './ipc-rules'
 import { getSettings, ringHasKeyFor, ringSetKey, updateSettings } from './settings'
 import { KeyStore } from './settings/keystore'
 import { readLicenseStatus } from './license'
@@ -32,9 +34,11 @@ function keyFile(profileId: string): string {
 }
 
 export function initProfiles(): void {
-  ipcMain.handle('profiles:save', (_event, name: unknown): ProfileResult => {
+  ipc.handle('profiles:save', (_event, name: unknown): ProfileResult => {
     if (!readLicenseStatus().pro) return { ok: false, reason: 'pro' }
-    if (typeof name !== 'string' || name.trim().length === 0) return { ok: false, reason: 'bad-name' }
+    if (typeof name !== 'string' || name.trim().length === 0 || name.length > MAX_NAME_CHARS) {
+      return { ok: false, reason: 'bad-name' }
+    }
     const current = getSettings().provider
     const id = randomUUID().slice(0, 8)
     const profile = {
@@ -50,7 +54,7 @@ export function initProfiles(): void {
     return { ok: true, settings }
   })
 
-  ipcMain.handle('profiles:apply', (_event, id: unknown): ProfileResult => {
+  ipc.handle('profiles:apply', (_event, id: unknown): ProfileResult => {
     if (!readLicenseStatus().pro) return { ok: false, reason: 'pro' }
     const profile = getSettings().provider.profiles.find((p) => p.id === id)
     if (!profile || !PROFILE_ID.test(profile.id)) return { ok: false, reason: 'not-found' }
@@ -82,7 +86,7 @@ export function initProfiles(): void {
     return { ok: true, settings }
   })
 
-  ipcMain.handle('profiles:delete', (_event, id: unknown): ProfileResult => {
+  ipc.handle('profiles:delete', (_event, id: unknown): ProfileResult => {
     if (!readLicenseStatus().pro) return { ok: false, reason: 'pro' }
     const provider = getSettings().provider
     const profile = provider.profiles.find((p) => p.id === id)
