@@ -243,7 +243,7 @@ The error is written to a small rotating log in murmur's data folder under `logs
 
 ## Why does silence never insert anything?
 
-Three guards. Before upload: if the recording contains under about a fifth of a second of voiced audio, murmur discards it locally, and your audio never leaves the machine. After transcription, murmur drops any stretch a Whisper model itself scores as silence (see [Why did murmur type words I never said, or words in another language, after a quiet take?](troubleshooting.md)), and empty results and the stock phrases speech models hallucinate on silence ("Thank you.") are recognized and dropped. The pill shows a quiet "no speech" instead.
+Three guards. Before upload: if the recording contains under about a fifth of a second of voiced audio, murmur discards it locally, and your audio never leaves the machine. A take you did not hold a key through (hands-free, or tap to start and stop) also needs a stretch of about a tenth of a second where the sound holds steady, since key clicks, keystrokes, and desk taps fade too fast to count. After transcription, murmur drops any stretch a Whisper model itself scores as silence (not on `whisper-large-v3-turbo`, whose score is always about 0; see [Why did murmur type words I never said, or words in another language, after a quiet take?](troubleshooting.md)), and empty results and the stock phrases speech models hallucinate on silence ("Thank you.") are recognized and dropped. The pill shows a quiet "no speech" instead.
 
 ## Where does my data live?
 

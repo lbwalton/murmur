@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest'
 import hallucinations from './hallucinations.json'
 import {
   LOW_LOGPROB_THRESHOLD,
+  MIN_STEADY_MS,
+  MIN_VOICED_MS,
   NO_SPEECH_PROB_THRESHOLD,
+  STEADY_DROP_DB,
+  checkSpeech,
+  longestSteadyMs,
   dropSilentSegments,
   silenceLogSuffix,
   hasSpeechEnergy, isHallucination, normalizeTranscript, stripTrailingHallucinations, trimSilence, voicedMs, isDeadStream, peakLevel } from './speech-gate'
@@ -51,6 +56,149 @@ describe('energy gate', () => {
     const clicky = silence(1)
     clicky.set(speechBursts(0.05).subarray(0, 800), 8000)
     expect(hasSpeechEnergy(clicky, RATE)).toBe(false)
+  })
+})
+
+/** A hotkey click or a desk tap: a 2 kHz knock decaying in about 20 ms. */
+function knock(out: Float32Array, atSeconds: number, peak = 0.3): void {
+  const start = Math.round(atSeconds * RATE)
+  for (let i = 0; i < 0.12 * RATE && start + i < out.length; i++) {
+    out[start + i] += peak * Math.exp(-i / (0.02 * RATE)) * Math.sin((2 * Math.PI * 2000 * i) / RATE)
+  }
+}
+
+/** A steady 200 Hz tone: sound that lasts, like a held vowel. */
+function tone(out: Float32Array, atSeconds: number, seconds: number, amplitude = 0.3): void {
+  const start = Math.round(atSeconds * RATE)
+  for (let i = 0; i < seconds * RATE && start + i < out.length; i++) {
+    out[start + i] += amplitude * Math.sin((2 * Math.PI * 200 * i) / RATE)
+  }
+}
+
+/** A quiet hands-free take as live-found 2026-11-05: the double tap at
+ *  its head, 2 desk taps, and the stopping tap at its tail. */
+function tappedSilence(): Float32Array {
+  const take = breathNoise(21.5)
+  for (const at of [0.3, 0.42, 0.58, 0.7, 8, 13.4, 21.2, 21.33]) knock(take, at)
+  return take
+}
+
+/** A keystroke: its press click, then its release click gapSeconds later. */
+function keystroke(out: Float32Array, atSeconds: number, gapSeconds: number): void {
+  knock(out, atSeconds)
+  knock(out, atSeconds + gapSeconds, 0.2)
+}
+
+/** A voiced syllable: glottal pulses at f0 through one vowel resonance
+ *  (500 Hz), rising in over 30 ms and falling away over the last 50 ms. */
+function syllable(out: Float32Array, atSeconds: number, seconds: number, f0: number, amplitude: number): void {
+  const start = Math.round(atSeconds * RATE)
+  const length = Math.round(seconds * RATE)
+  const r = Math.exp((-Math.PI * 100) / RATE)
+  const c1 = 2 * r * Math.cos((2 * Math.PI * 500) / RATE)
+  const c2 = -r * r
+  const period = RATE / f0
+  let y1 = 0
+  let y2 = 0
+  let nextPulse = 0
+  for (let i = 0; i < length && start + i < out.length; i++) {
+    let pulse = 0
+    if (i >= nextPulse) {
+      pulse = 1
+      nextPulse += period
+    }
+    const y = pulse + c1 * y1 + c2 * y2
+    y2 = y1
+    y1 = y
+    const t = i / RATE
+    const envelope = Math.min(1, t / 0.03, (seconds - t) / 0.05)
+    out[start + i] += amplitude * 0.05 * Math.max(0, envelope) * y
+  }
+}
+
+describe('steady sound (US-119)', () => {
+  it('a click, a keystroke, or a desk tap never holds steady', () => {
+    for (const offset of [0, 0.003, 0.0061, 0.0097]) {
+      const one = silence(1)
+      knock(one, 0.3 + offset, 0.9)
+      expect(longestSteadyMs(one, RATE)).toBeLessThan(MIN_STEADY_MS)
+      for (const gap of [0.04, 0.05, 0.07, 0.09, 0.11]) {
+        const typed = silence(1)
+        keystroke(typed, 0.3 + offset, gap)
+        expect(longestSteadyMs(typed, RATE)).toBeLessThan(MIN_STEADY_MS)
+      }
+    }
+  })
+
+  it('a held vowel does', () => {
+    const vowel = silence(1)
+    tone(vowel, 0.3, 0.15)
+    expect(longestSteadyMs(vowel, RATE)).toBeGreaterThanOrEqual(MIN_STEADY_MS)
+  })
+
+  it('a deep, creaky voice holds steady too, at every alignment', () => {
+    for (const f0 of [45, 50, 60, 80]) {
+      for (const offset of [0, 0.0023, 0.0049, 0.0071, 0.0094]) {
+        const low = breathNoise(1)
+        syllable(low, 0.3 + offset, 0.25, f0, 1)
+        expect(longestSteadyMs(low, RATE), `${f0} Hz at +${offset}s`).toBeGreaterThanOrEqual(MIN_STEADY_MS)
+      }
+    }
+  })
+
+  it(`a fade of more than ${STEADY_DROP_DB} dB ends the stretch; a smaller dip does not`, () => {
+    const faded = silence(1)
+    tone(faded, 0.3, 0.06, 0.3)
+    tone(faded, 0.36, 0.06, 0.06)
+    expect(longestSteadyMs(faded, RATE)).toBeLessThan(MIN_STEADY_MS)
+    const dipped = silence(1)
+    tone(dipped, 0.3, 0.06, 0.3)
+    tone(dipped, 0.36, 0.06, 0.15)
+    expect(longestSteadyMs(dipped, RATE)).toBeGreaterThanOrEqual(110)
+  })
+
+  it('counts a stretch that runs to the very end of the take', () => {
+    const ending = silence(1)
+    tone(ending, 0.85, 0.15)
+    expect(longestSteadyMs(ending, RATE)).toBeGreaterThanOrEqual(140)
+  })
+
+  it('needs 90 ms, and a short syllable of about 110 ms clears it', () => {
+    expect(MIN_STEADY_MS).toBe(90)
+    for (const offset of [0, 0.0031, 0.0067]) {
+      const word = breathNoise(1)
+      syllable(word, 0.3 + offset, 0.15, 120, 1)
+      syllable(word, 0.5 + offset, 0.15, 120, 1)
+      const steady = longestSteadyMs(word, RATE)
+      expect(steady).toBeGreaterThanOrEqual(MIN_STEADY_MS)
+      expect(steady).toBeLessThanOrEqual(130)
+      expect(checkSpeech(word, RATE, { requireSteady: true }).speech).toBe(true)
+    }
+  })
+
+  it('finds no speech in a tapped quiet take no key was held through', () => {
+    const take = tappedSilence()
+    for (let k = 0; k < 6; k++) keystroke(take, 2 + k * 1.7 + k * 0.0013, 0.05 + k * 0.012)
+    const check = checkSpeech(take, RATE, { requireSteady: true })
+    expect(check.voicedMs).toBeGreaterThanOrEqual(MIN_VOICED_MS)
+    expect(check.steadyMs).toBeLessThan(MIN_STEADY_MS)
+    expect(check.speech).toBe(false)
+    expect(hasSpeechEnergy(take, RATE, { requireSteady: true })).toBe(false)
+  })
+
+  it('a held take keeps the voiced rule alone', () => {
+    const take = tappedSilence()
+    expect(checkSpeech(take, RATE).speech).toBe(true)
+    expect(hasSpeechEnergy(take, RATE)).toBe(true)
+  })
+
+  it('finds speech when talking is in it, even a single short word', () => {
+    const talked = tappedSilence()
+    talked.set(speechBursts(1), 10 * RATE)
+    expect(hasSpeechEnergy(talked, RATE, { requireSteady: true })).toBe(true)
+    const word = tappedSilence()
+    syllable(word, 10, 0.25, 110, 0.4)
+    expect(checkSpeech(word, RATE, { requireSteady: true })).toMatchObject({ speech: true })
   })
 })
 

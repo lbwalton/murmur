@@ -19,6 +19,7 @@ import {
   type KeepOutcome,
   dictationCancelTake,
   dictationDiscard,
+  dictationLocked,
   dictationPark,
   dictationStop,
   liveSessionKind
@@ -171,6 +172,7 @@ export function handsFreeLock(kind: LockedKind): void {
     displayBlocker: keepDisplayAwake()
   }
   locked = take
+  dictationLocked()
   setAudioLevelListener((level) => watch.push(level, Date.now()))
   setOverlayLocked(true)
   playCue('lock')
@@ -478,12 +480,14 @@ function registerHandsFreeSmoke(): void {
       await until(settled)
       up(SPACE)
       const aClip = await clipboard.readText()
+      // A locked take's speech gate wants a steady stretch (US-119).
       ok.a =
         a !== null &&
         aStopped &&
         getOverlayPhase() === 'inserted' &&
         aClip === expected &&
-        inOrder('[hands-free] lock', '[hands-free] stop')
+        inOrder('[hands-free] lock', '[hands-free] stop') &&
+        has('held=0')
       ok.j = aHeld && !heldAwake(a?.hold ?? null)
       seen.a = { locked: a !== null, aStopped, phase: getOverlayPhase(), clip: aClip === expected, aHeld }
 
@@ -555,7 +559,9 @@ function registerHandsFreeSmoke(): void {
       const dUnlocked = !isHandsFreeLocked()
       const dSaved = await until(() => has('[hands-free] cancel saved=true'), 3_000)
       const dNotice = lastNotice?.body
-      const dNothingSent = !has('[dictation]')
+      // Kept untranscribed: its gate numbers are logged, nothing else.
+      const dNothingSent =
+        has('[dictation] cancel kept') && !has('[dictation] delivered') && !has('[transcribe]')
       ok.j &&= !heldAwake(d?.hold ?? null)
       await begin()
       const dDiscardParked = parked()
@@ -611,7 +617,9 @@ function registerHandsFreeSmoke(): void {
         eUnlocked &&
         eSecondEnded &&
         !has('[hands-free] lock') &&
-        !has('[hands-free] discard')
+        !has('[hands-free] discard') &&
+        has('held=1') &&
+        !has('held=0')
       seen.e = { eFirstEnded, eSecondStarted, eUnlocked, eSecondEnded, eGap }
 
       // (f) A settings change while locked saves the take, and the tray
@@ -823,6 +831,21 @@ function registerHandsFreeSmoke(): void {
       const mNext = await until(() => readHistory().length === mHistory + 1, 5_000)
       ok.m = m !== null && mRefused && mKept && parked() === mParked + 1 && mNextStarted && mNext
       seen.m = { locked: m !== null, mRefused, mKept, parked: parked() - mParked, mNextStarted, mNext }
+
+      // (n) Tap to start and tap to stop: no key is held through the
+      // take, so its speech gate wants a steady stretch too (US-119).
+      updateSettings({ hotkey: { mode: 'toggle' } })
+      await begin()
+      down(SPACE)
+      up(SPACE)
+      const nStarted = getOverlayPhase() === 'recording'
+      await wait(600)
+      down(SPACE)
+      up(SPACE)
+      await until(settled)
+      updateSettings({ hotkey: { mode: 'hold' } })
+      ok.n = nStarted && has('held=0') && !has('held=1')
+      seen.n = { nStarted, phase: getOverlayPhase() }
 
       const passed = Object.values(ok).every(Boolean)
       if (!passed) console.error(`smoke handsFree: ${JSON.stringify({ ok, seen })}`)

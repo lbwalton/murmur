@@ -48,7 +48,7 @@ Groq is murmur's default because Whisper on Groq is extremely fast and inexpensi
 | Speech model | `whisper-large-v3-turbo` (fastest) or `whisper-large-v3` (highest accuracy) |
 | Cleanup model | `openai/gpt-oss-120b` (thorough) or `openai/gpt-oss-20b` (fastest) |
 
-**Silence scores:** the Groq Whisper models send a score for each stretch of speech, and murmur uses them to drop words the model invented on a silent take (verified 2026-11-01 against [console.groq.com/docs/speech-to-text](https://console.groq.com/docs/speech-to-text)).
+**Silence scores:** the Groq Whisper models send a score for each stretch of speech, and murmur uses them to drop words the model invented on a silent take (verified 2026-11-01 against [console.groq.com/docs/speech-to-text](https://console.groq.com/docs/speech-to-text)). On `whisper-large-v3-turbo` the no-speech score is about 0 on everything, so it never drops anything there, and murmur's check before upload is what guards that model (verified 2026-11-05: a quiet hands-free take on it logged `noSpeech=0.00`; the model scored about 1e-10 on speech in [faster-whisper issue 1028](https://github.com/SYSTRAN/faster-whisper/issues/1028) and on pure silence in [Rapid-MLX pull request 980](https://github.com/raullenchai/Rapid-MLX/pull/980)).
 
 Current model list: [console.groq.com/docs/models](https://console.groq.com/docs/models). Note: Groq decommissioned `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on 2026-08-16 ([deprecations](https://console.groq.com/docs/deprecations)); murmur migrates old settings to the replacements automatically.
 
@@ -103,7 +103,7 @@ Yes. Any server that exposes OpenAI-compatible `/audio/transcriptions` and `/cha
 | Cleanup model | whatever chat model your server hosts |
 | API key | whatever your server expects; murmur always sends one, so use a dummy value if the server ignores it |
 
-**Silence scores:** murmur asks Whisper-named models for `verbose_json` segments, which is how it drops words invented on a silent take. If your server returns them, you get the guard; if it refuses that format, murmur notices and asks for plain json automatically (checked 2026-11-05).
+**Silence scores:** murmur asks Whisper-named models for `verbose_json` segments, which is how it drops words invented on a silent take. If your server returns them, you get the guard; if it refuses that format, murmur notices and asks for plain json automatically (checked 2026-11-05). A local server running `whisper-large-v3-turbo` sends a no-speech score of about 0 on everything, the same as Groq's, so there murmur's check before upload is what guards against invented words (verified 2026-11-05).
 
 Local servers keep audio entirely on your machine, which is the strongest privacy posture. The Local preset fills `http://localhost:8000/v1` (the speaches default); for a local cleanup model, point the separate cleanup connection at Ollama (`http://localhost:11434/v1`) or LM Studio (`http://localhost:1234/v1`) and use any model id your server has pulled.
 

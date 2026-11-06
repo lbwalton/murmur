@@ -7,6 +7,7 @@ import formatSpec from '../../shared/format-spec.json'
 import { type FormatSpec, formatTranscript } from '../shared/formatter'
 import hallucinations from '../shared/hallucinations.json'
 import {
+  checkSpeech,
   hasSpeechEnergy,
   isDeadStream,
   isHallucination,
@@ -41,6 +42,9 @@ import type { KeepReason, ParkReason, StopReason } from './handsfree-rules'
 export type DictationKind = 'dictation' | 'note' | 'transform'
 
 let sessionStartedAt = 0
+// Whether a key is held through the live take: false for tap to start
+// and stop, and from the moment a take locks hands-free (US-117).
+let sessionHeld = true
 // The chord that started the live session owns it: a hold on the other
 // chord during a take must not stop it (each chord runs its own trigger
 // machine, and both machines call in here).
@@ -97,9 +101,31 @@ export function dictationStart(kind: DictationKind = 'dictation'): boolean {
   if (!setOverlayPhase('recording', null, { mode: kind })) return false
   sessionKind = kind
   sessionStartedAt = Date.now()
+  // Read from the setting, which picks the machine that started this
+  // take (hotkeys/index.ts: hold, or toggle for every chord); keep the
+  // two in step if that choice ever changes.
+  sessionHeld = getSettings().hotkey.mode === 'hold'
   startRecording()
   playCue(kind === 'note' ? 'noteStart' : 'start')
   return true
+}
+
+/** The live take locked hands-free: no key is held through it now, so
+ *  its speech gate wants a steady stretch (US-119). */
+export function dictationLocked(): void {
+  if (getOverlayPhase() === 'recording') sessionHeld = false
+}
+
+/** Guard one's verdict, with its numbers for the log line (never text):
+ *  voiced time, the longest steady stretch, and whether a key was held
+ *  through the take (a take that was not needs the steady stretch;
+ *  US-119). */
+function speechGate(samples: Float32Array, held: boolean): { speech: boolean; detail: string } {
+  const check = checkSpeech(samples, TARGET_SAMPLE_RATE, { requireSteady: !held })
+  return {
+    speech: check.speech,
+    detail: ` voiced=${check.voicedMs} steady=${check.steadyMs} held=${held ? 1 : 0}`
+  }
 }
 
 /** The kind of the take recording now, or null when none is. */
@@ -126,6 +152,7 @@ export async function dictationStop(
 ): Promise<StopOutcome> {
   if (getOverlayPhase() !== 'recording') return 'failed'
   if (sessionKind !== kind) return 'failed'
+  const held = sessionHeld
   setOverlayPhase('processing')
   playCue('stop')
   const wav = await stopRecording()
@@ -136,7 +163,7 @@ export async function dictationStop(
     return 'failed'
   }
 
-  // Guard one: no speech energy means no upload and nothing inserted.
+  // Guard one: no speech means no upload and nothing inserted.
   // The silent head and tail are then cut before upload: trailing
   // silence is what makes speech models hallucinate a "Thank you."
   // onto the end of real dictations.
@@ -144,13 +171,16 @@ export async function dictationStop(
   // means the mic delivered nothing (muted, hijacked device); a faint
   // peak on a delivered dictation is the Whisper hallucination zone.
   let peak = 0
+  let gateDetail = ''
   let upload = wav
   try {
     const samples = wavSamples(wav)
     peak = peakLevel(samples)
-    if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
+    const gate = speechGate(samples, held)
+    gateDetail = gate.detail
+    if (!gate.speech) {
       void logDictation(
-        `nospeech durationMs=${Date.now() - sessionStartedAt} peak=${peak.toFixed(4)}`
+        `nospeech durationMs=${Date.now() - sessionStartedAt} peak=${peak.toFixed(4)}${gateDetail}`
       )
       // A dead stream, not a quiet human (see DEAD_STREAM_PEAK). The
       // chunk watchdog cannot see this (chunks flow, they are just
@@ -223,13 +253,13 @@ export async function dictationStop(
   const heardText = result.text
   const finalText = await finishTranscript(heardText)
   if (finalText === null) {
-    void logDictation(`nospeech after transcript peak=${peak.toFixed(4)}${silenceLogSuffix(result.silence)}`)
+    void logDictation(`nospeech after transcript peak=${peak.toFixed(4)}${gateDetail}${silenceLogSuffix(result.silence)}`)
     setOverlayPhase('nospeech')
     playCue('nospeech')
     return 'nospeech'
   }
 
-  if (kind === 'note') return (await deliverNote(heardText, finalText, peak)) ? 'delivered' : 'failed'
+  if (kind === 'note') return (await deliverNote(heardText, finalText, `peak=${peak.toFixed(4)}${gateDetail}`)) ? 'delivered' : 'failed'
 
   try {
     if (opts.save) {
@@ -237,7 +267,9 @@ export async function dictationStop(
       const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
       // The clipboard stays the user's: Cmd+V keeps pasting what they
       // copied. The words wait in history for the paste-last shortcut.
-      void logDictation(`delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}${silenceLogSuffix(result.silence)}`)
+      void logDictation(
+        `delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}${gateDetail}${silenceLogSuffix(result.silence)}`
+      )
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       refreshOverlayConfig()
@@ -255,7 +287,7 @@ export async function dictationStop(
       // waits on the clipboard: the exact trail the Windows missed
       // insertion reports need. Never the text itself.
       void logDictation(
-        `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}${silenceLogSuffix(result.silence)}`
+        `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}${gateDetail}${silenceLogSuffix(result.silence)}`
       )
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
@@ -348,15 +380,15 @@ function startSort(finalText: string, saved: NoteSaveResult, receipt: LastNote |
 
 /** A live note's delivery: filed and recorded, then the overlay, then
  *  the sorter once the pill has spoken. True when the file was written. */
-async function deliverNote(heardText: string, finalText: string, peak: number): Promise<boolean> {
+async function deliverNote(heardText: string, finalText: string, levels: string): Promise<boolean> {
   const { saved, receipt, words, wpm } = await fileNote(heardText, finalText, { startedAt: sessionStartedAt })
   if (!saved?.ok) {
-    void logDictation(`note-failed words=${words} peak=${peak.toFixed(4)}`)
+    void logDictation(`note-failed words=${words} ${levels}`)
     setOverlayPhase('error')
     playCue('error')
     return false
   }
-  void logDictation(`delivered kind=note location=${saved.location} words=${words} peak=${peak.toFixed(4)}`)
+  void logDictation(`delivered kind=note location=${saved.location} words=${words} ${levels}`)
   // The pill says where in words (noted to inbox); the click-through
   // link is the receipt.
   setOverlayPhase('inserted', wpm, { hint: pillPlace(saved.relative, saved.location) })
@@ -440,6 +472,7 @@ export async function dictationCancelTake(keep: boolean): Promise<KeepOutcome | 
   // The scrape starts now, before the audio comes back.
   const kind = sessionKind
   const startedAt = sessionStartedAt
+  const held = sessionHeld
   if (!keep) {
     cancelRecording()
     setOverlayPhase('cancelled')
@@ -448,7 +481,7 @@ export async function dictationCancelTake(keep: boolean): Promise<KeepOutcome | 
   setOverlayPhase('cancelled')
   cancelsKeeping += 1
   try {
-    return await keepForRetry(await stopRecording(), kind, startedAt, 'cancel')
+    return await keepForRetry(await stopRecording(), kind, startedAt, held, 'cancel')
   } catch (error) {
     console.error('[murmur] cancel keep failed:', error)
     return 'failed'
@@ -463,6 +496,7 @@ async function keepForRetry(
   wav: Uint8Array | null,
   kind: DictationKind,
   startedAt: number,
+  held: boolean,
   reason: KeepReason
 ): Promise<KeepOutcome> {
   const step = reason === 'cancel' ? 'cancel' : 'park'
@@ -471,8 +505,9 @@ async function keepForRetry(
     return 'failed'
   }
   const samples = wavSamples(wav)
-  if (!hasSpeechEnergy(samples, TARGET_SAMPLE_RATE)) {
-    void logDictation(`${step} nospeech durationMs=${Date.now() - startedAt}`)
+  const gate = speechGate(samples, held)
+  if (!gate.speech) {
+    void logDictation(`${step} nospeech durationMs=${Date.now() - startedAt}${gate.detail}`)
     return 'nospeech'
   }
   // Trimmed like a live upload, so a retry never sends the silence
@@ -485,6 +520,7 @@ async function keepForRetry(
     startedAt,
     failure: { kind: 'parked', detail: reason }
   })
+  void logDictation(`${step} kept${gate.detail}`)
   return 'kept'
 }
 
@@ -499,10 +535,11 @@ export async function dictationPark(reason: ParkReason): Promise<boolean> {
   if (getOverlayPhase() !== 'recording') return false
   const kind = sessionKind
   const startedAt = sessionStartedAt
+  const held = sessionHeld
   // Processing claims the take: no stop can deliver it meanwhile.
   setOverlayPhase('processing')
   try {
-    return (await keepForRetry(await stopRecording(), kind, startedAt, reason)) === 'kept'
+    return (await keepForRetry(await stopRecording(), kind, startedAt, held, reason)) === 'kept'
   } catch (error) {
     console.error('[murmur] park failed:', error)
     return false
@@ -559,7 +596,22 @@ export function initDictation(): void {
   registerSmokeCheck('silenceGuard', async () => {
     const { encodeWavPcm16 } = await import('../shared/wav')
     const silent = encodeWavPcm16(new Float32Array(TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
+    // A quiet take no key was held through, holding only knocks (its
+    // hotkey taps, a desk tap), is no speech; with a second of steady
+    // sound it is. A held take keeps the voiced rule alone (US-119).
+    const tapped = new Float32Array(5 * TARGET_SAMPLE_RATE)
+    for (const at of [0.3, 0.42, 2.5, 4.8]) {
+      const start = Math.round(at * TARGET_SAMPLE_RATE)
+      for (let i = 0; i < 960; i++) tapped[start + i] = 0.5 * Math.exp(-i / 320) * Math.sin(i * 0.8)
+    }
+    const spoken = tapped.slice()
+    for (let i = 2 * TARGET_SAMPLE_RATE; i < 3 * TARGET_SAMPLE_RATE; i++) {
+      spoken[i] = 0.3 * Math.sin((2 * Math.PI * 200 * i) / TARGET_SAMPLE_RATE)
+    }
     return (
+      !speechGate(tapped, false).speech &&
+      speechGate(tapped, true).speech &&
+      speechGate(spoken, false).speech &&
       !hasSpeechEnergy(wavSamples(silent), TARGET_SAMPLE_RATE) &&
       isHallucination('Thank you.', hallucinations.phrases) &&
       !isHallucination('send the invoice tomorrow', hallucinations.phrases)
