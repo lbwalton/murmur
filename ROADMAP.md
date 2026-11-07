@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (96/145 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (96/146 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -157,3 +157,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-142** Checksums and a parts list with every release
 - [ ] **US-143** A policy file IT can deploy
 - [ ] **US-144** Rescan and sign off
+- [ ] **US-146** Cleanup with your ChatGPT plan
