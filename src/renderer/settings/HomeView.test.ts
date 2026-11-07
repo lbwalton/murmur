@@ -69,6 +69,12 @@ describe('a waiting take', () => {
     expect(waitingLine(take(null), 'win32')).toBe('not transcribed: saved before murmur kept reasons')
   })
 
+  it('a held take says its recording stays up to 24 hours, not that it failed', () => {
+    expect(waitingLine(take({ kind: 'held', detail: 'idle' }), 'darwin')).toBe(
+      'never reached an app, so its recording stays up to 24 hours'
+    )
+  })
+
   it('a hands-free take parked on sleep or quit says when it was saved', () => {
     expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'darwin')).toBe('saved when your Mac went to sleep')
     expect(waitingLine(take({ kind: 'parked', detail: 'sleep' }), 'win32')).toBe('saved when your PC went to sleep')

@@ -17,6 +17,7 @@ import {
   getRecovery,
   listRecovery,
   markRecoveryFailed,
+  markRecoveryHeld,
   readRecoveryWav,
   removeRecovery,
   saveRecovery
@@ -75,7 +76,10 @@ async function retryNow(id: string): Promise<RetryResult> {
     notifyChanged()
     return delivered
   }
-  removeRecovery(dir, id)
+  // Under Don't keep the words are in memory only, so the recording stays
+  // held until its 24 hours pass. Anywhere else it has done its job.
+  if (delivered.heldAt !== null) markRecoveryHeld(dir, id, delivered.heldAt)
+  else removeRecovery(dir, id)
   await log(`outcome=delivered kind=${take.kind} location=${delivered.location} words=${delivered.words}`)
   notifyChanged()
   return { ok: true, kind: take.kind, words: delivered.words, location: delivered.location }
@@ -96,6 +100,16 @@ export function retryTake(id: string): Promise<RetryResult> {
 export function discardTake(id: string): void {
   removeRecovery(recoveryDir(), id)
   void log('discarded')
+  notifyChanged()
+}
+
+/** The words of a held take reached an app, so its recording goes. */
+export function releaseHeldTake(loggedAt: number): void {
+  const dir = recoveryDir()
+  const take = listRecovery(dir).find((waiting) => waiting.loggedAt === loggedAt)
+  if (!take || isRetrying(take.id)) return
+  removeRecovery(dir, take.id)
+  void log('released')
   notifyChanged()
 }
 

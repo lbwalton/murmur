@@ -7,8 +7,10 @@ import { encodeWavPcm16 } from '../../shared/wav'
 import {
   RECOVERY_KEEP,
   getRecovery,
+  heldPastLimit,
   listRecovery,
   markRecoveryFailed,
+  markRecoveryHeld,
   readRecoveryWav,
   removeRecovery,
   saveRecovery,
@@ -133,5 +135,33 @@ describe('one take', () => {
       expect(() => readRecoveryWav(dir, bad)).toThrow()
       expect(() => removeRecovery(dir, bad)).toThrow()
     }
+  })
+
+  it('a held take keeps its logged entry through a failed retry', () => {
+    saveRecovery(wavOf(500), dir, {
+      now: () => T,
+      take: { ...take(T - 500), failure: { kind: 'held', detail: 'idle' }, loggedAt: T - 100 }
+    })
+    const id = `recovery-${T}`
+    expect(getRecovery(dir, id)?.loggedAt).toBe(T - 100)
+    markRecoveryFailed(dir, id, { kind: 'network', detail: 'fetch failed' })
+    expect(getRecovery(dir, id)?.loggedAt).toBe(T - 100)
+    expect(getRecovery(dir, id)?.failure?.kind).toBe('network')
+  })
+
+  it('a retried take can be held for the entry its words went to', () => {
+    saveRecovery(wavOf(500), dir, { now: () => T, take: take(T - 500) })
+    const id = `recovery-${T}`
+    expect(getRecovery(dir, id)?.loggedAt).toBeUndefined()
+    markRecoveryHeld(dir, id, T)
+    expect(getRecovery(dir, id)).toMatchObject({ loggedAt: T, kind: 'dictation', failure: { kind: 'held' } })
+  })
+
+  it('only held takes past the limit are listed, so a failed take is never caught', () => {
+    const HOUR = 60 * 60 * 1000
+    saveRecovery(wavOf(500), dir, { now: () => T - 25 * HOUR, take: { ...take(T), loggedAt: T - 25 * HOUR } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 23 * HOUR, take: { ...take(T), loggedAt: T - 23 * HOUR } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 48 * HOUR, take: take(T) })
+    expect(heldPastLimit(listRecovery(dir), T, 24 * HOUR)).toEqual([`recovery-${T - 25 * HOUR}`])
   })
 })

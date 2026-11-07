@@ -49,6 +49,11 @@ export class HistoryLog {
     this.rewrite(events.map((event) => (old(event) ? withoutText(event) : event)))
   }
 
+  /** Put the words back on an entry that lost them (US-137). */
+  fillWords(at: number, rawText: string, finalText: string): void {
+    this.rewrite(this.readAll().map((event) => (event.at === at ? { ...event, rawText, finalText } : event)))
+  }
+
   /** Apply the Keep history setting (US-137). */
   applyRetention(retentionDays: number, now: () => number = () => Date.now()): void {
     const cutoff = textCutoff(retentionDays, now())

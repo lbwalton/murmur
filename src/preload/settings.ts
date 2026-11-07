@@ -158,6 +158,12 @@ const api = {
     // unsubscribe so listeners never pile up across switches.
     return () => ipcRenderer.removeListener('history:appended', handler)
   },
+  /** An existing entry changed, such as a held take's words coming back. */
+  onHistoryChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('history:changed', handler)
+    return () => ipcRenderer.removeListener('history:changed', handler)
+  },
   listWaitingTakes: (): Promise<import('../main/transcribe/recovery').WaitingTake[]> => {
     return ipcRenderer.invoke('recovery:list')
   },

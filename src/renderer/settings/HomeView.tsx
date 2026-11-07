@@ -99,9 +99,11 @@ function reasonText(take: WaitingTake): string {
 }
 
 /** A waiting take's line. A hands-free take parked on sleep, quit, or
- *  Escape (US-117) was never tried, so it says when it was saved instead. */
+ *  Escape (US-117) was never tried, so it says when it was saved instead.
+ *  A held take was transcribed, and only its recording waits (US-137). */
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
+  if (f?.kind === 'held') return 'never reached an app, so its recording stays up to 24 hours'
   if (f?.kind === 'parked') {
     if (f.detail === 'quit') return 'saved when murmur quit'
     if (f.detail === 'cancel') return 'saved when you cancelled it'
@@ -642,6 +644,8 @@ export function HomeView(props: {
     })
   }, [])
 
+  useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
+
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
   useEffect(() => {
@@ -823,7 +827,7 @@ export function HomeView(props: {
               <div className="row-label">Keep history for</div>
               <div className="row-desc">
                 {props.settings.history.retentionDays === KEEP_NO_TEXT
-                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. Notes still land in your notes folder, and a recording waiting to retry stays up to 24 hours.'
+                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that never reached an app, or that is waiting to retry, keeps its recording up to 24 hours, so Retry can bring its words back. Notes still land in your notes folder.'
                   : 'Older entries are pruned automatically. Everything stays on this machine.'}
               </div>
             </div>

@@ -24,6 +24,10 @@ export interface TakeRecord {
   /** When the hotkey went down. */
   startedAt: number
   failure: TakeFailure
+  /** A held take (US-137): when its entry was logged. Its words reached
+   *  no app under Don't keep, so they live only in memory; the recording
+   *  can bring them back, and its numbers are already counted. */
+  loggedAt?: number
 }
 
 /** A saved take as the home tab sees it. No audio, no words. */
@@ -37,6 +41,8 @@ export interface WaitingTake {
   kind: TakeKind
   /** Null for a take saved before records existed. */
   failure: TakeFailure | null
+  /** Set on a held take: see TakeRecord. */
+  loggedAt?: number
 }
 
 const ID = /^recovery-(\d{10,16})$/
@@ -121,7 +127,8 @@ function readRecord(dir: string, id: string): TakeRecord | null {
       failure: {
         kind: typeof failure?.kind === 'string' ? failure.kind : 'unknown',
         detail: typeof failure?.detail === 'string' ? failure.detail : ''
-      }
+      },
+      ...(typeof r.loggedAt === 'number' ? { loggedAt: r.loggedAt } : {})
     }
   } catch {
     return null
@@ -141,7 +148,8 @@ export function getRecovery(dir: string, id: string): WaitingTake | null {
     startedAt: record && record.startedAt > 0 ? record.startedAt : savedAt - audioMs,
     audioMs,
     kind: record?.kind ?? 'dictation',
-    failure: record?.failure ?? null
+    failure: record?.failure ?? null,
+    ...(record?.loggedAt !== undefined ? { loggedAt: record.loggedAt } : {})
   }
 }
 
@@ -163,8 +171,33 @@ export function readRecoveryWav(dir: string, id: string): Uint8Array {
 export function markRecoveryFailed(dir: string, id: string, failure: TakeFailure): void {
   const take = getRecovery(dir, id)
   if (!take) return
-  const record: TakeRecord = { kind: take.kind, startedAt: take.startedAt, failure }
+  const record: TakeRecord = {
+    kind: take.kind,
+    startedAt: take.startedAt,
+    failure,
+    ...(take.loggedAt !== undefined ? { loggedAt: take.loggedAt } : {})
+  }
   writeFileSync(recordPath(dir, id), JSON.stringify(record))
+}
+
+/** A retry put the words in memory only, so the audio stays as a held
+ *  take, tied to the entry those words belong to. */
+export function markRecoveryHeld(dir: string, id: string, loggedAt: number): void {
+  const take = getRecovery(dir, id)
+  if (!take) return
+  const record: TakeRecord = {
+    kind: take.kind,
+    startedAt: take.startedAt,
+    failure: { kind: 'held', detail: 'retried' },
+    loggedAt
+  }
+  writeFileSync(recordPath(dir, id), JSON.stringify(record))
+}
+
+/** Held takes older than the limit. A held recording never outlives it,
+ *  whatever Keep history says now. */
+export function heldPastLimit(takes: readonly WaitingTake[], now: number, limitMs: number): string[] {
+  return takes.filter((take) => take.loggedAt !== undefined && take.savedAt < now - limitMs).map((take) => take.id)
 }
 
 /** Delete a take's audio and record. */

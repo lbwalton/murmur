@@ -47,6 +47,15 @@ describe('HistoryLog', () => {
     expect(log.readAll().map((e) => e.at)).toEqual([NOW - 5 * DAY])
   })
 
+  it('puts words back on the one entry they belong to', () => {
+    const log = new HistoryLog(dir)
+    log.append({ ...event(1), rawText: '', finalText: '' })
+    log.append({ ...event(2), rawText: '', finalText: '' })
+    log.fillWords(2, 'said again', 'Said again.')
+    expect(log.readAll().map((e) => e.finalText)).toEqual(['', 'Said again.'])
+    expect(log.readAll().map((e) => e.words)).toEqual([3, 3])
+  })
+
   it('retention zero keeps everything', () => {
     const log = new HistoryLog(dir)
     log.append(event(NOW - 500 * DAY))

@@ -4,6 +4,7 @@
 import { type BrowserWindow, app } from 'electron'
 import { ipc } from '../ipc'
 import {
+  HELD_RECORDING_MS,
   KEEP_NO_TEXT,
   type SessionEvent,
   countWords,
@@ -53,11 +54,13 @@ function withSessionWords(events: SessionEvent[]): SessionEvent[] {
 // depends on the transcribe stack to start.
 async function recordingTools(): Promise<{
   waitingPastLimit: (retentionDays: number) => string[]
+  heldTooLong: () => string[]
   remove: (id: string) => void
 }> {
   const { recoveryDir } = await import('../transcribe')
-  const { listRecovery, removeRecovery } = await import('../transcribe/recovery')
+  const { heldPastLimit, listRecovery, removeRecovery } = await import('../transcribe/recovery')
   return {
+    heldTooLong: () => heldPastLimit(listRecovery(recoveryDir()), Date.now(), HELD_RECORDING_MS),
     waitingPastLimit: (retentionDays) => {
       const limit = recordingLimitMs(retentionDays)
       if (limit === null) return []
@@ -70,11 +73,14 @@ async function recordingTools(): Promise<{
   }
 }
 
-async function pruneRecordings(retentionDays: number): Promise<void> {
+// retentionDays null checks only the takes held for words that reached
+// no app: their 24 hours hold from launch and whatever Keep history says.
+async function pruneRecordings(retentionDays: number | null): Promise<void> {
   try {
-    const { waitingPastLimit, remove } = await recordingTools()
+    const { waitingPastLimit, heldTooLong, remove } = await recordingTools()
     const { isRetrying, recoveryChanged } = await import('../retry')
-    const ids = waitingPastLimit(retentionDays).filter((id) => !isRetrying(id))
+    const past = retentionDays === null ? heldTooLong() : [...new Set([...waitingPastLimit(retentionDays), ...heldTooLong()])]
+    const ids = past.filter((id) => !isRetrying(id))
     if (ids.length === 0) return
     for (const id of ids) remove(id)
     recoveryChanged()
@@ -137,6 +143,26 @@ export function recordSession(input: {
   void notifyNewPromotions()
   void notifyTimeBack(event)
   return event
+}
+
+/** Put a held take's words back on its own entry. Its numbers were
+ *  counted when it was spoken, so nothing counts twice. Null when the
+ *  entry is gone. */
+function restoreWords(at: number, rawText: string, finalText: string): SessionEvent | null {
+  const entry = log?.readAll().find((event) => event.at === at)
+  if (!entry) return null
+  const event = { ...entry, rawText, finalText }
+  if (getSettings().history.retentionDays === KEEP_NO_TEXT) rememberWords(event)
+  else log?.fillWords(at, rawText, finalText)
+  const win = getTargetWindow?.()
+  if (win && !win.isDestroyed()) win.webContents.send('history:changed')
+  return event
+}
+
+/** A retried take's words: back on the entry a held take was logged
+ *  under, or as a new entry when it has none. */
+export function logWords(input: Parameters<typeof recordSession>[0], loggedAt?: number): SessionEvent | null {
+  return (loggedAt === undefined ? null : restoreWords(loggedAt, input.rawText, input.finalText)) ?? recordSession(input)
 }
 
 // Time back arrives after every take (US-060): the tray tooltip
@@ -274,6 +300,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // the question, so an update never deletes a waiting take unasked. The
   // 2 short limits are a promise about time, so they hold from launch.
   if (textCutoff(lastRetention, Date.now()) !== null) applyShortLimit()
+  void pruneRecordings(null)
   initPaintings(() => log?.readAll() ?? [])
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
@@ -288,6 +315,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
   // A 24 hour limit has to hold while murmur stays open for days.
   setInterval(() => {
+    void pruneRecordings(null)
     if (textCutoff(lastRetention, Date.now()) === null) return
     log?.applyRetention(lastRetention)
     applyShortLimit()
@@ -388,6 +416,43 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const last = readHistory().at(-1)
     updateSettings({ history: { retentionDays: before } } as never)
     return recorded !== null && !onDisk.includes(marked) && last?.finalText === marked && (recorded.words ?? 0) === 4
+  })
+
+  registerSmokeCheck('keepNoTextHeld', async () => {
+    // Don't keep: a take that reached no app holds its recording. After
+    // a quit, Retry puts the words back on its own entry with nothing
+    // counted twice, the recording stays, and a paste releases it.
+    const { updateSettings } = await import('../settings')
+    const { encodeWavPcm16 } = await import('../../shared/wav')
+    const { holdRecording } = await import('../dictation')
+    const { releaseHeldTake, retryTake } = await import('../retry')
+    const { recoveryDir } = await import('../transcribe')
+    const { listRecovery } = await import('../transcribe/recovery')
+    const before = getSettings().history.retentionDays
+    updateSettings({ history: { retentionDays: KEEP_NO_TEXT } } as never)
+    try {
+      const recorded = recordSession({ startedAt: Date.now() - 1000, rawText: 'smoke held', finalText: 'Smoke held.' })
+      if (!recorded || !log) return false
+      const wav = encodeWavPcm16(new Float32Array(16000), 16000)
+      holdRecording(wav, 'dictation', recorded.at - 1000, recorded.at, 'idle')
+      const held = (): boolean => listRecovery(recoveryDir()).some((take) => take.loggedAt === recorded.at)
+      const take = listRecovery(recoveryDir()).find((waiting) => waiting.loggedAt === recorded.at)
+      const entries = log.readAll().length
+      sessionWords.delete(recorded.at) // What a quit does.
+      const gone = readHistory().find((event) => event.at === recorded.at)?.finalText === ''
+      if (!take) return false
+      const result = await retryTake(take.id)
+      const back = readHistory().find((event) => event.at === recorded.at)
+      const once = log.readAll().length === entries
+      const wordsBack = result.ok && (back?.finalText.length ?? 0) > 0 && back?.words === recorded.words
+      const stays = held()
+      releaseHeldTake(recorded.at)
+      const passed = gone && wordsBack && once && stays && !held()
+      if (!passed) console.error(`smoke keepNoTextHeld: ${JSON.stringify({ gone, wordsBack, once, stays })}`)
+      return passed
+    } finally {
+      updateSettings({ history: { retentionDays: before } } as never)
+    }
   })
 
   registerSmokeCheck('whatYouSaid', async () => {

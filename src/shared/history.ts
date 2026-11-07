@@ -42,6 +42,9 @@ export const KEEP_NO_TEXT = -1
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/** How long a take that reached no app holds its recording (US-137). */
+export const HELD_RECORDING_MS = DAY_MS
+
 /** Words older than this go while the numbers stay, so belts, stats, and
  *  the painting keep working. Null when this setting removes whole
  *  entries or nothing. */
@@ -63,8 +66,9 @@ export function hasText(event: SessionEvent): boolean {
 }
 
 /** How long a recording waiting for a retry may stay. Don't keep is
- *  about transcripts, and a failed take has no other copy, so it gets
- *  the same 24 hours to be retried. Null keeps it until it is retried. */
+ *  about transcripts, and a failed take or one that reached no app has
+ *  no other copy, so it gets the same 24 hours to be retried. Null keeps
+ *  it until it is retried. */
 export function recordingLimitMs(retentionDays: number): number | null {
   if (retentionDays === KEEP_NO_TEXT || retentionDays === KEEP_24_HOURS) return DAY_MS
   return retentionDays > 0 ? retentionDays * DAY_MS : null
