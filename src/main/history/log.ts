@@ -4,7 +4,7 @@
 // With sealing on, each line's words are sealed (see seal.ts). Rewrites
 // work on the lines as stored, so a line nobody can open still keeps
 // its words for the day its key comes back.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type SealStatus, type SessionEvent, hasText, isSessionEvent, textCutoff, withoutText } from '../../shared/history'
 import type { StoredEvent, WordSeal } from './seal'
@@ -19,6 +19,7 @@ function wordless(line: StoredEvent): StoredEvent {
 
 export class HistoryLog {
   private readonly file: string
+  private readonly tmp: string
   private wantsSealing = false
   private sealing = false
 
@@ -28,6 +29,7 @@ export class HistoryLog {
   ) {
     mkdirSync(dir, { recursive: true })
     this.file = join(dir, 'history.jsonl')
+    this.tmp = `${this.file}.tmp`
   }
 
   /** A line that cannot be sealed still lands: the take matters more,
@@ -54,7 +56,11 @@ export class HistoryLog {
       if (line.trim().length === 0) continue
       try {
         const parsed: unknown = JSON.parse(line)
-        if (isSessionEvent(parsed)) lines.push(parsed)
+        if (!isSessionEvent(parsed)) continue
+        // A sealed field that is not text was never written here, so it
+        // goes and the line keeps its numbers.
+        const { sealed, ...entry } = parsed as StoredEvent & { sealed?: unknown }
+        lines.push(typeof sealed === 'string' ? { ...entry, sealed } : entry)
       } catch {
         // A torn write or hand-edit never takes the log down.
       }
@@ -75,8 +81,8 @@ export class HistoryLog {
    *  line that cannot be opened reads as an entry with no words. */
   readAll(): SessionEvent[] {
     return this.readLines().map((line) => {
-      const { sealed: _sealed, ...entry } = this.opened(line)
-      return entry
+      const { sealed, ...entry } = this.opened(line)
+      return sealed === undefined ? entry : { ...entry, unreadable: true }
     })
   }
 
@@ -138,6 +144,8 @@ export class HistoryLog {
     this.wantsSealing = on
     this.sealing = on && (this.seal?.prepare() ?? false)
     if (on && !this.sealing) return
+    // A rewrite cut short may have left plain words beside the file.
+    if (this.sealing) rmSync(this.tmp, { force: true })
     const lines = this.readLines()
     const next = lines.map((line) => (this.sealing ? this.sealedAndChecked(line) : this.opened(line)))
     if (next.some((line, index) => line !== lines[index])) this.rewrite(next)
@@ -161,9 +169,13 @@ export class HistoryLog {
   }
 
   private rewrite(lines: StoredEvent[]): void {
-    const tmp = `${this.file}.tmp`
-    writeFileSync(tmp, lines.map((e) => JSON.stringify(e)).join('\n') + (lines.length ? '\n' : ''))
-    renameSync(tmp, this.file)
+    try {
+      writeFileSync(this.tmp, lines.map((e) => JSON.stringify(e)).join('\n') + (lines.length ? '\n' : ''))
+      renameSync(this.tmp, this.file)
+    } catch (error) {
+      rmSync(this.tmp, { force: true })
+      throw error
+    }
   }
 
   clear(): void {

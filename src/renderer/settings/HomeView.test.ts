@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { sealLine, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -17,6 +17,7 @@ describe('the Encrypt saved words line', () => {
 
   it('says it protects the file and not the screen, and that notes stay plain', () => {
     expect(sealLine(status)).toContain('This protects the file, not your screen')
+    expect(sealLine(status)).toContain('a copied history file or folder cannot be read elsewhere')
     expect(sealLine(status)).toContain('Notes stay plain files.')
   })
 
@@ -94,8 +95,17 @@ describe('a waiting take', () => {
 
   it('a held take says its recording stays up to 24 hours, not that it failed', () => {
     expect(waitingLine(take({ kind: 'held', detail: 'idle' }), 'darwin')).toBe(
-      'never reached an app, so its recording stays up to 24 hours'
+      'never reached an app, so its recording goes after 24 hours'
     )
+  })
+
+  it('the intro never says a held take was not transcribed', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    expect(waitingIntro([failed])).toMatch(/^Recorded but not transcribed\./)
+    expect(waitingIntro([held])).toMatch(/^Transcribed, but the words never reached an app\./)
+    expect(waitingIntro([held])).toContain('goes after 24 hours, the next time murmur runs')
+    expect(waitingIntro([failed, held])).toMatch(/^Some takes were not transcribed, and some never reached an app\./)
   })
 
   it('a hands-free take parked on sleep or quit says when it was saved', () => {

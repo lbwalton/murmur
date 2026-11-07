@@ -10,6 +10,7 @@ import {
   countWords,
   countsTowardStats,
   dayKey,
+  pasteTarget,
   recordingLimitMs,
   textCutoff,
   withoutText,
@@ -18,6 +19,7 @@ import {
 import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { clearPaintings, initPaintings, syncPaintingsWith } from '../paintings'
+import { watchHeld } from './held'
 import { HistoryLog } from './log'
 import { type KeyWrap, WordSeal } from './seal'
 
@@ -52,6 +54,18 @@ function statsEvents(): SessionEvent[] {
 
 const RETENTION_CHECK_MS = 15 * 60 * 1000
 
+// A held take's words went back on this entry, so paste-last aims here
+// until something newer lands.
+let restoredAt: number | null = null
+
+// Runs the held recordings' check now; set once history starts.
+let checkHeld: () => void = () => undefined
+
+/** A take was just held, so its 24 hours join the watch. */
+export function heldTakeSaved(): void {
+  checkHeld()
+}
+
 // Don't keep: this session's words, in memory only, oldest first.
 const SESSION_WORDS_CAP = 200
 const sessionWords = new Map<number, SessionEvent>()
@@ -73,12 +87,14 @@ function withSessionWords(events: SessionEvent[]): SessionEvent[] {
 async function recordingTools(): Promise<{
   waitingPastLimit: (retentionDays: number) => string[]
   heldTooLong: () => string[]
+  nextHeld: () => number | null
   remove: (id: string) => void
 }> {
   const { recoveryDir } = await import('../transcribe')
-  const { heldPastLimit, listRecovery, removeRecovery } = await import('../transcribe/recovery')
+  const { heldPastLimit, listRecovery, nextHeldDue, removeRecovery } = await import('../transcribe/recovery')
   return {
     heldTooLong: () => heldPastLimit(listRecovery(recoveryDir()), Date.now(), HELD_RECORDING_MS),
+    nextHeld: () => nextHeldDue(listRecovery(recoveryDir()), Date.now(), HELD_RECORDING_MS),
     waitingPastLimit: (retentionDays) => {
       const limit = recordingLimitMs(retentionDays)
       if (limit === null) return []
@@ -92,7 +108,7 @@ async function recordingTools(): Promise<{
 }
 
 // retentionDays null checks only the takes held for words that reached
-// no app: their 24 hours hold from launch and whatever Keep history says.
+// no app: their 24 hours count from launch, whatever Keep history says.
 async function pruneRecordings(retentionDays: number | null): Promise<void> {
   try {
     const { waitingPastLimit, heldTooLong, remove } = await recordingTools()
@@ -144,6 +160,7 @@ export function recordSession(input: {
   }
   if (input.persist === false) {
     memoryOnly = event
+    restoredAt = null
     return event
   }
   // With Don't keep, only the numbers reach the disk. The words stay in
@@ -151,6 +168,7 @@ export function recordSession(input: {
   // else to land, and Home and paste-last read them from here (US-137).
   const keepsText = getSettings().history.retentionDays !== KEEP_NO_TEXT
   memoryOnly = null
+  restoredAt = null
   if (!keepsText) rememberWords(event)
   log.append(keepsText ? event : withoutText(event))
   // Transcripts are sensitive: only the settings window (which renders
@@ -169,9 +187,14 @@ export function recordSession(input: {
 function restoreWords(at: number, rawText: string, finalText: string): SessionEvent | null {
   const entry = log?.readAll().find((event) => event.at === at)
   if (!entry) return null
-  const event = { ...entry, rawText, finalText }
+  const { unreadable: _unreadable, ...numbers } = entry
+  const event = { ...numbers, rawText, finalText }
   if (getSettings().history.retentionDays === KEEP_NO_TEXT) rememberWords(event)
-  else log?.fillWords(at, rawText, finalText)
+  else {
+    sessionWords.delete(at)
+    log?.fillWords(at, rawText, finalText)
+  }
+  restoredAt = at
   const win = getTargetWindow?.()
   if (win && !win.isDestroyed()) win.webContents.send('history:changed')
   return event
@@ -289,6 +312,11 @@ export function readHistory(): SessionEvent[] {
   return events
 }
 
+/** The entry paste-last pastes. */
+export function eventToPaste(): SessionEvent | undefined {
+  return pasteTarget(readHistory(), restoredAt)
+}
+
 /** True when this event is the memory-only entry (never on disk). */
 export function isMemoryOnly(event: SessionEvent): boolean {
   return memoryOnly !== null && event === memoryOnly
@@ -322,16 +350,24 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
       scrubLastNoteLine(textCutoff(lastRetention, Date.now()) ?? 0)
     })
   }
-  // The day's paintings are recorded before retention prunes the takes
-  // they came from, so the collection outlives the log (US-098).
-  syncPaintingsWith(log.readAll())
-  log.applyRetention(lastRetention)
+  // A damaged file must not stop murmur partway through starting.
+  try {
+    // The day's paintings are recorded before retention prunes the takes
+    // they came from, so the collection outlives the log (US-098).
+    syncPaintingsWith(log.readNumbers())
+    log.applyRetention(lastRetention)
+  } catch (error) {
+    console.error('[murmur] history could not finish starting:', error)
+  }
   // A day limit removes recordings only when someone chooses it and sees
   // the question, so an update never deletes a waiting take unasked. The
   // 2 short limits are a promise about time, so they hold from launch.
   if (textCutoff(lastRetention, Date.now()) !== null) applyShortLimit()
-  void pruneRecordings(null)
-  initPaintings(() => log?.readAll() ?? [])
+  checkHeld = watchHeld(async () => {
+    await pruneRecordings(null)
+    return (await recordingTools()).nextHeld()
+  }, RETENTION_CHECK_MS)
+  initPaintings(() => log?.readNumbers() ?? [])
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
   onSettingsChanged((settings) => {
@@ -341,7 +377,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     }
     if (settings.history.retentionDays !== lastRetention) {
       lastRetention = settings.history.retentionDays
-      if (log) syncPaintingsWith(log.readAll())
+      if (log) syncPaintingsWith(log.readNumbers())
       log?.applyRetention(lastRetention)
       void pruneRecordings(lastRetention)
       if (textCutoff(lastRetention, Date.now()) !== null) applyShortLimit()
@@ -349,7 +385,6 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
   // A 24 hour limit has to hold while murmur stays open for days.
   setInterval(() => {
-    void pruneRecordings(null)
     if (textCutoff(lastRetention, Date.now()) === null) return
     log?.applyRetention(lastRetention)
     applyShortLimit()
@@ -368,13 +403,14 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   })
   // Every entry in the log, for Clear all's question (US-099): the list
   // above stops at the newest 500.
-  const historyCount = (): number => log?.readAll().length ?? 0
+  const historyCount = (): number => log?.readNumbers().length ?? 0
   ipc.handle('history:count', () => historyCount())
   // Answers with how many entries it removed, for Home's Cleared N line.
   ipc.handle('history:clear', async () => {
     const removed = historyCount()
     log?.clear()
     memoryOnly = null
+    restoredAt = null
     sessionWords.clear()
     // The paintings were drawn from it, so they go with it (US-098).
     clearPaintings()
@@ -507,7 +543,11 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const onDisk = readFileSync(join(app.getPath('userData'), 'history.jsonl'), 'utf8')
     const last = readHistory().at(-1)
     updateSettings({ history: { retentionDays: before } } as never)
-    return recorded !== null && !onDisk.includes(marked) && last?.finalText === marked && (recorded.words ?? 0) === 4
+    // Sealed words would pass a search of the file, so the line itself
+    // must hold none, sealed or plain.
+    const line = JSON.parse(onDisk.trim().split('\n').at(-1) ?? '{}') as Partial<SessionEvent> & { sealed?: string }
+    const noWords = line.rawText === '' && line.finalText === '' && line.sealed === undefined
+    return recorded !== null && noWords && !onDisk.includes(marked) && last?.finalText === marked && (recorded.words ?? 0) === 4
   })
 
   registerSmokeCheck('keepNoTextHeld', async () => {

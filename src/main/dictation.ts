@@ -212,13 +212,9 @@ export async function dictationStop(
       const startedAt = sessionStartedAt
       const outcome = await performTransform({
         startedAt,
-        transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt })
+        transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt }),
+        onUnsent: (event) => holdRecording(upload, 'transform', startedAt, event?.at, 'too-long')
       })
-      if (outcome === 'too-long') {
-        // Nothing was sent, so the spoken instruction is only in the log.
-        const { readHistory } = await import('./history')
-        holdRecording(upload, 'transform', startedAt, readHistory().at(-1)?.at, 'too-long')
-      }
       return outcome === 'transformed' || outcome === 'copied' ? 'delivered' : 'failed'
     } catch (error) {
       console.error('[murmur] transform threw:', error)
@@ -364,6 +360,7 @@ export function holdRecording(
   try {
     saveTakeForRetry(wav, { kind, startedAt, loggedAt, failure: { kind: 'held', detail: reason } })
     void logDictation(`held kind=${kind} reason=${reason}`)
+    void import('./history').then(({ heldTakeSaved }) => heldTakeSaved())
   } catch (error) {
     console.error('[murmur] could not hold the recording:', error)
   }
@@ -610,9 +607,8 @@ export async function pasteLastDictation(): Promise<void> {
     void logDictation(`paste-last ignored phase=${phase}`)
     return
   }
-  const { readHistory, isMemoryOnly } = await import('./history')
-  const events = readHistory()
-  const last = events[events.length - 1]
+  const { eventToPaste, isMemoryOnly } = await import('./history')
+  const last = eventToPaste()
   if (!last || last.finalText.length === 0) {
     void logDictation('paste-last found nothing to paste')
     playCue('nospeech')

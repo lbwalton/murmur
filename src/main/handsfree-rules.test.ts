@@ -113,7 +113,7 @@ describe('the hands-free notices', () => {
       // A saved chord that is disarmed does nothing when pressed, so the
       // notice sends the user to Home instead.
       expect(stopNotice(reason, 'dictation', binding, true, true).body).toBe(
-        `${why[reason]}Your words are in history until you quit murmur, and the recording stays up to 24 hours. Press ${binding} to paste them.`
+        `${why[reason]}Your words are in history until you quit murmur, and the recording goes after 24 hours. Press ${binding} to paste them.`
       )
       expect(stopNotice(reason, 'dictation', binding, false)).toEqual({
         title: 'murmur hands-free',

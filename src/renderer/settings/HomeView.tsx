@@ -105,13 +105,25 @@ function reasonText(take: WaitingTake): string {
  *  A held take was transcribed, and only its recording waits (US-137). */
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
-  if (f?.kind === 'held') return 'never reached an app, so its recording stays up to 24 hours'
+  if (f?.kind === 'held') return 'never reached an app, so its recording goes after 24 hours'
   if (f?.kind === 'parked') {
     if (f.detail === 'quit') return 'saved when murmur quit'
     if (f.detail === 'cancel') return 'saved when you cancelled it'
     return `saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
   }
   return `not transcribed: ${reasonText(take)}`
+}
+
+/** The line above the waiting takes. A held take was transcribed, so
+ *  the usual line would be false for it. */
+export function waitingIntro(takes: readonly WaitingTake[]): string {
+  const held = takes.filter((take) => take.loggedAt !== undefined).length
+  if (held === 0) return 'Recorded but not transcribed. The audio stays on this computer until you retry or discard it.'
+  const goes = 'after 24 hours, the next time murmur runs'
+  if (held === takes.length) {
+    return `Transcribed, but the words never reached an app. Retry brings them back from the audio, which stays on this computer and goes ${goes}.`
+  }
+  return `Some takes were not transcribed, and some never reached an app. The audio stays on this computer until you retry or discard it, and a take that never reached an app goes ${goes}.`
 }
 
 function whenOf(at: number): string {
@@ -245,12 +257,15 @@ export function shorterKeepQuestion(retentionDays: number, takes: number, record
   return `This removes ${parts.join(' and ')} now, and it cannot be undone.${numbers}`
 }
 
+const WORDS_NOT_KEPT = 'Words not kept, so what you said and report are not available for this take.'
+const WORDS_LOCKED = 'Words encrypted with a key this computer cannot open, so they stay saved but cannot be shown.'
+
 /** What the Encrypt saved words switch means right now (US-138). It
  *  protects the file on disk, not the screen, and says so. */
 export function sealLine(status: SealStatus): string {
   const base =
     status.state === 'sealed'
-      ? 'Saved words are encrypted on disk with a key only this computer holds, so a copied history cannot be read on another machine. This protects the file, not your screen: your words still show here. Notes stay plain files.'
+      ? "Saved words are encrypted on disk with a key your system's secure storage holds, so a copied history file or folder cannot be read elsewhere. This protects the file, not your screen: your words still show here. Notes stay plain files."
       : status.state === 'unavailable'
         ? "This computer's secure storage is not available, so saved words stay as plain text. murmur encrypts them once it is."
         : "Saved words are plain text in murmur's data folder, so other programs and backups can read them. Notes stay plain files."
@@ -306,7 +321,8 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
 }
 
 /**
- * Takes that were recorded but not transcribed (US-068). Retry runs the
+ * Takes that were recorded but not transcribed (US-068), and under Don't
+ * keep, takes whose words reached no app (US-137). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, where paste-last finds a dictation, and the
  * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
@@ -483,9 +499,7 @@ function WaitingTakes(props: {
         />
       )}
       {takes.length > 0 && (
-        <p className="dim waiting-intro">
-          Recorded but not transcribed. The audio stays on this computer until you retry or discard it.
-        </p>
+        <p className="dim waiting-intro">{waitingIntro(takes)}</p>
       )}
       {/* Always mounted, so screen readers hear a new message. */}
       <p className={message ? 'waiting-message' : 'visually-hidden'} ref={messageRef} tabIndex={-1} role="status">
@@ -666,7 +680,7 @@ export function HomeView(props: {
   const encrypt = props.settings.history.encrypt
   useEffect(() => {
     void bridge().getHistorySealStatus().then(setSealStatus)
-  }, [encrypt, cleared])
+  }, [encrypt, cleared, props.settings.history.retentionDays])
 
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
@@ -831,9 +845,7 @@ export function HomeView(props: {
                 {hasText(event) ? (
                   <p className="log-text">{event.finalText}</p>
                 ) : (
-                  <p className="log-text dim">
-                    Words not kept, so what you said and report are not available for this take.
-                  </p>
+                  <p className="log-text dim">{event.unreadable ? WORDS_LOCKED : WORDS_NOT_KEPT}</p>
                 )}
               </div>
             ))}
@@ -849,7 +861,7 @@ export function HomeView(props: {
               <div className="row-label">Keep history for</div>
               <div className="row-desc">
                 {props.settings.history.retentionDays === KEEP_NO_TEXT
-                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that never reached an app, or that is waiting to retry, keeps its recording up to 24 hours, so Retry can bring its words back. Notes still land in your notes folder.'
+                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that reached neither an app nor your clipboard keeps its recording for Retry, as does one waiting to retry. Those recordings go after 24 hours, the next time murmur runs. Notes still land in your notes folder.'
                   : 'Older entries are pruned automatically. Everything stays on this machine.'}
               </div>
             </div>

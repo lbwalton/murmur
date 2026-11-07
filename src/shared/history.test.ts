@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute, KEEP_24_HOURS, KEEP_FOREVER, KEEP_NO_TEXT, hasText, recordingLimitMs, textCutoff, withoutText } from './history'
+import { type SessionEvent, countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute, KEEP_24_HOURS, KEEP_FOREVER, KEEP_NO_TEXT, hasText, pasteTarget, recordingLimitMs, textCutoff, withoutText } from './history'
 
 const event = (at: number, words = 10): ReturnType<typeof make> => make(at, words)
 function make(at: number, words: number) {
@@ -97,5 +97,26 @@ describe('Keep history (US-137)', () => {
     expect(withoutText(event)).toEqual({ ...event, rawText: '', finalText: '' })
     expect(hasText(event)).toBe(true)
     expect(hasText(withoutText(event))).toBe(false)
+  })
+})
+
+describe('pasteTarget', () => {
+  const entry = (at: number, finalText: string): SessionEvent => ({ at, durationMs: 1, rawText: finalText, finalText, words: 1, wpm: 1 })
+
+  it('is the newest entry with no words put back', () => {
+    expect(pasteTarget([entry(1, 'a'), entry(2, 'b')], null)?.at).toBe(2)
+  })
+
+  it('is the entry a held take went back to, though newer lines follow it', () => {
+    expect(pasteTarget([entry(1, 'a'), entry(2, 'b')], 1)?.at).toBe(1)
+  })
+
+  it('falls back to the newest entry when those words are gone', () => {
+    expect(pasteTarget([entry(1, ''), entry(2, 'b')], 1)?.at).toBe(2)
+    expect(pasteTarget([entry(2, 'b')], 1)?.at).toBe(2)
+  })
+
+  it('is nothing with nothing logged', () => {
+    expect(pasteTarget([], 1)).toBeUndefined()
   })
 })

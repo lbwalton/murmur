@@ -9,6 +9,7 @@
 // with a reason in the log. Never the text itself in the log.
 import { applyDictionary } from '../../shared/dictionary'
 import hallucinations from '../../shared/hallucinations.json'
+import type { SessionEvent } from '../../shared/history'
 import { isHallucination, stripTrailingHallucinations } from '../../shared/speech-gate'
 import { playCue } from '../audio'
 import type { PolishConfig } from '../formatter/llm'
@@ -46,6 +47,9 @@ export interface TransformDeps {
   /** The spoken instruction, transcribed. Called only after the
    *  selection was read, so an unreadable selection sends nothing. */
   transcribe: () => Promise<TranscribeResult>
+  /** The instruction was logged but never sent: it is all that remains
+   *  of the take, so the caller can hold its recording. */
+  onUnsent?: (event: SessionEvent | null) => void
   /** Test seams: the copy keystroke, the model fetch, the connection. */
   sendCopy?: () => Promise<boolean>
   /** How long to wait for the copy to land; smoke shortens it. */
@@ -114,13 +118,14 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   if (original.length > TRANSFORM_MAX_CHARS) {
     // Nothing goes to the model, and the thought is not lost: the
     // spoken instruction becomes the newest entry, one paste-last away.
-    recordSession({
+    const unsent = recordSession({
       startedAt: deps.startedAt,
       rawText: heard.text,
       finalText: instruction,
       kind: 'transform',
       unsent: true
     })
+    deps.onUnsent?.(unsent)
     await log(`selection too long chars=${original.length} max=${TRANSFORM_MAX_CHARS}; nothing sent`)
     fail(tooLongHint(original.length))
     return 'too-long'
@@ -284,15 +289,20 @@ export function initTransform(): void {
       // Too long: the instruction is saved, the model is never called.
       clipboard.writeText(before)
       sentBody = ''
+      let unsentAt: number | null = null
       const long = await run({
         transcribe: heard('shorten this a lot'),
         sendCopy: copyOf('a'.repeat(TRANSFORM_MAX_CHARS + 1)),
         fetchImpl: model('x'),
-        connection
+        connection,
+        onUnsent: (event) => {
+          unsentAt = event?.at ?? null
+        }
       })
       const last = readHistory().at(-1)
       const tooLong =
         long === 'too-long' &&
+        unsentAt === last?.at &&
         sentBody === '' &&
         last?.unsent === true &&
         last.finalText === 'shorten this a lot' &&
@@ -307,19 +317,22 @@ export function initTransform(): void {
         updateSettings({ transform: { keepOriginals: false } })
         clipboard.writeText(before)
         const secret = 'Private smoke selection never on disk.'
+        const { readFileSync } = await import('node:fs')
+        const { join } = await import('node:path')
+        const { app } = await import('electron')
+        const historyFile = join(app.getPath('userData'), 'history.jsonl')
+        // Sealed words would pass a search, so the file must not change.
+        const historyBefore = readFileSync(historyFile, 'utf8')
         await run({
           transcribe: heard('tighten this'),
           sendCopy: copyOf(secret),
           fetchImpl: model('Private.'),
           connection
         })
-        const { readFileSync } = await import('node:fs')
-        const { join } = await import('node:path')
-        const { app } = await import('electron')
-        const onDisk = readFileSync(join(app.getPath('userData'), 'history.jsonl'), 'utf8')
+        const unchanged = readFileSync(historyFile, 'utf8') === historyBefore
         setOverlayPhase('idle')
         await pasteLastDictation()
-        memoryOnly = !onDisk.includes(secret) && (await clipboard.readText()) === secret
+        memoryOnly = unchanged && (await clipboard.readText()) === secret
       } finally {
         updateSettings({ transform: { keepOriginals: keep } })
       }

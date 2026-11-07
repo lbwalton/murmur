@@ -7,8 +7,8 @@
 // if one stops opening, a new one joins it, so a Keychain that comes
 // back later opens the old lines again.
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { type SessionEvent, countWords } from '../../shared/history'
 
 export interface KeyWrap {
@@ -34,6 +34,28 @@ const KEY_FILE = 'history-keys.json'
 const KEY_BYTES = 32
 const NONCE_BYTES = 12
 const TAG_BYTES = 16
+
+/** A key must be on the disk for good before any line depends on it, so
+ *  a power cut cannot leave sealed words with no key. */
+function writeDurably(file: string, text: string): void {
+  const tmp = `${file}.tmp`
+  const handle = openSync(tmp, 'w', 0o600)
+  try {
+    writeSync(handle, text)
+    fsyncSync(handle)
+  } finally {
+    closeSync(handle)
+  }
+  renameSync(tmp, file)
+  // Windows cannot open a folder this way, and it needs no such step.
+  if (process.platform === 'win32') return
+  const folder = openSync(dirname(file), 'r')
+  try {
+    fsyncSync(folder)
+  } finally {
+    closeSync(folder)
+  }
+}
 
 function isStoredKey(value: unknown): value is StoredKey {
   const key = value as StoredKey
@@ -109,9 +131,7 @@ export class WordSeal {
       if (this.wrap.decrypt(wrapped) !== text) return false
       const id = randomBytes(4).toString('hex')
       const next = [...this.stored, { id, wrapped: wrapped.toString('base64') }]
-      const tmp = `${this.file}.tmp`
-      writeFileSync(tmp, JSON.stringify(next), { mode: 0o600 })
-      renameSync(tmp, this.file)
+      writeDurably(this.file, JSON.stringify(next))
       this.stored = next
       this.keys.set(id, key)
       this.active = id
@@ -144,10 +164,10 @@ export class WordSeal {
 
   /** The line's words, or null when its key is not here or it was changed. */
   open(event: StoredEvent): HistoryWords | null {
-    const [id, nonce, tag, body] = (event.sealed ?? '').split('.')
-    const key = this.keys.get(id)
-    if (key === undefined || nonce === undefined || tag === undefined || body === undefined) return null
     try {
+      const [id, nonce, tag, body] = (event.sealed ?? '').split('.')
+      const key = this.keys.get(id)
+      if (key === undefined || nonce === undefined || tag === undefined || body === undefined) return null
       const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(nonce, 'base64url'), { authTagLength: TAG_BYTES })
       decipher.setAAD(Buffer.from(String(event.at)))
       decipher.setAuthTag(Buffer.from(tag, 'base64url'))

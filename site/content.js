@@ -171,7 +171,7 @@ function privacy(links, supportEmail) {
     description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-06',
+    updated: '2026-11-07',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -235,8 +235,8 @@ function privacy(links, supportEmail) {
         q: 'How long is each kind of record kept?',
         a: ['Each kind of record has a period or a plain rule:'],
         points: [
-          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time. Don\'t keep saves no words to disk: they stay in memory until you quit, and notes still land in your notes folder. A take that never reached an app keeps its recording for up to 24 hours, so it can be retried. Saved words are encrypted on disk by default, under a key this device holds, so a copy cannot be read on another machine.']],
-          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours at the latest.']],
+          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time. Don\'t keep saves no words to disk: they stay in memory until you quit, and notes still land in your notes folder. A take that reached neither an app nor the clipboard keeps its recording so it can be retried, and the recording goes after 24 hours, the next time murmur runs. On Mac and Windows, saved words are encrypted on disk by default, under a key this device holds, so a copied history file or folder cannot be read elsewhere.']],
+          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours, the next time murmur runs.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
           ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
           ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']]
@@ -292,7 +292,7 @@ function security(links, supportEmail) {
     description: 'For security reviewers: what leaves the device, who processes it, how keys and updates are protected, what is signed, what murmur does not have, and how to report a problem.',
     h1: 'Security at murmur.',
     lede: 'murmur has no server and no accounts, so there is no murmur database to breach. This page answers what a security review usually asks, including what murmur does not have.',
-    updated: '2026-11-06',
+    updated: '2026-11-07',
     items: [
       {
         q: 'What leaves the device, and where does it go?',
@@ -313,7 +313,7 @@ function security(links, supportEmail) {
       {
         q: 'What is stored, and where?',
         a: [
-          'History, settings, notes, and recordings waiting for a retry stay on the device. The words in history are encrypted on disk by default, under a key held by the system\'s secure storage, and a switch beside Keep history turns that off. Notes stay plain files, and recordings and settings are protected by the device itself. Keep history sets how long they stay, down to not saving any words at all. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
+          'History, settings, notes, and recordings waiting for a retry stay on the device. On Mac and Windows, the words in history are encrypted on disk by default, under a key held by the system\'s secure storage, and a switch beside Keep history turns that off. On iPhone, history stays in murmur\'s own storage, protected by the device. Notes stay plain files, and recordings and settings are protected by the device itself. Keep history sets how long they stay, down to not saving any words at all. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
         ]
       },
       {

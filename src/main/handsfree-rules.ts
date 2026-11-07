@@ -87,7 +87,7 @@ export function stopNotice(
   pasteArmed: boolean,
   untilQuit = false
 ): { title: string; body: string } {
-  const until = untilQuit ? ' until you quit murmur, and the recording stays up to 24 hours' : ''
+  const until = untilQuit ? ' until you quit murmur, and the recording goes after 24 hours' : ''
   const words =
     pasteLastBinding && pasteArmed
       ? `Your words are in history${until}. Press ${pasteLastBinding} to paste them.`

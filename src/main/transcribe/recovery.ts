@@ -74,14 +74,18 @@ export function saveRecovery(
 }
 
 /** Keep only the newest RECOVERY_KEEP takes (names sort by timestamp),
- *  and drop any record whose audio is gone. */
+ *  and drop any record whose audio is gone. Over the cap, held takes go
+ *  first: their words were transcribed, and a failed take's audio is
+ *  its only copy. */
 export function pruneRecovery(dir: string): void {
   const names = readdirSync(dir)
   const takes = names
     .filter((name) => /^recovery-\d+\.wav$/.test(name))
     .map((name) => name.slice(0, -'.wav'.length))
     .sort()
-  const dropped = new Set(takes.slice(0, Math.max(0, takes.length - RECOVERY_KEEP)))
+  const over = Math.max(0, takes.length - RECOVERY_KEEP)
+  const held = new Set(over > 0 ? takes.filter((id) => readRecord(dir, id)?.loggedAt !== undefined) : [])
+  const dropped = new Set([...held, ...takes.filter((id) => !held.has(id))].slice(0, over))
   const kept = new Set(takes.filter((id) => !dropped.has(id)))
   for (const name of names) {
     const match = /^(recovery-\d+)\.(wav|json)$/.exec(name)
@@ -194,10 +198,17 @@ export function markRecoveryHeld(dir: string, id: string, loggedAt: number): voi
   writeFileSync(recordPath(dir, id), JSON.stringify(record))
 }
 
-/** Held takes older than the limit. A held recording never outlives it,
- *  whatever Keep history says now. */
+/** Held takes older than the limit. Whatever Keep history says now, a
+ *  held recording goes at the first check after that, which is the next
+ *  launch if murmur was closed when it came due. */
 export function heldPastLimit(takes: readonly WaitingTake[], now: number, limitMs: number): string[] {
   return takes.filter((take) => take.loggedAt !== undefined && take.savedAt < now - limitMs).map((take) => take.id)
+}
+
+/** How long until the next held take passes the limit, or null with none. */
+export function nextHeldDue(takes: readonly WaitingTake[], now: number, limitMs: number): number | null {
+  const held = takes.filter((take) => take.loggedAt !== undefined).map((take) => take.savedAt + limitMs + 1 - now)
+  return held.length === 0 ? null : Math.max(0, Math.min(...held))
 }
 
 /** Delete a take's audio and record. */

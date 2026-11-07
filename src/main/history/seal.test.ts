@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-import { existsSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, fsyncSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,11 +8,18 @@ import { KEEP_24_HOURS, KEEP_NO_TEXT } from '../../shared/history'
 import { HistoryLog } from './log'
 import { type KeyWrap, WordSeal } from './seal'
 
+vi.mock('node:fs', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs')>()
+  return { ...real, fsyncSync: vi.fn(real.fsyncSync), renameSync: vi.fn(real.renameSync) }
+})
+
 let dir: string
 let file: string
 let keys: string
 
 beforeEach(() => {
+  vi.mocked(fsyncSync).mockClear()
+  vi.mocked(renameSync).mockClear()
   dir = mkdtempSync(join(tmpdir(), 'murmur-seal-'))
   file = join(dir, 'history.jsonl')
   keys = join(dir, 'history-keys.json')
@@ -65,7 +72,7 @@ describe('sealed history', () => {
     sealedLog().append(take(1))
     const line = JSON.parse(readFileSync(file, 'utf8').trim()) as SessionEvent
     expect(line).toMatchObject({ at: 1, words: 3, wpm: 45, durationMs: 4_000, day: '2027-01-15', hour: 9, rawText: '', finalText: '' })
-    expect(new HistoryLog(dir).readAll()[0]).toEqual({ ...take(1), rawText: '', finalText: '' })
+    expect(new HistoryLog(dir).readAll()[0]).toEqual({ ...take(1), rawText: '', finalText: '', unreadable: true })
   })
 
   it('leaves an entry with no words as it is', () => {
@@ -98,6 +105,41 @@ describe('sealed history', () => {
     expect(existsSync(`${file}.tmp`)).toBe(false)
     expect(log.readAll()).toEqual([take(1)])
     expect(log.sealStatus().pending).toBe(1)
+  })
+
+  it('a rename that fails leaves the file whole, with no copy beside it, and a later try works', () => {
+    const plain = new HistoryLog(dir)
+    plain.append(take(1))
+    const before = readFileSync(file, 'utf8')
+    const seal = new WordSeal(dir, keychain())
+    seal.prepare()
+    const log = new HistoryLog(dir, seal)
+    vi.mocked(renameSync).mockImplementationOnce(() => {
+      throw new Error('disk full')
+    })
+    expect(() => log.setSealing(true)).toThrow('disk full')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+    expect(existsSync(`${file}.tmp`)).toBe(false)
+    expect(log.readAll()).toEqual([take(1)])
+    expect(log.sealStatus().pending).toBe(1)
+    log.setSealing(true)
+    expect(readFileSync(file, 'utf8')).not.toContain('marked')
+    expect(log.sealStatus().pending).toBe(0)
+  })
+
+  it('a copy left beside the file by a cut short rewrite goes when sealing starts', () => {
+    writeFileSync(`${file}.tmp`, `${JSON.stringify(take(1))}\n`)
+    sealedLog()
+    expect(existsSync(`${file}.tmp`)).toBe(false)
+  })
+
+  it('a leftover copy never stands in for the file', () => {
+    const plain = new HistoryLog(dir)
+    plain.append(take(1))
+    writeFileSync(`${file}.tmp`, `${JSON.stringify(take(9, 'stale copy'))}\n`)
+    const log = sealedLog()
+    expect(log.readAll()).toEqual([take(1)])
+    expect(existsSync(`${file}.tmp`)).toBe(false)
   })
 
   it('a new key that cannot be opened again is not used', () => {
@@ -184,6 +226,27 @@ describe('sealed history', () => {
     expect(open).not.toHaveBeenCalled()
   })
 
+  it('a sealed field that is not text leaves the numbers readable and stops nothing', () => {
+    const line = '{"at":1,"durationMs":1000,"rawText":"","finalText":"","words":2,"wpm":120,"sealed":5}\n'
+    writeFileSync(file, line)
+    const log = sealedLog()
+    expect(log.readAll()[0]).toMatchObject({ at: 1, words: 2, finalText: '' })
+    expect(log.readAll()[0].unreadable).toBeUndefined()
+    expect(log.readNumbers()).toHaveLength(1)
+    expect(log.sealStatus().unreadable).toBe(0)
+    log.prune(30, () => 2)
+    expect(readFileSync(file, 'utf8')).not.toContain('sealed')
+    expect(log.readAll()[0].words).toBe(2)
+  })
+
+  it('opening anything that is not a sealed line answers null', () => {
+    const seal = new WordSeal(dir, keychain())
+    seal.prepare()
+    for (const sealed of [5, null, {}, [], '', 'a', 'a.b.c.d', '....']) {
+      expect(seal.open({ ...take(1), sealed } as never)).toBeNull()
+    }
+  })
+
   it('a line moved or edited reads as no words, never as garbage', () => {
     const log = sealedLog()
     log.append(take(1))
@@ -194,7 +257,62 @@ describe('sealed history', () => {
   })
 })
 
+describe('the key on disk', () => {
+  it('reaches the disk before the rename, and the folder after it, before any line is sealed', () => {
+    const log = sealedLog()
+    const synced = vi.mocked(fsyncSync).mock.invocationCallOrder
+    const [renamed] = vi.mocked(renameSync).mock.invocationCallOrder
+    expect(synced[0]).toBeLessThan(renamed)
+    if (process.platform !== 'win32') expect(synced[1]).toBeGreaterThan(renamed)
+    const synchronized = vi.mocked(fsyncSync).mock.calls.length
+    log.append(take(1))
+    expect(vi.mocked(fsyncSync).mock.calls.length).toBe(synchronized)
+    expect(existsSync(`${keys}.tmp`)).toBe(false)
+  })
+
+  it('a key that cannot reach the disk seals nothing', () => {
+    vi.mocked(fsyncSync).mockImplementationOnce(() => {
+      throw new Error('disk failed')
+    })
+    const log = sealedLog()
+    log.append(take(1))
+    expect(existsSync(keys)).toBe(false)
+    expect(readFileSync(file, 'utf8')).toContain('marked')
+    expect(log.sealStatus().state).toBe('unavailable')
+    log.setSealing(true)
+    expect(readFileSync(file, 'utf8')).not.toContain('marked')
+  })
+
+  it('keeps the key file private', () => {
+    sealedLog()
+    if (process.platform !== 'win32') expect(statSync(keys).mode & 0o777).toBe(0o600)
+  })
+})
+
 describe('a lost key', () => {
+  it('puts new words on a line no key opens, sealed under the key that works', () => {
+    const wrap = keychain()
+    sealedLog(wrap).append(take(1))
+    wrap.state.secret = 'a new keychain'
+    const lost = sealedLog(wrap)
+    expect(lost.readAll()[0].unreadable).toBe(true)
+    lost.fillWords(1, 'said again', 'Said again.')
+    expect(readFileSync(file, 'utf8')).not.toContain('again')
+    expect(lost.readAll()[0]).toMatchObject({ finalText: 'Said again.', words: 3 })
+    expect(lost.readAll()[0].unreadable).toBeUndefined()
+    expect(lost.sealStatus().unreadable).toBe(0)
+  })
+
+  it('marks a line no key opens on reading, and never stores the mark', () => {
+    const wrap = keychain()
+    sealedLog(wrap).append(take(1))
+    wrap.state.secret = 'a new keychain'
+    const lost = sealedLog(wrap)
+    expect(lost.readAll()[0].unreadable).toBe(true)
+    lost.prune(30, () => 2)
+    expect(readFileSync(file, 'utf8')).not.toContain('unreadable')
+  })
+
   it('reads as numbers, and no rewrite costs the sealed words', () => {
     const wrap = keychain()
     const log = sealedLog(wrap)

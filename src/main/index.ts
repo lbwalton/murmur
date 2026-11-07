@@ -320,7 +320,12 @@ app.whenReady().then(async () => {
   void holdPlainHttpHops()
   const { initCatalog } = await import('./catalog')
   initCatalog()
-  initHistory(() => settingsWindow)
+  try {
+    initHistory(() => settingsWindow)
+  } catch (error) {
+    // Dictation works with no history. A broken log must not stop it.
+    console.error('[murmur] history did not start:', error)
+  }
   initAudio(() => settingsWindow)
   initOverlay()
   const { initUpdater } = await import('./updater')

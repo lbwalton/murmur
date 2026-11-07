@@ -32,6 +32,9 @@ export interface SessionEvent {
   retried?: boolean
   /** A transform's instruction length, kept when its words are removed. */
   instructionWords?: number
+  /** Set on reading, never stored: its words are encrypted under a key
+   *  this computer cannot open, so they still exist (US-138). */
+  unreadable?: boolean
 }
 
 /** What the switch beside Keep history reports (US-138). */
@@ -81,6 +84,14 @@ export function hasText(event: SessionEvent): boolean {
 export function recordingLimitMs(retentionDays: number): number | null {
   if (retentionDays === KEEP_NO_TEXT || retentionDays === KEEP_24_HOURS) return DAY_MS
   return retentionDays > 0 ? retentionDays * DAY_MS : null
+}
+
+/** What paste-last pastes: the entry a held take's words just went back
+ *  to, until something newer lands, or else the newest entry. Those words
+ *  sit on an older line, so the newest line would be another take. */
+export function pasteTarget(events: readonly SessionEvent[], restoredAt: number | null): SessionEvent | undefined {
+  const restored = restoredAt === null ? undefined : events.find((event) => event.at === restoredAt)
+  return restored !== undefined && restored.finalText.length > 0 ? restored : events.at(-1)
 }
 
 /** Whether an event counts toward words, belts, achievements, recaps,

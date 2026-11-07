@@ -9,7 +9,7 @@
 import { type BrowserWindow, clipboard } from 'electron'
 import { ipc } from './ipc'
 import { deliverRetried } from './dictation'
-import { readHistory } from './history'
+import { heldTakeSaved, readHistory } from './history'
 import { isSmoke, registerSmokeCheck } from './smoke'
 import { recoveryDir, setRecoveryListener, transcribeWav } from './transcribe'
 import {
@@ -78,8 +78,12 @@ async function retryNow(id: string): Promise<RetryResult> {
   }
   // Under Don't keep the words are in memory only, so the recording stays
   // held until its 24 hours pass. Anywhere else it has done its job.
-  if (delivered.heldAt !== null) markRecoveryHeld(dir, id, delivered.heldAt)
-  else removeRecovery(dir, id)
+  if (delivered.heldAt !== null) {
+    markRecoveryHeld(dir, id, delivered.heldAt)
+    heldTakeSaved()
+  } else {
+    removeRecovery(dir, id)
+  }
   await log(`outcome=delivered kind=${take.kind} location=${delivered.location} words=${delivered.words}`)
   notifyChanged()
   return { ok: true, kind: take.kind, words: delivered.words, location: delivered.location }

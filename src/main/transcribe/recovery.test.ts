@@ -11,6 +11,7 @@ import {
   listRecovery,
   markRecoveryFailed,
   markRecoveryHeld,
+  nextHeldDue,
   readRecoveryWav,
   removeRecovery,
   saveRecovery,
@@ -163,5 +164,33 @@ describe('one take', () => {
     saveRecovery(wavOf(500), dir, { now: () => T - 23 * HOUR, take: { ...take(T), loggedAt: T - 23 * HOUR } })
     saveRecovery(wavOf(500), dir, { now: () => T - 48 * HOUR, take: take(T) })
     expect(heldPastLimit(listRecovery(dir), T, 24 * HOUR)).toEqual([`recovery-${T - 25 * HOUR}`])
+  })
+
+  it('says how long until the next held take is due, and null with none', () => {
+    const HOUR = 60 * 60 * 1000
+    saveRecovery(wavOf(500), dir, { now: () => T - 48 * HOUR, take: take(T) })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBeNull()
+    saveRecovery(wavOf(500), dir, { now: () => T - 20 * HOUR, take: { ...take(T), loggedAt: T } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 23 * HOUR, take: { ...take(T), loggedAt: T } })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBe(HOUR + 1)
+    saveRecovery(wavOf(500), dir, { now: () => T - 30 * HOUR, take: { ...take(T), loggedAt: T } })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBe(0)
+  })
+
+  it('a held take never evicts a take that was never transcribed', () => {
+    for (let i = 0; i < RECOVERY_KEEP; i += 1) saveRecovery(wavOf(100), dir, { now: () => T + i, take: take(T) })
+    saveRecovery(wavOf(100), dir, { now: () => T + 100, take: { ...take(T), loggedAt: T } })
+    const kept = listRecovery(dir)
+    expect(kept).toHaveLength(RECOVERY_KEEP)
+    expect(kept.some((waiting) => waiting.loggedAt !== undefined)).toBe(false)
+    expect(getRecovery(dir, `recovery-${T}`)).not.toBeNull()
+  })
+
+  it('the oldest held take goes before any failed take when the cap is full', () => {
+    saveRecovery(wavOf(100), dir, { now: () => T - 50, take: { ...take(T), loggedAt: T } })
+    for (let i = 0; i < RECOVERY_KEEP - 1; i += 1) saveRecovery(wavOf(100), dir, { now: () => T + i, take: take(T) })
+    saveRecovery(wavOf(100), dir, { now: () => T + 100, take: take(T) })
+    expect(getRecovery(dir, `recovery-${T - 50}`)).toBeNull()
+    expect(listRecovery(dir)).toHaveLength(RECOVERY_KEEP)
   })
 })

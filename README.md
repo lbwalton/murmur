@@ -11,7 +11,7 @@ The name is always lowercase: murmur.
 - **Push to talk, everywhere.** One hotkey (a combo, or modifiers alone like Ctrl+Alt) works in every app. A quiet waveform pill shows you are live; text arrives at your cursor when you release.
 - **Bring your own key.** Your audio goes to the provider you configure and nowhere else. At Groq's rates, typical use costs cents per month, and the analytics tab shows the estimate live.
 - **Formatting that fails open.** Filler removal, spoken punctuation, self-corrections, a custom dictionary, text expansions, and an AI cleanup pass that can only ever improve a transcript: any model failure inserts the deterministic text instead. A dictation is never lost.
-- **Local by default.** History, analytics, and settings live on your machine. The API key and the words in your history are encrypted at rest. No servers, no accounts, no telemetry.
+- **Local by default.** History, analytics, and settings live on your machine. The API key is encrypted at rest, and by default so are the words in your history. No servers, no accounts, no telemetry.
 - **Open source, GPL-3.0.** Read every line.
 
 ## Getting started
