@@ -377,6 +377,10 @@ describe('validatePolish with a dropped or restated thought (US-126)', () => {
     expect(
       validatePolish('Our Austin shop opens at nine, wait, our Tulsa shop opens at ten.', 'Our Tulsa shop opens at ten.', on)
     ).toMatchObject({ ok: true })
+    // The cue fills the last spot, so the phrases line up, and it still decides.
+    expect(
+      validatePolish('Our Austin shop opens at nine, wait, our Tulsa shop opens at ten today.', 'Our Tulsa shop opens at ten today.', on)
+    ).toMatchObject({ ok: true })
     // A restart breaks off mid phrase, so it is not a fact said in full.
     expect(validatePolish('Do you need to, would you want to paint the fence today?', 'Would you want to paint the fence today?', on)).toMatchObject({
       ok: true
