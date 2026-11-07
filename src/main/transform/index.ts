@@ -35,6 +35,8 @@ export type TransformOutcome =
   | 'unreadable'
   | 'empty'
   | 'too-long'
+  /** The log could not take it, so nothing was sent. */
+  | 'unlogged'
   | 'no-connection'
   | 'rejected'
   | 'transcribe-failed'
@@ -70,6 +72,14 @@ async function log(line: string): Promise<void> {
 function fail(hint: string | null): void {
   setOverlayPhase('error', null, hint ? { hint } : {})
   playCue('error')
+}
+
+// The log refused the take, so nothing goes to the model: the selection
+// stays as it was, and the caller keeps the recording for Retry.
+function unlogged(error: unknown): TransformOutcome {
+  console.error('[murmur] could not log a transform:', error)
+  fail(null)
+  return 'unlogged'
 }
 
 async function resolveConnection(): Promise<{ config: PolishConfig; slot: string } | null> {
@@ -118,13 +128,18 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   if (original.length > TRANSFORM_MAX_CHARS) {
     // Nothing goes to the model, and the thought is not lost: the
     // spoken instruction becomes the newest entry, one paste-last away.
-    const unsent = recordSession({
-      startedAt: deps.startedAt,
-      rawText: heard.text,
-      finalText: instruction,
-      kind: 'transform',
-      unsent: true
-    })
+    let unsent: SessionEvent | null
+    try {
+      unsent = recordSession({
+        startedAt: deps.startedAt,
+        rawText: heard.text,
+        finalText: instruction,
+        kind: 'transform',
+        unsent: true
+      })
+    } catch (error) {
+      return unlogged(error)
+    }
     deps.onUnsent?.(unsent)
     await log(`selection too long chars=${original.length} max=${TRANSFORM_MAX_CHARS}; nothing sent`)
     fail(tooLongHint(original.length))
@@ -134,13 +149,17 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   // Recoverability before anything else: the original is recorded
   // before the model sees it, so paste-last restores it whatever the
   // model or the paste does next.
-  recordSession({
-    startedAt: deps.startedAt,
-    rawText: instruction,
-    finalText: original,
-    kind: 'transform',
-    persist: settings.transform.keepOriginals
-  })
+  try {
+    recordSession({
+      startedAt: deps.startedAt,
+      rawText: instruction,
+      finalText: original,
+      kind: 'transform',
+      persist: settings.transform.keepOriginals
+    })
+  } catch (error) {
+    return unlogged(error)
+  }
   if (!settings.transform.keepOriginals) await log('original held in memory only')
 
   const resolved =

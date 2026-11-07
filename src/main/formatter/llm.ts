@@ -317,17 +317,31 @@ function cueClosesCut({ words, bareNos }: Speech, [start, end]: [number, number]
 // Boston office closes at five, our Denver office closes at six. A
 // restatement changes 1 spot, or a few words side by side, and a restart
 // breaks off mid phrase. 2 facts line up word for word and differ in 2
-// separate spots. Words alone cannot be sure, but keeping a stumble costs
-// a stumble and cutting a fact loses the fact.
-function isParallelFact({ words }: Speech, [start, end]: [number, number]): boolean {
-  const span = words.slice(start, end)
-  const changed = span.flatMap((word, at) => (word === words[end + at] ? [] : [at]))
+// separate spots that carry meaning. Words alone cannot be sure, but
+// keeping a stumble costs a stumble and cutting a fact loses the fact.
+function differsLikeFacts(phrase: string[], other: string[]): boolean {
+  if (other.length !== phrase.length || SMALL_WORDS.has(phrase[phrase.length - 1])) return false
+  const changed = phrase.flatMap((word, at) => (word === other[at] ? [] : [at]))
+  const spots = changed.filter((at) => !SMALL_WORDS.has(phrase[at]))
   return (
-    end + span.length <= words.length &&
-    !SMALL_WORDS.has(span[span.length - 1]) &&
-    changed.length >= 2 &&
-    changed.length * 2 <= span.length &&
-    changed[changed.length - 1] - changed[0] >= changed.length
+    spots.length >= 2 &&
+    changed.length * 2 <= phrase.length + 1 &&
+    spots[spots.length - 1] - spots[0] >= spots.length
+  )
+}
+
+const FACT_JOINERS = new Set(['and', 'but', 'while', 'then'])
+
+// The cut phrase against the phrase after it, or before it for an answer
+// that kept the first fact. A joiner between them is part of neither: pay
+// Anna on Monday and pay Ben on Friday.
+function isParallelFact({ words }: Speech, [start, end]: [number, number]): boolean {
+  const phrase = words
+    .slice(start, end)
+    .filter((word, at, all) => !FACT_JOINERS.has(word) || (at > 0 && at < all.length - 1))
+  return (
+    differsLikeFacts(phrase, words.slice(end, end + phrase.length)) ||
+    differsLikeFacts(phrase, words.slice(Math.max(0, start - phrase.length), start))
   )
 }
 

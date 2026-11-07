@@ -351,6 +351,25 @@ describe('validatePolish with a dropped or restated thought (US-126)', () => {
     })
   })
 
+  it.each([
+    ['the later fact cut', 'Austin opens at nine, Tulsa opens at ten.', 'Austin opens at nine.'],
+    ['the later fact cut after a joiner', 'Pay Anna on Monday and pay Ben on Friday.', 'Pay Anna on Monday.'],
+    ['a 3 word fact', 'Tom paid rent, Sue paid tax.', 'Sue paid tax.'],
+    ['joined by and', 'Pay Anna on Monday and pay Ben on Friday.', 'Pay Ben on Friday.'],
+    ['joined by but', 'Our Austin shop opens at nine, but our Tulsa shop opens at ten.', 'Our Tulsa shop opens at ten.']
+  ])('refuses a cut parallel fact: %s', (_name, said, typed) => {
+    expect(validatePolish(said, typed, on)).toEqual({ ok: false, reason: 'cut parallel fact' })
+  })
+
+  it.each([
+    ['only small words differ', 'Can you mail the box to the office, can you mail a box to my office.', 'Can you mail a box to my office.'],
+    ['the 2 changes sit side by side', 'I want a cheap red car, I want a fast blue car.', 'I want a fast blue car.'],
+    ['most of the phrase changed', 'Ask Dana about the plan, tell Omar about our new budget.', 'Tell Omar about our new budget.'],
+    ['the next phrase is shorter', 'Tom paid rent, Sue paid.', 'Sue paid.']
+  ])('leaves it to the other rules when %s', (_name, said, typed) => {
+    expect(validatePolish(said, typed, on)).not.toEqual({ ok: false, reason: 'cut parallel fact' })
+  })
+
   it('still lets a restatement and a cue go', () => {
     expect(
       validatePolish('The keys are on the kitchen table, on the hall table by the door.', 'The keys are on the hall table by the door.', on)

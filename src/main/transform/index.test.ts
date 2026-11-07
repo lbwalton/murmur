@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRANSFORM_MAX_CHARS } from '../formatter/transform'
 import { performTransform } from './index'
 
-const stage = vi.hoisted(() => ({ selection: 'short', event: { at: 123 } }))
+const stage = vi.hoisted(() => ({ selection: 'short', event: { at: 123 }, logFails: false, sent: 0 }))
 
 vi.mock('electron', () => ({ clipboard: {} }))
 vi.mock('../audio', () => ({ playCue: vi.fn() }))
@@ -19,7 +19,12 @@ vi.mock('../settings', () => ({ getSettings: () => ({ dictionary: [], transform:
 vi.mock('../smoke', () => ({ registerSmokeCheck: vi.fn() }))
 vi.mock('../hotkeys', () => ({ waitForModifiersReleased: async () => true }))
 vi.mock('../window-watch', () => ({ writeAppLog: vi.fn() }))
-vi.mock('../history', () => ({ recordSession: () => stage.event }))
+vi.mock('../history', () => ({
+  recordSession: () => {
+    if (stage.logFails) throw new Error('disk full')
+    return stage.event
+  }
+}))
 
 const deps = (onUnsent: (event: unknown) => void): Parameters<typeof performTransform>[0] => ({
   startedAt: 1,
@@ -30,6 +35,7 @@ const deps = (onUnsent: (event: unknown) => void): Parameters<typeof performTran
 
 beforeEach(() => {
   stage.selection = 'short'
+  stage.logFails = false
 })
 
 describe('performTransform', () => {
@@ -38,6 +44,20 @@ describe('performTransform', () => {
     const onUnsent = vi.fn()
     expect(await performTransform(deps(onUnsent))).toBe('too-long')
     expect(onUnsent).toHaveBeenCalledWith(stage.event)
+  })
+
+  it('stops and says so when the log refuses a selection too long to send', async () => {
+    stage.selection = 'a'.repeat(TRANSFORM_MAX_CHARS + 1)
+    stage.logFails = true
+    const onUnsent = vi.fn()
+    expect(await performTransform(deps(onUnsent))).toBe('unlogged')
+    expect(onUnsent).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing to the model when the original cannot be recorded first', async () => {
+    stage.logFails = true
+    // no-connection would mean it went on past the record.
+    expect(await performTransform(deps(vi.fn()))).toBe('unlogged')
   })
 
   it('stays quiet when the selection goes on to the model', async () => {

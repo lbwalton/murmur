@@ -211,6 +211,15 @@ describe("takes under Don't keep", () => {
     expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(expect.any(Uint8Array), held('transform', 'too-long'))
   })
 
+  it('keeps a transform the log refused on the Retry list', async () => {
+    mocks.performTransform.mockImplementationOnce(async () => 'unlogged')
+    expect(await take('transform')).toBe('retry')
+    expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(
+      expect.any(Uint8Array),
+      expect.objectContaining({ kind: 'transform', failure: expect.objectContaining({ kind: 'unlogged' }) })
+    )
+  })
+
   it('under other settings the same takes hold nothing', async () => {
     stage.retentionDays = 30
     mocks.performTransform.mockImplementationOnce(async (deps: { onUnsent: (event: object) => void }) => {
