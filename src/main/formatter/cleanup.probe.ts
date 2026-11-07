@@ -22,7 +22,15 @@
 // again with no key and no model calls, so a change to validation or to
 // the grader can be measured for free. Replay uses the saved settings
 // and skips an answer whose case text has changed since.
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
+//
+// MURMUR_PROBE_CLAUDE_CLI=1 with MURMUR_PROBE_MODELS=claude-haiku-5-5 runs
+// the set through Claude Code on the signed-in plan, with no key. Made-up
+// sentences only. It measures quality, not speed: the app's time limit and
+// temperature do not apply, and Claude Code adds a little context of its own.
+import { execFile } from 'node:child_process'
+import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import cleanupCases from '../../../shared/cleanup-cases.json'
 import formatSpec from '../../../shared/format-spec.json'
@@ -40,7 +48,9 @@ const KINDS = (process.env.MURMUR_PROBE_KINDS ?? '').split(',').filter((kind) =>
 const ID_PREFIX = process.env.MURMUR_PROBE_ID_PREFIX ?? ''
 const OUT = process.env.MURMUR_PROBE_OUT ?? ''
 const REPLAY = process.env.MURMUR_PROBE_REPLAY ?? ''
+const CLAUDE_CLI = process.env.MURMUR_PROBE_CLAUDE_CLI === '1'
 
+const CLAUDE_CLI_LIMIT_MS = 60_000
 const RETRIES = 5
 const LONG_RUNS_FACTOR = 3
 const CASES = (cleanupCases.cases as CleanupCase[]).filter(
@@ -94,13 +104,50 @@ function answering(raw: string): typeof fetch {
     new Response(JSON.stringify({ choices: [{ message: { content: raw } }] }), { status: 200 })) as typeof fetch
 }
 
+// An empty folder, so no project instructions reach the model.
+const cliFolder = CLAUDE_CLI ? mkdtempSync(join(tmpdir(), 'murmur-probe-')) : ''
+
+// Answers a chat request through Claude Code. The API key is dropped so a
+// stray one cannot bill instead of the plan.
+function askClaudeCode(init: RequestInit | undefined): Promise<Response> {
+  const { model, messages } = JSON.parse(String(init?.body)) as {
+    model: string
+    messages: Array<{ role: string; content: string }>
+  }
+  const text = (role: string): string =>
+    messages
+      .filter((message) => message.role === role)
+      .map((message) => message.content)
+      .join('\n')
+  const args = ['-p', '--model', model, '--effort', 'low', '--setting-sources', '', '--strict-mcp-config', '--tools', '']
+  args.push('--disable-slash-commands', '--no-session-persistence', '--output-format', 'json')
+  args.push('--system-prompt', text('system'))
+  const env = { ...process.env }
+  delete env.ANTHROPIC_API_KEY
+  return new Promise((resolve, reject) => {
+    const child = execFile('claude', args, { cwd: cliFolder, env, timeout: CLAUDE_CLI_LIMIT_MS }, (error, stdout) => {
+      if (error) {
+        reject(error)
+        return
+      }
+      const answer = JSON.parse(stdout) as { result?: string; is_error?: boolean }
+      if (answer.is_error === true || typeof answer.result !== 'string') {
+        reject(new Error('no answer'))
+        return
+      }
+      resolve(new Response(JSON.stringify({ choices: [{ message: { content: answer.result } }] }), { status: 200 }))
+    })
+    child.stdin?.end(text('user'))
+  })
+}
+
 // Keeps the raw answer for MURMUR_PROBE_OUT and pins the OpenRouter
 // provider, so a probe through OpenRouter matches the app's default host.
 function liveFetch(onAnswer: (raw: string) => void): typeof fetch {
   return async (url, init) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>
     if (ROUTE !== '') body.provider = { order: [ROUTE], allow_fallbacks: false }
-    const response = await fetch(url, { ...init, body: JSON.stringify(body) })
+    const response = CLAUDE_CLI ? await askClaudeCode(init) : await fetch(url, { ...init, body: JSON.stringify(body) })
     if (response.ok) {
       const parsed = (await response.clone().json()) as { choices?: Array<{ message?: { content?: unknown } }> }
       const content = parsed.choices?.[0]?.message?.content
@@ -135,6 +182,7 @@ async function runJob(job: ProbeJob, settings: ProbeSettings): Promise<{ outcome
               }),
         smartLists: settings.smartLists,
         corrections: settings.corrections,
+        ...(CLAUDE_CLI ? { timeoutMs: CLAUDE_CLI_LIMIT_MS } : {}),
         onFallback: (why) => {
           reason = why
         }
@@ -233,11 +281,11 @@ async function measure(): Promise<{ outcomes: CleanupOutcome[]; settings: ProbeS
   return { outcomes, settings, stale }
 }
 
-describe.skipIf(KEY === '' && REPLAY === '')('cleanup scoreboard', () => {
+describe.skipIf(KEY === '' && REPLAY === '' && !CLAUDE_CLI)('cleanup scoreboard', () => {
   const limitMs = Math.max(600_000, CASES.length * RUNS * LONG_RUNS_FACTOR * MODELS.length * 10_000)
   it('measures every kind of case', { timeout: limitMs }, async () => {
     const { outcomes, settings, stale } = await measure()
-    const mode = REPLAY === '' ? `${BASE_URL}${ROUTE ? ` via ${ROUTE}` : ''}, ${RUNS} runs, ${RUNS * LONG_RUNS_FACTOR} for long-structure` : `replay of ${REPLAY}`
+    const mode = REPLAY === '' ? `${CLAUDE_CLI ? 'Claude Code' : BASE_URL}${ROUTE ? ` via ${ROUTE}` : ''}, ${RUNS} runs, ${RUNS * LONG_RUNS_FACTOR} for long-structure` : `replay of ${REPLAY}`
     console.log(
       [
         `${CASES.length} cases, ${mode}, smart lists ${settings.smartLists ? 'on' : 'off'}, corrections ${settings.corrections ? 'on' : 'off'}`,
