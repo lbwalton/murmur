@@ -307,17 +307,44 @@ function cutSpans(spoken: string[], kept: string[]): Array<[number, number]> | n
   return spans
 }
 
+// A cue that closes the cut, with something before it to take back.
+function cueClosesCut({ words, bareNos }: Speech, [start, end]: [number, number]): boolean {
+  const closes = (at: number): boolean => at >= start && at < end && end - at <= MAX_WORDS_AFTER_CUE + 2
+  return cuePositions(words).some((at) => at > 0 && closes(at)) || bareNos.some(closes)
+}
+
+// 2 whole phrases in 1 frame can be 1 thought said twice or 2 facts: our
+// Boston office closes at five, our Denver office closes at six. A
+// restatement changes 1 spot, or a few words side by side, and a restart
+// breaks off mid phrase. 2 facts line up word for word and differ in 2
+// separate spots. Words alone cannot be sure, but keeping a stumble costs
+// a stumble and cutting a fact loses the fact.
+function isParallelFact({ words }: Speech, [start, end]: [number, number]): boolean {
+  const span = words.slice(start, end)
+  const changed = span.flatMap((word, at) => (word === words[end + at] ? [] : [at]))
+  return (
+    end + span.length <= words.length &&
+    !SMALL_WORDS.has(span[span.length - 1]) &&
+    changed.length >= 2 &&
+    changed.length * 2 <= span.length &&
+    changed[changed.length - 1] - changed[0] >= changed.length
+  )
+}
+
+function cutAParallelFact(speech: Speech, output: string): boolean {
+  const spans = cutSpans(speech.words, spokenWords(output))
+  return spans !== null && spans.some((span) => !cueClosesCut(speech, span) && isParallelFact(speech, span))
+}
+
 // A cut span is a takeback only if the speech shows it: a cue that closes
 // it with something before it to take back, or the words just after it
 // saying the same thing again in the same sentence. Without this, a model
 // that dropped a real sentence would pass as a restart.
 function isTakeback(speech: Speech, [start, end]: [number, number]): boolean {
-  const { words, endsSentence, bareNos } = speech
+  const { words, endsSentence } = speech
   const span = words.slice(start, end)
   if (span.length > MAX_CUT_WORDS) return false
-  const closes = (at: number): boolean => at >= start && at < end && end - at <= MAX_WORDS_AFTER_CUE + 2
-  const cue = cuePositions(words).filter((at) => at > 0 && closes(at)).at(-1)
-  if (cue !== undefined || bareNos.some((at) => closes(at))) return true
+  if (cueClosesCut(speech, [start, end])) return true
   // 2 full sentences that open alike are as likely 2 facts as 1 thought
   // said twice: the server in Ohio is down. The server in Texas is up.
   if (endsSentence[end - 1]) return false
@@ -461,13 +488,14 @@ export function validatePolish(
   if (earnedListFloor && listLineCount(lines) < entriesNeeded) {
     return { ok: false, reason: 'missing entries' }
   }
-  // Both rules below apply only to a cut, with apply corrections on. An
-  // answer that kept the attempt the speaker dropped, or cut a cue with
-  // nothing before it, is refused whatever its length.
+  // These rules apply only to a cut, with apply corrections on. An answer
+  // that kept the attempt the speaker dropped, cut a cue with nothing
+  // before it, or cut 1 of 2 parallel facts is refused whatever its length.
   const speech = readSpeech(input)
   const cut = opts.corrections === true && outputWords < inputWords
   if (cut && keptOnlyTheFirstAttempt(speech, countable)) return { ok: false, reason: 'kept first attempt' }
   if (cut && cutAnOpeningCue(speech, countable)) return { ok: false, reason: 'cut opening cue' }
+  if (cut && cutAParallelFact(speech, countable)) return { ok: false, reason: 'cut parallel fact' }
   // A spoken correction legitimately deletes the wrong words and its
   // cue, often half a short dictation, so with apply corrections on it
   // earns the same deeper floor, but ONLY when the cut looks like a

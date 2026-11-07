@@ -12,7 +12,8 @@
 // tripled for long-structure),
 // MURMUR_PROBE_CONCURRENCY (default 3), MURMUR_PROBE_ROUTE to pin an
 // OpenRouter provider, MURMUR_PROBE_KINDS (comma list),
-// MURMUR_PROBE_ID_PREFIX (fresh runs the cases written after tuning), and
+// MURMUR_PROBE_ID_PREFIX (fresh runs the cases written after tuning),
+// MURMUR_PROBE_PACE_MS (a wait after each call, for a key on a low rate limit), and
 // MURMUR_PROBE_SMART_LISTS=0 or MURMUR_PROBE_CORRECTIONS=0 to turn those off.
 // Both default on, unlike the app until US-127, since that is what is
 // being measured.
@@ -48,6 +49,7 @@ const KINDS = (process.env.MURMUR_PROBE_KINDS ?? '').split(',').filter((kind) =>
 const ID_PREFIX = process.env.MURMUR_PROBE_ID_PREFIX ?? ''
 const OUT = process.env.MURMUR_PROBE_OUT ?? ''
 const REPLAY = process.env.MURMUR_PROBE_REPLAY ?? ''
+const PACE_MS = Number(process.env.MURMUR_PROBE_PACE_MS ?? 0)
 const CLAUDE_CLI = process.env.MURMUR_PROBE_CLAUDE_CLI === '1'
 
 const CLAUDE_CLI_LIMIT_MS = 60_000
@@ -275,6 +277,7 @@ async function measure(): Promise<{ outcomes: CleanupOutcome[]; settings: ProbeS
       const { outcome, answer } = await runJob(job, settings)
       outcomes.push(outcome)
       if (recording) appendFileSync(OUT, `${JSON.stringify(answer)}\n`)
+      if (saved === null && PACE_MS > 0) await sleep(PACE_MS)
     }
   }
   await Promise.all(Array.from({ length: saved === null ? CONCURRENCY : 1 }, worker))
@@ -282,7 +285,7 @@ async function measure(): Promise<{ outcomes: CleanupOutcome[]; settings: ProbeS
 }
 
 describe.skipIf(KEY === '' && REPLAY === '' && !CLAUDE_CLI)('cleanup scoreboard', () => {
-  const limitMs = Math.max(600_000, CASES.length * RUNS * LONG_RUNS_FACTOR * MODELS.length * 10_000)
+  const limitMs = Math.max(600_000, CASES.length * RUNS * LONG_RUNS_FACTOR * MODELS.length * (10_000 + PACE_MS))
   it('measures every kind of case', { timeout: limitMs }, async () => {
     const { outcomes, settings, stale } = await measure()
     const mode = REPLAY === '' ? `${CLAUDE_CLI ? 'Claude Code' : BASE_URL}${ROUTE ? ` via ${ROUTE}` : ''}, ${RUNS} runs, ${RUNS * LONG_RUNS_FACTOR} for long-structure` : `replay of ${REPLAY}`

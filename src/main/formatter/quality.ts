@@ -31,7 +31,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // the characters and swapping the spaces would still hold the words.
 const LEVELS = new Set(['off', 'light', 'full'])
 const OUTCOME =
-  /^(?:cleaned|skipped|timeout|network|hint echo|response missing text|http \d{3}|validate: (?:empty|meta chatter|refusal|preamble line|missing entries|kept first attempt|cut opening cue|length ratio|length delta|appended chatter))$/
+  /^(?:cleaned|skipped|timeout|network|hint echo|response missing text|http \d{3}|validate: (?:empty|meta chatter|refusal|preamble line|missing entries|kept first attempt|cut opening cue|cut parallel fact|length ratio|length delta|appended chatter))$/
 // A model id: a word or 2 joined by these marks, with no spaces, and
 // short, since an id is typed into settings and never said aloud.
 const MODEL = /^[\w.:-]{1,48}(?:\/[\w.:-]{1,48}){0,4}$/

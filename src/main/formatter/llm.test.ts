@@ -340,6 +340,33 @@ describe('validatePolish with a dropped or restated thought (US-126)', () => {
     })
   })
 
+  it('keeps 2 parallel facts, which a restatement only looks like', () => {
+    const facts = 'Our Austin shop opens at nine, our Tulsa shop opens at ten.'
+    expect(validatePolish(facts, 'Our Tulsa shop opens at ten.', on)).toEqual({ ok: false, reason: 'cut parallel fact' })
+    expect(validatePolish(facts, facts, on)).toMatchObject({ ok: true })
+    // A short take clears every length check, so only this rule stops it.
+    expect(validatePolish('Austin opens at nine, Tulsa opens at ten.', 'Tulsa opens at ten.', on)).toEqual({
+      ok: false,
+      reason: 'cut parallel fact'
+    })
+  })
+
+  it('still lets a restatement and a cue go', () => {
+    expect(
+      validatePolish('The keys are on the kitchen table, on the hall table by the door.', 'The keys are on the hall table by the door.', on)
+    ).toMatchObject({ ok: true })
+    expect(
+      validatePolish('Our Austin shop opens at nine, wait, our Tulsa shop opens at ten.', 'Our Tulsa shop opens at ten.', on)
+    ).toMatchObject({ ok: true })
+    // A restart breaks off mid phrase, so it is not a fact said in full.
+    expect(validatePolish('Do you need to, would you want to paint the fence today?', 'Would you want to paint the fence today?', on)).toMatchObject({
+      ok: true
+    })
+    expect(validatePolish('We might have to mail the, we need to mail the check to Omar today.', 'We need to mail the check to Omar today.', on)).toMatchObject({
+      ok: true
+    })
+  })
+
   it('still lets an opening cue go when a real thought goes with it', () => {
     const said = 'Hold on, I was going to ask about the tent, never mind, can you pack the stove.'
     expect(validatePolish(said, 'Can you pack the stove.', on)).toMatchObject({ ok: true })
