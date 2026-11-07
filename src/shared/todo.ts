@@ -163,6 +163,14 @@ export function reminderBody(items: readonly TodoItem[], maxChars = 180): string
   return room > 8 ? `${count}: ${open[0].text.slice(0, room).trimEnd()}…` : count
 }
 
+/** The same reminder with only its count, for Hide words (US-145):
+ *  the items are the person's own dictated words. */
+export function hiddenReminderBody(items: readonly TodoItem[]): string {
+  const open = openItems(items).length
+  if (open === 0) return ''
+  return `${open} open ${open === 1 ? 'task' : 'tasks'}`
+}
+
 export interface DueReminder {
   /** Position in the configured times, which is what fired state is
    *  keyed by: editing a time must not re-fire it the same day. */

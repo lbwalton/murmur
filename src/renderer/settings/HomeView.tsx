@@ -12,12 +12,13 @@ import {
   KEEP_NO_TEXT,
   type SealStatus,
   type SessionEvent,
+  WORDS_HIDDEN,
   countsTowardStats,
   dayKey,
   groupByDay,
   hasText
 } from '../../shared/history'
-import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
+import { type LastNote, lastNoteLine, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
 import { heardWords, offersWhatYouSaid } from '../../shared/word-diff'
 import { type ProFacts, shouldOfferPro, thanksDue } from '../../shared/proMark'
@@ -29,8 +30,9 @@ import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
 import { Switch } from './controls'
+import { HideWordsRow, TakeWords } from './HideWords'
 import { ProMark } from './ProMark'
-import { ReportPanel } from './ReportPanel'
+import { ReportTake } from './ReportPanel'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -161,7 +163,7 @@ function lengthOf(ms: number): string {
 /** The note receipt's Home half (US-082): the newest note, where it
  *  landed, and the two ways back to it. Opening goes through main's
  *  note opener, which refuses anything that is not a note file. */
-function LastNoteRow(): React.JSX.Element | null {
+function LastNoteRow(props: { hide: boolean }): React.JSX.Element | null {
   const [note, setNote] = useState<LastNote | null>(null)
   const [said, setSaid] = useState<string | null>(null)
 
@@ -191,7 +193,7 @@ function LastNoteRow(): React.JSX.Element | null {
       <p className="micro-label">last note</p>
       <div className="last-note-row">
         <div className="last-note-text">
-          <p className="last-note-line">{note.line !== '' ? note.line : 'An empty note'}</p>
+          <p className="last-note-line">{lastNoteLine(note, props.hide)}</p>
           <p className="mono-inline dim">
             {receiptWhere(note)} · {whenOf(note.at)}
           </p>
@@ -286,7 +288,7 @@ const WORDS_LOCKED = 'Words encrypted with a key this computer cannot open, so t
 export function sealLine(status: SealStatus): string {
   const base =
     status.state === 'sealed'
-      ? "Saved words are encrypted on disk with a key your system's secure storage holds, so a copied history file or folder cannot be read elsewhere. This protects the file, not your screen: your words still show here. Notes stay plain files."
+      ? "Saved words are encrypted on disk with a key your system's secure storage holds, so a copied history file or folder cannot be read elsewhere. This protects the file, not your screen: for that, use Hide words. Notes stay plain files."
       : status.state === 'unavailable'
         ? "This computer's secure storage is not available, so saved words stay as plain text. murmur encrypts them once it is."
         : "Saved words are plain text in murmur's data folder, so other programs and backups can read them. Notes stay plain files."
@@ -296,22 +298,27 @@ export function sealLine(status: SealStatus): string {
 }
 
 /** The words as heard, with what cleanup removed struck through (US-128).
- *  The clipboard is touched only on the click. */
-function WhatYouSaid(props: { id: string; event: SessionEvent }): React.JSX.Element {
+ *  The clipboard is touched only on the click, and Hide words (US-145)
+ *  leaves the count and the copy. */
+export function WhatYouSaid(props: { id: string; event: SessionEvent; hide: boolean }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const words = heardWords(props.event.rawText, props.event.finalText)
   const removed = words.filter((word) => word.removed).length
   return (
     <div className="log-said" id={props.id}>
       <p className="micro-label log-original">what you said</p>
-      <p className="log-text dim">
-        {words.map((word, index) => (
-          <span key={index}>
-            {index > 0 && ' '}
-            {word.removed ? <s className="log-removed">{word.text}</s> : word.text}
-          </span>
-        ))}
-      </p>
+      {props.hide ? (
+        <p className="log-text dim">{WORDS_HIDDEN}</p>
+      ) : (
+        <p className="log-text dim">
+          {words.map((word, index) => (
+            <span key={index}>
+              {index > 0 && ' '}
+              {word.removed ? <s className="log-removed">{word.text}</s> : word.text}
+            </span>
+          ))}
+        </p>
+      )}
       <p className="log-said-foot">
         <span className="mono-inline dim">{removed === 0 ? 'words changed' : `${removed} removed`}</span>
         <button
@@ -326,6 +333,31 @@ function WhatYouSaid(props: { id: string; event: SessionEvent }): React.JSX.Elem
         </button>
       </p>
     </div>
+  )
+}
+
+/** What a log row says under its time and numbers. */
+export function LogWords(props: { event: SessionEvent; hide: boolean }): React.JSX.Element {
+  const { event, hide } = props
+  return (
+    <>
+      {event.kind === 'transform' && !event.unsent && hasText(event) && !hide && (
+        <p className="log-instruction dim">you said: {event.rawText}</p>
+      )}
+      {event.kind === 'transform' && event.unsent && (
+        <p className="log-instruction dim">
+          {event.retried
+            ? 'retried after the text it was for was gone; your instruction is kept below'
+            : 'the selection was too long to send; your words are kept below'}
+        </p>
+      )}
+      {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
+      {hasText(event) ? (
+        <TakeWords text={event.finalText} hide={hide} />
+      ) : (
+        <p className="log-text dim">{event.unreadable ? WORDS_LOCKED : WORDS_NOT_KEPT}</p>
+      )}
+    </>
   )
 }
 
@@ -723,6 +755,7 @@ export function HomeView(props: {
     setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
   }
 
+  const hide = props.settings.history.hideWords
   const grouped = groupByDay(events)
   // The how-to teaches the first few dictations, then gets out of the
   // way for good (US-086): once five exist it is remembered, so a Clear
@@ -795,7 +828,12 @@ export function HomeView(props: {
           )}
         </section>
       )}
-      <LastNoteRow />
+      <LastNoteRow hide={hide} />
+      {loaded && (
+        <section className="panel">
+          <HideWordsRow settings={props.settings} anchor="home-hide-words" onUpdate={props.onUpdateSettings} />
+        </section>
+      )}
       {loaded && grouped.length === 0 && (
         <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
       )}
@@ -845,31 +883,17 @@ export function HomeView(props: {
                     </button>
                   )}
                 </div>
-                {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} />}
+                {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
                 {openReport === event.at && (
-                  <ReportPanel
+                  <ReportTake
                     id={`report-${event.at}`}
                     event={event}
                     settings={props.settings}
+                    hide={hide}
                     onClose={() => setOpenReport(null)}
                   />
                 )}
-                {event.kind === 'transform' && !event.unsent && hasText(event) && (
-                  <p className="log-instruction dim">you said: {event.rawText}</p>
-                )}
-                {event.kind === 'transform' && event.unsent && (
-                  <p className="log-instruction dim">
-                    {event.retried
-                      ? 'retried after the text it was for was gone; your instruction is kept below'
-                      : 'the selection was too long to send; your words are kept below'}
-                  </p>
-                )}
-                {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
-                {hasText(event) ? (
-                  <p className="log-text">{event.finalText}</p>
-                ) : (
-                  <p className="log-text dim">{event.unreadable ? WORDS_LOCKED : WORDS_NOT_KEPT}</p>
-                )}
+                <LogWords event={event} hide={hide} />
               </div>
             ))}
           </div>

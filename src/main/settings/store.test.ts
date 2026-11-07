@@ -17,6 +17,11 @@ afterEach(() => {
 })
 
 describe('SettingsStore', () => {
+  it('keeps Hide words on across a restart (US-145)', () => {
+    new SettingsStore(dir).update({ history: { hideWords: true } })
+    expect(new SettingsStore(dir).get().history.hideWords).toBe(true)
+  })
+
   it('starts from defaults with no file', () => {
     const store = new SettingsStore(dir)
     expect(store.get()).toEqual(DEFAULT_SETTINGS)

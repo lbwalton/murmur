@@ -16,7 +16,7 @@ describe('the Encrypt saved words line', () => {
   const status = { state: 'sealed', unreadable: 0, pending: 0 } as const
 
   it('says it protects the file and not the screen, and that notes stay plain', () => {
-    expect(sealLine(status)).toContain('This protects the file, not your screen')
+    expect(sealLine(status)).toContain('This protects the file, not your screen: for that, use Hide words.')
     expect(sealLine(status)).toContain('a copied history file or folder cannot be read elsewhere')
     expect(sealLine(status)).toContain('Notes stay plain files.')
   })

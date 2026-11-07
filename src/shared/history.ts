@@ -73,6 +73,9 @@ export function withoutText(event: SessionEvent): SessionEvent {
   return { ...event, rawText: '', finalText: '', ...instruction }
 }
 
+/** What a row says in place of its words while Hide words is on (US-145). */
+export const WORDS_HIDDEN = 'Words hidden.'
+
 export function hasText(event: SessionEvent): boolean {
   return event.rawText.length > 0 || event.finalText.length > 0
 }

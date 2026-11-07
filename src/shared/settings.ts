@@ -104,6 +104,10 @@ export interface Settings {
     /** Seal the words in history.jsonl (US-138). It protects the file on
      *  disk: words still show on Home. */
     encrypt: boolean
+    /** Keep dictated words out of murmur's windows and notifications
+     *  while sharing a screen or filming (US-145). Stored, so a restart
+     *  mid-recording reveals nothing. Copy and paste-last still work. */
+    hideWords: boolean
   }
   recap: {
     enabled: boolean
@@ -290,7 +294,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   history: {
     retentionDays: 90,
-    encrypt: true
+    encrypt: true,
+    hideWords: false
   },
   recap: {
     enabled: false,

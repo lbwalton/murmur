@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, SettingsApi } from '../../preload/settings'
 import type { Settings } from '../../shared/settings'
+import { TryBox } from './HideWords'
 import {
   type WizardFacts,
   type WizardStep,
@@ -200,11 +201,13 @@ export function WizardView(props: {
         {step === 'try' && (
           <div className="wizard-body">
             <h2>Say something.</h2>
-            <p className="dim">
-              Click the box, hold {props.settings.hotkey.binding}, speak a sentence, release. Watch
-              the pill, then watch your words arrive.
-            </p>
-            <textarea className="field trybox wizard-try" rows={3} placeholder="dictate here…" />
+            {!props.settings.history.hideWords && (
+              <p className="dim">
+                Click the box, hold {props.settings.hotkey.binding}, speak a sentence, release. Watch
+                the pill, then watch your words arrive.
+              </p>
+            )}
+            <TryBox hide={props.settings.history.hideWords} className="field trybox wizard-try" rows={3} />
           </div>
         )}
 

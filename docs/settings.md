@@ -34,12 +34,25 @@ Changing this tells you what it will remove first, whichever way you move it. Go
 
 Yes, by default. The words in your history are encrypted on disk with a key your system's secure storage holds: the Keychain on Mac, and your account's protected storage on Windows. **Encrypt saved words**, beside **Keep history for** on the home tab, turns it off and on, and murmur changes the whole file right then.
 
-- **It protects the file, not your screen.** A copied history file or folder cannot be read elsewhere. On a Mac, another program has to ask the Keychain first. On Windows, a program already running as you can still reach the key, so there this guards copies more than programs. Your words still show on the home tab, so turning this on does not hide them while you share your screen or film.
+- **It protects the file, not your screen.** A copied history file or folder cannot be read elsewhere. On a Mac, another program has to ask the Keychain first. On Windows, a program already running as you can still reach the key, so there this guards copies more than programs. Your words still show on the home tab, so turning this on does not hide them while you share your screen or film. [Hide words](#how-do-i-hide-my-words-while-i-share-my-screen-or-film) does that.
 - **Your notes stay plain files.** They are your own, so they stay readable in any app. Recordings waiting to retry and your settings are not encrypted either, and the numbers in your history stay readable so your stats, belts, and paintings always work.
 - **A history file or folder copied to another machine cannot be read there.** The key stays in this computer's secure storage. On the other machine you keep the numbers, and the rows say their words cannot be opened. Moving your whole account can bring that storage along, such as Migration Assistant, a Time Machine restore, or a roaming Windows profile, and then your words read as before.
 - **If your system loses the key,** such as after a Keychain reset, the same is true here: rows keep their numbers and say their words cannot be opened. Those words stay in the file, so they read again if the key comes back, until Clear all or a 24 hours or Don't keep limit removes them. The line beside the switch counts them.
 - **If secure storage is not available,** murmur keeps working, keeps your words as plain text, and says so beside the switch. It encrypts them once it can.
 - **Older copies stay as they were.** Backups made before this was on still hold plain text.
+
+## How do I hide my words while I share my screen or film?
+
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is on the home tab, just above your history, and in Settings, under System. They are the same setting.
+
+- **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
+- **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.
+- **Copy and paste last keep working.** A copy button still copies the words, and your paste last shortcut still pastes them. What you paste shows in that app.
+- **Report is off while this is on,** because a report shows your words so you can check them before anything goes. The report button says so. Turn off Hide words to report a take.
+- **Try it, the practice box, is off** too, because what you dictate into it would show there.
+- **Notifications leave the words out.** A note receipt says where the note went, and a task reminder says how many tasks are open. Turning the switch on also takes back a receipt or reminder still waiting in Notification Center or Action Center.
+
+It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
 ## How do I see what cleanup changed, and get my words back?
 

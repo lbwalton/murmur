@@ -46,12 +46,19 @@ function withStop(phrase: string): string {
   return /[.!?]["\u201d')\]]?$/.test(phrase) ? phrase : `${phrase}.`
 }
 
-function heldPhrase(line: NotesStatus['heldLines'][number]): string {
+export function heldPhrase(line: NotesStatus['heldLines'][number], hide: boolean): string {
   const item = line.match?.text ?? ''
-  if (line.reason === 'same') return `looks like a duplicate of: ${item}`
-  if (line.reason === 'completes') return `sounds like you finished: ${item}`
-  if (line.reason === 'done-before') return `you finished this before: ${item}`
+  if (line.reason === 'same') return hide ? 'looks like a duplicate of another item' : `looks like a duplicate of: ${item}`
+  if (line.reason === 'completes') return hide ? 'sounds like you finished another item' : `sounds like you finished: ${item}`
+  if (line.reason === 'done-before') return hide ? 'you finished this before' : `you finished this before: ${item}`
   return 'the model was not sure what this is'
+}
+
+/** A held line's label. The rail's search reads this text off the page,
+ *  so while Hide words is on it holds none of the line (US-145). */
+export function heldLabel(line: NotesStatus['heldLines'][number], hide: boolean): string {
+  if (hide) return 'Held: words hidden'
+  return `Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`
 }
 
 /** One phrase for the sort outcome on the Last note line. */
@@ -408,8 +415,8 @@ export function NotesPanel(props: {
               key={line.id}
               anchor={`row-held-${line.id}`}
               block
-              label={`Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`}
-              desc={`${withStop(heldPhrase(line))} It stays in the inbox as you said it.${
+              label={heldLabel(line, props.settings.history.hideWords)}
+              desc={`${withStop(heldPhrase(line, props.settings.history.hideWords))} It stays in the inbox as you said it.${
                 line.label === 'note'
                   ? ''
                   : ` File it anyway lands it as ${

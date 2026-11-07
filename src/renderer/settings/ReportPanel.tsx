@@ -7,6 +7,7 @@ import type { SettingsApi } from '../../preload/settings'
 import type { SessionEvent } from '../../shared/history'
 import { REPORT_ADDRESS, fitsMailto, reportBody } from '../../shared/report'
 import type { Settings } from '../../shared/settings'
+import { REPORT_HIDDEN } from './HideWords'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -15,7 +16,26 @@ function platformName(raw: string): string {
   return mac ? 'macOS' : /Win/i.test(raw) ? 'Windows' : raw
 }
 
-export function ReportPanel(props: {
+/** Report for one take. It promises every word is on screen before it
+ *  goes, so under Hide words (US-145) it is closed, never shown blank:
+ *  the panel is not even mounted, and it holds no words. */
+export function ReportTake(props: {
+  id: string
+  event: SessionEvent
+  settings: Settings
+  hide: boolean
+  onClose: () => void
+}): React.JSX.Element {
+  if (!props.hide) return <ReportPanel id={props.id} event={props.event} settings={props.settings} onClose={props.onClose} />
+  return (
+    <div className="log-said" id={props.id}>
+      <p className="micro-label log-original">report this take</p>
+      <p className="row-note">{REPORT_HIDDEN}</p>
+    </div>
+  )
+}
+
+function ReportPanel(props: {
   id: string
   event: SessionEvent
   settings: Settings

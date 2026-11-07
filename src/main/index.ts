@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Murmur main process entry. The shell grows story by story; see prd.json.
-import { readdirSync, rmSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Menu, app, clipboard } from 'electron'
@@ -34,7 +34,8 @@ import { initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
-import { getLastNote, onLastNoteChanged, openLastNote } from './notes/receipt'
+import { getLastNote, onLastNoteChanged, openLastNote, withdrawReceipt } from './notes/receipt'
+import { withdrawReminder } from './notes/reminders'
 import { initTransform } from './transform'
 import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
@@ -503,6 +504,16 @@ app.whenReady().then(async () => {
   // Open last note appears once a note has been saved, and stays.
   setTrayLastNoteVisible(getLastNote() !== null)
   onLastNoteChanged((note) => setTrayLastNoteVisible(note !== null))
+  // Turning Hide words on takes back what already went out: a receipt or
+  // a reminder still in Notification Center holds its words (US-145).
+  let hidingWords = getSettings().history.hideWords
+  onSettingsChanged((s) => {
+    if (s.history.hideWords && !hidingWords) {
+      withdrawReceipt()
+      withdrawReminder()
+    }
+    hidingWords = s.history.hideWords
+  })
   // Time back rides the tray tooltip, so it comes up after the tray.
   const { initTimeBack } = await import('./timeback')
   initTimeBack({ openWrapup })
@@ -705,6 +716,150 @@ app.whenReady().then(async () => {
     const ok = Math.abs(top - 3) < 0.01 && sharp === 'ok'
     if (!ok) console.error(`smoke settingsZoomSharp: top=${top} sharp=${sharp}`)
     return ok
+  })
+
+  registerSmokeCheck('hideWords', async () => {
+    // Hide words (US-145) on the real window: a marked word shows on Home
+    // and the wrap-up with the switch off, so the probe can see it. With
+    // it on, the word is nowhere in the page or in a field, in any
+    // attribute, with every panel opened; the numbers and copy stay; and
+    // the Home and Settings switches agree. It is saved to disk, and a
+    // reload shows nothing, not for one frame. Registered after
+    // settingsRail, which skipped the wizard.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const { recordSession } = await import('./history')
+    const { saveNote } = await import('./notes')
+    const { noteSaved } = await import('./notes/receipt')
+    const word = 'zebrafinch'
+    const notesBefore = getSettings().notes
+    const vault = join(app.getPath('userData'), 'smoke-hide-vault')
+    const helpers = `
+      const word = ${JSON.stringify(word)}
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const until = async (test) => {
+        for (let i = 0; i < 60 && !test(); i++) await wait(50)
+        return test()
+      }
+      const seen = () =>
+        (document.documentElement.outerHTML + [...document.querySelectorAll('textarea, input')].map((f) => f.value).join(' '))
+          .toLowerCase()
+          .includes(word)
+      const tab = async (name) => {
+        const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === name)
+        if (nav) nav.click()
+        await wait(120)
+        return Boolean(nav)
+      }
+      // One panel of each kind opens at a time, and the last click wins,
+      // so this goes oldest first and leaves the newest rows open: the
+      // marked ones.
+      const openRows = async () => {
+        for (const b of [...document.querySelectorAll('.log-said-toggle')].reverse()) {
+          if (b.getAttribute('aria-expanded') !== 'true') b.click()
+        }
+        await wait(120)
+      }
+      const flip = async (id) => {
+        document.querySelector('#' + id + ' [role=switch]').click()
+        await until(() => document.querySelector('#' + id + ' [role=switch]').getAttribute('aria-checked') === 'true')
+        await wait(120)
+      }
+      const checked = (id) => document.querySelector('#' + id + ' [role=switch]')?.getAttribute('aria-checked')
+    `
+    try {
+      mkdirSync(join(vault, 'murmur'), { recursive: true })
+      updateSettings({ notes: { folder: vault, receipts: true } })
+      const now = Date.now()
+      recordSession({ startedAt: now - 2000, rawText: `um ${word} sang quietly`, finalText: `The ${word} sang quietly.` })
+      recordSession({ startedAt: now - 1000, rawText: `make the ${word} louder`, finalText: `The ${word} sang.`, kind: 'transform' })
+      const noted = `Feed the ${word} on Tuesday.`
+      noteSaved(saveNote(noted, new Date(now)), noted)
+
+      const shown = (await win.webContents.executeJavaScript(`(async () => {
+        ${helpers}
+        if (!(await tab('home'))) return null
+        const home = await until(() => document.querySelector('.log-text') !== null && document.querySelector('.last-note-line') !== null && seen())
+        await openRows()
+        const said = document.querySelector('.log-said .log-text')?.textContent.includes(word) === true
+        const report = [...document.querySelectorAll('.report-field textarea')].some((f) => f.value.includes(word))
+        await tab('wrap-up')
+        const wrapup = await until(() => document.querySelector('.log-text') !== null && seen())
+        await tab('settings')
+        const box = document.querySelector('.trybox')
+        if (box) box.value = 'typed ' + word
+        const tryBox = box !== null && seen()
+        await tab('home')
+        await until(() => document.querySelector('#home-hide-words') !== null)
+        const off = checked('home-hide-words') === 'false' && checked('row-hide-words') === 'false'
+        return { home, said, report, wrapup, tryBox, off }
+      })()`)) as Record<string, boolean> | null
+
+      const hidden = (await win.webContents.executeJavaScript(`(async () => {
+        ${helpers}
+        await until(() => document.querySelector('.log-text') !== null)
+        await flip('home-hide-words')
+        await openRows()
+        const home = !seen()
+        const saidCopy = document.body.textContent.includes('Copy what you said')
+        const reportOff = document.body.textContent.includes('Turn off Hide words to report this take.') && document.querySelector('.report-field') === null
+        const numbers = [...document.querySelectorAll('.log-meta')].some((meta) => meta.textContent.includes('wpm'))
+        const copy = document.querySelectorAll('.log-copy').length >= 3
+        const same = checked('home-hide-words') === 'true' && checked('row-hide-words') === 'true'
+        await tab('wrap-up')
+        await until(() => document.querySelector('.log-text') !== null)
+        const wrapup = !seen()
+        await tab('settings')
+        const settings = !seen() && document.querySelector('.trybox') === null
+        return { hiddenHome: home, saidCopy, reportOff, numbers, copy, sameOn: same, hiddenWrapup: wrapup, settings }
+      })()`)) as Record<string, boolean> | null
+
+      const stored = JSON.parse(readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')) as { history?: { hideWords?: unknown } }
+      const saved = stored.history?.hideWords === true && getSettings().history.hideWords
+
+      // Watch every change from the first moment of a reload: a restart
+      // must not flash the words before the setting arrives.
+      const watching = new Promise<void>((resolve) => {
+        win.webContents.once('dom-ready', () => {
+          void win.webContents
+            .executeJavaScript(`(() => {
+              window.sawWords = false
+              new MutationObserver(() => {
+                if (document.documentElement.outerHTML.toLowerCase().includes(${JSON.stringify(word)})) window.sawWords = true
+              }).observe(document.documentElement, { childList: true, subtree: true, characterData: true })
+            })()`)
+            .finally(resolve)
+        })
+      })
+      win.webContents.reload()
+      await watching
+      const reloaded = (await win.webContents.executeJavaScript(`(async () => {
+        ${helpers}
+        await until(() => document.querySelector('.wizard-footer button, .nav-btn') !== null)
+        const skip = [...document.querySelectorAll('.wizard-footer button')].find((b) => b.textContent === 'Skip for now')
+        if (skip) skip.click()
+        await until(() => document.querySelector('.log-text') !== null)
+        await wait(150)
+        return { rows: document.querySelector('.log-text') !== null, clean: window.sawWords === false && !seen() }
+      })()`)) as Record<string, boolean> | null
+
+      // The other switch turns it back off, and the words return.
+      const restored = (await win.webContents.executeJavaScript(`(async () => {
+        ${helpers}
+        document.querySelector('#row-hide-words [role=switch]').click()
+        await until(() => checked('home-hide-words') === 'false')
+        return { same: checked('row-hide-words') === 'false', back: await until(seen) }
+      })()`)) as Record<string, boolean> | null
+
+      const facts = { ...shown, ...hidden, saved, ...reloaded, ...restored }
+      const failed = Object.entries(facts).filter(([, ok]) => !ok).map(([name]) => name)
+      const ok = shown !== null && hidden !== null && reloaded !== null && restored !== null && failed.length === 0
+      if (!ok) console.error(`smoke hideWords: failed=${failed.join(',')} shown=${shown !== null} hidden=${hidden !== null}`)
+      return ok
+    } finally {
+      await win.webContents.executeJavaScript('window.murmur.clearHistory()').catch(() => undefined)
+      updateSettings({ notes: notesBefore, history: { hideWords: false } })
+    }
   })
 
   registerSmokeCheck('widgetLifecycle', async () => {
