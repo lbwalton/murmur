@@ -330,18 +330,24 @@ function differsLikeFacts(phrase: string[], other: string[]): boolean {
   )
 }
 
-const FACT_JOINERS = new Set(['and', 'but', 'while', 'then'])
+const FACT_JOINERS = new Set(['and', 'but', 'while', 'then', 'also', 'so', 'plus', 'or'])
 
 // The cut phrase against the phrase after it, or before it for an answer
-// that kept the first fact. A joiner between them is part of neither: pay
-// Anna on Monday and pay Ben on Friday.
+// that kept the first fact. The joiners between them, 1 or a run, are part
+// of neither: pay Anna on Monday and then pay Ben on Friday.
 function isParallelFact({ words }: Speech, [start, end]: [number, number]): boolean {
-  const phrase = words
-    .slice(start, end)
-    .filter((word, at, all) => !FACT_JOINERS.has(word) || (at > 0 && at < all.length - 1))
+  let from = start
+  let to = end
+  while (from < to && FACT_JOINERS.has(words[from])) from += 1
+  while (to > from && FACT_JOINERS.has(words[to - 1])) to -= 1
+  const phrase = words.slice(from, to)
+  let after = end
+  while (after < words.length && FACT_JOINERS.has(words[after])) after += 1
+  let before = start
+  while (before > 0 && FACT_JOINERS.has(words[before - 1])) before -= 1
   return (
-    differsLikeFacts(phrase, words.slice(end, end + phrase.length)) ||
-    differsLikeFacts(phrase, words.slice(Math.max(0, start - phrase.length), start))
+    differsLikeFacts(phrase, words.slice(after, after + phrase.length)) ||
+    (before >= phrase.length && differsLikeFacts(phrase, words.slice(before - phrase.length, before)))
   )
 }
 

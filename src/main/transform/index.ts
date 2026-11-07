@@ -76,11 +76,16 @@ function fail(hint: string | null): void {
 
 // The log refused the take, so nothing goes to the model: the selection
 // stays as it was, and the caller keeps the recording for Retry.
-function unlogged(error: unknown): TransformOutcome {
+async function unlogged(error: unknown): Promise<TransformOutcome> {
   console.error('[murmur] could not log a transform:', error)
+  await log('the history log refused the take; nothing sent')
   fail(null)
   return 'unlogged'
 }
+
+// recordSession returns null while history never opened, which leaves
+// the take as unrecorded as a throw does.
+const HISTORY_CLOSED = new Error('history is not open')
 
 async function resolveConnection(): Promise<{ config: PolishConfig; slot: string } | null> {
   const { resolveTransformConnection } = await import('../formatter')
@@ -140,6 +145,7 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
     } catch (error) {
       return unlogged(error)
     }
+    if (unsent === null) return unlogged(HISTORY_CLOSED)
     deps.onUnsent?.(unsent)
     await log(`selection too long chars=${original.length} max=${TRANSFORM_MAX_CHARS}; nothing sent`)
     fail(tooLongHint(original.length))
@@ -149,8 +155,9 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   // Recoverability before anything else: the original is recorded
   // before the model sees it, so paste-last restores it whatever the
   // model or the paste does next.
+  let recorded: SessionEvent | null
   try {
-    recordSession({
+    recorded = recordSession({
       startedAt: deps.startedAt,
       rawText: instruction,
       finalText: original,
@@ -160,6 +167,7 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   } catch (error) {
     return unlogged(error)
   }
+  if (recorded === null) return unlogged(HISTORY_CLOSED)
   if (!settings.transform.keepOriginals) await log('original held in memory only')
 
   const resolved =

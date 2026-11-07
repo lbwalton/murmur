@@ -225,7 +225,11 @@ export async function dictationStop(
         transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt }),
         onUnsent: (event) => holdRecording(upload, 'transform', startedAt, event?.at, 'too-long')
       })
-      if (outcome === 'unlogged') return keepUnlogged(upload, 'transform', startedAt) ? 'retry' : 'failed'
+      if (outcome === 'unlogged') {
+        const kept = keepUnlogged(upload, 'transform', startedAt)
+        void logDictation(`unlogged kind=transform kept=${kept}`)
+        return kept ? 'retry' : 'failed'
+      }
       return outcome === 'transformed' || outcome === 'copied' ? 'delivered' : 'failed'
     } catch (error) {
       console.error('[murmur] transform threw:', error)

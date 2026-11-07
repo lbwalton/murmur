@@ -78,7 +78,8 @@ vi.mock('./transcribe', () => ({
 vi.mock('./transform', () => ({ TRANSFORM_NO_CONNECTION_HINT: 'x', performTransform: mocks.performTransform }))
 vi.mock('./smoke', () => ({ isSmoke: false, registerSmokeCheck: vi.fn() }))
 vi.mock('./hotkeys', () => ({ waitForModifiersReleased: async () => true }))
-vi.mock('./window-watch', () => ({ writeAppLog: vi.fn() }))
+const appLog = vi.hoisted(() => vi.fn())
+vi.mock('./window-watch', () => ({ writeAppLog: appLog }))
 vi.mock('./retry', () => ({ releaseHeldTake: mocks.releaseHeldTake }))
 vi.mock('./history', () => ({
   eventToPaste: () => stage.event,
@@ -218,6 +219,7 @@ describe("takes under Don't keep", () => {
       expect.any(Uint8Array),
       expect.objectContaining({ kind: 'transform', failure: expect.objectContaining({ kind: 'unlogged' }) })
     )
+    await vi.waitFor(() => expect(appLog).toHaveBeenCalledWith('[dictation] unlogged kind=transform kept=true'))
   })
 
   it('under other settings the same takes hold nothing', async () => {

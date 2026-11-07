@@ -356,7 +356,16 @@ describe('validatePolish with a dropped or restated thought (US-126)', () => {
     ['the later fact cut after a joiner', 'Pay Anna on Monday and pay Ben on Friday.', 'Pay Anna on Monday.'],
     ['a 3 word fact', 'Tom paid rent, Sue paid tax.', 'Sue paid tax.'],
     ['joined by and', 'Pay Anna on Monday and pay Ben on Friday.', 'Pay Ben on Friday.'],
-    ['joined by but', 'Our Austin shop opens at nine, but our Tulsa shop opens at ten.', 'Our Tulsa shop opens at ten.']
+    ['joined by but', 'Our Austin shop opens at nine, but our Tulsa shop opens at ten.', 'Our Tulsa shop opens at ten.'],
+    // A run of joiners is part of neither phrase, however long.
+    ['joined by and then', 'Pay Anna on Monday and then pay Ben on Friday.', 'Pay Ben on Friday.'],
+    ['the later fact cut before and then', 'Pay Anna on Monday and then pay Ben on Friday.', 'Pay Anna on Monday.'],
+    ['joined by but then', 'Austin opens at nine, but then Tulsa opens at ten.', 'Tulsa opens at ten.'],
+    ['joined by and also', 'Pay Anna on Monday and also pay Ben on Friday.', 'Pay Ben on Friday.'],
+    ['a new sentence opened by and then', 'Austin opens at nine. And then Tulsa opens at ten.', 'Tulsa opens at ten.'],
+    ['joined by plus', 'Pay Anna on Monday, plus pay Ben on Friday.', 'Pay Ben on Friday.'],
+    ['joined by or', 'Meet Anna on Monday or meet Ben on Friday.', 'Meet Ben on Friday.'],
+    ['the joiners kept in the answer', 'Pay Anna on Monday and then pay Ben on Friday.', 'And then pay Ben on Friday.']
   ])('refuses a cut parallel fact: %s', (_name, said, typed) => {
     expect(validatePolish(said, typed, on)).toEqual({ ok: false, reason: 'cut parallel fact' })
   })
