@@ -50,8 +50,9 @@ export function TakeWords(props: { text: string; hide: boolean }): React.JSX.Ele
 }
 
 /** The box to practice in. Hidden, it is not disabled but gone: a
- *  disabled box still shows what is in it. */
-export function TryBox(props: { hide: boolean; className: string; rows: number; label?: string }): React.JSX.Element {
-  if (props.hide) return <p className="row-note">{TRY_HIDDEN}</p>
+ *  disabled box still shows what is in it. It reads the setting itself,
+ *  so no caller can leave it showing. */
+export function TryBox(props: { settings: Settings; className: string; rows: number; label?: string }): React.JSX.Element {
+  if (props.settings.history.hideWords) return <p className="row-note">{TRY_HIDDEN}</p>
   return <textarea className={props.className} placeholder="dictate here…" rows={props.rows} aria-label={props.label} />
 }

@@ -1167,7 +1167,7 @@ export function App(): React.JSX.Element {
               keywords="test dictation practice"
               desc={settings.history.hideWords ? undefined : `Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
             >
-              <TryBox hide={settings.history.hideWords} className="field trybox" rows={2} label="Test dictation" />
+              <TryBox settings={settings} className="field trybox" rows={2} label="Test dictation" />
             </Row>
           </Section>
 

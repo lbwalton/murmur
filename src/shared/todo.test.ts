@@ -6,6 +6,7 @@ import {
   hiddenReminderBody,
   markFired,
   openItems,
+  openTasksLine,
   parseListItems,
   parseTodo,
   reminderBody,
@@ -256,5 +257,10 @@ describe('hiddenReminderBody (US-145)', () => {
 
   it('stays empty with nothing open, so nothing fires', () => {
     expect(hiddenReminderBody(parseTodo('- [x] Done.\n'))).toBe('')
+  })
+
+  it('counts in the same words as a full reminder', () => {
+    expect(openTasksLine(1)).toBe('1 open task')
+    expect(reminderBody(parseTodo('- [ ] One.\n- [ ] Two.\n')).startsWith(`${openTasksLine(2)}: `)).toBe(true)
   })
 })

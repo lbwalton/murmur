@@ -118,22 +118,39 @@ export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): st
   return `not transcribed: ${reasonText(take)}`
 }
 
-/** The line above the waiting takes. A held take was transcribed, so
- *  the usual line would be false for it, and under 24 hours and Don't
- *  keep a failed take goes too. */
+/** The line above the waiting takes. A held take was transcribed, and so
+ *  was one the log refused, so the usual line would be false for both,
+ *  and under 24 hours and Don't keep a failed take goes too. */
 export function waitingIntro(takes: readonly WaitingTake[], retentionDays: number): string {
   const held = takes.filter((take) => take.loggedAt !== undefined).length
+  const unsaved = takes.filter((take) => take.loggedAt === undefined && take.failure?.kind === 'unlogged').length
+  const failed = takes.length - held - unsaved
   const goes = 'after 24 hours, the next time murmur runs'
   const short = retentionDays === KEEP_24_HOURS || retentionDays === KEEP_NO_TEXT
   const stays = short
     ? `The audio stays on this computer until you retry or discard it, or it goes ${goes}.`
     : 'The audio stays on this computer until you retry or discard it.'
-  if (held === 0) return `Recorded but not transcribed. ${stays}`
+  if (failed === takes.length) return `Recorded but not transcribed. ${stays}`
   if (held === takes.length) {
     return `Transcribed, but the words never reached an app. Retry brings them back from the audio, which stays on this computer and goes ${goes}.`
   }
-  const mixed = 'Some takes were not transcribed, and some never reached an app.'
-  return short ? `${mixed} ${stays}` : `${mixed} ${stays} A take that never reached an app goes ${goes}.`
+  if (unsaved === takes.length) return `Transcribed, but the words could not be saved. Retry sends the audio to your provider again. ${stays}`
+  const parts = [
+    failed > 0 ? 'were not transcribed' : '',
+    held > 0 ? 'never reached an app' : '',
+    unsaved > 0 ? 'were transcribed but could not be saved' : ''
+  ].filter((part) => part !== '')
+  const mixed = parts.length === 3 ? `Some takes ${parts[0]}, some ${parts[1]}, and some ${parts[2]}.` : `Some takes ${parts.join(', and some ')}.`
+  return short || held === 0 ? `${mixed} ${stays}` : `${mixed} ${stays} A take that never reached an app goes ${goes}.`
+}
+
+/** What Home says when a retry delivered nothing. A take the log refused
+ *  was transcribed, so could not transcribe would be false for it. */
+export function retryFailedMessage(kinds: readonly string[]): string {
+  const stays = 'The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.'
+  const unsaved = kinds.filter((kind) => kind === 'unlogged').length
+  if (unsaved === 0) return `Still could not transcribe. ${stays}`
+  return unsaved === kinds.length ? `Transcribed, but the words still could not be saved. ${stays}` : `Still not delivered. ${stays}`
 }
 
 /** What Keep history does at each setting. */
@@ -439,15 +456,15 @@ function WaitingTakes(props: {
     setConfirming(null)
     setCounted(null)
     const done: Array<{ kind: WaitingTake['kind']; location: string }> = []
-    let failed = 0
+    const failures: string[] = []
     for (const id of ids) {
       setBusy(id)
       const result = await bridge().retryTake(id)
       if (result.ok) done.push({ kind: result.kind, location: result.location })
-      else failed += 1
+      else failures.push(result.failure.kind)
     }
     setBusy(null)
-    if (done.length === 1 && failed === 0) {
+    if (done.length === 1 && failures.length === 0) {
       const { kind, location } = done[0]
       setMessage(
         kind === 'note'
@@ -460,10 +477,10 @@ function WaitingTakes(props: {
       )
     } else if (done.length > 0) {
       setMessage(
-        `${done.length} delivered to your log${untilQuitWords}${failed > 0 ? `, ${failed} still waiting` : ''}.`
+        `${done.length} delivered to your log${untilQuitWords}${failures.length > 0 ? `, ${failures.length} still waiting` : ''}.`
       )
     } else {
-      setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.')
+      setMessage(retryFailedMessage(failures))
     }
   }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { keepLine, sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { keepLine, retryFailedMessage, sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -110,6 +110,37 @@ describe('a waiting take', () => {
     expect(waitingIntro([held], 90)).toMatch(/^Transcribed, but the words never reached an app\./)
     expect(waitingIntro([held], 90)).toContain('goes after 24 hours, the next time murmur runs')
     expect(waitingIntro([failed, held], 90)).toMatch(/^Some takes were not transcribed, and some never reached an app\./)
+  })
+
+  it('the intro never says a take the log refused was not transcribed', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const unsaved = take({ kind: 'unlogged', detail: 'x' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    expect(waitingIntro([unsaved], 90)).toBe(
+      'Transcribed, but the words could not be saved. Retry sends the audio to your provider again. The audio stays on this computer until you retry or discard it.'
+    )
+    expect(waitingIntro([unsaved], 1)).toContain('or it goes after 24 hours, the next time murmur runs')
+    expect(waitingIntro([failed, unsaved], 90)).toBe(
+      'Some takes were not transcribed, and some were transcribed but could not be saved. The audio stays on this computer until you retry or discard it.'
+    )
+    expect(waitingIntro([held, unsaved], 90)).toMatch(/^Some takes never reached an app, and some were transcribed but could not be saved\./)
+    expect(waitingIntro([held, unsaved], 90)).toContain('A take that never reached an app goes after 24 hours')
+    expect(waitingIntro([failed, held, unsaved], 90)).toMatch(
+      /^Some takes were not transcribed, some never reached an app, and some were transcribed but could not be saved\./
+    )
+  })
+
+  it('a held take the log refused again keeps its held line', () => {
+    const refused = { ...take({ kind: 'unlogged', detail: 'x' }), loggedAt: 1 }
+    expect(waitingIntro([refused], 90)).toMatch(/^Transcribed, but the words never reached an app\./)
+  })
+
+  it('a retry that fails says what really failed', () => {
+    const stays = 'The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.'
+    expect(retryFailedMessage(['network'])).toBe(`Still could not transcribe. ${stays}`)
+    expect(retryFailedMessage(['unlogged'])).toBe(`Transcribed, but the words still could not be saved. ${stays}`)
+    expect(retryFailedMessage(['unlogged', 'unlogged'])).toMatch(/^Transcribed, /)
+    expect(retryFailedMessage(['network', 'unlogged'])).toBe(`Still not delivered. ${stays}`)
   })
 
   it('says a failed take goes after 24 hours only under the 2 short limits', () => {

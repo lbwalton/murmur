@@ -143,12 +143,17 @@ export function tickLine(text: string, nth: number): TickResult {
   return { ok: false, reason: 'not found' }
 }
 
+/** The count on its own, the same words with or without the items. */
+export function openTasksLine(open: number): string {
+  return `${open} open ${open === 1 ? 'task' : 'tasks'}`
+}
+
 /** One line for a notification: the count, then as much of the next
  *  items as fits. Empty when nothing is open, so nothing fires. */
 export function reminderBody(items: readonly TodoItem[], maxChars = 180): string {
   const open = openItems(items)
   if (open.length === 0) return ''
-  const count = `${open.length} open ${open.length === 1 ? 'task' : 'tasks'}`
+  const count = openTasksLine(open.length)
   const parts: string[] = []
   let used = count.length + 2
   for (const item of open) {
@@ -167,8 +172,7 @@ export function reminderBody(items: readonly TodoItem[], maxChars = 180): string
  *  the items are the person's own dictated words. */
 export function hiddenReminderBody(items: readonly TodoItem[]): string {
   const open = openItems(items).length
-  if (open === 0) return ''
-  return `${open} open ${open === 1 ? 'task' : 'tasks'}`
+  return open === 0 ? '' : openTasksLine(open)
 }
 
 export interface DueReminder {

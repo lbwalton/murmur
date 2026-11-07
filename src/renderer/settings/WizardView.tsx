@@ -17,6 +17,23 @@ import {
 
 const bridge = (): SettingsApi => window.murmur
 
+/** The wizard's practice step. Under Hide words (US-145) there is no box
+ *  to watch, so it does not say to watch one. */
+export function TryStep(props: { settings: Settings }): React.JSX.Element {
+  return (
+    <div className="wizard-body">
+      <h2>Say something.</h2>
+      {!props.settings.history.hideWords && (
+        <p className="dim">
+          Click the box, hold {props.settings.hotkey.binding}, speak a sentence, release. Watch
+          the pill, then watch your words arrive.
+        </p>
+      )}
+      <TryBox settings={props.settings} className="field trybox wizard-try" rows={3} />
+    </div>
+  )
+}
+
 export function WizardView(props: {
   settings: Settings
   onSettings: (settings: Settings) => void
@@ -199,16 +216,7 @@ export function WizardView(props: {
         )}
 
         {step === 'try' && (
-          <div className="wizard-body">
-            <h2>Say something.</h2>
-            {!props.settings.history.hideWords && (
-              <p className="dim">
-                Click the box, hold {props.settings.hotkey.binding}, speak a sentence, release. Watch
-                the pill, then watch your words arrive.
-              </p>
-            )}
-            <TryBox hide={props.settings.history.hideWords} className="field trybox wizard-try" rows={3} />
-          </div>
+          <TryStep settings={props.settings} />
         )}
 
         {step === 'done' && (

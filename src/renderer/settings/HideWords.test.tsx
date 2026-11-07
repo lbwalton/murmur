@@ -8,15 +8,21 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '../../shared/history'
 import { WORDS_HIDDEN } from '../../shared/history'
-import { DEFAULT_SETTINGS } from '../../shared/settings'
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { NotesStatus } from '../../preload/settings'
 import { HIDE_WORDS_LINE, HideWordsRow, REPORT_HIDDEN, TRY_HIDDEN, TakeWords, TryBox } from './HideWords'
 import { LogWords, WhatYouSaid } from './HomeView'
-import { heldLabel, heldPhrase } from './NotesPanel'
+import { HeldLines, heldLabel, heldPhrase, reminderDesc } from './NotesPanel'
 import { ReportTake } from './ReportPanel'
+import { TryStep } from './WizardView'
 import { WrapUpTake } from './WrapUpView'
 
 const WORD = 'zebrafinch'
+
+const withHide = (hideWords: boolean): Settings => ({
+  ...DEFAULT_SETTINGS,
+  history: { ...DEFAULT_SETTINGS.history, hideWords }
+})
 
 const take: SessionEvent = {
   at: 1,
@@ -122,6 +128,42 @@ describe('held lines in the notes panel', () => {
     expect(heldPhrase({ ...line, reason }, false)).toContain(WORD)
     expect(heldPhrase({ ...line, reason }, true)).not.toContain(WORD)
   })
+
+  const rows = (reason: NotesStatus['heldLines'][number]['reason']) => (hide: boolean): React.JSX.Element => (
+    <HeldLines
+      status={{ heldLines: [{ ...line, reason }], lastAction: null } as unknown as NotesStatus}
+      settings={withHide(hide)}
+      acting={null}
+      onAct={() => undefined}
+    />
+  )
+
+  it.each(['same', 'completes', 'done-before'] as const)('renders no word of a held %s row', (reason) => {
+    // A label and a description both carry words, so each is hidden here.
+    const hidden = expectMasked(rows(reason))
+    expect(hidden).toContain('Held: words hidden')
+  })
+
+  it('keeps the buttons, so a held line can still be dealt with', () => {
+    const hidden = renderToStaticMarkup(rows('same')(true))
+    expect(hidden).toContain('File it anyway')
+    expect(hidden).toContain('Skip')
+  })
+})
+
+describe('the Test reminder line', () => {
+  const shown = { outcome: 'shown' as const, body: `1 open task: Feed the ${WORD}.`, open: 1 }
+
+  it('masks on render, so turning Hide words on while it shows takes the words away', () => {
+    expect(reminderDesc(shown, withHide(false))).toContain(WORD)
+    expect(reminderDesc(shown, withHide(true))).toBe('1 open task')
+  })
+
+  it('says the plain lines the same either way', () => {
+    const empty = { outcome: 'empty' as const, body: '', open: 0 }
+    expect(reminderDesc(empty, withHide(true))).toBe(reminderDesc(empty, withHide(false)))
+    expect(reminderDesc(null, withHide(true))).toBe(reminderDesc(null, withHide(false)))
+  })
 })
 
 describe('the Hide words switch', () => {
@@ -150,10 +192,18 @@ describe('the Hide words switch', () => {
 
 describe('the practice box', () => {
   it('is gone, because a disabled box still shows what is in it', () => {
-    const hidden = renderToStaticMarkup(<TryBox hide className="field trybox" rows={2} />)
+    const hidden = renderToStaticMarkup(<TryBox settings={withHide(true)} className="field trybox" rows={2} />)
     expect(hidden).not.toContain('<textarea')
     expect(hidden).toContain(TRY_HIDDEN)
-    expect(renderToStaticMarkup(<TryBox hide={false} className="field trybox" rows={2} />)).toContain('<textarea')
+    expect(renderToStaticMarkup(<TryBox settings={withHide(false)} className="field trybox" rows={2} />)).toContain('<textarea')
+  })
+
+  it('is gone from the wizard too, and the step stops saying to watch it', () => {
+    const hidden = renderToStaticMarkup(<TryStep settings={withHide(true)} />)
+    expect(hidden).not.toContain('<textarea')
+    expect(hidden).not.toContain('watch your words arrive')
+    expect(hidden).toContain(TRY_HIDDEN)
+    expect(renderToStaticMarkup(<TryStep settings={withHide(false)} />)).toContain('<textarea')
   })
 })
 
@@ -163,30 +213,48 @@ describe('TakeWords', () => {
   })
 })
 
-/** Every place the renderer reads dictated words. A new line here is a
- *  new way for words to reach the screen: mask it under Hide words, then
- *  add it to this list. */
+/** Every line in the renderer that names a field dictated words can
+ *  live in. A new line here may be a new way for words to reach the
+ *  screen: mask it under Hide words, then add it to this list. This reads
+ *  names, not meaning, so a field reached through a destructure or a
+ *  helper gets past it; the render tests above are what prove a mask. */
 const WORD_READS: Record<string, string[]> = {
+  'App.tsx': ["const text = String(entry.text ?? '')"], // an expansion the person typed
+  'HideWords.tsx': [
+    'return props.hide ? <p className="log-text dim">{WORDS_HIDDEN}</p> : <p className="log-text">{props.text}</p>'
+  ],
   'HomeView.tsx': [
     'const words = heardWords(props.event.rawText, props.event.finalText)', // shown only when not hidden
+    '{word.removed ? <s className="log-removed">{word.text}</s> : word.text}', // behind props.hide
     '.copyText(props.event.rawText)', // a click, never the page
     '<p className="log-instruction dim">you said: {event.rawText}</p>', // behind !hide
     '<TakeWords text={event.finalText} hide={hide} />',
     'await bridge().copyText(event.finalText)' // a click, never the page
   ],
+  'JourneyView.tsx': ['{tip.text}'], // a belt tip, written by murmur
   'NotesPanel.tsx': [
     "const item = line.match?.text ?? ''", // heldPhrase, behind hide
     "return `Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`", // heldLabel, behind hide
-    '? result.body' // the reminder test, masked in main
+    "if (test.outcome === 'shown') return settings.history.hideWords ? openTasksLine(test.open) : test.body",
+    'line.pieces && line.pieces.length > 1 ? `${line.pieces.length} ${line.label}s, one per item` : `a ${line.label}`', // a count
+    "line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done", // flags
+    "{line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done && (" // flags
   ],
   'ReportPanel.tsx': [
     'const [said, setSaid] = useState(event.rawText)', // the panel never mounts while hidden
     'const [typed, setTyped] = useState(event.finalText)'
   ],
-  'WrapUpView.tsx': ['{event.finalText.length > 0 ? (', '<TakeWords text={event.finalText} hide={hide} />']
+  'WrapUpView.tsx': [
+    '{event.finalText.length > 0 ? (',
+    '<TakeWords text={event.finalText} hide={hide} />',
+    'await bridge().copyText(said.text)' // the day's numbers
+  ],
+  'painting.ts': ['if (says.line) {', 'ctx.fillText(says.line, pad, y)'] // a painting's caption, numbers only
 }
 
-const READS_WORDS = /\b(?:finalText|rawText)\b|\bnote\.line\b|\bline\.(?:text|lead)\b|\.match\?\.text\b|\bresult\.body\b/
+// Colors and fonts share these names and hold no words.
+const READS_WORDS =
+  /\b(?:finalText|rawText)\b|\??\.line\b|\.lead\b|\.pieces\b|\.match\b(?!\()|(?<!\b(?:c|C|ink))\??\.text\b|(?<!\b(?:document|fonts))\??\.body\b/
 
 describe('where the renderer reads dictated words', () => {
   const root = join(__dirname, '..')
@@ -198,7 +266,14 @@ describe('where the renderer reads dictated words', () => {
     expect(files.length).toBeGreaterThan(30)
   })
 
-  it('is exactly the masked list above', () => {
+  it.each(['note?.line', 'lastNote.line', 'line.match.text', 'line.match?.text', 'held.lead', 'event?.rawText', 'test.body'])(
+    'notices %s',
+    (read) => {
+      expect(READS_WORDS.test(read)).toBe(true)
+    }
+  )
+
+  it('is exactly the list above', () => {
     const found: Record<string, string[]> = {}
     for (const file of files) {
       const lines = readFileSync(join(root, file), 'utf8')

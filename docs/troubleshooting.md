@@ -26,6 +26,8 @@ murmur keeps the recording, and it waits on the home tab under **waiting to retr
 
 A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
 
+A take can also wait there after it was transcribed. If murmur could not write the words to your history, for example on a full disk, and they reached no app, the row says transcribed, but its words could not be saved. Only the recording is left, so **retry** sends it to your provider again. If the words still cannot be saved, the take stays listed and the audio stays with it.
+
 What a retry does: it sends the saved audio to your provider with your current settings and runs the same cleanup as a live dictation. Where the words go depends on what you were doing when you spoke:
 
 - **A dictation** lands in your log at the time you spoke it, marked retried. Your clipboard is left alone, so Cmd+V (Ctrl+V on Windows) still pastes whatever you copied before. The app you were typing into no longer has your cursor, so nothing is pasted for you: click where the words belong and press your paste-last shortcut (Settings, Dictation, Paste last dictation), which pastes the retried words, or click **copy** on the entry in the log.
