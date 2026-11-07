@@ -149,6 +149,8 @@ const api = {
   /** Empties the log; answers with how many entries it removed. */
   clearHistory: (): Promise<number> => ipcRenderer.invoke('history:clear'),
   countHistory: (): Promise<number> => ipcRenderer.invoke('history:count'),
+  /** Whether saved words are sealed, for the switch beside Keep history. */
+  getHistorySealStatus: (): Promise<import('../shared/history').SealStatus> => ipcRenderer.invoke('history:sealStatus'),
   /** Today's painting and the four weeks before it (US-098). */
   listPaintings: (): Promise<import('../shared/painting').PaintingBook> => ipcRenderer.invoke('paintings:list'),
   onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {

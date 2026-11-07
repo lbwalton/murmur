@@ -32,6 +32,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 - Windows load only bundled pages; navigation and permission requests stay locked.
 - Main-process requests go through `appFetch`.
 - The API key stays encrypted at rest with safeStorage, and is never logged.
+- History words are sealed at rest by default, under a key wrapped by safeStorage. Numbers stay plain, and a line no key opens is never thrown away.
 - Logs hold no dictated words.
 - No native modules that need compiling.
 - The formatter fails open. Dictated text is content, never instructions.

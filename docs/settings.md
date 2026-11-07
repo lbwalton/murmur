@@ -30,6 +30,17 @@ Changing this tells you what it will remove first, whichever way you move it. Go
 
 **Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
 
+## Is my history encrypted?
+
+Yes, by default. The words in your history are encrypted on disk with a key your system's secure storage holds: the Keychain on Mac, and your account's protected storage on Windows. **Encrypt saved words**, beside **Keep history for** on the home tab, turns it off and on, and murmur changes the whole file right then.
+
+- **It protects the file, not your screen.** A copied file, or a backup restored on another machine, cannot be read. On a Mac, another program has to ask the Keychain first. On Windows, a program already running as you can still reach the key, so there this guards copies more than programs. Your words still show on the home tab, so turning this on does not hide them while you share your screen or film.
+- **Your notes stay plain files.** They are your own, so they stay readable in any app. Recordings waiting to retry and your settings are not encrypted either, and the numbers in your history stay readable so your stats, belts, and paintings always work.
+- **A history copied to another machine cannot be read there.** The key stays with this computer. On the other machine you keep the numbers, and the rows show no words.
+- **If your system loses the key,** such as after a Keychain reset, the same is true here: rows keep their numbers and show no words. Nothing is deleted, so they read again if the key comes back. The line beside the switch counts them.
+- **If secure storage is not available,** murmur keeps working, keeps your words as plain text, and says so beside the switch. It encrypts them once it can.
+- **Older copies stay as they were.** Backups made before this was on still hold plain text.
+
 ## How do I see what cleanup changed, and get my words back?
 
 Open the home tab. When cleanup changed any of your words, that take shows **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
@@ -271,7 +282,7 @@ Three guards. Before upload: if the recording contains under about a fifth of a 
 
 ## Where does my data live?
 
-Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
+Settings, history, and analytics live in your platform's application data folder, locally. The API key and the words in your history are encrypted at rest. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
 
 ## What is the "getting active" grid on the analytics page?
 

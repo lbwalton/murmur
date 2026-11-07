@@ -101,6 +101,9 @@ export interface Settings {
   }
   history: {
     retentionDays: number
+    /** Seal the words in history.jsonl (US-138). It protects the file on
+     *  disk: words still show on Home. */
+    encrypt: boolean
   }
   recap: {
     enabled: boolean
@@ -286,7 +289,8 @@ export const DEFAULT_SETTINGS: Settings = {
     volume: 0.5
   },
   history: {
-    retentionDays: 90
+    retentionDays: 90,
+    encrypt: true
   },
   recap: {
     enabled: false,

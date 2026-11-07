@@ -6,6 +6,8 @@
 // continues unbroken. The encrypted API key does NOT migrate: dev and
 // packaged apps hold different OS keychain identities, so the blob
 // cannot decrypt across them and the key is re-entered once instead.
+// History's key stays behind for the same reason: sealed lines carry
+// over as numbers, with their words unreadable (US-138).
 import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 

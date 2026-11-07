@@ -9,6 +9,7 @@ import { sectionFor } from '../../shared/changelog'
 import {
   KEEP_24_HOURS,
   KEEP_NO_TEXT,
+  type SealStatus,
   type SessionEvent,
   countsTowardStats,
   dayKey,
@@ -26,6 +27,7 @@ import { PageTitle, useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
+import { Switch } from './controls'
 import { ProMark } from './ProMark'
 import { ReportPanel } from './ReportPanel'
 
@@ -241,6 +243,20 @@ export function shorterKeepQuestion(retentionDays: number, takes: number, record
       ? ' Their numbers go too, so your totals drop.'
       : ''
   return `This removes ${parts.join(' and ')} now, and it cannot be undone.${numbers}`
+}
+
+/** What the Encrypt saved words switch means right now (US-138). It
+ *  protects the file on disk, not the screen, and says so. */
+export function sealLine(status: SealStatus): string {
+  const base =
+    status.state === 'sealed'
+      ? 'Saved words are encrypted on disk with a key only this computer holds, so a copied history cannot be read on another machine. This protects the file, not your screen: your words still show here. Notes stay plain files.'
+      : status.state === 'unavailable'
+        ? "This computer's secure storage is not available, so saved words stay as plain text. murmur encrypts them once it is."
+        : "Saved words are plain text in murmur's data folder, so other programs and backups can read them. Notes stay plain files."
+  const unreadable = status.unreadable > 0 ? ` ${entries(status.unreadable)} cannot be read on this computer, so ${status.unreadable === 1 ? 'it shows' : 'they show'} numbers only.` : ''
+  const pending = status.pending > 0 ? ` ${entries(status.pending)} could not be encrypted yet. murmur tries again the next time it starts.` : ''
+  return `${base}${unreadable}${pending}`
 }
 
 /** The words as heard, with what cleanup removed struck through (US-128).
@@ -646,6 +662,12 @@ export function HomeView(props: {
 
   useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
 
+  const [sealStatus, setSealStatus] = useState<SealStatus | null>(null)
+  const encrypt = props.settings.history.encrypt
+  useEffect(() => {
+    void bridge().getHistorySealStatus().then(setSealStatus)
+  }, [encrypt, cleared])
+
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
   useEffect(() => {
@@ -854,6 +876,19 @@ export function HomeView(props: {
               >
                 Clear all
               </button>
+            </div>
+          </div>
+          <div className="row">
+            <div className="row-text">
+              <div className="row-label">Encrypt saved words</div>
+              <div className="row-desc">{sealStatus ? sealLine(sealStatus) : ''}</div>
+            </div>
+            <div className="row-control inline">
+              <Switch
+                checked={encrypt}
+                label="Encrypt saved words"
+                onChange={(next) => void props.onUpdateSettings({ history: { encrypt: next } } as Partial<Settings>)}
+              />
             </div>
           </div>
           {keepAsk !== null && (

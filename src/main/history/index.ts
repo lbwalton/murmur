@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // History wiring: userData path, IPC for the home view, live append
 // notifications to the settings window, retention pruning, smoke.
-import { type BrowserWindow, app } from 'electron'
+import { type BrowserWindow, app, safeStorage } from 'electron'
 import { ipc } from '../ipc'
 import {
   HELD_RECORDING_MS,
@@ -19,6 +19,24 @@ import { getSettings, onSettingsChanged } from '../settings'
 import { registerSmokeCheck } from '../smoke'
 import { clearPaintings, initPaintings, syncPaintingsWith } from '../paintings'
 import { HistoryLog } from './log'
+import { type KeyWrap, WordSeal } from './seal'
+
+const keyWrap: KeyWrap = {
+  available: () => safeStorage.isEncryptionAvailable(),
+  encrypt: (plain) => safeStorage.encryptString(plain),
+  decrypt: (wrapped) => safeStorage.decryptString(wrapped)
+}
+
+// No seal means sealed lines read as numbers and new words stay plain,
+// which Settings reports. It never stops history from starting.
+function openSeal(dir: string): WordSeal | null {
+  try {
+    return new WordSeal(dir, keyWrap)
+  } catch (error) {
+    console.error('[murmur] could not open the history keys:', error)
+    return null
+  }
+}
 
 let log: HistoryLog | null = null
 let getTargetWindow: (() => BrowserWindow | null) | null = null
@@ -29,7 +47,7 @@ let memoryOnly: SessionEvent | null = null
 
 // Everything that measures speech reads this, never the raw log.
 function statsEvents(): SessionEvent[] {
-  return (log?.readAll() ?? []).filter(countsTowardStats)
+  return (log?.readNumbers() ?? []).filter(countsTowardStats)
 }
 
 const RETENTION_CHECK_MS = 15 * 60 * 1000
@@ -284,7 +302,19 @@ export function readStatsHistory(): SessionEvent[] {
 
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
-  log = new HistoryLog(app.getPath('userData'))
+  const dir = app.getPath('userData')
+  log = new HistoryLog(dir, openSeal(dir))
+  let lastEncrypt = getSettings().history.encrypt
+  // A failure leaves the file as it was: murmur keeps working, the words
+  // stay readable, and Settings counts the lines still waiting.
+  const followSwitch = (): void => {
+    try {
+      log?.setSealing(lastEncrypt)
+    } catch (error) {
+      console.error('[murmur] could not change how history is stored:', error)
+    }
+  }
+  followSwitch()
   let lastRetention = getSettings().history.retentionDays
   const applyShortLimit = (): void => {
     void pruneRecordings(lastRetention)
@@ -305,6 +335,10 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
   onSettingsChanged((settings) => {
+    if (settings.history.encrypt !== lastEncrypt) {
+      lastEncrypt = settings.history.encrypt
+      followSwitch()
+    }
     if (settings.history.retentionDays !== lastRetention) {
       lastRetention = settings.history.retentionDays
       if (log) syncPaintingsWith(log.readAll())
@@ -322,6 +356,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   }, RETENTION_CHECK_MS).unref()
 
   ipc.handle('history:list', () => withSessionWords(log?.readAll().slice(-500) ?? []))
+  ipc.handle('history:sealStatus', () => log?.sealStatus() ?? { state: 'plain', unreadable: 0, pending: 0 })
   // What a shorter Keep history would remove, for its question (US-137).
   ipc.handle('history:keepImpact', async (_event, retentionDays: unknown) => {
     if (typeof retentionDays !== 'number') return { takes: 0, recordings: 0 }
@@ -400,6 +435,63 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const { evaluateAchievements } = await import('../../shared/achievements')
     const defs = (await import('../../../shared/achievements.json')).default
     return evaluateAchievements(statsEvents(), defs as never)
+  })
+
+  registerSmokeCheck('historySealed', async () => {
+    // A throwaway folder and the real secure storage: words are unreadable
+    // on disk and read back, the switch goes both ways, and a lost key
+    // leaves the numbers and every sealed line in place (US-138).
+    if (!safeStorage.isEncryptionAvailable()) return false
+    const { mkdtempSync, readFileSync, rmSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const scratch = mkdtempSync(join(tmpdir(), 'murmur-seal-'))
+    try {
+      const marked = 'smoke sealed words probe'
+      const take = (at: number): SessionEvent => ({ at, durationMs: 1000, rawText: marked, finalText: marked, words: 4, wpm: 240 })
+      const file = join(scratch, 'history.jsonl')
+      const onDisk = (): string => readFileSync(file, 'utf8')
+      const fresh = (): HistoryLog => new HistoryLog(scratch, new WordSeal(scratch, keyWrap))
+
+      new HistoryLog(scratch).append(take(1))
+      const sealedLog = fresh()
+      sealedLog.setSealing(true)
+      sealedLog.append(take(2))
+      const migrated = !onDisk().includes(marked) && sealedLog.readAll().every((event) => event.finalText === marked)
+
+      sealedLog.applyRetention(KEEP_NO_TEXT, () => 3)
+      const scrubbed = sealedLog.readAll().every((event) => event.finalText === '' && event.words === 4)
+      sealedLog.clear()
+      sealedLog.append(take(4))
+      sealedLog.append({ ...take(5), at: Date.now() })
+      sealedLog.prune(1)
+      const pruned = sealedLog.readAll().length === 1
+
+      sealedLog.setSealing(false)
+      const opened = onDisk().includes(marked)
+      sealedLog.setSealing(true)
+      const closed = !onDisk().includes(marked) && sealedLog.readAll()[0]?.finalText === marked
+
+      rmSync(join(scratch, 'history-keys.json'))
+      const before = onDisk()
+      const lost = fresh()
+      lost.setSealing(true)
+      lost.applyRetention(0)
+      const numbersStay = lost.readAll()[0]?.words === 4 && lost.readAll()[0]?.finalText === ''
+      const keptSealed = onDisk() === before && lost.sealStatus().unreadable === 1
+
+      const started = performance.now()
+      for (let at = 0; at < 1000; at += 1) sealedLog.append(take(at))
+      const fast = performance.now() - started < 1000
+
+      const passed = migrated && scrubbed && pruned && opened && closed && numbersStay && keptSealed && fast
+      if (!passed) {
+        console.error(`smoke historySealed: ${JSON.stringify({ migrated, scrubbed, pruned, opened, closed, numbersStay, keptSealed, fast })}`)
+      }
+      return passed
+    } finally {
+      rmSync(scratch, { recursive: true, force: true })
+    }
   })
 
   registerSmokeCheck('keepNoText', async () => {

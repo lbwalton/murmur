@@ -235,7 +235,7 @@ function privacy(links, supportEmail) {
         q: 'How long is each kind of record kept?',
         a: ['Each kind of record has a period or a plain rule:'],
         points: [
-          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time. Don\'t keep saves no words to disk: they stay in memory until you quit, and notes still land in your notes folder. A take that never reached an app keeps its recording for up to 24 hours, so it can be retried.']],
+          ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time. Don\'t keep saves no words to disk: they stay in memory until you quit, and notes still land in your notes folder. A take that never reached an app keeps its recording for up to 24 hours, so it can be retried. Saved words are encrypted on disk by default, under a key this device holds, so a copy cannot be read on another machine.']],
           ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours at the latest.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
           ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
@@ -313,7 +313,7 @@ function security(links, supportEmail) {
       {
         q: 'What is stored, and where?',
         a: [
-          'History, settings, notes, and recordings waiting for a retry stay on the device. Transcripts in history are not encrypted by murmur, so they are protected by the device itself. Keep history sets how long they stay, down to not saving any words at all. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
+          'History, settings, notes, and recordings waiting for a retry stay on the device. The words in history are encrypted on disk by default, under a key held by the system\'s secure storage, and a switch beside Keep history turns that off. Notes stay plain files, and recordings and settings are protected by the device itself. Keep history sets how long they stay, down to not saving any words at all. Purchase records are kept by Eze Media LLC and Stripe, or by Apple on iPhone.'
         ]
       },
       {

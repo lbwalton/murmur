@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { sealLine, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -9,6 +9,29 @@ describe('clear all', () => {
       'Clear all 1,204 entries from your history? This cannot be undone. Your stats, time back, and belt progress are counted from your history, so they start over. Note files stay in your notes folder.'
     )
     expect(clearAllQuestion(1)).toMatch(/^Clear the 1 entry in your history\? /)
+  })
+})
+
+describe('the Encrypt saved words line', () => {
+  const status = { state: 'sealed', unreadable: 0, pending: 0 } as const
+
+  it('says it protects the file and not the screen, and that notes stay plain', () => {
+    expect(sealLine(status)).toContain('This protects the file, not your screen')
+    expect(sealLine(status)).toContain('Notes stay plain files.')
+  })
+
+  it('says so when secure storage is not available', () => {
+    expect(sealLine({ ...status, state: 'unavailable' })).toMatch(/^This computer's secure storage is not available/)
+  })
+
+  it('says what off means', () => {
+    expect(sealLine({ ...status, state: 'plain' })).toMatch(/^Saved words are plain text/)
+  })
+
+  it('counts entries it cannot read and entries still waiting', () => {
+    expect(sealLine({ ...status, unreadable: 1 })).toContain('1 entry cannot be read on this computer, so it shows numbers only.')
+    expect(sealLine({ ...status, unreadable: 2 })).toContain('2 entries cannot be read on this computer, so they show numbers only.')
+    expect(sealLine({ ...status, pending: 3 })).toContain('3 entries could not be encrypted yet.')
   })
 })
 

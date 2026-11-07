@@ -211,4 +211,9 @@ describe('sanitized entry lists', () => {
     expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 'big' }).windowZoom).toBe(1)
     expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 40 }).windowZoom).toBe(3)
   })
+
+  it('turns encrypted history on for settings saved before it existed, and keeps an off', () => {
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { retentionDays: 30 } }).history).toEqual({ retentionDays: 30, encrypt: true })
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { encrypt: false } }).history.encrypt).toBe(false)
+  })
 })

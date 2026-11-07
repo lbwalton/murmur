@@ -34,6 +34,15 @@ export interface SessionEvent {
   instructionWords?: number
 }
 
+/** What the switch beside Keep history reports (US-138). */
+export interface SealStatus {
+  state: 'sealed' | 'plain' | 'unavailable'
+  /** Sealed lines no key here can open. They read as numbers only. */
+  unreadable: number
+  /** Lines with words not sealed yet, after a sealing that failed. */
+  pending: number
+}
+
 /** The Keep history values with their own meaning (US-137). Every other
  *  value is days, after which a whole entry goes. */
 export const KEEP_FOREVER = 0
