@@ -10,7 +10,7 @@ import { getApiKey, getSettings } from '../settings'
 import { appFetch } from '../net'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { type TranscribeResult, clearFormatMemo, transcribe, uploadTimeoutMs } from './provider'
-import { type TakeKind, type TakeRecord, saveRecovery } from './recovery'
+import { type TakeKind, type TakeRecord, type WordsInMemory, saveRecovery } from './recovery'
 
 export const SMOKE_TRANSCRIPT = 'smoke transcript from the mock provider'
 
@@ -26,11 +26,19 @@ export function setRecoveryListener(listener: () => void): void {
   onRecoverySaved = listener
 }
 
+/** How the cap learns which held takes still have their words in memory
+ *  (set by the retry subsystem; a hook for the same reason). */
+let wordsInMemory: WordsInMemory = () => false
+export function setWordsInMemoryCheck(check: WordsInMemory): void {
+  wordsInMemory = check
+}
+
 /** Keep a take's audio on the home tab's waiting list, with what it
- *  was and why it waits, and tell the list. Returns the WAV's path.
- *  Throws when the folder cannot be written; callers decide. */
-export function saveTakeForRetry(wav: Uint8Array, take: TakeRecord): string {
-  const file = saveRecovery(wav, recoveryDir(), { take })
+ *  was and why it waits, and tell the list. Returns the WAV's path, or
+ *  null when the cap took it straight back. Throws when the folder
+ *  cannot be written; callers decide. */
+export function saveTakeForRetry(wav: Uint8Array, take: TakeRecord): string | null {
+  const file = saveRecovery(wav, recoveryDir(), { take, wordsInMemory })
   onRecoverySaved()
   return file
 }
@@ -51,8 +59,7 @@ export async function transcribeWav(
   const save = (failure: { kind: string; detail: string }): boolean => {
     if (recover === false) return false
     try {
-      saveTakeForRetry(wav, { ...recover, failure })
-      return true
+      return saveTakeForRetry(wav, { ...recover, failure }) !== null
     } catch (error) {
       console.error('[murmur] recovery save failed:', error)
       return false

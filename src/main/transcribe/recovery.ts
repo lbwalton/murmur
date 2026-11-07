@@ -45,6 +45,9 @@ export interface WaitingTake {
   loggedAt?: number
 }
 
+/** Whether a held take's words are still in memory, by its logged entry. */
+export type WordsInMemory = (loggedAt: number) => boolean
+
 const ID = /^recovery-(\d{10,16})$/
 
 function wavPath(dir: string, id: string): string {
@@ -58,34 +61,42 @@ function recordPath(dir: string, id: string): string {
 }
 
 /** Save a WAV (and, for a live take, its record) into the recovery
- *  folder. Returns the WAV's path. */
+ *  folder. Returns the WAV's path, or null when the cap took it back. */
 export function saveRecovery(
   wav: Uint8Array,
   dir: string,
-  options: { now?: () => number; take?: TakeRecord } = {}
-): string {
+  options: { now?: () => number; take?: TakeRecord; wordsInMemory?: WordsInMemory } = {}
+): string | null {
   mkdirSync(dir, { recursive: true })
   const id = `recovery-${(options.now ?? Date.now)()}`
   const file = wavPath(dir, id)
   writeFileSync(file, wav)
   if (options.take) writeFileSync(recordPath(dir, id), JSON.stringify(options.take))
-  pruneRecovery(dir)
-  return file
+  pruneRecovery(dir, options.wordsInMemory)
+  return existsSync(file) ? file : null
 }
 
 /** Keep only the newest RECOVERY_KEEP takes (names sort by timestamp),
- *  and drop any record whose audio is gone. Over the cap, held takes go
- *  first: their words were transcribed, and a failed take's audio is
- *  its only copy. */
-export function pruneRecovery(dir: string): void {
+ *  and drop any record whose audio is gone. Over the cap the oldest go,
+ *  except that a held take goes first while its words are in memory,
+ *  since then its recording is a spare. After a quit it is the only
+ *  copy, the same as any other take. */
+export function pruneRecovery(dir: string, wordsInMemory: WordsInMemory = () => false): void {
   const names = readdirSync(dir)
   const takes = names
     .filter((name) => /^recovery-\d+\.wav$/.test(name))
     .map((name) => name.slice(0, -'.wav'.length))
     .sort()
   const over = Math.max(0, takes.length - RECOVERY_KEEP)
-  const held = new Set(over > 0 ? takes.filter((id) => readRecord(dir, id)?.loggedAt !== undefined) : [])
-  const dropped = new Set([...held, ...takes.filter((id) => !held.has(id))].slice(0, over))
+  const spare = new Set(
+    over === 0
+      ? []
+      : takes.filter((id) => {
+          const loggedAt = readRecord(dir, id)?.loggedAt
+          return loggedAt !== undefined && wordsInMemory(loggedAt)
+        })
+  )
+  const dropped = new Set([...spare, ...takes.filter((id) => !spare.has(id))].slice(0, over))
   const kept = new Set(takes.filter((id) => !dropped.has(id)))
   for (const name of names) {
     const match = /^(recovery-\d+)\.(wav|json)$/.exec(name)

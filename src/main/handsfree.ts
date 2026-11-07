@@ -23,6 +23,7 @@ import {
   dictationLocked,
   dictationPark,
   dictationStop,
+  lastTakeHeld,
   liveSessionKind
 } from './dictation'
 import {
@@ -36,7 +37,8 @@ import {
   failedNotice,
   parkNotice,
   retryNotice,
-  stopNotice
+  stopNotice,
+  unfiledNotice
 } from './handsfree-rules'
 import { getHotkeysStatus, resetHandsFreeGestures, smokeHotkeyEvent } from './hotkeys'
 import type { KeyEventLike } from './hotkeys/binding'
@@ -249,7 +251,8 @@ export async function handsFreeAutoStop(reason: StopReason): Promise<void> {
   // A take with no speech in it says nothing: the pill already did. A
   // lost take says so, since nobody was watching the pill.
   const untilQuit = getSettings().history.retentionDays === KEEP_NO_TEXT
-  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, ...pasteChord(), untilQuit))
+  if (outcome === 'delivered') notify(stopNotice(reason, take.kind, ...pasteChord(), untilQuit, lastTakeHeld()))
+  else if (outcome === 'logged') notify(unfiledNotice(reason, untilQuit, lastTakeHeld()))
   else if (outcome === 'retry') notify(retryNotice(reason))
   else if (outcome === 'failed') notify(failedNotice(reason))
 }

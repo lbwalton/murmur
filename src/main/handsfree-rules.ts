@@ -85,9 +85,10 @@ export function stopNotice(
   kind: 'dictation' | 'note',
   pasteLastBinding: string,
   pasteArmed: boolean,
-  untilQuit = false
+  untilQuit = false,
+  held = false
 ): { title: string; body: string } {
-  const until = untilQuit ? ' until you quit murmur, and the recording goes after 24 hours' : ''
+  const until = wordsLast(untilQuit, held)
   const words =
     pasteLastBinding && pasteArmed
       ? `Your words are in history${until}. Press ${pasteLastBinding} to paste them.`
@@ -98,6 +99,17 @@ export function stopNotice(
 
 /** The notification for a take that stopped on its own but could not
  *  be transcribed: why, then where it waits. */
+/** How long words in history last, for a notice to say. */
+function wordsLast(untilQuit: boolean, held: boolean): string {
+  if (!untilQuit) return ''
+  return held ? ' until you quit murmur, and the recording goes after 24 hours' : ' until you quit murmur'
+}
+
+/** The note file failed, and history has the words. */
+export function unfiledNotice(reason: StopReason, untilQuit = false, held = false): { title: string; body: string } {
+  return { title: TITLE, body: `${STOPPED[reason]}The note could not be filed. Your words are in history${wordsLast(untilQuit, held)}.` }
+}
+
 export function retryNotice(reason: StopReason): { title: string; body: string } {
   return { title: TITLE, body: `${STOPPED[reason]}${RETRY}` }
 }

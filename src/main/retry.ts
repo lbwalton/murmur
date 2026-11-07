@@ -9,9 +9,9 @@
 import { type BrowserWindow, clipboard } from 'electron'
 import { ipc } from './ipc'
 import { deliverRetried } from './dictation'
-import { heldTakeSaved, readHistory } from './history'
+import { heldTakeSaved, readHistory, wordsInMemory } from './history'
 import { isSmoke, registerSmokeCheck } from './smoke'
-import { recoveryDir, setRecoveryListener, transcribeWav } from './transcribe'
+import { recoveryDir, setRecoveryListener, setWordsInMemoryCheck, transcribeWav } from './transcribe'
 import {
   type WaitingTake,
   getRecovery,
@@ -123,6 +123,7 @@ const asId = (value: unknown): string | null =>
 export function initRetry(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   setRecoveryListener(notifyChanged)
+  setWordsInMemoryCheck(wordsInMemory)
 
   ipc.handle('recovery:list', () => listRecovery(recoveryDir()))
   ipc.handle('recovery:retry', (_event, id: unknown) => {

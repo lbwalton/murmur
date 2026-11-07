@@ -12,12 +12,16 @@ const stage = vi.hoisted(() => ({
   settings: { history: { retentionDays: 90, encrypt: true }, timeBack: { typingWpm: 40 } },
   listeners: [] as Array<(settings: { history: { retentionDays: number; encrypt: boolean } }) => void>,
   handlers: new Map<string, unknown>(),
-  retrying: new Set<string>()
+  retrying: new Set<string>(),
+  readPaintings: (() => []) as () => unknown[],
+  userData: null as string | null
 }))
+
+const mocks = vi.hoisted(() => ({ writeAppLog: vi.fn() }))
 
 vi.mock('electron', () => ({
   Notification: { isSupported: () => false },
-  app: { getPath: () => stage.dir },
+  app: { getPath: () => stage.userData ?? stage.dir },
   safeStorage: {
     isEncryptionAvailable: () => true,
     encryptString: (plain: string) => Buffer.from(plain),
@@ -30,10 +34,16 @@ vi.mock('../settings', () => ({
   onSettingsChanged: (listener: (typeof stage.listeners)[number]) => stage.listeners.push(listener)
 }))
 vi.mock('../smoke', () => ({ isSmoke: true, registerSmokeCheck: vi.fn() }))
-vi.mock('../paintings', () => ({ clearPaintings: vi.fn(), initPaintings: vi.fn(), syncPaintingsWith: vi.fn() }))
+vi.mock('../paintings', () => ({
+  clearPaintings: vi.fn(),
+  initPaintings: (read: () => unknown[]) => {
+    stage.readPaintings = read
+  },
+  syncPaintingsWith: vi.fn()
+}))
 vi.mock('../transcribe', () => ({ recoveryDir: () => join(stage.dir, 'recovery') }))
 vi.mock('../retry', () => ({ isRetrying: (id: string) => stage.retrying.has(id), recoveryChanged: vi.fn() }))
-vi.mock('../window-watch', () => ({ writeAppLog: vi.fn() }))
+vi.mock('../window-watch', () => ({ writeAppLog: mocks.writeAppLog }))
 vi.mock('../timeback', () => ({ sessionLanded: vi.fn() }))
 vi.mock('../notes/receipt', () => ({ forgetLastNote: vi.fn(), scrubLastNoteLine: vi.fn() }))
 
@@ -71,6 +81,8 @@ beforeEach(() => {
   stage.dir = mkdtempSync(join(tmpdir(), 'murmur-history-index-'))
   stage.settings.history = { retentionDays: 90, encrypt: true }
   stage.retrying.clear()
+  stage.userData = null
+  mocks.writeAppLog.mockClear()
 })
 
 // Launch starts checks that finish later, and one left running would
@@ -122,6 +134,61 @@ describe('recordSession', () => {
   })
 })
 
+describe('reading only numbers', () => {
+  it('stats, paintings, and the entry count open nothing', async () => {
+    const { readStatsHistory, recordSession } = await launch()
+    recordSession(take)
+    const { WordSeal } = await import('./seal')
+    const open = vi.spyOn(WordSeal.prototype, 'open')
+    expect(readStatsHistory()).toHaveLength(1)
+    expect(stage.readPaintings()).toHaveLength(1)
+    expect((stage.handlers.get('history:count') as () => number)()).toBe(1)
+    expect(open).not.toHaveBeenCalled()
+  })
+})
+
+describe("this session's words under Don't keep", () => {
+  it('lets the oldest go past the cap of 200', async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const { readHistory, recordSession } = await launch()
+    for (let i = 0; i < 201; i += 1) recordSession({ ...take, at: NOW + i })
+    const words = readHistory().map((event) => event.finalText)
+    expect(words[0]).toBe('')
+    expect(words[1]).toBe('The marked words.')
+    expect(words[200]).toBe('The marked words.')
+  })
+
+  it('stop showing and pasting past the cutoff when Keep history moves to 24 hours', async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const { eventToPaste, readHistory, recordSession, wordsInMemory } = await launch()
+    vi.spyOn(Date, 'now').mockReturnValue(NOW)
+    recordSession({ ...take, at: NOW - 2 * DAY })
+    recordSession({ ...take, at: NOW - 1000 })
+    stage.settings.history.retentionDays = 1
+    expect(readHistory().map((event) => event.finalText)).toEqual(['', 'The marked words.'])
+    expect(wordsInMemory(NOW - 2 * DAY)).toBe(false)
+    recordSession({ ...take, at: NOW - 500, finalText: '' })
+    expect(eventToPaste()?.finalText).not.toBe('The marked words.')
+  })
+
+  it("stay for as long as Don't keep stays, however old they get", async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const { readHistory, recordSession } = await launch()
+    vi.spyOn(Date, 'now').mockReturnValue(NOW)
+    recordSession({ ...take, at: NOW - 2 * DAY })
+    expect(readHistory()[0].finalText).toBe('The marked words.')
+  })
+
+  it('answers whether a held take still has its words here', async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const first = await launch()
+    first.recordSession(take)
+    expect(first.wordsInMemory(NOW)).toBe(true)
+    const second = await launch()
+    expect(second.wordsInMemory(NOW)).toBe(false)
+  })
+})
+
 describe('a held take retried', () => {
   it('goes back on its own entry and counts once', async () => {
     stage.settings.history.retentionDays = KEEP_NO_TEXT
@@ -143,6 +210,29 @@ describe('a held take retried', () => {
     expect(eventToPaste()?.at).toBe(NOW + 1000)
     logWords({ ...take, rawText: 'said again', finalText: 'Said again.' }, event?.at)
     expect(eventToPaste()).toMatchObject({ at: NOW, finalText: 'Said again.' })
+  })
+
+  it('gives way to a memory-only entry too', async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const { eventToPaste, logWords, recordSession } = await launch()
+    const event = recordSession(take)
+    recordSession({ ...take, at: NOW + 1000, rawText: 'newer', finalText: 'Newer.' })
+    logWords({ ...take, rawText: 'said again', finalText: 'Said again.' }, event?.at)
+    recordSession({ ...take, at: NOW + 2000, rawText: 'only here', finalText: 'Only here.', persist: false })
+    expect(eventToPaste()?.finalText).toBe('Only here.')
+  })
+
+  it('leaves its session words in place when the file could not take the new ones', async () => {
+    stage.settings.history.retentionDays = KEEP_NO_TEXT
+    const { logWords, readHistory, recordSession } = await launch()
+    const event = recordSession(take)
+    stage.settings.history.retentionDays = 30
+    const { HistoryLog } = await import('./log')
+    vi.spyOn(HistoryLog.prototype, 'fillWords').mockImplementationOnce(() => {
+      throw new Error('disk full')
+    })
+    expect(() => logWords({ ...take, rawText: 'said again', finalText: 'Said again.' }, event?.at)).toThrow('disk full')
+    expect(readHistory()[0].finalText).toBe('The marked words.')
   })
 
   it('gives way to the next take that lands', async () => {
@@ -224,11 +314,52 @@ describe('starting', () => {
     expect(stage.handlers.has('history:list')).toBe(true)
   })
 
-  it('still registers every handler when the log cannot be read', async () => {
+  it('a log that cannot be read reads as no stats, with a line in the log and no throw', async () => {
     mkdirSync(file())
-    await launch()
-    expect(stage.handlers.has('history:list')).toBe(true)
+    const lines = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { readStatsHistory } = await launch()
+    expect(readStatsHistory()).toEqual([])
     expect(stage.handlers.has('history:clear')).toBe(true)
+    expect(lines).toHaveBeenCalledWith('[murmur] could not read the log for stats: EISDIR')
+  })
+
+  it('a failed rewrite on a Keep history change skips nothing and throws nothing', async () => {
+    const { recordSession } = await launch()
+    recordSession(take)
+    rmSync(file())
+    mkdirSync(file())
+    const later = vi.fn()
+    stage.listeners.push(later)
+    stage.settings.history.retentionDays = 30
+    expect(() => {
+      for (const listener of stage.listeners) listener(stage.settings)
+    }).not.toThrow()
+    expect(later).toHaveBeenCalled()
+    await vi.waitFor(() => expect(mocks.writeAppLog).toHaveBeenCalledWith(expect.stringContaining('could not apply Keep history')))
+    expect(mocks.writeAppLog.mock.calls.flat().join(' ')).not.toContain('marked')
+  })
+
+  it('a failed rewrite on the 15 minute check throws nothing', async () => {
+    stage.settings.history.retentionDays = 1
+    const intervals = vi.spyOn(globalThis, 'setInterval')
+    await launch()
+    mkdirSync(file(), { recursive: true })
+    const fifteenMinutes = intervals.mock.calls.filter(([, ms]) => ms === 15 * 60 * 1000)
+    expect(fifteenMinutes.length).toBeGreaterThan(0)
+    expect(() => {
+      for (const [tick] of fifteenMinutes) (tick as () => void)()
+    }).not.toThrow()
+    await vi.waitFor(() => expect(mocks.writeAppLog).toHaveBeenCalledWith(expect.stringContaining('could not apply Keep history')))
+  })
+
+  it('held recordings still go when history fails to start', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW)
+    const pastDue = saveTake(NOW - DAY - 1, { failure: { kind: 'held', detail: 'idle' }, loggedAt: NOW - DAY })
+    const blocked = join(stage.dir, 'a-file')
+    writeFileSync(blocked, '')
+    stage.userData = blocked
+    await expect(launch()).rejects.toThrow()
+    await vi.waitFor(() => expect(existsSync(pastDue)).toBe(false))
   })
 
   it('follows the switch while running', async () => {

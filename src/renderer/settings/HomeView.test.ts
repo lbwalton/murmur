@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { keepLine, sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -106,10 +106,32 @@ describe('a waiting take', () => {
   it('the intro never says a held take was not transcribed', () => {
     const failed = take({ kind: 'auth', detail: '' })
     const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
-    expect(waitingIntro([failed])).toMatch(/^Recorded but not transcribed\./)
-    expect(waitingIntro([held])).toMatch(/^Transcribed, but the words never reached an app\./)
-    expect(waitingIntro([held])).toContain('goes after 24 hours, the next time murmur runs')
-    expect(waitingIntro([failed, held])).toMatch(/^Some takes were not transcribed, and some never reached an app\./)
+    expect(waitingIntro([failed], 90)).toMatch(/^Recorded but not transcribed\./)
+    expect(waitingIntro([held], 90)).toMatch(/^Transcribed, but the words never reached an app\./)
+    expect(waitingIntro([held], 90)).toContain('goes after 24 hours, the next time murmur runs')
+    expect(waitingIntro([failed, held], 90)).toMatch(/^Some takes were not transcribed, and some never reached an app\./)
+  })
+
+  it('says a failed take goes after 24 hours only under the 2 short limits', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    for (const short of [-1, 1]) {
+      expect(waitingIntro([failed], short)).toContain('or it goes after 24 hours, the next time murmur runs')
+      expect(waitingIntro([failed, held], short)).toContain('or it goes after 24 hours, the next time murmur runs')
+    }
+    for (const long of [30, 90, 365, 0]) {
+      expect(waitingIntro([failed], long)).toBe('Recorded but not transcribed. The audio stays on this computer until you retry or discard it.')
+      expect(waitingIntro([failed, held], long)).toContain('A take that never reached an app goes after 24 hours')
+    }
+  })
+
+  it('Keep history says what each setting really does', () => {
+    expect(keepLine(-1)).toContain('No words are saved to disk')
+    expect(keepLine(1)).toContain('Words go after 24 hours')
+    expect(keepLine(0)).toContain('Entries stay until you clear them')
+    for (const days of [30, 90, 365]) expect(keepLine(days)).toContain('Older entries are removed automatically, with their numbers')
+    expect(keepLine(0)).not.toContain('Older entries')
+    expect(keepLine(1)).not.toContain('Older entries')
   })
 
   it('a hands-free take parked on sleep or quit says when it was saved', () => {

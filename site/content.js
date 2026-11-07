@@ -236,7 +236,7 @@ function privacy(links, supportEmail) {
         a: ['Each kind of record has a period or a plain rule:'],
         points: [
           ['Your history.', ['On your device, for as long as you set under Keep history, and you can clear it any time. Don\'t keep saves no words to disk: they stay in memory until you quit, and notes still land in your notes folder. A take that reached neither an app nor the clipboard keeps its recording so it can be retried, and the recording goes after 24 hours, the next time murmur runs. On Mac and Windows, saved words are encrypted on disk by default, under a key this device holds, so a copied history file or folder cannot be read elsewhere.']],
-          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours, the next time murmur runs.']],
+          ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours, the next time murmur runs. At most 20 recordings wait at once, and the oldest go first.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
           ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
           ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']]

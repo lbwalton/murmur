@@ -17,7 +17,9 @@ export function watchHeld(check: () => Promise<number | null>, everyMs: number):
       .catch(() => null)
       .then((nextMs) => {
         clearTimeout(due)
-        due = nextMs === null ? undefined : setTimeout(run, Math.max(nextMs, SOONEST_CHECK_MS)).unref()
+        // The slow timer is the ceiling: a take stamped far ahead by a
+        // clock change would overflow setTimeout, which then fires at once.
+        due = nextMs === null ? undefined : setTimeout(run, Math.min(Math.max(nextMs, SOONEST_CHECK_MS), everyMs)).unref()
       })
   }
   run()

@@ -3,7 +3,7 @@
 // the capture, delivery, and history around dictation stood in.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { KEEP_NO_TEXT } from '../shared/history'
-import { dictationStart, dictationStop, holdRecording, pasteLastDictation } from './dictation'
+import { deliverRetried, dictationStart, dictationStop, holdRecording, lastTakeHeld, pasteLastDictation } from './dictation'
 
 const stage = vi.hoisted(() => ({
   retentionDays: 90,
@@ -21,7 +21,8 @@ const mocks = vi.hoisted(() => ({
   performTransform: vi.fn(),
   clipboardWrite: vi.fn(),
   playCue: vi.fn(),
-  recordSession: vi.fn()
+  recordSession: vi.fn(),
+  logWords: vi.fn()
 }))
 
 vi.mock('electron', () => ({ clipboard: { writeText: mocks.clipboardWrite } }))
@@ -83,7 +84,7 @@ vi.mock('./history', () => ({
   eventToPaste: () => stage.event,
   heldTakeSaved: mocks.heldTakeSaved,
   isMemoryOnly: () => true,
-  logWords: () => stage.event,
+  logWords: mocks.logWords,
   recordSession: mocks.recordSession
 }))
 
@@ -103,10 +104,13 @@ beforeEach(() => {
   stage.insert = 'inserted'
   stage.logFails = false
   stage.noteSaved = { ok: false }
-  mocks.recordSession.mockImplementation(() => {
+  const logged = (): typeof stage.event => {
     if (stage.logFails) throw new Error('disk full')
     return stage.event
-  })
+  }
+  mocks.recordSession.mockImplementation(logged)
+  mocks.logWords.mockImplementation(logged)
+  mocks.saveTakeForRetry.mockReturnValue('/recovery/take.wav')
 })
 
 describe('holdRecording', () => {
@@ -143,6 +147,38 @@ describe("takes under Don't keep", () => {
     expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(expect.any(Uint8Array), held('dictation', 'silence'))
   })
 
+  it('promises no recording when the cap took it straight back', async () => {
+    mocks.saveTakeForRetry.mockReturnValue(null)
+    expect(await take('dictation', { save: 'silence' })).toBe('delivered')
+    expect(lastTakeHeld()).toBe(false)
+    expect(mocks.heldTakeSaved).not.toHaveBeenCalled()
+  })
+
+  it('forgets the last hold when the next take starts', async () => {
+    await take('dictation', { save: 'silence' })
+    expect(lastTakeHeld()).toBe(true)
+    await take('dictation')
+    expect(lastTakeHeld()).toBe(false)
+  })
+
+  it('keeps a note the file and the log both refused', async () => {
+    stage.logFails = true
+    vi.spyOn(console, 'error').mockImplementationOnce(() => undefined)
+    expect(await take('note')).toBe('retry')
+    expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(
+      expect.any(Uint8Array),
+      expect.objectContaining({ kind: 'note', failure: expect.objectContaining({ kind: 'unlogged' }) })
+    )
+  })
+
+  it('a filed note needs no log to count as delivered', async () => {
+    stage.noteSaved = { ok: true, relative: 'inbox.md', location: 'folder' }
+    stage.logFails = true
+    vi.spyOn(console, 'error').mockImplementationOnce(() => undefined)
+    expect(await take('note')).toBe('delivered')
+    expect(mocks.saveTakeForRetry).not.toHaveBeenCalled()
+  })
+
   it('holds no recording for a take that reached an app', async () => {
     expect(await take('dictation')).toBe('delivered')
     expect(mocks.saveTakeForRetry).not.toHaveBeenCalled()
@@ -155,8 +191,9 @@ describe("takes under Don't keep", () => {
   })
 
   it('holds a note neither folder could take', async () => {
-    expect(await take('note')).toBe('failed')
+    expect(await take('note')).toBe('logged')
     expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(expect.any(Uint8Array), held('note', 'note-failed'))
+    expect(lastTakeHeld()).toBe(true)
   })
 
   it('holds no recording for a note that was filed', async () => {
@@ -226,7 +263,7 @@ describe('a take that could not be pasted or logged, on every Keep history value
 
       it('a paste that throws logs the words, keeps the error pill, and leaves the clipboard alone', async () => {
         stage.insert = new Error('clipboard refused')
-        expect(await take('dictation')).toBe('failed')
+        expect(await take('dictation')).toBe('logged')
         expect(mocks.recordSession).toHaveBeenCalledTimes(1)
         expect(stage.phase).toBe('error')
         expect(mocks.playCue).toHaveBeenLastCalledWith('error')
@@ -240,7 +277,7 @@ describe('a take that could not be pasted or logged, on every Keep history value
 
       it('an error outcome is treated the same as a throw', async () => {
         stage.insert = 'error'
-        expect(await take('dictation')).toBe('failed')
+        expect(await take('dictation')).toBe('logged')
         expect(mocks.recordSession).toHaveBeenCalledTimes(1)
         expect(stage.phase).toBe('error')
       })
@@ -294,5 +331,61 @@ describe('a take that could not be pasted or logged, on every Keep history value
     mocks.recordSession.mockReturnValue(null)
     expect(await take('dictation', { save: 'silence' })).toBe('retry')
     expect(mocks.saveTakeForRetry).toHaveBeenCalledWith(expect.any(Uint8Array), unlogged)
+  })
+})
+
+describe('a retry', () => {
+  const retried = (loggedAt?: number): Parameters<typeof deliverRetried>[0] => ({
+    kind: 'dictation',
+    startedAt: 1,
+    savedAt: 2,
+    ...(loggedAt === undefined ? {} : { loggedAt })
+  })
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("holds the recording under Don't keep, for the entry the words went to", async () => {
+    expect(await deliverRetried(retried(), 'hello there')).toMatchObject({ ok: true, location: 'log', heldAt: 123 })
+  })
+
+  it('lets it go under every other setting', async () => {
+    for (const days of [1, 30, 90, 365, 0]) {
+      stage.retentionDays = days
+      expect(await deliverRetried(retried(), 'hello there')).toMatchObject({ ok: true, heldAt: null })
+    }
+  })
+
+  it('goes back on the held entry when it has one', async () => {
+    await deliverRetried(retried(123), 'hello there')
+    expect(mocks.logWords).toHaveBeenCalledWith(expect.objectContaining({ rawText: 'hello there' }), 123)
+    expect(mocks.recordSession).not.toHaveBeenCalled()
+  })
+
+  it('counts a null event as a failure, so the audio stays', async () => {
+    mocks.recordSession.mockReturnValue(null)
+    expect(await deliverRetried(retried(), 'hello there')).toEqual({ ok: false, failure: expect.objectContaining({ kind: 'unlogged' }) })
+  })
+
+  it('counts a log that throws as a failure', async () => {
+    stage.logFails = true
+    expect(await deliverRetried(retried(), 'hello there')).toMatchObject({ ok: false })
+    expect(await deliverRetried({ ...retried(), kind: 'transform' }, 'hello there')).toMatchObject({ ok: false })
+  })
+
+  it('a filed note lets the recording go, under any setting', async () => {
+    stage.noteSaved = { ok: true, relative: 'inbox.md', location: 'folder' }
+    expect(await deliverRetried({ ...retried(), kind: 'note' }, 'hello there')).toMatchObject({ ok: true, heldAt: null, location: 'folder' })
+  })
+
+  it('a note no folder took stays held, and fails with no log either', async () => {
+    expect(await deliverRetried({ ...retried(), kind: 'note' }, 'hello there')).toMatchObject({ ok: true, heldAt: 123, location: 'history' })
+    stage.logFails = true
+    expect(await deliverRetried({ ...retried(), kind: 'note' }, 'hello there')).toMatchObject({ ok: false })
   })
 })

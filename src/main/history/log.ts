@@ -4,9 +4,10 @@
 // With sealing on, each line's words are sealed (see seal.ts). Rewrites
 // work on the lines as stored, so a line nobody can open still keeps
 // its words for the day its key comes back.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type SealStatus, type SessionEvent, hasText, isSessionEvent, textCutoff, withoutText } from '../../shared/history'
+import { writeDurably } from './durable'
 import type { StoredEvent, WordSeal } from './seal'
 
 const carriesWords = (line: StoredEvent): boolean => hasText(line) || line.sealed !== undefined
@@ -169,13 +170,7 @@ export class HistoryLog {
   }
 
   private rewrite(lines: StoredEvent[]): void {
-    try {
-      writeFileSync(this.tmp, lines.map((e) => JSON.stringify(e)).join('\n') + (lines.length ? '\n' : ''))
-      renameSync(this.tmp, this.file)
-    } catch (error) {
-      rmSync(this.tmp, { force: true })
-      throw error
-    }
+    writeDurably(this.file, this.tmp, lines.map((e) => JSON.stringify(e)).join('\n') + (lines.length ? '\n' : ''))
   }
 
   clear(): void {

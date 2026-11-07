@@ -10,7 +10,7 @@ import { type KeyWrap, WordSeal } from './seal'
 
 vi.mock('node:fs', async (importOriginal) => {
   const real = await importOriginal<typeof import('node:fs')>()
-  return { ...real, fsyncSync: vi.fn(real.fsyncSync), renameSync: vi.fn(real.renameSync) }
+  return { ...real, fsyncSync: vi.fn(real.fsyncSync), readFileSync: vi.fn(real.readFileSync), renameSync: vi.fn(real.renameSync) }
 })
 
 let dir: string
@@ -140,6 +140,41 @@ describe('sealed history', () => {
     const log = sealedLog()
     expect(log.readAll()).toEqual([take(1)])
     expect(existsSync(`${file}.tmp`)).toBe(false)
+  })
+
+  it('a rewrite reaches the disk before the rename, so a power cut cannot empty the file', () => {
+    const log = sealedLog()
+    log.append(take(1))
+    vi.mocked(fsyncSync).mockClear()
+    vi.mocked(renameSync).mockClear()
+    log.setSealing(false)
+    const synced = vi.mocked(fsyncSync).mock.invocationCallOrder
+    const [renamed] = vi.mocked(renameSync).mock.invocationCallOrder
+    expect(synced[0]).toBeLessThan(renamed)
+    if (process.platform !== 'win32') expect(synced[1]).toBeGreaterThan(renamed)
+  })
+
+  it('a rewrite that cannot reach the disk leaves the file whole', () => {
+    const plain = new HistoryLog(dir)
+    plain.append(take(NOW))
+    const before = readFileSync(file, 'utf8')
+    vi.mocked(fsyncSync).mockImplementationOnce(() => {
+      throw new Error('disk failed')
+    })
+    expect(() => plain.prune(30, () => NOW)).toThrow('disk failed')
+    expect(readFileSync(file, 'utf8')).toBe(before)
+    expect(existsSync(`${file}.tmp`)).toBe(false)
+  })
+
+  it('a log that cannot be read is never rewritten as empty', () => {
+    const log = sealedLog()
+    log.append(take(NOW))
+    const before = statSync(file).size
+    vi.mocked(readFileSync).mockImplementationOnce(() => {
+      throw Object.assign(new Error('denied'), { code: 'EACCES' })
+    })
+    expect(() => log.prune(30, () => NOW)).toThrow('denied')
+    expect(statSync(file).size).toBe(before)
   })
 
   it('a new key that cannot be opened again is not used', () => {

@@ -12,7 +12,8 @@ import {
   failedNotice,
   parkNotice,
   retryNotice,
-  stopNotice
+  stopNotice,
+  unfiledNotice
 } from './handsfree-rules'
 import { MIN_VOICED_MS, SPEECH_RMS_THRESHOLD } from '../shared/speech-gate'
 
@@ -112,9 +113,17 @@ describe('the hands-free notices', () => {
       })
       // A saved chord that is disarmed does nothing when pressed, so the
       // notice sends the user to Home instead.
-      expect(stopNotice(reason, 'dictation', binding, true, true).body).toBe(
+      expect(stopNotice(reason, 'dictation', binding, true, true, true).body).toBe(
         `${why[reason]}Your words are in history until you quit murmur, and the recording goes after 24 hours. Press ${binding} to paste them.`
       )
+      // The cap can take the recording back, so nothing promises it then.
+      expect(stopNotice(reason, 'dictation', binding, true, true, false).body).toBe(
+        `${why[reason]}Your words are in history until you quit murmur. Press ${binding} to paste them.`
+      )
+      expect(unfiledNotice(reason, true, true).body).toBe(
+        `${why[reason]}The note could not be filed. Your words are in history until you quit murmur, and the recording goes after 24 hours.`
+      )
+      expect(unfiledNotice(reason).body).toBe(`${why[reason]}The note could not be filed. Your words are in history.`)
       expect(stopNotice(reason, 'dictation', binding, false)).toEqual({
         title: 'murmur hands-free',
         body: `${why[reason]}${noBinding}`

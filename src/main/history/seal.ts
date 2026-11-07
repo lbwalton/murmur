@@ -7,9 +7,10 @@
 // if one stops opening, a new one joins it, so a Keychain that comes
 // back later opens the old lines again.
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
-import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, readFileSync, renameSync } from 'node:fs'
+import { join } from 'node:path'
 import { type SessionEvent, countWords } from '../../shared/history'
+import { writeDurably } from './durable'
 
 export interface KeyWrap {
   available: () => boolean
@@ -34,28 +35,6 @@ const KEY_FILE = 'history-keys.json'
 const KEY_BYTES = 32
 const NONCE_BYTES = 12
 const TAG_BYTES = 16
-
-/** A key must be on the disk for good before any line depends on it, so
- *  a power cut cannot leave sealed words with no key. */
-function writeDurably(file: string, text: string): void {
-  const tmp = `${file}.tmp`
-  const handle = openSync(tmp, 'w', 0o600)
-  try {
-    writeSync(handle, text)
-    fsyncSync(handle)
-  } finally {
-    closeSync(handle)
-  }
-  renameSync(tmp, file)
-  // Windows cannot open a folder this way, and it needs no such step.
-  if (process.platform === 'win32') return
-  const folder = openSync(dirname(file), 'r')
-  try {
-    fsyncSync(folder)
-  } finally {
-    closeSync(folder)
-  }
-}
 
 function isStoredKey(value: unknown): value is StoredKey {
   const key = value as StoredKey
@@ -131,7 +110,8 @@ export class WordSeal {
       if (this.wrap.decrypt(wrapped) !== text) return false
       const id = randomBytes(4).toString('hex')
       const next = [...this.stored, { id, wrapped: wrapped.toString('base64') }]
-      writeDurably(this.file, JSON.stringify(next))
+      // On the disk for good before any line depends on it.
+      writeDurably(this.file, `${this.file}.tmp`, JSON.stringify(next), 0o600)
       this.stored = next
       this.keys.set(id, key)
       this.active = id

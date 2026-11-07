@@ -8,6 +8,7 @@ import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../sha
 import { sectionFor } from '../../shared/changelog'
 import {
   KEEP_24_HOURS,
+  KEEP_FOREVER,
   KEEP_NO_TEXT,
   type SealStatus,
   type SessionEvent,
@@ -116,15 +117,34 @@ export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): st
 }
 
 /** The line above the waiting takes. A held take was transcribed, so
- *  the usual line would be false for it. */
-export function waitingIntro(takes: readonly WaitingTake[]): string {
+ *  the usual line would be false for it, and under 24 hours and Don't
+ *  keep a failed take goes too. */
+export function waitingIntro(takes: readonly WaitingTake[], retentionDays: number): string {
   const held = takes.filter((take) => take.loggedAt !== undefined).length
-  if (held === 0) return 'Recorded but not transcribed. The audio stays on this computer until you retry or discard it.'
   const goes = 'after 24 hours, the next time murmur runs'
+  const short = retentionDays === KEEP_24_HOURS || retentionDays === KEEP_NO_TEXT
+  const stays = short
+    ? `The audio stays on this computer until you retry or discard it, or it goes ${goes}.`
+    : 'The audio stays on this computer until you retry or discard it.'
+  if (held === 0) return `Recorded but not transcribed. ${stays}`
   if (held === takes.length) {
     return `Transcribed, but the words never reached an app. Retry brings them back from the audio, which stays on this computer and goes ${goes}.`
   }
-  return `Some takes were not transcribed, and some never reached an app. The audio stays on this computer until you retry or discard it, and a take that never reached an app goes ${goes}.`
+  const mixed = 'Some takes were not transcribed, and some never reached an app.'
+  return short ? `${mixed} ${stays}` : `${mixed} ${stays} A take that never reached an app goes ${goes}.`
+}
+
+/** What Keep history does at each setting. */
+export function keepLine(retentionDays: number): string {
+  const here = 'Everything stays on this machine.'
+  if (retentionDays === KEEP_NO_TEXT) {
+    return 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that reached neither an app nor your clipboard keeps its recording for Retry, as does one waiting to retry. Those recordings go after 24 hours, the next time murmur runs. Notes still land in your notes folder.'
+  }
+  if (retentionDays === KEEP_24_HOURS) {
+    return `Words go after 24 hours, and your numbers, belts, and paintings keep counting. Recordings waiting to retry go after 24 hours, the next time murmur runs. ${here}`
+  }
+  if (retentionDays === KEEP_FOREVER) return `Entries stay until you clear them. ${here}`
+  return `Older entries are removed automatically, with their numbers. ${here}`
 }
 
 function whenOf(at: number): string {
@@ -333,10 +353,12 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
  * has focus, so a double press never deletes. One question at a time.
  */
 function WaitingTakes(props: {
-  untilQuit: boolean
+  retentionDays: number
   pasteLastBinding: string
   pasteArmed: boolean
 }): React.JSX.Element | null {
+  const untilQuit = props.retentionDays === KEEP_NO_TEXT
+  const untilQuitWords = untilQuit ? ' until you quit murmur' : ''
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -398,15 +420,15 @@ function WaitingTakes(props: {
       setMessage(
         kind === 'note'
           ? location === 'history'
-            ? `Transcribed, but the note could not be written to your notes folder or murmur's data folder. The words are safe in your log${props.untilQuit ? ' until you quit murmur' : ''}.`
-            : 'Done: the note is filed under the time you spoke it, and it is in your log.'
+            ? `Transcribed, but the note could not be written to your notes folder or murmur's data folder. The words are safe in your log${untilQuitWords}.`
+            : `Done: the note is filed under the time you spoke it, and it is in your log${untilQuitWords}.`
           : kind === 'transform'
-            ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed, props.untilQuit)
+            ? `Done: your instruction is in the log${untilQuitWords}. The text it was for is gone, so nothing was changed.`
+            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed, untilQuit)
       )
     } else if (done.length > 0) {
       setMessage(
-        `${done.length} delivered to your log${props.untilQuit ? ' until you quit murmur' : ''}${failed > 0 ? `, ${failed} still waiting` : ''}.`
+        `${done.length} delivered to your log${untilQuitWords}${failed > 0 ? `, ${failed} still waiting` : ''}.`
       )
     } else {
       setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.')
@@ -500,7 +522,7 @@ function WaitingTakes(props: {
         />
       )}
       {takes.length > 0 && (
-        <p className="dim waiting-intro">{waitingIntro(takes)}</p>
+        <p className="dim waiting-intro">{waitingIntro(takes, props.retentionDays)}</p>
       )}
       {/* Always mounted, so screen readers hear a new message. */}
       <p className={message ? 'waiting-message' : 'visually-hidden'} ref={messageRef} tabIndex={-1} role="status">
@@ -728,7 +750,7 @@ export function HomeView(props: {
         </p>
       )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes untilQuit={props.settings.history.retentionDays === KEEP_NO_TEXT} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
+      <WaitingTakes retentionDays={props.settings.history.retentionDays} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>
@@ -860,11 +882,7 @@ export function HomeView(props: {
           <div className="row">
             <div className="row-text">
               <div className="row-label">Keep history for</div>
-              <div className="row-desc">
-                {props.settings.history.retentionDays === KEEP_NO_TEXT
-                  ? 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that reached neither an app nor your clipboard keeps its recording for Retry, as does one waiting to retry. Those recordings go after 24 hours, the next time murmur runs. Notes still land in your notes folder.'
-                  : 'Older entries are pruned automatically. Everything stays on this machine.'}
-              </div>
+              <div className="row-desc">{keepLine(props.settings.history.retentionDays)}</div>
             </div>
             <div className="row-control inline">
               <select

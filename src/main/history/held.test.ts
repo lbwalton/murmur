@@ -46,6 +46,26 @@ describe('watchHeld', () => {
     expect(check.mock.calls.length).toBeLessThanOrEqual(3)
   })
 
+  it('a new check replaces the timer set by the last one', async () => {
+    const check = vi.fn<() => Promise<number | null>>().mockResolvedValueOnce(MINUTE).mockResolvedValueOnce(MINUTE).mockResolvedValue(null)
+    const checkNow = watchHeld(check, 15 * MINUTE)
+    await vi.advanceTimersByTimeAsync(0)
+    checkNow()
+    await vi.advanceTimersByTimeAsync(MINUTE)
+    // The launch check, the one asked for, and 1 timer: 2 timers would be 4.
+    expect(check).toHaveBeenCalledTimes(3)
+  })
+
+  it('a take stamped far ahead waits for the slow timer, and cannot overflow into a spin', async () => {
+    const check = vi.fn(async () => 2 ** 40)
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    watchHeld(check, 15 * MINUTE)
+    await vi.advanceTimersByTimeAsync(MINUTE)
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(timers.mock.calls.at(-1)?.[1]).toBe(15 * MINUTE)
+    timers.mockRestore()
+  })
+
   it('a failed check stays quiet and the slow timer tries again', async () => {
     const check = vi.fn<() => Promise<number | null>>().mockRejectedValueOnce(new Error('no')).mockResolvedValue(null)
     watchHeld(check, 15 * MINUTE)

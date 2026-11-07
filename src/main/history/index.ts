@@ -47,9 +47,25 @@ let getTargetWindow: (() => BrowserWindow | null) | null = null
 // still restore it until the next one or quit.
 let memoryOnly: SessionEvent | null = null
 
-// Everything that measures speech reads this, never the raw log.
+/** A line for the log file. A failure's code says what went wrong with
+ *  the file, and never holds a word. */
+function noteFailure(what: string, error: unknown): void {
+  const code = (error as NodeJS.ErrnoException | null)?.code ?? 'unknown'
+  console.error(`[murmur] ${what}: ${code}`)
+  void import('../window-watch').then(({ writeAppLog }) => writeAppLog(`[history] ${what}: ${code}`)).catch(() => undefined)
+}
+
+// Everything that measures speech reads this, never the raw log. These
+// callers run during launch and after every take, so a log that cannot
+// be read counts as empty here. Only here: a rewrite must see the error,
+// or it would replace the file with nothing.
 function statsEvents(): SessionEvent[] {
-  return (log?.readNumbers() ?? []).filter(countsTowardStats)
+  try {
+    return (log?.readNumbers() ?? []).filter(countsTowardStats)
+  } catch (error) {
+    noteFailure('could not read the log for stats', error)
+    return []
+  }
 }
 
 const RETENTION_CHECK_MS = 15 * 60 * 1000
@@ -78,8 +94,25 @@ function rememberWords(event: SessionEvent): void {
   }
 }
 
+// Moving Don't keep to 24 hours puts these words under that limit too.
+function dropExpiredSessionWords(): void {
+  const { retentionDays } = getSettings().history
+  const cutoff = retentionDays === KEEP_NO_TEXT ? null : textCutoff(retentionDays, Date.now())
+  if (cutoff === null) return
+  for (const at of sessionWords.keys()) {
+    if (at < cutoff) sessionWords.delete(at)
+  }
+}
+
 function withSessionWords(events: SessionEvent[]): SessionEvent[] {
+  dropExpiredSessionWords()
   return sessionWords.size === 0 ? events : events.map((event) => sessionWords.get(event.at) ?? event)
+}
+
+/** Whether a held take's words are still here, so its recording is a
+ *  spare. After a quit it is the only copy. */
+export function wordsInMemory(at: number): boolean {
+  return sessionWords.has(at)
 }
 
 // Lazy, like the other cross-subsystem reads here, so history never
@@ -191,8 +224,8 @@ function restoreWords(at: number, rawText: string, finalText: string): SessionEv
   const event = { ...numbers, rawText, finalText }
   if (getSettings().history.retentionDays === KEEP_NO_TEXT) rememberWords(event)
   else {
-    sessionWords.delete(at)
     log?.fillWords(at, rawText, finalText)
+    sessionWords.delete(at)
   }
   restoredAt = at
   const win = getTargetWindow?.()
@@ -330,6 +363,11 @@ export function readStatsHistory(): SessionEvent[] {
 
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
+  // First, so held recordings still go when anything below fails.
+  checkHeld = watchHeld(async () => {
+    await pruneRecordings(null)
+    return (await recordingTools()).nextHeld()
+  }, RETENTION_CHECK_MS)
   const dir = app.getPath('userData')
   log = new HistoryLog(dir, openSeal(dir))
   let lastEncrypt = getSettings().history.encrypt
@@ -339,13 +377,14 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     try {
       log?.setSealing(lastEncrypt)
     } catch (error) {
-      console.error('[murmur] could not change how history is stored:', error)
+      noteFailure('could not change how history is stored', error)
     }
   }
   followSwitch()
   let lastRetention = getSettings().history.retentionDays
   const applyShortLimit = (): void => {
     void pruneRecordings(lastRetention)
+    dropExpiredSessionWords()
     void import('../notes/receipt').then(({ scrubLastNoteLine }) => {
       scrubLastNoteLine(textCutoff(lastRetention, Date.now()) ?? 0)
     })
@@ -357,16 +396,12 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     syncPaintingsWith(log.readNumbers())
     log.applyRetention(lastRetention)
   } catch (error) {
-    console.error('[murmur] history could not finish starting:', error)
+    noteFailure('could not finish starting', error)
   }
   // A day limit removes recordings only when someone chooses it and sees
   // the question, so an update never deletes a waiting take unasked. The
   // 2 short limits are a promise about time, so they hold from launch.
   if (textCutoff(lastRetention, Date.now()) !== null) applyShortLimit()
-  checkHeld = watchHeld(async () => {
-    await pruneRecordings(null)
-    return (await recordingTools()).nextHeld()
-  }, RETENTION_CHECK_MS)
   initPaintings(() => log?.readNumbers() ?? [])
   // Prune only when retention actually changes: every settings save
   // fires this listener, and rewriting the log each time is waste.
@@ -377,8 +412,13 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     }
     if (settings.history.retentionDays !== lastRetention) {
       lastRetention = settings.history.retentionDays
-      if (log) syncPaintingsWith(log.readNumbers())
-      log?.applyRetention(lastRetention)
+      // A throw here would skip every listener after this one.
+      try {
+        if (log) syncPaintingsWith(log.readNumbers())
+        log?.applyRetention(lastRetention)
+      } catch (error) {
+        noteFailure('could not apply Keep history', error)
+      }
       void pruneRecordings(lastRetention)
       if (textCutoff(lastRetention, Date.now()) !== null) applyShortLimit()
     }
@@ -386,7 +426,12 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   // A 24 hour limit has to hold while murmur stays open for days.
   setInterval(() => {
     if (textCutoff(lastRetention, Date.now()) === null) return
-    log?.applyRetention(lastRetention)
+    // A throw in a timer would take the whole app down.
+    try {
+      log?.applyRetention(lastRetention)
+    } catch (error) {
+      noteFailure('could not apply Keep history', error)
+    }
     applyShortLimit()
   }, RETENTION_CHECK_MS).unref()
 
@@ -410,7 +455,6 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     const removed = historyCount()
     log?.clear()
     memoryOnly = null
-    restoredAt = null
     sessionWords.clear()
     // The paintings were drawn from it, so they go with it (US-098).
     clearPaintings()

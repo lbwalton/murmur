@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// The 1 thing a take needs from a transform that never reached a model:
+// word that its instruction is all that remains. The full loop runs in
+// smoke.
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TRANSFORM_MAX_CHARS } from '../formatter/transform'
+import { performTransform } from './index'
+
+const stage = vi.hoisted(() => ({ selection: 'short', event: { at: 123 } }))
+
+vi.mock('electron', () => ({ clipboard: {} }))
+vi.mock('../audio', () => ({ playCue: vi.fn() }))
+vi.mock('../insertion', () => ({
+  insertText: vi.fn(async () => 'inserted'),
+  readSelection: vi.fn(async () => ({ ok: true, text: stage.selection }))
+}))
+vi.mock('../overlay', () => ({ setOverlayPhase: vi.fn() }))
+vi.mock('../settings', () => ({ getSettings: () => ({ dictionary: [], transform: { keepOriginals: true } }) }))
+vi.mock('../smoke', () => ({ registerSmokeCheck: vi.fn() }))
+vi.mock('../hotkeys', () => ({ waitForModifiersReleased: async () => true }))
+vi.mock('../window-watch', () => ({ writeAppLog: vi.fn() }))
+vi.mock('../history', () => ({ recordSession: () => stage.event }))
+
+const deps = (onUnsent: (event: unknown) => void): Parameters<typeof performTransform>[0] => ({
+  startedAt: 1,
+  transcribe: async () => ({ ok: true, text: 'shorten this', silence: undefined }) as never,
+  connection: null,
+  onUnsent
+})
+
+beforeEach(() => {
+  stage.selection = 'short'
+})
+
+describe('performTransform', () => {
+  it('hands over the logged event when the selection is too long to send', async () => {
+    stage.selection = 'a'.repeat(TRANSFORM_MAX_CHARS + 1)
+    const onUnsent = vi.fn()
+    expect(await performTransform(deps(onUnsent))).toBe('too-long')
+    expect(onUnsent).toHaveBeenCalledWith(stage.event)
+  })
+
+  it('stays quiet when the selection goes on to the model', async () => {
+    const onUnsent = vi.fn()
+    expect(await performTransform(deps(onUnsent))).toBe('no-connection')
+    expect(onUnsent).not.toHaveBeenCalled()
+  })
+})
