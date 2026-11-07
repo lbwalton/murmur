@@ -107,6 +107,13 @@ describe('recordSession', () => {
     expect(second.readHistory()[0]).toMatchObject({ finalText: '', words: 3 })
   })
 
+  it('throws when the log cannot be written, so dictation can keep the recording', async () => {
+    const { recordSession } = await launch()
+    rmSync(file(), { force: true })
+    mkdirSync(file())
+    expect(() => recordSession(take)).toThrow()
+  })
+
   it('leaves a memory-only entry off the disk altogether', async () => {
     const { readHistory, recordSession } = await launch()
     recordSession({ ...take, persist: false })

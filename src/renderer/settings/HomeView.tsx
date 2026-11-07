@@ -106,6 +106,7 @@ function reasonText(take: WaitingTake): string {
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
   if (f?.kind === 'held') return 'never reached an app, so its recording goes after 24 hours'
+  if (f?.kind === 'unlogged') return 'transcribed, but its words could not be saved'
   if (f?.kind === 'parked') {
     if (f.detail === 'quit') return 'saved when murmur quit'
     if (f.detail === 'cancel') return 'saved when you cancelled it'

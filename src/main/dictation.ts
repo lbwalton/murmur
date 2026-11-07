@@ -21,7 +21,7 @@ import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording }
 import { NOTE_FOLDER_HINT } from '../shared/notes'
 import { resolveTransformConnection } from './formatter'
 import { getSettings } from './settings'
-import { insertText } from './insertion'
+import { type InsertOutcome, insertText } from './insertion'
 import { type NoteSaveResult, notesConfigured, saveNote } from './notes'
 import { noteSaved, sortWithReceipt } from './notes/receipt'
 import { rememberForSort } from './notes/sorter'
@@ -262,29 +262,48 @@ export async function dictationStop(
 
   if (kind === 'note') return (await deliverNote(heardText, finalText, `peak=${peak.toFixed(4)}${gateDetail}`, upload)) ? 'delivered' : 'failed'
 
+  const startedAt = sessionStartedAt
   try {
     if (opts.save) {
-      const { recordSession } = await import('./history')
-      const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
-      holdRecording(upload, 'dictation', sessionStartedAt, event?.at, opts.save)
+      const event = await logTake({ startedAt, rawText: heardText, finalText })
+      if (event === null) {
+        // The take reached nothing and the log refused it, so the
+        // recording is all that remains.
+        const kept = keepUnlogged(upload, 'dictation', startedAt)
+        void logDictation(`unlogged reason=${opts.save} kept=${kept}`)
+        setOverlayPhase('error')
+        playCue('error')
+        return kept ? 'retry' : 'failed'
+      }
+      holdRecording(upload, 'dictation', startedAt, event.at, opts.save)
       // The clipboard stays the user's: Cmd+V keeps pasting what they
       // copied. The words wait in history for the paste-last shortcut.
       void logDictation(
-        `delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}${gateDetail}${silenceLogSuffix(result.silence)}`
+        `delivered outcome=saved reason=${opts.save} words=${event.words}${gateDetail}${silenceLogSuffix(result.silence)}`
       )
-      setOverlayPhase('inserted', event?.wpm ?? null)
+      setOverlayPhase('inserted', event.wpm)
       playCue('insert')
       refreshOverlayConfig()
       return 'delivered'
     }
-    const outcome = await insertText(finalText)
+    // Only the paste is caught here: a throw must not skip the log below,
+    // where the words wait for paste-last.
+    let outcome: InsertOutcome
+    try {
+      outcome = await insertText(finalText)
+    } catch (error) {
+      console.error('[murmur] insertion failed:', error)
+      outcome = 'error'
+    }
+    const event = await logTake({ startedAt, rawText: heardText, finalText })
     if (outcome === 'error') {
+      const kept = event === null && keepUnlogged(upload, 'dictation', startedAt)
+      holdRecording(upload, 'dictation', startedAt, event?.at, 'paste-failed')
+      void logDictation(`paste-failed logged=${event !== null} kept=${kept}`)
       setOverlayPhase('error')
       playCue('error')
-      return 'failed'
+      return kept ? 'retry' : 'failed'
     } else {
-      const { recordSession } = await import('./history')
-      const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
       // outcome=copied means the paste keystroke failed and the text
       // waits on the clipboard: the exact trail the Windows missed
       // insertion reports need. Never the text itself.
@@ -339,6 +358,30 @@ export async function finishTranscript(heardText: string): Promise<string | null
   } catch (error) {
     console.error('[murmur] formatting stage failed open to raw transcript:', error)
     return cleanedText
+  }
+}
+
+/** A take into history, or null when the log could not take it. A log
+ *  that fails never fails the take: the words may already have landed. */
+async function logTake(input: { startedAt: number; rawText: string; finalText: string }): Promise<SessionEvent | null> {
+  try {
+    const { recordSession } = await import('./history')
+    return recordSession(input)
+  } catch (error) {
+    console.error('[murmur] could not log a take:', error)
+    return null
+  }
+}
+
+/** The log refused a take that reached nothing, so its recording goes on
+ *  the Retry list whatever Keep history says. False when even that failed. */
+function keepUnlogged(wav: Uint8Array, kind: DictationKind, startedAt: number): boolean {
+  try {
+    saveTakeForRetry(wav, { kind, startedAt, failure: { kind: 'unlogged', detail: 'the log could not be written' } })
+    return true
+  } catch (error) {
+    console.error('[murmur] could not keep the recording:', error)
+    return false
   }
 }
 

@@ -99,6 +99,10 @@ describe('a waiting take', () => {
     )
   })
 
+  it('a take the log refused says it was transcribed', () => {
+    expect(waitingLine(take({ kind: 'unlogged', detail: 'x' }), 'darwin')).toBe('transcribed, but its words could not be saved')
+  })
+
   it('the intro never says a held take was not transcribed', () => {
     const failed = take({ kind: 'auth', detail: '' })
     const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
