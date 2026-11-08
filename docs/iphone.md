@@ -230,7 +230,7 @@ On murmur's home screen, swipe left on a take and tap Delete, then Delete take. 
 
 ## How do I teach murmur a word on iPhone?
 
-In murmur, tap the gear at the top right, then Dictionary and expansions. Under Words, tap Add. In When murmur hears, type what murmur writes wrong (la broy), and in Write it as, type it your way (LaBroi), then tap Save.
+In murmur, tap the gear at the top right, then Dictionary and expansions. Under Words, tap Add. In When murmur hears, type what murmur writes wrong (shiv on), and in Write it as, type it your way (Siobhan), then tap Save.
 
 murmur writes the word your way wherever you say it, with your casing kept even at the start of a sentence. It also offers your provider the spelling as a hint, so a speech model that takes hints gets it right more often to begin with. A provider that refuses the hint still hears your take, just without it. Tap a word to change it; swipe left on it to delete it, and murmur asks first.
 

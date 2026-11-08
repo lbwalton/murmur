@@ -72,8 +72,8 @@ function ReportPanel(props: {
     <div className="log-said" id={props.id}>
       <p className="micro-label log-original">report this take</p>
       <p className="row-note">
-        This opens an email to {REPORT_ADDRESS} in your own mail app, and nothing goes until you press send. LaBroi
-        reads it to make murmur better, and it is kept 90 days. Take out anything private first.
+        This opens an email to {REPORT_ADDRESS} in your own mail app, and nothing goes until you press send. We read
+        it to make murmur better, and it is kept 90 days. Take out anything private first.
       </p>
       <label className="report-field">
         <span className="micro-label">what you said</span>
