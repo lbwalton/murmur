@@ -4,11 +4,11 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-145 Hide words: the switch works on the 6c128bf test build (LaBroi, 2026-11-08). To finish: (1) with Hide words on, open wrap-up: no words show there either. (2) Save a note with your Notes shortcut: the notification says where the note went, not what you said. (3) Quit murmur from the tray menu and open it again: no words flash, and the switch is still on. Tell Claude yes or what was off.
+- [x] US-145 Hide words: passed 2026-11-08 on the 6c128bf test build (LaBroi: the switch, wrap-up, the notes notification, and quit and reopen all hold).
 - [x] US-138 encrypted history: passed 2026-11-08 on the 6c128bf test build. All 552 lines sealed on first launch with no Keychain prompt; switched off, all 558 lines are plain again.
 - [x] US-128 see what cleanup changed: passed 2026-11-08 (LaBroi: struck words show and copy back).
 - [x] US-130 Report this take: passed 2026-11-08. The panel now says We read it to make murmur better; it no longer names LaBroi.
-- [ ] US-135 decided 2026-11-08: no extra live-mic mark, since the waveform and timer moving already say the mic hears you. Still to check: with Keep the mic ready off, the orange mic dot in the menu bar goes out between takes, and comes back while you hold the hotkey.
+- [ ] US-135 mic closed between takes: Mac passed 2026-11-08 (the orange dot goes out between takes and returns while you hold the hotkey; no extra live-mic mark, the moving waveform says it). Left: on the work PC, pick Open the mic only when I press under Settings, Dictation, Between takes, and watch the mic icon in the taskbar go away between takes.
 - [ ] US-136 updates: the 3 choices show (passed 2026-11-08). Left for the next release: with Ask first picked, murmur asks before installing it.
 - [ ] US-137 Don't keep: skipped on the Mac on purpose (it would erase the words of every saved take); the file part is proven by the smoke check. Nothing to do unless you want to try it on the work PC.
 - [x] US-140 plain http warning: passed 2026-11-08 (LaBroi: the warning shows and the note changes).
