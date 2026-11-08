@@ -107,6 +107,15 @@ export function setTrayHideWords(on: boolean): void {
   tray?.setContextMenu(buildMenu())
 }
 
+/** Click the menu's Hide words item as a person would; the smoke check
+ *  uses it to prove the click reaches the window (US-148). */
+export function clickTrayHideWords(): boolean {
+  const item = buildMenu().items.find((entry) => entry.label === 'Hide words')
+  if (!item) return false
+  item.click()
+  return true
+}
+
 /** Whether the menu's Hide words item is checked; the smoke check reads it. */
 export function trayHideWordsChecked(): boolean {
   return buildMenu().items.find((item) => item.label === 'Hide words')?.checked === true

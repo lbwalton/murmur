@@ -184,7 +184,7 @@ export function HistorySettings(props: {
       <Row label="Clear all" anchor="row-clear-history" keywords="clear delete erase wipe history" desc={clearAllLine(count)}>
         <button
           ref={clearRef}
-          className="btn"
+          className="btn quiet-btn"
           disabled={clearing || !count}
           aria-expanded={clearAsk !== null}
           aria-controls={clearAsk !== null ? 'clear-all-confirm' : undefined}

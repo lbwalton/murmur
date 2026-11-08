@@ -330,7 +330,7 @@ export function App(): React.JSX.Element {
     const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
     // Hide words from the tray menu (US-148) lands here too.
     const unPushed = bridge().onSettingsPushed(setSettings)
-    // Clear all (on Home) resets what the belt is counted from, so the
+    // Clear all (Settings, History) resets what the belt is counted from, so the
     // insignia and cosmetics reload then too.
     window.addEventListener(HISTORY_CLEARED, loadCosmetics)
     void refresh().then((k) => {

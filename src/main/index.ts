@@ -41,7 +41,7 @@ import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, trayHideWordsChecked } from './tray'
+import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, clickTrayHideWords, trayHideWordsChecked } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -741,6 +741,63 @@ app.whenReady().then(async () => {
     }
     const ok = Math.abs(top - 3) < 0.01 && sharp === 'ok'
     if (!ok) console.error(`smoke settingsZoomSharp: top=${top} sharp=${sharp}`)
+    return ok
+  })
+
+  registerSmokeCheck('historyInSettings', async () => {
+    // US-148 on the real window: a click on the tray's Hide words reaches
+    // both switches and back, Clear all asks before it clears, and a
+    // shorter Keep history asks before it removes anything. Nothing is
+    // cleared or shortened here: each question is answered keep.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const { recordSession } = await import('./history')
+    recordSession({ startedAt: Date.now() - 2000, rawText: 'smoke keep probe', finalText: 'Smoke keep probe.' })
+    const before = getSettings().history.hideWords
+    const keepBefore = getSettings().history.retentionDays
+    const switchIs = (want: boolean): string => `(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === 'settings')
+      if (nav) nav.click()
+      for (let i = 0; i < 60; i++) {
+        const sw = document.querySelector('#row-hide-words [role=switch]')
+        if (sw && sw.getAttribute('aria-checked') === ${JSON.stringify(String(want))}) return true
+        await wait(50)
+      }
+      return false
+    })()`
+    if (!clickTrayHideWords()) return false
+    const flipped = (await win.webContents.executeJavaScript(switchIs(!before))) as boolean
+    clickTrayHideWords()
+    const back = (await win.webContents.executeJavaScript(switchIs(before))) as boolean
+    const asks = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const until = async (test) => {
+        for (let i = 0; i < 60 && !test(); i++) await wait(50)
+        return test()
+      }
+      const countBefore = await window.murmur.countHistory()
+      const clear = document.querySelector('#row-clear-history button')
+      if (!clear || !(await until(() => !clear.disabled))) return 'clear button missing or disabled'
+      clear.click()
+      if (!(await until(() => document.getElementById('clear-all-confirm') !== null))) return 'clear all did not ask'
+      if ((await window.murmur.countHistory()) !== countBefore) return 'clear all cleared without asking'
+      await wait(600)
+      clear.click()
+      if (!(await until(() => document.getElementById('clear-all-confirm') === null))) return 'clear all question stayed open'
+      const select = document.querySelector('#row-keep-history select')
+      if (!select) return 'keep select missing'
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, '-1')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      if (!(await until(() => document.getElementById('keep-shorter-confirm') !== null))) return 'shorter keep did not ask'
+      const keep = [...document.querySelectorAll('#keep-shorter-confirm button')].find((b) => b.textContent.trim() === 'keep them')
+      if (!keep) return 'no keep them button'
+      keep.click()
+      return (await until(() => document.getElementById('keep-shorter-confirm') === null)) ? 'ok' : 'keep question stayed open'
+    })()`)) as string
+    const kept = getSettings().history.retentionDays === keepBefore
+    const ok = flipped && back && asks === 'ok' && kept && getSettings().history.hideWords === before
+    if (!ok) console.error(`smoke historyInSettings: flipped=${flipped} back=${back} asks=${asks} kept=${kept}`)
     return ok
   })
 
