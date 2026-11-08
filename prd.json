@@ -2450,7 +2450,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started."
+      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started. 2026-11-08: folded into US-154, which rebuilds Provider and keys around profiles and carries every criterion here; this story passes when US-154 does."
     },
     {
       "id": "US-153",
@@ -2465,6 +2465,64 @@
       "passes": true,
       "needs_human": false,
       "notes": "Done 2026-11-08 with an npm override that replaces only minimatch versions >=7.0.0 <11.0.1 with ^11.0.1 (11.0.5). npm ls: 3.1.5 (glob, @electron/asar, dir-compare), 5.1.9 (filelist), 11.0.5 (app-builder-lib and @electron/universal); npm audit 0. An unsigned universal Mac dir build packed 411 files in app.asar, the same as the 6c128bf build, with identical unpacked files and a universal binary. The review gate replayed the builder's file matching over 13,555 paths on minimatch 10.2.6 and 11.0.5 with the same 46 files kept, and the x64ArchFiles glob answers the same on 9.0.9 and 11.0.5. Typecheck and 1354 tests pass."
+    },
+    {
+      "id": "US-154",
+      "title": "Provider and keys, rebuilt around profiles",
+      "description": "Provider and keys mixes speech and cleanup settings, names 2 rows Cleanup model, and hides profiles under More. Profiles save only the speech provider, so LaBroi's Luna cleanup profile applied nothing on 2026-11-08. He picked direction B from the preview: profiles as cards at the top that switch everything in 1 click, then a Speech group, a Cleanup group, and the saved keys. This story also carries US-152.",
+      "acceptance": [
+        "At the top, each saved profile is a card naming what it runs: speech provider and model, and cleanup (same as speech, or its provider and model). Clicking a card switches every setting it holds at once. The active card wears the picked style from US-149, and a last card saves the current setup as a new profile",
+        "A profile saves the speech provider, base URL and model; the cleanup mode, provider, base URL and model; and the notes sorting and Transform connections. Keys are never copied into a profile. Each provider's key stays in the key ring by base URL, so switching profiles uses the right key without pasting it again",
+        "Profiles saved before this change keep working: an old profile applies its speech settings as before and is shown as speech only until it is saved again",
+        "Changing any setting of the active profile shows a bar with Save, Save as new, and Undo. Leaving it unsaved keeps the change working but marks the card as changed",
+        "A Speech group holds Provider, Model, and Key (with Test and Replace); a Cleanup group holds Runs on (Same as speech or Its own provider), then Provider, Model, and Key when it has its own. The speech side has no cleanup model row of its own any more",
+        "Picking a cleanup provider fills in its base URL and its suggested model. OpenRouter's catalog entry gets suggested cleanup models, including openai/gpt-6-luna, checked on openrouter.ai/models with a verified-on date",
+        "Test names the provider and model that answered",
+        "Saved keys lists each provider by name with what it is used for in the active profile (speech, cleanup, notes sorting, Transform, or not used), with Replace and Remove",
+        "A line under Cleanup says Notes sorting and Transform use this connection, with links to those sections, or names their own connection when they have one",
+        "Profiles stay murmur Pro, as today. Without Pro the cards area shows the Pro mark and the setup below works as 1 unnamed setup",
+        "Laid out with the rows in a well hierarchy from US-155 and the controls from US-149",
+        "Tests cover saving and applying a full profile, an old speech-only profile, the unsaved bar, keys found by provider, and the suggested model. Smoke extends profilesGate to a full profile round trip on a Pro test license",
+        "docs/providers.md and docs/settings.md describe profiles and How do I run cleanup on a different provider?, with verified-on dates",
+        "Live check on LaBroi's Mac: save Groq for everything and Groq speech, Luna cleanup; switch between them; dictate on each; see the cleanup model change in the log without pasting a key"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-08 from LaBroi's picks on the Provider and keys preview (direction B, rows in a well). Not started."
+    },
+    {
+      "id": "US-155",
+      "title": "Every Settings section grouped, with rows in a well",
+      "description": "LaBroi wants all of Settings put in order the way Provider and keys is: related rows grouped, section titles clearly above their rows. He picked rows in a well on 2026-11-08: a bold section title with a 1-line description, and its rows inside a slightly darker inner box.",
+      "acceptance": [
+        "Before any code: a preview of every Settings section (Provider and keys, Dictation, Dictionary, Notes, Transform, Time back and recap, Look, System, History, murmur Pro) shows its proposed groups and the order inside each, and LaBroi approves it section by section",
+        "Type steps everywhere in Settings: page title 28 px bold; section title 20 px bold with a 1-line description; group rows at 14 px regular weight in slightly dimmer cream; row descriptions 12.5 px grey",
+        "Each group's rows sit in a well: a slightly darker inner box with its own hairlines, inside the section card",
+        "Every row LaBroi approved moves to its approved group, and Settings search still finds every row by the same words",
+        "Anchors used by the setup checks, the tray menu, and docs still land on the right row",
+        "Night studio tokens only, and the design lint passes",
+        "A visual pass shoots every section with the sample profile, before and after, for the build-in-public log",
+        "Live check on LaBroi's Mac: walk every section and say each one reads clearly"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-08 from LaBroi's picks on the Provider and keys preview (direction B, rows in a well). Not started."
+    },
+    {
+      "id": "US-156",
+      "title": "The look on every page",
+      "description": "US-150 and US-151 define the glass look in detail for Home only. LaBroi asked on 2026-11-08 that every page get it, designed later page by page.",
+      "acceptance": [
+        "Before any code: a preview of Analytics, Wrap-up, Journey, and Settings in the US-150 look. It names, for each page, its frame (the parts that get the faint wash or show the desktop), its 1 strong card if it has one, and its plain reading cards, and LaBroi approves each page",
+        "Each page then gets exactly the approved roles, from the same tokens as Home, and the Pro Look settings from US-151 reach every page",
+        "Paintings, belts, and the painting a day keep their own colors on top of the glass; the overlay pill is unchanged",
+        "Text keeps the US-150 contrast floor on every page",
+        "Before and after shots of every page go into the build-in-public log",
+        "Live check on LaBroi's Mac: every page with a dark and a bright wallpaper"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-08 at LaBroi's request: write it now, design it later. Not started."
     }
   ]
 }

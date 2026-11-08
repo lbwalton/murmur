@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/153 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (101/156 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -165,3 +165,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-150** Glass over your desktop
 - [ ] **US-151** Look settings for Pro
 - [ ] **US-152** Clearer cleanup on another provider
+- [ ] **US-154** Provider and keys, rebuilt around profiles
+- [ ] **US-155** Every Settings section grouped, with rows in a well
+- [ ] **US-156** The look on every page
