@@ -43,7 +43,7 @@ Yes, by default. The words in your history are encrypted on disk with a key your
 
 ## How do I hide my words while I share my screen or film?
 
-Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is on the home tab, just above your history, in Settings, under History, and in the tray menu (the menu bar menu on a Mac). They are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: on the home tab just above your history, in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
 
 - **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
 - **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.

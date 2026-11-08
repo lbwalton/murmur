@@ -73,6 +73,9 @@ describe('the privacy page', () => {
       expect(text).toContain(fact)
     }
     expect(text).not.toContain('uninstalling murmur removes the rest')
+    // Clear all moved off Home into Settings, History (US-148).
+    expect(text).toContain('Clear all empties your history (in Settings under History on Mac and Windows')
+    expect(text).not.toContain('on the home tab')
     expect(text).not.toContain('is listed on the App Store')
   })
 

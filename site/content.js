@@ -171,7 +171,7 @@ function privacy(links, supportEmail) {
     description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-07',
+    updated: '2026-11-08',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -252,7 +252,7 @@ function privacy(links, supportEmail) {
       },
       {
         q: 'How do I delete my data?',
-        a: ['Clear all empties your history (on the home tab on Mac and Windows, above your takes on iPhone). To remove everything murmur keeps:'],
+        a: ['Clear all empties your history (in Settings under History on Mac and Windows, above your takes on iPhone). To remove everything murmur keeps:'],
         points: [
           ['Mac.', ['Quit murmur, move it to the Trash, and delete the folder Library/Application Support/murmur in your home folder.']],
           ['Windows.', ['Uninstall murmur, then delete the folder %APPDATA%\\murmur. Uninstalling keeps it, so a reinstall picks up where you left off.']],
