@@ -107,7 +107,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.9.3",
     "electron-builder": "^26.15.3",
-    "electron-vite": "^5.0.0",
+    "electron-vite": "^6.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "^7.0.2",
