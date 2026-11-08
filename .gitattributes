@@ -1,0 +1,6 @@
+# Node scripts keep LF everywhere. A Windows checkout would otherwise
+# give them CRLF, and a #! first line with CRLF stops Vite from loading
+# the file in tests (and env from finding node).
+scripts/**/*.js text eol=lf
+scripts/**/*.mjs text eol=lf
+site/**/*.js text eol=lf
