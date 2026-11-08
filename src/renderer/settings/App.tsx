@@ -22,7 +22,8 @@ import { ApiKeys } from './ApiKeys'
 import { HomeView } from './HomeView'
 import { PageTitle } from './PageTitle'
 import { JourneyView } from './JourneyView'
-import { HideWordsRow, TryBox } from './HideWords'
+import { TryBox } from './HideWords'
+import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
@@ -327,6 +328,8 @@ export function App(): React.JSX.Element {
     }
     loadCosmetics()
     const unCosmetics = bridge().onHistoryAppended(() => loadCosmetics())
+    // Hide words from the tray menu (US-148) lands here too.
+    const unPushed = bridge().onSettingsPushed(setSettings)
     // Clear all (on Home) resets what the belt is counted from, so the
     // insignia and cosmetics reload then too.
     window.addEventListener(HISTORY_CLEARED, loadCosmetics)
@@ -358,6 +361,7 @@ export function App(): React.JSX.Element {
       clearInterval(timer)
       unNav()
       unCosmetics()
+      unPushed()
       window.removeEventListener(HISTORY_CLEARED, loadCosmetics)
     }
   }, [refresh, runTest])
@@ -638,6 +642,7 @@ export function App(): React.JSX.Element {
     { id: 'notes', title: 'Notes', group: 'features' },
     { id: 'transform', title: 'Transform', group: 'features' },
     { id: 'timeback', title: 'Time back and recap', group: 'features' },
+    { id: 'history', title: 'History', group: 'app' },
     { id: 'look', title: 'Look', group: 'app' },
     { id: 'system', title: 'System', group: 'app', alert: failing('mic', 'axs', 'input') },
     { id: 'pro', title: 'murmur Pro', group: 'app', mark: proMark(undefined, true) }
@@ -725,6 +730,10 @@ export function App(): React.JSX.Element {
                 setPage('setup')
                 // The settings column is hidden until the page switch paints.
                 requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-license-key', { focus: true })))
+              }}
+              onOpenHistory={() => {
+                setPage('setup')
+                requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-keep-history', { focusControl: true })))
               }}
             />
           )}
@@ -1319,6 +1328,10 @@ export function App(): React.JSX.Element {
             </p>
           </Section>
 
+          <Section id="history" title="History" sub="What murmur keeps on this computer, for how long, and who can read it.">
+            <HistorySettings settings={settings} onUpdateSettings={update} />
+          </Section>
+
           <Section id="look" title="Look" sub="The waveform pill and the window around it.">
             <Row
               label="Waveform"
@@ -1422,7 +1435,6 @@ export function App(): React.JSX.Element {
           </Section>
 
           <Section id="system" title="System" sub="Sounds, startup, permissions, and diagnostics.">
-            <HideWordsRow settings={settings} anchor="row-hide-words" onUpdate={update} />
             <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
               <div className="inline">
                 <VolumeSlider

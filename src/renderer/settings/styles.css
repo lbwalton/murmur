@@ -2999,3 +2999,9 @@ textarea.well-multiline {
   min-width: 36px;
   text-align: right;
 }
+
+/* Home's 1-line Keep history rule, under the dictations (US-148). */
+.home-keep-line {
+  margin: 4px 4px 0;
+  font-size: 12.5px;
+}

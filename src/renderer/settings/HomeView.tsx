@@ -29,7 +29,6 @@ import { PageTitle, useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
-import { Switch } from './controls'
 import { HideWordsRow, TakeWords } from './HideWords'
 import { ProMark } from './ProMark'
 import { ReportTake } from './ReportPanel'
@@ -166,6 +165,16 @@ export function keepLine(retentionDays: number): string {
   return `Older entries are removed automatically, with their numbers. ${here}`
 }
 
+/** Home's 1-line summary of Keep history (US-148), beside the link to
+ *  Settings, History. */
+export function keptLine(retentionDays: number): string {
+  if (retentionDays === KEEP_NO_TEXT) return 'Words are not kept on this computer.'
+  if (retentionDays === KEEP_24_HOURS) return 'Words are kept 24 hours on this computer.'
+  if (retentionDays === KEEP_FOREVER) return 'Kept on this computer until you clear it.'
+  if (retentionDays === 365) return 'Kept a year on this computer.'
+  return `Kept ${retentionDays} days on this computer.`
+}
+
 function whenOf(at: number): string {
   const date = new Date(at)
   if (date.toDateString() === new Date().toDateString()) return `today ${timeOf(at)}`
@@ -262,7 +271,7 @@ export function clearAllQuestion(count: number): string {
 }
 
 /** Two clicks closer together than this are one double click. */
-const DOUBLE_CLICK_MS = 500
+export const DOUBLE_CLICK_MS = 500
 
 /** What Discard all asks before it deletes (US-096). */
 export function discardAllQuestion(count: number): string {
@@ -621,6 +630,8 @@ export function HomeView(props: {
   onUpdatePro: (patch: Partial<Settings['pro']>) => Promise<void>
   /** Opens the Pro section in settings. */
   onSeePro: () => void
+  /** Opens Settings at History, where Keep history and Clear all live. */
+  onOpenHistory: () => void
   /** False when the saved paste-last chord is disarmed (main's hotkey
    *  status), so Home never names a chord that does nothing. */
   pasteArmed: boolean
@@ -632,80 +643,7 @@ export function HomeView(props: {
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
   const [openSaid, setOpenSaid] = useState<number | null>(null)
   const [openReport, setOpenReport] = useState<number | null>(null)
-  const [keepAsk, setKeepAsk] = useState<{ value: number; question: string } | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
-  // Clear all asks first (US-099): the whole log's count while the
-  // question is open, null while it is closed.
-  const [clearAsk, setClearAsk] = useState<number | null>(null)
-  const [clearing, setClearing] = useState(false)
-  const [cleared, setCleared] = useState<string | null>(null)
-  const clearRef = useRef<HTMLButtonElement>(null)
-  const clearedRef = useRef<HTMLParagraphElement>(null)
-  // While the count is on its way, and when the question opened: a
-  // second click of a double click never closes it again.
-  const counting = useRef(false)
-  const askedAt = useRef(0)
-  useEffect(() => {
-    if (cleared) clearedRef.current?.focus()
-  }, [cleared])
-  const applyKeep = (retentionDays: number): void => {
-    setKeepAsk(null)
-    void props
-      .onUpdateSettings({ history: { retentionDays } } as Partial<Settings>)
-      .then(async () => setEvents(await bridge().listHistory()))
-  }
-  const chooseKeep = async (retentionDays: number): Promise<void> => {
-    setKeepAsk(null)
-    // Asked on every change: going from Don't keep to 30 days is longer
-    // for words, and still removes old entries with their numbers.
-    const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
-    const question = shorterKeepQuestion(retentionDays, takes, recordings)
-    if (question === '') applyKeep(retentionDays)
-    else setKeepAsk({ value: retentionDays, question })
-  }
-  const askClear = (): void => {
-    if (counting.current) return
-    if (clearAsk !== null) {
-      if (performance.now() - askedAt.current >= DOUBLE_CLICK_MS) setClearAsk(null)
-      return
-    }
-    setCleared(null)
-    counting.current = true
-    void bridge()
-      .countHistory()
-      .then(async (count) => {
-        if (count > 0) {
-          askedAt.current = performance.now()
-          setClearAsk(count)
-          return
-        }
-        // Retention already emptied it: show that instead of asking.
-        setEvents(await bridge().listHistory())
-      })
-      .catch((error: unknown) => console.error('[murmur] could not count history:', error))
-      .finally(() => {
-        counting.current = false
-      })
-  }
-  const keepHistory = (): void => {
-    setClearAsk(null)
-    clearRef.current?.focus()
-  }
-  const clearAll = async (): Promise<void> => {
-    setClearing(true)
-    try {
-      const removed = await bridge().clearHistory()
-      setEvents([])
-      window.dispatchEvent(new Event(HISTORY_CLEARED))
-      setCleared(removed === 1 ? 'Cleared 1 entry.' : `Cleared ${removed.toLocaleString()} entries.`)
-    } catch (error) {
-      console.error('[murmur] clear all failed:', error)
-      setCleared('Could not clear your history. Try again in a moment.')
-    } finally {
-      setClearing(false)
-      setClearAsk(null)
-    }
-  }
   const typingWpm = props.settings.timeBack.typingWpm
   const today = useToday()
 
@@ -740,19 +678,10 @@ export function HomeView(props: {
     // handler so a long-running hidden window never accumulates state.
     return bridge().onHistoryAppended((event) => {
       setEvents((prev) => [...prev, event].slice(-500))
-      // Clear all clears what lands while it asks too, so it counts it.
-      setClearAsk((count) => (count === null ? count : count + 1))
-      setCleared(null)
     })
   }, [])
 
   useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
-
-  const [sealStatus, setSealStatus] = useState<SealStatus | null>(null)
-  const encrypt = props.settings.history.encrypt
-  useEffect(() => {
-    void bridge().getHistorySealStatus().then(setSealStatus)
-  }, [encrypt, cleared, props.settings.history.retentionDays])
 
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
@@ -917,79 +846,15 @@ export function HomeView(props: {
         </section>
       ))}
 
-      {(events.length > 0 || cleared) && (
-        <section className="panel">
-          <p className="micro-label">retention</p>
-          <div className="row">
-            <div className="row-text">
-              <div className="row-label">Keep history for</div>
-              <div className="row-desc">{keepLine(props.settings.history.retentionDays)}</div>
-            </div>
-            <div className="row-control inline">
-              <select
-                className="field"
-                value={props.settings.history.retentionDays}
-                onChange={(e) => void chooseKeep(Number(e.target.value))}
-              >
-                <option value={KEEP_NO_TEXT}>don't keep</option>
-                <option value={KEEP_24_HOURS}>24 hours</option>
-                <option value={30}>30 days</option>
-                <option value={90}>90 days</option>
-                <option value={365}>a year</option>
-                <option value={0}>forever</option>
-              </select>
-              <button
-                ref={clearRef}
-                className="btn quiet-btn"
-                disabled={clearing || events.length === 0}
-                aria-expanded={clearAsk !== null}
-                aria-controls={clearAsk !== null ? 'clear-all-confirm' : undefined}
-                onClick={askClear}
-              >
-                Clear all
-              </button>
-            </div>
-          </div>
-          <div className="row">
-            <div className="row-text">
-              <div className="row-label">Encrypt saved words</div>
-              <div className="row-desc">{sealStatus ? sealLine(sealStatus) : ''}</div>
-            </div>
-            <div className="row-control inline">
-              <Switch
-                checked={encrypt}
-                label="Encrypt saved words"
-                onChange={(next) => void props.onUpdateSettings({ history: { encrypt: next } } as Partial<Settings>)}
-              />
-            </div>
-          </div>
-          {keepAsk !== null && (
-            <AskFirst
-              id="keep-shorter-confirm"
-              question={keepAsk.question}
-              confirm="remove them"
-              keep="keep them"
-              busy={false}
-              onConfirm={() => applyKeep(keepAsk.value)}
-              onKeep={() => setKeepAsk(null)}
-            />
-          )}
-          {clearAsk !== null && (
-            <AskFirst
-              id="clear-all-confirm"
-              question={clearAllQuestion(clearAsk)}
-              confirm={clearing ? 'clearing' : `clear ${clearAsk.toLocaleString()}`}
-              keep={clearAsk === 1 ? 'keep it' : undefined}
-              busy={clearing}
-              onConfirm={() => void clearAll()}
-              onKeep={keepHistory}
-            />
-          )}
-          {/* Always mounted, so screen readers hear the result. */}
-          <p className={cleared ? 'waiting-message' : 'visually-hidden'} ref={clearedRef} tabIndex={-1} role="status">
-            {cleared}
-          </p>
-        </section>
+      {/* Keep history, Encrypt saved words, and Clear all live in Settings,
+          History (US-148); Home says the rule in 1 line and links there. */}
+      {events.length > 0 && (
+        <p className="home-keep-line dim">
+          {keptLine(props.settings.history.retentionDays)}{' '}
+          <button className="link-btn" onClick={props.onOpenHistory}>
+            History settings
+          </button>
+        </p>
       )}
     </div>
   )

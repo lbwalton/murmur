@@ -2378,7 +2378,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started."
+      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started. Built 2026-11-08 on feature/redesign. Settings has a new History section in the app group (rail and sections now 10). It holds Keep history for (still asking first when shorter), Encrypt saved words, Hide words (moved from System, same anchor row-hide-words), and Clear all (asks first with the count, and says beforehand what it removes) in HistorySettings.tsx. Home lost its retention card and now ends with 1 line, for example Kept 90 days on this computer, with a History settings link that opens Settings at Keep history for. The tray menu has a Hide words checkbox. Main pushes the new settings to the window over settings:pushed, and the checkbox follows the setting both ways. Search keywords cover retention, history, encrypt, hide, clear, and delete. docs/settings.md and docs/notes.md say where everything lives now. HistorySettings.test.tsx covers the 4 anchors, every keep choice, the search words, clearAllLine, and Home's keptLine. Smoke: the new trayHideWords check flips the setting and reads the tray, settingsRail now expects 10 sections, the hideWords check still passes on both switches, and all 94 checks are green. Captures show the History section and Home's link. Left: LaBroi's live check."
     },
     {
       "id": "US-149",

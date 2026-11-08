@@ -211,6 +211,13 @@ const api = {
   saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' | 'week' = 'belt', day?: string): Promise<boolean> => {
     return ipcRenderer.invoke('sharecard:save', pngDataUrl, kind, day)
   },
+  /** Settings changed from outside this window, such as Hide words in the
+   *  tray menu (US-148): the window takes the new settings as they are. */
+  onSettingsPushed: (cb: (settings: Settings) => void): (() => void) => {
+    const handler = (_e: unknown, settings: Settings): void => cb(settings)
+    ipcRenderer.on('settings:pushed', handler)
+    return () => ipcRenderer.removeListener('settings:pushed', handler)
+  },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
     ipcRenderer.on('nav:goto', handler)

@@ -41,7 +41,7 @@ import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayInboxVisible, setTrayLastNoteVisible } from './tray'
+import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, trayHideWordsChecked } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -496,7 +496,22 @@ app.whenReady().then(async () => {
     },
     onDiscardHandsFree: () => {
       handsFreeCancel(false)
+    },
+    // Hide words from the menu (US-148): the window hears it at once.
+    onToggleHideWords: (on) => {
+      const settings = updateSettings({ history: { hideWords: on } })
+      if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('settings:pushed', settings)
     }
+  })
+  setTrayHideWords(getSettings().history.hideWords)
+  onSettingsChanged((s) => setTrayHideWords(s.history.hideWords))
+  // The tray's Hide words follows the setting both ways (US-148).
+  registerSmokeCheck('trayHideWords', () => {
+    const before = getSettings().history.hideWords
+    updateSettings({ history: { hideWords: !before } })
+    const flipped = trayHideWordsChecked() === !before
+    updateSettings({ history: { hideWords: before } })
+    return flipped && trayHideWordsChecked() === before
   })
   // The inbox item exists only while there is a folder to open.
   setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
@@ -692,7 +707,8 @@ app.whenReady().then(async () => {
       }
     })()`)) as { items: number; sections: number; finish: boolean; first: string | null } | null
     if (!probe) return false
-    return probe.items === 9 && probe.sections === 9 && probe.finish && probe.first === 'Hotkey'
+    // 10 sections since History joined the app group (US-148).
+    return probe.items === 10 && probe.sections === 10 && probe.finish && probe.first === 'Hotkey'
   })
 
   registerSmokeCheck('settingsZoomSharp', async () => {
