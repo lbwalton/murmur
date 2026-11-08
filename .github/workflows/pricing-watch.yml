@@ -44,7 +44,7 @@ jobs:
           cp scripts/lib/pricing-watch.js "$RUNNER_TEMP/fence/lib/"
           cp shared/provider-catalog.json "$RUNNER_TEMP/fence/before.json"
 
-      - uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # v1.0.238
+      - uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # This job's own read-only token. Without it the action asks
