@@ -224,7 +224,7 @@ enum WordsCopy {
     static let addExpansionLabel = "Add an expansion"
     static let search = "Search words and expansions"
     static let noMatch = "Nothing here matches your search."
-    static let wordsEmpty = "Teach murmur a word it gets wrong. For example, when it hears la broy, write LaBroi."
+    static let wordsEmpty = "Teach murmur a word it gets wrong. For example, when it hears shiv on, write Siobhan."
     static let expansionsEmpty = "Say a short trigger and get longer text. For example, say my address to get 1 Main Street, Springfield."
     static let delete = "Delete"
     static let deleteWord = "Delete word"
@@ -234,8 +234,8 @@ enum WordsCopy {
     static let writeAs = "Write it as"
     static let whenSaid = "When you say"
     static let write = "Write"
-    static let heardPlaceholder = "la broy"
-    static let spellingPlaceholder = "LaBroi"
+    static let heardPlaceholder = "shiv on"
+    static let spellingPlaceholder = "Siobhan"
     static let triggerPlaceholder = "my address"
     static let textPlaceholder = "1 Main Street, Springfield"
     static let wordFooter = "murmur writes it this way, with this casing, wherever you say it, and offers your provider the spelling as a hint."
@@ -271,7 +271,7 @@ enum WordsCopy {
 #Preview("A few") {
     let defaults = UserDefaults(suiteName: "words-preview-few")!
     let model = WordsModel(store: CleanupStore(defaults: defaults))
-    model.saveWord(DictionaryEntry(from: "la broy", to: "LaBroi"))
+    model.saveWord(DictionaryEntry(from: "shiv on", to: "Siobhan"))
     model.saveWord(DictionaryEntry(from: "eze media", to: "Eze Media"))
     model.saveExpansion(ExpansionEntry(trigger: "my address", text: "1 Main Street, Springfield"))
     return NavigationStack { WordsScreen(model: model) }.preferredColorScheme(.dark)
