@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (96/146 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (100/152 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -99,7 +99,11 @@
 - [x] **US-118** A security contact, headers every scanner can read, and the HSTS preload written down
 - [x] **US-119** A silent take never types invented words
 - [x] **US-125** A scored test set for messy speech
+- [x] **US-128** See what cleanup changed, and take it back
 - [x] **US-129** A quality log that never holds your words
+- [x] **US-130** Report this take
+- [x] **US-138** History encrypted on disk
+- [x] **US-140** Warn before sending over plain http
 
 ## Built, awaiting live verification
 
@@ -141,8 +145,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-124** A public security page
 - [ ] **US-126** Restarts and restated thoughts come out clean
 - [ ] **US-127** Apply corrections and smart lists on for everyone
-- [ ] **US-128** See what cleanup changed, and take it back
-- [ ] **US-130** Report this take
 - [ ] **US-131** Long dictation reads like it was written
 - [ ] **US-132** Writing style by kind of app
 - [ ] **US-133** Measure what the recognizer hears
@@ -150,11 +152,15 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-135** Close the mic between takes, and say so plainly
 - [ ] **US-136** Choose how updates arrive
 - [ ] **US-137** Keep history for 24 hours, or not at all
-- [ ] **US-138** History encrypted on disk
 - [ ] **US-139** Every IPC call proves where it came from
-- [ ] **US-140** Warn before sending over plain http
 - [ ] **US-141** Stronger fuses and fewer Mac permissions
 - [ ] **US-142** Checksums and a parts list with every release
 - [ ] **US-143** A policy file IT can deploy
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
+- [ ] **US-147** Home with a rail: find any take fast
+- [ ] **US-148** History settings move into Settings
+- [ ] **US-149** Choices you can tell apart
+- [ ] **US-150** Glass over your desktop
+- [ ] **US-151** Look settings for Pro
+- [ ] **US-152** Clearer cleanup on another provider

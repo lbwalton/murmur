@@ -12,7 +12,7 @@ Open the home tab and click **report** on that take. murmur shows what you said,
 
 **Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, other takes, and your dictionary and expansion lists are never included. What murmur typed can hold an expansion that fired or a dictionary spelling, so read it first. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
 
-LaBroi reads reports to improve murmur. They are kept 90 days, then cleared within about 30 days. A report becomes a test case only if you agree, rewritten without names or details.
+We read reports to improve murmur. They are kept 90 days, then cleared within about 30 days. A report becomes a test case only if you agree, rewritten without names or details.
 
 ## What does a [quality] line in the log mean?
 

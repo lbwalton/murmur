@@ -50,6 +50,8 @@ const ID_PREFIX = process.env.MURMUR_PROBE_ID_PREFIX ?? ''
 const OUT = process.env.MURMUR_PROBE_OUT ?? ''
 const REPLAY = process.env.MURMUR_PROBE_REPLAY ?? ''
 const PACE_MS = Number(process.env.MURMUR_PROBE_PACE_MS ?? 0)
+// MURMUR_PROBE_USAGE=file appends each answer's token counts, to price a run.
+const USAGE = process.env.MURMUR_PROBE_USAGE ?? ''
 const CLAUDE_CLI = process.env.MURMUR_PROBE_CLAUDE_CLI === '1'
 
 const CLAUDE_CLI_LIMIT_MS = 60_000
@@ -149,10 +151,17 @@ function liveFetch(onAnswer: (raw: string) => void): typeof fetch {
   return async (url, init) => {
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>
     if (ROUTE !== '') body.provider = { order: [ROUTE], allow_fallbacks: false }
+    // Current Claude models refuse sampling settings on Anthropic's
+    // OpenAI-compatible endpoint, so the probe sends none there.
+    if (new URL(String(url)).hostname === 'api.anthropic.com') delete body.temperature
     const response = CLAUDE_CLI ? await askClaudeCode(init) : await fetch(url, { ...init, body: JSON.stringify(body) })
     if (response.ok) {
-      const parsed = (await response.clone().json()) as { choices?: Array<{ message?: { content?: unknown } }> }
+      const parsed = (await response.clone().json()) as {
+        choices?: Array<{ message?: { content?: unknown } }>
+        usage?: unknown
+      }
       const content = parsed.choices?.[0]?.message?.content
+      if (USAGE !== '' && parsed.usage) appendFileSync(USAGE, JSON.stringify(parsed.usage) + '\n')
       if (typeof content === 'string') onAnswer(content)
     }
     return response
