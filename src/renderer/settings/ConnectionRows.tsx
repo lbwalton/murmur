@@ -63,23 +63,33 @@ export function presetConnection<T extends ConnectionValue>(preset: CatalogProvi
   return { ...value, baseUrl: preset.llmBaseUrl ?? preset.baseUrl, llmModel: preset.llmModels[0]?.id ?? '' }
 }
 
+/** How a test result reads: green when it worked, red when it failed,
+ *  and a plain note when the provider answered but does not list a model.
+ *  That last one is a soft warning, not an error (LaBroi, 2026-11-08): it
+ *  is not critical, least of all for a model the setup is not using. */
+export type VerdictTone = 'ok' | 'warn' | 'bad'
+export const VERDICT_CLASS: Record<VerdictTone, string> = {
+  ok: 'status-ok',
+  warn: 'status-warn',
+  bad: 'status-bad'
+}
+
 /** What a connection test says (US-154): who answered, and whether it
- *  offers each model being used. A model the provider does not list
- *  reads as a problem, since every call to it would fail. */
-export function testVerdict(result: ProviderTestResult, provider: string): { message: string; ok: boolean } {
-  if (!result.ok) return { message: result.detail, ok: false }
+ *  offers each model being used. */
+export function testVerdict(result: ProviderTestResult, provider: string): { message: string; tone: VerdictTone } {
+  if (!result.ok) return { message: result.detail, tone: 'bad' }
   const asked = result.models ?? (result.model ? [{ id: result.model, listed: result.listed ?? null }] : [])
   const both = (ids: string[]): string => ids.join(' and ')
   const missing = asked.filter((m) => m.listed === false).map((m) => m.id)
   if (missing.length > 0) {
     return {
       message: `${provider} answered, but does not list ${both(missing)}. Check the model id${missing.length > 1 ? 's' : ''}.`,
-      ok: false
+      tone: 'warn'
     }
   }
   const offered = asked.filter((m) => m.listed === true).map((m) => m.id)
-  if (offered.length > 0) return { message: `${provider} answered and offers ${both(offered)}`, ok: true }
-  return { message: `${provider} answered`, ok: true }
+  if (offered.length > 0) return { message: `${provider} answered and offers ${both(offered)}`, tone: 'ok' }
+  return { message: `${provider} answered`, tone: 'ok' }
 }
 
 export function ConnectionRows(props: {
@@ -308,9 +318,7 @@ export function ConnectionRows(props: {
                 {testing ? (
                   <span className="status-dim">testing…</span>
                 ) : (
-                  test && (
-                    <span className={verdict?.ok ? 'status-ok' : 'status-bad'}>{verdict?.message}</span>
-                  )
+                  test && verdict && <span className={VERDICT_CLASS[verdict.tone]}>{verdict.message}</span>
                 )}
               </div>
             </Row>

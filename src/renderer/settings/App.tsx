@@ -26,7 +26,7 @@ import { TryBox } from './HideWords'
 import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
-import { ConnectionRows, testVerdict } from './ConnectionRows'
+import { ConnectionRows, VERDICT_CLASS, testVerdict } from './ConnectionRows'
 import { ProfileCards, RunningStrip } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
 import { type KeysKnown, connectionsNow } from '../../shared/profiles'
@@ -915,9 +915,7 @@ export function App(): React.JSX.Element {
                   {testing && keyOk ? (
                     <span className="status-dim">testing…</span>
                   ) : (
-                    speechVerdict && (
-                      <span className={speechVerdict.ok ? 'status-ok' : 'status-bad'}>{speechVerdict.message}</span>
-                    )
+                    speechVerdict && <span className={VERDICT_CLASS[speechVerdict.tone]}>{speechVerdict.message}</span>
                   )}
                 </div>
               </Row>

@@ -1003,6 +1003,13 @@ select.field {
   font-size: 12px;
 }
 
+/* A soft warning: plain cream, never red, never amber. */
+.status-warn {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .mono-inline {
   font-family: var(--font-mono);
   font-size: 12px;

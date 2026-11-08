@@ -14,7 +14,7 @@ import { type ProviderCatalog, validateCatalog } from '../../shared/catalog'
 import { snapshotProfile } from '../../shared/profiles'
 import { DEFAULT_SETTINGS, type Settings, mergeSettings } from '../../shared/settings'
 import { CleanupShares } from './CleanupShares'
-import { ConnectionRows, presetConnection, testVerdict } from './ConnectionRows'
+import { ConnectionRows, VERDICT_CLASS, presetConnection, testVerdict } from './ConnectionRows'
 import { Row } from './controls'
 import { ProfileCards, RunningStrip } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
@@ -159,9 +159,10 @@ describe('what Test says', () => {
   it('names the provider and the model that answered, and catches a model the provider does not offer', () => {
     expect(testVerdict({ ok: true, detail: 'connected', listed: true, model: 'openai/gpt-6-luna' }, 'OpenRouter')).toEqual({
       message: 'OpenRouter answered and offers openai/gpt-6-luna',
-      ok: true
+      tone: 'ok'
     })
-    expect(testVerdict({ ok: true, detail: 'connected', listed: false, model: 'openai/gpt-6-lun' }, 'OpenRouter').ok).toBe(false)
+    // A model the provider does not list is a soft warning, never red.
+    expect(testVerdict({ ok: true, detail: 'connected', listed: false, model: 'openai/gpt-6-lun' }, 'OpenRouter').tone).toBe('warn')
     expect(testVerdict({ ok: true, detail: 'connected', listed: null }, 'Groq').message).toBe('Groq answered')
     // The speech test also checks the cleanup model while cleanup runs on speech.
     const both = [
@@ -174,9 +175,13 @@ describe('what Test says', () => {
     const typo = [both[0], { id: 'openai/gpt-oss-12b', listed: false }]
     expect(testVerdict({ ok: true, detail: 'connected', listed: true, models: typo }, 'Groq')).toEqual({
       message: 'Groq answered, but does not list openai/gpt-oss-12b. Check the model id.',
-      ok: false
+      tone: 'warn'
     })
-    expect(testVerdict({ ok: false, detail: 'key rejected (http 401)' }, 'Groq').message).toBe('key rejected (http 401)')
+    expect(testVerdict({ ok: false, detail: 'key rejected (http 401)' }, 'Groq')).toEqual({
+      message: 'key rejected (http 401)',
+      tone: 'bad'
+    })
+    expect(VERDICT_CLASS).toEqual({ ok: 'status-ok', warn: 'status-warn', bad: 'status-bad' })
   })
 })
 
