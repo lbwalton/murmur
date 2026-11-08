@@ -98,7 +98,7 @@ export function unhashedInlineScripts(html, policy) {
   const csp = parseCsp(policy);
   const allowed = csp.get("script-src") ?? csp.get("default-src") ?? [];
   const missing = [];
-  for (const [, attrs, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+  for (const [, attrs, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     if (/(?:^|\s)src\s*=/i.test(attrs)) continue;
     const type = attrs.match(/(?:^|\s)type\s*=\s*["']?([^"'\s>]+)/i)?.[1]?.toLowerCase();
     if (type && ["application/ld+json", "application/json", "importmap", "speculationrules"].includes(type)) continue;
@@ -221,7 +221,7 @@ export function externalScriptHosts(html, origin) {
 /** Inline tag snippets that load trackers before consent (GTM, gtag, Meta, Clarity, Hotjar). */
 export function inlineTrackers(html) {
   const found = [];
-  const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join("\n");
+  const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi)].map((m) => m[1]).join("\n");
   const signs = {
     "Google Tag Manager": /googletagmanager\.com\/gtm\.js/,
     "Google tag (gtag.js)": /googletagmanager\.com\/gtag\/js|gtag\(['"]config/,

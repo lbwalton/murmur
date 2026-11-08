@@ -73,7 +73,7 @@ describe('what the app imports', () => {
   })
 
   it('still matches what npm reports', () => {
-    const sbom = JSON.parse(execFileSync('npm', ['sbom', '--sbom-format', 'cyclonedx', '--package-lock-only'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 27 }))
+    const sbom = JSON.parse(execFileSync('npm', ['sbom', '--sbom-format', 'cyclonedx', '--package-lock-only'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 27, shell: process.platform === 'win32' }))
     const names = shippedSbom(sbom, ['electron-updater', 'uiohook-napi']).components.map((c) => c.name)
     for (const name of ['electron', 'react', 'react-dom', 'electron-updater', 'uiohook-napi']) expect(names).toContain(name)
     expect(names).not.toContain('vite')

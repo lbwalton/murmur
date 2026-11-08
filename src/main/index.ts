@@ -581,11 +581,22 @@ app.whenReady().then(async () => {
       return false
     }
     const ratio = (w: BrowserWindow): Promise<number> => w.webContents.executeJavaScript('window.devicePixelRatio')
+    const near = (a: number, b: number): boolean => Math.abs(a - b) < 0.01
+    // The page learns its new pixel ratio a moment after the zoom is set;
+    // CI once read the halfway step (1.1). Wait up to 2 seconds for it.
+    const settledRatio = async (w: BrowserWindow, want: number): Promise<number> => {
+      for (let tries = 0; tries < 20; tries += 1) {
+        const value = await ratio(w)
+        if (near(value, want)) return value
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+      return ratio(w)
+    }
     const base = await ratio(others[0])
     stepSettingsZoom(win, 'in')
     stepSettingsZoom(win, 'in')
     const zoomed = win.webContents.getZoomFactor()
-    const zoomedRatio = await ratio(win)
+    const zoomedRatio = await settledRatio(win, base * 1.25)
     const othersZoom = others.map((w) => w.webContents.getZoomFactor())
     const othersRatio = await Promise.all(others.map(ratio))
     const saved = getSettings().windowZoom
@@ -596,7 +607,6 @@ app.whenReady().then(async () => {
     const afterReload = win.webContents.getZoomFactor()
     stepSettingsZoom(win, 'reset')
     const reset = win.webContents.getZoomFactor()
-    const near = (a: number, b: number): boolean => Math.abs(a - b) < 0.01
     const ok =
       near(zoomed, 1.25) &&
       near(zoomedRatio, base * 1.25) &&

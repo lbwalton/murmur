@@ -29,7 +29,9 @@ const full = JSON.parse(
     cwd: root,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
-    maxBuffer: 1 << 27
+    maxBuffer: 1 << 27,
+    // npm is npm.cmd on Windows, which Node only runs through a shell.
+    shell: process.platform === 'win32'
   })
 )
 const sbom = shippedSbom(full, Object.keys(pkg.dependencies))

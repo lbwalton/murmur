@@ -34,7 +34,7 @@ describe('fingerprinted files (US-121)', () => {
     expect(pages.length).toBeGreaterThan(5)
     const named = FINGERPRINTED_PATHS.filter((path) => !path.endsWith('*')).map((path) => path.slice(1))
     const reference = new RegExp(
-      `(?<![\\w-])(?:${named.join('|').replace(/\./g, '\\.')}|fonts/[\\w.-]+\\.woff2|film/[\\w.-]+\\.(?:mp4|png))(\\?v=[0-9a-f]{10})?`,
+      `(?<![\\w-])(?:${named.map((path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')}|fonts/[\\w.-]+\\.woff2|film/[\\w.-]+\\.(?:mp4|png))(\\?v=[0-9a-f]{10})?`,
       'g'
     )
     const unstamped = pages.flatMap((file) => {

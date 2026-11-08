@@ -53,7 +53,8 @@ describe('pageRole', () => {
       if (!folder.includes('%')) expect(pageRole(`${raw}/audio/index.html`, { rendererRoot: root }), folder).toBe('audio')
     }
     const root = pathToFileURL('/Users/me/brack[et]/out/renderer').href
-    expect(pageRole('file:///Users/me/brack[et]/out/renderer/overlay/index.html', { rendererRoot: root })).toBe('overlay')
+    const rawRoot = root.replace(/%5B/g, '[').replace(/%5D/g, ']')
+    expect(pageRole(`${rawRoot}/overlay/index.html`, { rendererRoot: root })).toBe('overlay')
   })
 
   it('reads a network share', () => {
