@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -44,7 +44,7 @@ jobs:
           cp scripts/lib/pricing-watch.js "$RUNNER_TEMP/fence/lib/"
           cp shared/provider-catalog.json "$RUNNER_TEMP/fence/before.json"
 
-      - uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # v1.0.238
+      - uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # This job's own read-only token. Without it the action asks
@@ -100,7 +100,7 @@ jobs:
           node -e "const p=require(process.argv[1]);for(const n of p.notes)console.log('- '+n.provider+(n.model?'.'+n.model:'')+': '+n.issue)" \
             "$RUNNER_TEMP/proposal.json" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: proposal
           path: ${{ runner.temp }}/proposal.json
@@ -113,9 +113,9 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: proposal
           path: ${{ runner.temp }}/proposal
