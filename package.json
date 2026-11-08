@@ -125,5 +125,8 @@
   "homepage": "https://github.com/lbwalton/murmur#readme",
   "bugs": {
     "url": "https://github.com/lbwalton/murmur/issues"
+  },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.1"
   }
 }
