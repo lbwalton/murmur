@@ -16,7 +16,7 @@ A rail on the left lists every section in three groups. Essentials: Provider and
 
 The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening an Advanced fold if the setting lives inside one. Esc clears the search.
 
-Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (base URL, profiles, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
+Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (the speech base URL, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
 
 ## How long is my history kept, and where?
 
@@ -72,9 +72,9 @@ When any check fails, a **Finish setup** card opens at the top of the settings c
 
 ## How do I set my API key?
 
-Under Settings, Provider and keys, paste your key into the **API keys** list on your provider's line and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to that provider. Only a masked form (like `gsk_…OC9g`) is ever displayed, marked **in use**. Replace swaps in a new key; Remove deletes it. The Connection row right below tests it on its own after a save, and its Test button runs the check again: green `connected` proves the key and base URL work together.
+Under Settings, Provider and keys, Speech, paste your key into the **Key** row and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to that provider. Only a masked form (like `gsk_…OC9g`) is ever displayed, marked **in use**. Replace swaps in a new key; Remove deletes it. murmur tests the key on its own after a save, and the **Test** button beside it runs the check again. A good result names the provider and your models, for example "Groq answered and offers whisper-large-v3-turbo and openai/gpt-oss-120b", which proves the key and base URL work together and that the provider offers the models you picked. If it says the provider does not list a model, check that model's id.
 
-Each provider keeps its own key, so the list also shows keys you saved for providers you are not using right now, one per line, each with its own Remove. Switching the Provider preset brings that provider's saved key back into use.
+Each provider keeps its own key. **Saved keys**, further down, lists every key you saved, 1 per provider, with what each is used for right now and its own Replace and Remove. Switching the Speech provider brings that provider's saved key back into use.
 
 ## How do I change the hotkey?
 
@@ -331,13 +331,17 @@ The home tab keeps a quiet what's new line; a small amber dot appears when the r
 
 murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Advanced. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
 
+## How is Provider and keys laid out?
+
+From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 3 groups, each with its settings inset in a darker well: **Speech** (provider, model, key), **Cleanup** (Runs on, then its model, or its own provider, model, and key), and **Saved keys** (every key by provider, with what it is used for now). The cost estimate and Advanced (the speech base URL, price refresh, and the Groq defaults) come last.
+
 ## What is the cleanup connection?
 
-By default one provider handles both transcription and the cleanup pass. Setting Cleanup runs on to Separate (under Provider and keys) gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, DeepSeek cleanup). Details and per-provider setup live in the [providers guide](providers.md).
+By default one provider handles both transcription and the cleanup pass. Setting the Cleanup group's **Runs on** to **Its own provider** gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, OpenRouter cleanup). [How do I run cleanup on a different provider?](providers.md#how-do-i-run-cleanup-on-a-different-provider) walks through it with OpenRouter.
 
 ## What are provider profiles?
 
-A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from Provider and keys, Advanced, Profiles. Profiles carry the endpoint and models; keys stay in the per-provider key ring, so applying a profile automatically uses that provider's saved key. The free single provider setup is unchanged, profiles are additive.
+A murmur Pro convenience: save your whole setup under a name and switch setups in 1 click from the cards at the top of Provider and keys. Since this version a profile holds speech (provider, base URL, model), cleanup (same as speech, or its own provider, base URL, and model), and the notes sorting and Transform connections. Keys never go in a profile: they stay under Saved keys, 1 per provider, so switching uses each provider's saved key without pasting it again. Change a setting and the active card says changed, with Save, Save as new, and Undo. Profiles saved by 0.1.17 or earlier apply their speech settings only until you save them again. The full guide is [How do I switch between whole provider setups?](providers.md#how-do-i-switch-between-whole-provider-setups). Without Pro, everything works as 1 setup.
 
 ## What is in the murmur Pro section?
 

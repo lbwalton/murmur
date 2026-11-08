@@ -34,6 +34,7 @@ export const IpcChannels = {
   overlayPreview: 'overlay:preview',
   profilesSave: 'profiles:save',
   profilesApply: 'profiles:apply',
+  profilesResave: 'profiles:resave',
   profilesDelete: 'profiles:delete',
   licenseStatus: 'license:status',
   licenseSet: 'license:set',

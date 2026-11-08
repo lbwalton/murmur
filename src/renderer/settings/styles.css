@@ -1885,11 +1885,6 @@ details[open] > .ladder-summary::after {
   align-items: center;
 }
 
-.profiles-stack {
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
 
 .swatch {
   width: 18px;
@@ -3004,4 +2999,308 @@ textarea.well-multiline {
 .home-keep-line {
   margin: 4px 4px 0;
   font-size: 12.5px;
+}
+
+/* Rows in a well (US-154, LaBroi's pick 2026-11-08; US-155 brings it to
+   every section). The section title is the page's biggest line, each
+   group is a panel with its own title a step down, and the group's rows
+   sit inset in a well a step darker than the panel. Type steps: 28,
+   20, 14, 12.5. */
+.sec-grouped .sec-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.sec-grouped .sec-sub {
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.sec-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.group {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 18px 20px 16px;
+}
+
+.group-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.group-sub {
+  margin: 3px 0 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.group-rows {
+  background: var(--ink);
+  border: 1px solid var(--cream-06);
+  border-radius: 10px;
+  padding: 2px 16px;
+}
+
+.group-rows > * + * {
+  border-top: 1px solid var(--panel-edge);
+}
+
+.group-rows .row {
+  padding: 12px 0;
+}
+
+/* A row label inside a well is a setting, not a heading: lighter than
+   the group title so the 2 never read alike (LaBroi, 2026-11-08). */
+.group-rows .row-label {
+  font-size: 14px;
+  font-weight: 450;
+}
+
+.group-note {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.group-note .link-btn {
+  color: var(--brand);
+}
+
+.group-note .link-btn:hover {
+  color: var(--text);
+}
+
+.btn-row {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(84px, 1fr);
+  gap: 8px;
+}
+
+.mono-dim {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.key-test {
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* What runs now (US-152): always true, whatever a profile says. */
+.running-strip {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.running-kicker {
+  margin: 0 0 4px;
+}
+
+.running-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.running-lines b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.running-note {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* Profile cards (US-154, direction B). */
+.sec-groups > .profiles-row {
+  padding: 0;
+}
+
+.profiles-row .row-text {
+  margin-bottom: 8px;
+}
+
+.profiles-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profiles-row .row-control {
+  max-width: none;
+  width: 100%;
+}
+
+.profile-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 108px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.profile-card:hover {
+  background: var(--panel-lift);
+}
+
+.profile-card:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* The active card wears the picked style from US-149: lifted, gold
+   edged, checked, bold. */
+.profile-card-on {
+  background: var(--panel-lift);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--brand-edge-strong);
+  cursor: default;
+}
+
+.profile-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+/* Bold words on the pick, as in US-149. */
+.profile-card-on .profile-name {
+  font-weight: 700;
+}
+
+.profile-name-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+
+.profile-check {
+  flex: none;
+  margin-top: 4px;
+  color: var(--brand);
+}
+
+.profile-changed {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--brand-edge);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--brand);
+}
+
+.profile-line {
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.profile-line b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.profile-old {
+  font-style: italic;
+}
+
+.profile-new {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-style: dashed;
+  color: var(--text-dim);
+  background: transparent;
+}
+
+.profile-naming {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--panel-lift);
+  border: 1px solid var(--brand-edge);
+  border-radius: 12px;
+}
+
+.profile-bar-text {
+  flex: 1 1 260px;
+  font-size: 13px;
+}
+
+.profile-problem {
+  margin-top: 8px;
+  color: var(--red);
+}
+
+.profile-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-slot .profile-card {
+  flex: 1;
+}
+
+.profile-delete {
+  align-self: flex-end;
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.profiles-offer .row {
+  padding: 14px 0;
 }

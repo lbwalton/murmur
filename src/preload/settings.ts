@@ -27,6 +27,15 @@ export interface RingStatus {
 export interface ProviderTestResult {
   ok: boolean
   detail: string
+  /** Whether the provider's model list names the model being tested
+   *  (US-154): null when no model was asked about or the list could
+   *  not be read. */
+  listed?: boolean | null
+  /** The model id the test asked the provider about. */
+  model?: string
+  /** Every model the test asked about, in order: the speech test also
+   *  asks about the cleanup model while cleanup runs on speech. */
+  models?: Array<{ id: string; listed: boolean | null }>
 }
 
 export interface PermissionsStatus {
@@ -70,6 +79,10 @@ const api = {
   applyProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:apply', id)
   },
+  /** Save the setup running now over a profile, keeping its name (US-154). */
+  resaveProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
+    return ipcRenderer.invoke('profiles:resave', id)
+  },
   deleteProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:delete', id)
   },
@@ -105,8 +118,8 @@ const api = {
   },
   getKeyStatusFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:statusFor', baseUrl),
   clearKeyFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clearFor', baseUrl),
-  testConnectionFor: (baseUrl: string): Promise<ProviderTestResult> => {
-    return ipcRenderer.invoke('provider:testFor', baseUrl)
+  testConnectionFor: (baseUrl: string, model?: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testFor', baseUrl, model)
   },
   testDecisionFor: (baseUrl: string): Promise<ProviderTestResult> => {
     return ipcRenderer.invoke('provider:testDecideFor', baseUrl)

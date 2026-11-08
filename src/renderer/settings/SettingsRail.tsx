@@ -38,7 +38,11 @@ function findSettings(query: string): Match[] {
     const label = row.querySelector('.row-label')?.textContent ?? ''
     const desc = row.querySelector('.row-desc')?.textContent ?? ''
     const keywords = row.dataset.keywords ?? ''
-    const section = row.closest('.sec')?.querySelector('.sec-title')?.textContent ?? ''
+    // Inside a group (US-154) the group names the row too: Model under
+    // Speech and Model under Cleanup are different settings.
+    const secTitle = row.closest('.sec')?.querySelector('.sec-title')?.textContent ?? ''
+    const group = row.closest('.group')?.querySelector('.group-title')?.textContent ?? ''
+    const section = group === '' ? secTitle : `${secTitle}, ${group}`
     const hay = `${label} ${desc} ${keywords} ${section}`.toLowerCase()
     if (!words.every((w) => hay.includes(w))) continue
     // Whole words in the label or keywords first (log finds Diagnostics

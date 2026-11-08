@@ -26,7 +26,11 @@ import { TryBox } from './HideWords'
 import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
-import { ConnectionRows } from './ConnectionRows'
+import { ConnectionRows, testVerdict } from './ConnectionRows'
+import { ProfileCards, RunningStrip } from './ProfileCards'
+import { SavedKeys } from './SavedKeys'
+import { type KeysKnown, connectionsNow } from '../../shared/profiles'
+import { CleanupShares } from './CleanupShares'
 import { PlainHttpNote } from './PlainHttpNote'
 import { plainHttpHost } from '../../shared/plain-http'
 import { UpdatesRow } from './UpdatesRow'
@@ -42,6 +46,7 @@ import { HISTORY_CLEARED } from './HomeView'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
   Advanced,
+  Group,
   ModelPicker,
   NumberSetting,
   Row,
@@ -425,6 +430,17 @@ export function App(): React.JSX.Element {
     prevBaseUrl.current = current
   }, [settings?.provider.baseUrl, recheckKey])
 
+  // The speech test names the models it checked (US-154), so a new model
+  // gets a fresh check instead of a verdict about the old one.
+  const testedModels = settings ? `${settings.provider.sttModel}\n${settings.provider.llmModel}\n${settings.polish.enabled}` : null
+  const prevModels = useRef<string | null>(null)
+  useEffect(() => {
+    if (prevModels.current !== null && testedModels !== null && testedModels !== prevModels.current && keyStatus.active.present) {
+      void runTest()
+    }
+    prevModels.current = testedModels
+  }, [testedModels, runTest])
+
   // A new tab starts at its top, where the Finish setup card lives.
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -496,7 +512,10 @@ export function App(): React.JSX.Element {
   // its own key or it does not, and every other saved key lists under
   // its own provider. No inference, no guessing.
   const normalizeUrl = (u: string): string => u.replace(/\/$/, '')
-  const polishActive = settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== ''
+  // The same rule the pipeline uses: its own provider counts only once
+  // it has a base URL, a model, and a key (review gate, 2026-11-08).
+  const polishActive =
+    settings.polish.enabled && settings.polish.baseUrl !== '' && settings.polish.llmModel !== '' && polishKeyStatus.present
   const llmProvider =
     catalog && polishActive ? providerForBaseUrl(catalog, settings.polish.baseUrl) : sttProvider
   const activeLlmModel = polishActive ? settings.polish.llmModel : settings.provider.llmModel
@@ -661,12 +680,22 @@ export function App(): React.JSX.Element {
     return item.color
   })()
 
-  const otherKeys = keyStatus.list
-    .filter((entry) => normalizeUrl(entry.baseUrl) !== normalizeUrl(settings.provider.baseUrl))
-    .map((entry) => {
-      const owner = catalog ? providerForBaseUrl(catalog, entry.baseUrl) : null
-      return { baseUrl: entry.baseUrl, name: owner?.name ?? entry.baseUrl, masked: entry.masked }
-    })
+  // What the window knows about saved keys, for the strip, the cards,
+  // and Saved keys: the ring's base URLs and the cleanup slot's key.
+  const keysKnown: KeysKnown = {
+    ring: keyStatus.list.map((entry) => entry.baseUrl),
+    cleanupKey: polishKeyStatus.present
+  }
+  const speechVerdict = test ? testVerdict(test, providerName) : null
+  const nowRunning = connectionsNow(settings, keysKnown)
+  const sharesCleanup = nowRunning['notes sorting'] !== null || nowRunning.Transform !== null
+  // After a key in Saved keys is replaced or removed: the ring's list,
+  // the cleanup slot's key, and a fresh verdict when it was speech's.
+  const afterKeyChange = async (baseUrl: string): Promise<void> => {
+    setPolishKeyStatus(await bridge().getPolishKeyStatus())
+    if (normalizeUrl(baseUrl) === normalizeUrl(settings.provider.baseUrl)) await recheckKey()
+    else setKeyStatus(await bridge().getApiKeyStatus())
+  }
   const providerDiffers =
     settings.provider.baseUrl !== DEFAULT_SETTINGS.provider.baseUrl ||
     settings.provider.sttModel !== DEFAULT_SETTINGS.provider.sttModel ||
@@ -761,251 +790,293 @@ export function App(): React.JSX.Element {
           <Section
             id="provider"
             title="Provider and keys"
-            sub="Where your voice is transcribed, and the keys murmur uses to get there."
+            sub="Where your voice is transcribed and cleaned up, and the keys murmur uses to get there."
+            grouped
           >
-            <Row
-              label="Provider"
-              keywords="groq openai mistral deepseek endpoint service preset custom"
-              desc={
-                customPreset || !sttProvider
-                  ? 'Custom: set the address and models yourself. The base URL is under Advanced below.'
-                  : 'A preset fills in the address and models.'
-              }
-            >
-              <select
-                className="field"
-                aria-label="Provider"
-                value={customPreset ? 'custom' : (sttProvider?.id ?? 'custom')}
-                onChange={(e) => {
-                  if (e.target.value === 'custom') {
-                    setCustomPreset(true)
-                    // Custom means the fields are yours: say so by
-                    // walking the eye to the first one to edit.
-                    jumpToRow('row-base-url', { tone: 'glow' })
-                    return
-                  }
-                  const preset = catalog?.providers.find(
-                    (p) => p.id === e.target.value && p.kinds.includes('stt')
-                  )
-                  if (!preset) return
-                  setCustomPreset(false)
-                  void update({
-                    provider: {
-                      baseUrl: preset.baseUrl,
-                      sttModel: preset.sttModels[0]?.id ?? settings.provider.sttModel,
-                      llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
-                    } as Settings['provider']
-                  })
-                  // Walk the user straight to the key field when the ring
-                  // holds no key for the provider they just chose.
-                  const hasKeyFor = keyStatus.list.some(
-                    (entry) => normalizeUrl(entry.baseUrl) === normalizeUrl(preset.baseUrl)
-                  )
-                  if (!hasKeyFor) jumpToRow('row-key', { tone: 'glow' })
-                }}
-              >
-                <option value="custom">Custom</option>
-                {(catalog?.providers.filter((p) => p.kinds.includes('stt')) ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Row>
-
-            <Row
-              label="API keys"
-              anchor="row-key"
-              block
-              keywords="api key token secret password"
-              desc="Encrypted on this computer. Each provider keeps its own key; murmur uses the one marked in use."
-            >
-              <ApiKeys
-                providerName={sttProvider?.name ?? 'Custom'}
-                keyUrl={sttProvider?.keyUrl?.replace('https://', '') ?? null}
-                placeholder={sttProvider?.id === 'groq' ? 'gsk_…' : `paste a ${sttProvider?.name ?? ''} key`}
-                active={keyStatus.active}
-                others={otherKeys}
-                legacy={keyStatus.legacy}
-                onSave={saveKey}
-                onRemoveActive={() => void bridge().clearApiKey().then(() => recheckKey())}
-                onRemoveOther={(baseUrl) => void bridge().removeKeyFor(baseUrl).then(setKeyStatus)}
-                onAssignLegacy={() => void bridge().assignLegacyKey().then(() => recheckKey())}
-                onRemoveLegacy={() => void bridge().removeLegacyKey().then(setKeyStatus)}
-              />
-            </Row>
-
-            <Row
-              label="Connection"
-              anchor="row-conn"
-              keywords="test verify check"
-              desc={
-                test && !test.ok && !testing ? test.detail : `Checks the key in use against ${providerName}.`
-              }
-            >
-              <div className="inline">
-                {testing && keyOk ? (
-                  <span className="status-dim">testing…</span>
-                ) : (
-                  test && (
-                    <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                      {test.ok ? 'connected' : 'failed'}
-                    </span>
-                  )
-                )}
-                <button className="btn" onClick={() => void runTest()} disabled={!keyOk || testing}>
-                  Test
-                </button>
-              </div>
-            </Row>
-
-            <Row label="Speech model" desc="Turns your voice into text. Pick one or type any model id your provider offers.">
-              {sttProvider && sttProvider.sttModels.length > 0 ? (
-                <ModelPicker
-                  label="Speech model"
-                  value={settings.provider.sttModel}
-                  options={sttProvider.sttModels.map((m) => m.id)}
-                  onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
-                />
-              ) : (
-                <TextSetting
-                  value={settings.provider.sttModel}
-                  listId="stt-models"
-                  options={['whisper-large-v3-turbo', 'whisper-large-v3']}
-                  onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
-                />
-              )}
-            </Row>
-
-            <Row
-              label="Cleanup model"
-              keywords="llm polish formatting"
-              desc="Polishes text at Full formatting. If it misbehaves, murmur falls back to built-in cleanup."
-            >
-              {sttProvider && sttProvider.llmModels.length > 0 ? (
-                <ModelPicker
-                  label="Cleanup model"
-                  value={settings.provider.llmModel}
-                  options={sttProvider.llmModels.map((m) => m.id)}
-                  onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
-                />
-              ) : (
-                <TextSetting
-                  value={settings.provider.llmModel}
-                  listId="llm-models"
-                  options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
-                  onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
-                />
-              )}
-            </Row>
-
-            <ConnectionRows
-              value={settings.polish}
+            <RunningStrip settings={settings} catalog={catalog} keys={keysKnown} />
+            <ProfileCards
+              settings={settings}
               catalog={catalog}
-              keyStatus={polishKeyStatus}
-              onKeyStatus={(status) => {
-                setPolishKeyStatus(status)
-                void bridge().getApiKeyStatus().then(setKeyStatus)
-              }}
-              onChange={(polish) => update({ polish })}
-              labels={{
-                connection: 'Cleanup runs on',
-                connectionDesc:
-                  'Separate lets cleanup run elsewhere with its own key: Groq speech with a DeepSeek cleanup, for example.',
-                sameOption: 'Same as speech',
-                provider: 'Cleanup provider',
-                baseUrl: 'Cleanup base URL',
-                model: 'Cleanup model id',
-                key: 'Cleanup key',
-                keyDesc:
-                  'This connection has its own key, stored encrypted like the primary one. Until one is saved, cleanup keeps riding your speech provider.',
-                sharedDesc: "Shares the speech connection's key: one provider, one key. It is in the API keys list above."
-              }}
-              sharedWith={[settings.provider.baseUrl]}
-              anchor="row-cleanup-connection"
-              api={{
-                setKey: (key) => bridge().setPolishKey(key),
-                clearKey: () => bridge().clearPolishKey(),
-                status: () => bridge().getPolishKeyStatus(),
-                test: () => bridge().testPolishProvider()
-              }}
+              pro={license === null ? null : license.pro}
+              mark={proMark()}
+              onSettings={setSettings}
+              onKeysChanged={() =>
+                // A profile that brings back a missing key needs a
+                // verdict; a base URL change rechecks on its own.
+                void bridge()
+                  .getApiKeyStatus()
+                  .then((k) => {
+                    setKeyStatus(k)
+                    if (k.active.present && !keyOk) void runTest()
+                  })
+              }
             />
 
-            {catalog && (
-              <p className="row-note">
-                {sttProvider?.free
-                  ? 'Free: this preset runs on your machine, nothing is billed.'
-                  : costParts
-                    ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
-                        avgWpm > 0 ? `your pace (${avgWpm} wpm)` : `a typical pace (${catalog.estimate.fallbackWpm} wpm)`
-                      }. `
-                    : 'No published rates for this setup; check your provider. '}
-                {(sttProvider ? [sttProvider, ...(llmProvider && llmProvider !== sttProvider ? [llmProvider] : [])] : [])
-                  .flatMap((p) => p.nuances)
-                  .join(' ')}
-                {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
-              </p>
-            )}
-
-            <Advanced
-              hint="base URL, profiles, price refresh, defaults"
-              open={plainHttpHost(settings.provider.baseUrl) !== null}
-            >
+            <Group id="speech" title="Speech" sub="Turns your voice into words.">
               <Row
-                label="Base URL"
-                anchor="row-base-url"
-                keywords="endpoint address proxy local server"
-                desc="Any OpenAI-compatible endpoint: OpenAI, a proxy, or a local server. Test the connection after changing it."
-              >
-                <TextSetting
-                  wide
-                  value={settings.provider.baseUrl}
-                  placeholder="https://api.groq.com/openai/v1"
-                  onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
-                />
-              </Row>
-              <PlainHttpNote url={settings.provider.baseUrl} />
-
-              <ProfilesRow
-                settings={settings}
-                onSettings={setSettings}
-                onKeysChanged={() =>
-                  // Only a profile that brings back a missing key needs a
-                  // verdict; a base URL change rechecks on its own.
-                  void bridge()
-                    .getApiKeyStatus()
-                    .then((k) => {
-                      setKeyStatus(k)
-                      if (k.active.present && !keyOk) void runTest()
-                    })
+                label="Provider"
+                anchor="row-speech-provider"
+                keywords="groq openai mistral endpoint service preset custom speech transcription"
+                desc={
+                  customPreset || !sttProvider
+                    ? 'Custom: set the address yourself. The base URL is under Advanced below.'
+                    : 'A preset fills in the address and its models.'
                 }
-                pro={license === null ? null : license.pro}
-                mark={proMark()}
-              />
-
-              <Row
-                label="Price refresh"
-                keywords="rates cost catalog"
-                desc="At launch, fetch the newest provider rate sheet from the murmur repo, with nothing about you attached. Off uses the rates this version shipped with."
               >
-                <Switch
-                  checked={settings.catalogRefresh}
-                  label="Price refresh"
-                  onChange={(catalogRefresh) => void update({ catalogRefresh })}
-                />
+                <select
+                  className="field"
+                  aria-label="Speech provider"
+                  value={customPreset ? 'custom' : (sttProvider?.id ?? 'custom')}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setCustomPreset(true)
+                      // Custom means the fields are yours: say so by
+                      // walking the eye to the first one to edit.
+                      jumpToRow('row-base-url', { tone: 'glow' })
+                      return
+                    }
+                    const preset = catalog?.providers.find(
+                      (p) => p.id === e.target.value && p.kinds.includes('stt')
+                    )
+                    if (!preset) return
+                    setCustomPreset(false)
+                    void update({
+                      provider: {
+                        baseUrl: preset.baseUrl,
+                        sttModel: preset.sttModels[0]?.id ?? settings.provider.sttModel,
+                        llmModel: preset.llmModels[0]?.id ?? settings.provider.llmModel
+                      } as Settings['provider']
+                    })
+                    // Walk the user straight to the key field when the ring
+                    // holds no key for the provider they just chose.
+                    const hasKeyFor = keyStatus.list.some(
+                      (entry) => normalizeUrl(entry.baseUrl) === normalizeUrl(preset.baseUrl)
+                    )
+                    if (!hasKeyFor) jumpToRow('row-key', { tone: 'glow' })
+                  }}
+                >
+                  <option value="custom">Custom</option>
+                  {(catalog?.providers.filter((p) => p.kinds.includes('stt')) ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
               </Row>
 
-              {providerDiffers && (
-                <Row label="Groq defaults" desc="Put the provider, base URL, and models back to the Groq preset.">
-                  <button
-                    className="btn"
-                    onClick={() => void update({ provider: { ...DEFAULT_SETTINGS.provider } })}
-                  >
-                    Reset
+              <Row
+                label="Model"
+                anchor="row-speech-model"
+                keywords="speech model whisper transcription stt"
+                desc="Pick one or type any speech model id your provider offers."
+              >
+                {sttProvider && sttProvider.sttModels.length > 0 ? (
+                  <ModelPicker
+                    label="Speech model"
+                    value={settings.provider.sttModel}
+                    options={sttProvider.sttModels.map((m) => m.id)}
+                    onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+                  />
+                ) : (
+                  <TextSetting
+                    label="Speech model"
+                    value={settings.provider.sttModel}
+                    listId="stt-models"
+                    options={['whisper-large-v3-turbo', 'whisper-large-v3']}
+                    onCommit={(sttModel) => void update({ provider: { sttModel } as Settings['provider'] })}
+                  />
+                )}
+              </Row>
+
+              <Row
+                label="Key"
+                anchor="row-key"
+                block
+                keywords="api key token secret password test connection verify"
+                desc={`Encrypted on this computer and sent only to ${providerName}. Test checks it, and the model, with ${providerName}.`}
+              >
+                <ApiKeys
+                  providerName={sttProvider?.name ?? 'Custom'}
+                  keyUrl={sttProvider?.keyUrl?.replace('https://', '') ?? null}
+                  placeholder={sttProvider?.id === 'groq' ? 'gsk_…' : `paste a ${sttProvider?.name ?? ''} key`}
+                  active={keyStatus.active}
+                  others={[]}
+                  legacy={keyStatus.legacy}
+                  onSave={saveKey}
+                  onRemoveActive={() => void bridge().clearApiKey().then(() => recheckKey())}
+                  onRemoveOther={(baseUrl) => void bridge().removeKeyFor(baseUrl).then(setKeyStatus)}
+                  onAssignLegacy={() => void bridge().assignLegacyKey().then(() => recheckKey())}
+                  onRemoveLegacy={() => void bridge().removeLegacyKey().then(setKeyStatus)}
+                />
+                <div className="inline key-test">
+                  <button className="btn" onClick={() => void runTest()} disabled={!keyOk || testing}>
+                    Test
                   </button>
-                </Row>
+                  {testing && keyOk ? (
+                    <span className="status-dim">testing…</span>
+                  ) : (
+                    speechVerdict && (
+                      <span className={speechVerdict.ok ? 'status-ok' : 'status-bad'}>{speechVerdict.message}</span>
+                    )
+                  )}
+                </div>
+              </Row>
+            </Group>
+
+            <Group
+              id="cleanup"
+              title="Cleanup"
+              sub="Tidies the words before they land, at Full formatting."
+              note={
+                sharesCleanup ? <CleanupShares settings={settings} catalog={catalog} keys={keysKnown} /> : undefined
+              }
+            >
+              <ConnectionRows
+                value={settings.polish}
+                catalog={catalog}
+                keyStatus={polishKeyStatus}
+                onKeyStatus={(status) => {
+                  setPolishKeyStatus(status)
+                  void bridge().getApiKeyStatus().then(setKeyStatus)
+                }}
+                onChange={(polish) => update({ polish })}
+                labels={{
+                  connection: 'Runs on',
+                  connectionDesc:
+                    'Its own provider runs cleanup somewhere else with its own key, like Groq speech with OpenRouter cleanup.',
+                  sameOption: 'Same as speech',
+                  separateOption: 'Its own provider',
+                  ariaName: 'Cleanup',
+                  provider: 'Provider',
+                  baseUrl: 'Base URL',
+                  model: 'Model',
+                  key: 'Key',
+                  keyDesc: "Paste this provider's key. Until it is saved, cleanup runs on speech.",
+                  sharedDesc: 'The same provider as speech, so it uses the speech key.'
+                }}
+                sharedWith={[settings.provider.baseUrl]}
+                anchor="row-cleanup-connection"
+                api={{
+                  setKey: (key) => bridge().setPolishKey(key),
+                  clearKey: () => bridge().clearPolishKey(),
+                  status: () => bridge().getPolishKeyStatus(),
+                  test: () => bridge().testPolishProvider()
+                }}
+                whenSame={
+                  <Row
+                    label="Model"
+                    anchor="row-cleanup-model"
+                    keywords="llm polish formatting cleanup model"
+                    desc={`Runs on ${providerName} with the speech key. If it misbehaves, murmur falls back to built-in cleanup.`}
+                  >
+                    {sttProvider && sttProvider.llmModels.length > 0 ? (
+                      <ModelPicker
+                        label="Cleanup model"
+                        value={settings.provider.llmModel}
+                        options={sttProvider.llmModels.map((m) => m.id)}
+                        onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+                      />
+                    ) : (
+                      <TextSetting
+                        label="Cleanup model"
+                        value={settings.provider.llmModel}
+                        listId="llm-models"
+                        options={['openai/gpt-oss-120b', 'openai/gpt-oss-20b']}
+                        onCommit={(llmModel) => void update({ provider: { llmModel } as Settings['provider'] })}
+                      />
+                    )}
+                  </Row>
+                }
+              />
+            </Group>
+
+            <Group
+              id="keys"
+              title="Saved keys"
+              sub="1 per provider, encrypted on this computer. Profiles pick the right one."
+            >
+              <SavedKeys
+                list={keyStatus.list}
+                settings={settings}
+                catalog={catalog}
+                keys={keysKnown}
+                onReplace={async (baseUrl, key) => {
+                  await bridge().setKeyFor(baseUrl, key)
+                  await afterKeyChange(baseUrl)
+                }}
+                onRemove={(baseUrl) => void bridge().removeKeyFor(baseUrl).then(() => afterKeyChange(baseUrl))}
+              />
+            </Group>
+
+            <div className="panel">
+              {catalog && (
+                <p className="row-note">
+                  {sttProvider?.free
+                    ? 'Free: this preset runs on your machine, nothing is billed.'
+                    : costParts
+                      ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
+                          avgWpm > 0 ? `your pace (${avgWpm} wpm)` : `a typical pace (${catalog.estimate.fallbackWpm} wpm)`
+                        }. `
+                      : 'No published rates for this setup; check your provider. '}
+                  {(sttProvider ? [sttProvider, ...(llmProvider && llmProvider !== sttProvider ? [llmProvider] : [])] : [])
+                    .flatMap((p) => p.nuances)
+                    .join(' ')}
+                  {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
+                </p>
               )}
-            </Advanced>
+
+              <Advanced
+                hint="speech base URL, price refresh, defaults"
+                open={plainHttpHost(settings.provider.baseUrl) !== null}
+              >
+                <Row
+                  label="Base URL"
+                  anchor="row-base-url"
+                  keywords="endpoint address proxy local server speech"
+                  desc="Where speech goes: any OpenAI-compatible endpoint, such as OpenAI, a proxy, or a local server. Test the key after changing it."
+                >
+                  <TextSetting
+                    wide
+                    label="Speech base URL"
+                    value={settings.provider.baseUrl}
+                    placeholder="https://api.groq.com/openai/v1"
+                    onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
+                  />
+                </Row>
+                <PlainHttpNote url={settings.provider.baseUrl} />
+
+                <Row
+                  label="Price refresh"
+                  keywords="rates cost catalog"
+                  desc="At launch, fetch the newest provider rate sheet from the murmur repo, with nothing about you attached. Off uses the rates this version shipped with."
+                >
+                  <Switch
+                    checked={settings.catalogRefresh}
+                    label="Price refresh"
+                    onChange={(catalogRefresh) => void update({ catalogRefresh })}
+                  />
+                </Row>
+
+                {providerDiffers && (
+                  <Row label="Groq defaults" desc="Put the speech provider, base URL, and models back to the Groq preset. Profiles and keys stay.">
+                    <button
+                      className="btn"
+                      onClick={() =>
+                        void update({
+                          provider: {
+                            baseUrl: DEFAULT_SETTINGS.provider.baseUrl,
+                            sttModel: DEFAULT_SETTINGS.provider.sttModel,
+                            llmModel: DEFAULT_SETTINGS.provider.llmModel
+                          } as Settings['provider']
+                        })
+                      }
+                    >
+                      Reset
+                    </button>
+                  </Row>
+                )}
+              </Advanced>
+            </div>
           </Section>
 
           <Section id="dictation" title="Dictation" sub="How you start talking and where the words land.">
@@ -1709,108 +1780,4 @@ function formatCostParts(parts: Array<{ amount: number; currency: string }>): st
   return parts
     .map((p) => `${currencySymbol(p.currency)}${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(2)}`)
     .join(' + ')
-}
-
-function ProfilesRow(props: {
-  settings: Settings
-  onSettings: (s: Settings) => void
-  /** Re-read the key ring's status after a profile action. */
-  onKeysChanged: () => void
-  /** Shared app-level license truth; null while it loads. */
-  pro: boolean | null
-  /** The Pro mark beside the label: filled for Pro, outlined as an offer. */
-  mark?: React.ReactNode
-}): React.JSX.Element {
-  const pro = props.pro
-  const [name, setName] = useState('')
-  const [chosen, setChosen] = useState('')
-  const profiles = props.settings.provider.profiles
-
-  if (pro === null) return <div />
-  if (!pro) {
-    return (
-      <Row
-        label="Profiles"
-        mark={props.mark}
-        desc="murmur Pro: save this setup (endpoint and models) under a name and switch providers in one click; each provider's saved key comes along from the key ring."
-      >
-        {proConfig.buyUrl ? (
-          <button className="btn" onClick={() => void bridge().openBuyPage()}>
-            Get Pro
-          </button>
-        ) : (
-          <span className="dim">Pro feature</span>
-        )}
-      </Row>
-    )
-  }
-
-  const handle = (result: import('../../main/profiles').ProfileResult): void => {
-    if (!result.ok) return
-    props.onSettings(result.settings)
-    // Applying can fold a profile's saved key into the ring without the
-    // base URL changing (live-found 2026-09-26: Groq to Groq restored the
-    // key, but the key list still said no key and Test stayed disabled),
-    // so the key status is re-read after every successful profile action.
-    props.onKeysChanged()
-  }
-
-  return (
-    <Row
-      label="Profiles"
-      mark={props.mark}
-      desc="Each profile carries its endpoint and models; applying one swaps the setup and the key ring supplies that provider's key."
-    >
-      <div className="inline profiles-stack">
-        {profiles.length > 0 && (
-          <div className="inline">
-            <select className="field" aria-label="Profile" value={chosen} onChange={(e) => setChosen(e.target.value)}>
-              <option value="">choose a profile…</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <button
-              className="btn"
-              disabled={!chosen}
-              onClick={() => void bridge().applyProviderProfile(chosen).then(handle)}
-            >
-              Apply
-            </button>
-            <button
-              className="btn btn-remove"
-              disabled={!chosen}
-              onClick={() => {
-                void bridge().deleteProviderProfile(chosen).then(handle)
-                setChosen('')
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        )}
-        <div className="inline">
-          <input
-            className="field"
-            placeholder="name this setup…"
-            aria-label="Profile name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button
-            className="btn"
-            disabled={name.trim().length === 0}
-            onClick={() => {
-              void bridge().saveProviderProfile(name.trim()).then(handle)
-              setName('')
-            }}
-          >
-            Save current
-          </button>
-        </div>
-      </div>
-    </Row>
-  )
 }

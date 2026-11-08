@@ -6,7 +6,8 @@
 import { PlainHttpNote } from './PlainHttpNote'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
-import { type CatalogKind, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
+import { type CatalogKind, type CatalogProvider, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
+import { providerName } from '../../shared/profiles'
 import { ModelPicker, Row, Segmented, TextSetting } from './controls'
 
 export interface ConnectionValue {
@@ -19,6 +20,12 @@ export interface ConnectionLabels {
   connection: string
   connectionDesc: string
   sameOption: string
+  /** The other choice's words; Separate when not given. */
+  separateOption?: string
+  /** Prefixed to the controls' accessible names when the visible labels
+   *  are short (Model under Cleanup reads Cleanup model to a screen
+   *  reader, US-154). */
+  ariaName?: string
   provider: string
   baseUrl: string
   model: string
@@ -49,6 +56,32 @@ export interface ConnectionKeyApi {
 
 const strip = (u: string): string => u.replace(/\/$/, '')
 
+/** A connection after picking a preset: its address and its suggested
+ *  model, or no model at all. A model id left over from another
+ *  provider would fail every call (LaBroi, 2026-11-08, US-152). */
+export function presetConnection<T extends ConnectionValue>(preset: CatalogProvider, value: T): T {
+  return { ...value, baseUrl: preset.llmBaseUrl ?? preset.baseUrl, llmModel: preset.llmModels[0]?.id ?? '' }
+}
+
+/** What a connection test says (US-154): who answered, and whether it
+ *  offers each model being used. A model the provider does not list
+ *  reads as a problem, since every call to it would fail. */
+export function testVerdict(result: ProviderTestResult, provider: string): { message: string; ok: boolean } {
+  if (!result.ok) return { message: result.detail, ok: false }
+  const asked = result.models ?? (result.model ? [{ id: result.model, listed: result.listed ?? null }] : [])
+  const both = (ids: string[]): string => ids.join(' and ')
+  const missing = asked.filter((m) => m.listed === false).map((m) => m.id)
+  if (missing.length > 0) {
+    return {
+      message: `${provider} answered, but does not list ${both(missing)}. Check the model id${missing.length > 1 ? 's' : ''}.`,
+      ok: false
+    }
+  }
+  const offered = asked.filter((m) => m.listed === true).map((m) => m.id)
+  if (offered.length > 0) return { message: `${provider} answered and offers ${both(offered)}`, ok: true }
+  return { message: `${provider} answered`, ok: true }
+}
+
 export function ConnectionRows(props: {
   value: ConnectionValue
   catalog: ProviderCatalog | null
@@ -64,6 +97,9 @@ export function ConnectionRows(props: {
   /** Row anchor for the first row (design QA captures, jump targets). */
   anchor?: string
   protocol?: ConnectionProtocolControl
+  /** Rows shown while the slot rides the other connection (the cleanup
+   *  group's same-as-speech Model row, US-154). */
+  whenSame?: React.ReactNode
 }): React.JSX.Element {
   const { value, catalog, labels } = props
   const [draft, setDraft] = useState('')
@@ -95,9 +131,16 @@ export function ConnectionRows(props: {
     }
     prevUrl.current = current
   }, [value.baseUrl])
+  // A verdict about one model never vouches for another.
+  useEffect(() => setTest(null), [value.llmModel])
 
   const shared =
     value.baseUrl !== '' && props.sharedWith.some((u) => u !== '' && strip(u) === strip(value.baseUrl))
+  const verdict = test ? testVerdict(test, providerName(catalog, value.baseUrl)) : null
+  // Each row's id hangs off the slot's anchor, so 2 slots with the same
+  // short labels never share an id (Key under Speech and under Cleanup).
+  const sub = (part: string): string | undefined => (props.anchor ? `${props.anchor}-${part}` : undefined)
+  const aria = (label: string): string => (labels.ariaName ? `${labels.ariaName} ${label.toLowerCase()}` : label)
 
   const save = async (): Promise<void> => {
     if (draft.trim().length === 0) return
@@ -126,17 +169,18 @@ export function ConnectionRows(props: {
     <>
       <Row label={labels.connection} desc={labels.connectionDesc} anchor={props.anchor}>
         <Segmented
-          label={labels.connection}
+          label={aria(labels.connection)}
           value={value.enabled ? 'separate' : 'same'}
           options={[
             { value: 'same', label: labels.sameOption },
-            { value: 'separate', label: 'Separate' }
+            { value: 'separate', label: labels.separateOption ?? 'Separate' }
           ]}
           onChange={(next) => void props.onChange({ ...value, enabled: next === 'separate' })}
         />
       </Row>
+      {!value.enabled && props.whenSame}
       {value.enabled && props.protocol && (
-        <Row label={props.protocol.label} desc={props.protocol.desc}>
+        <Row label={props.protocol.label} desc={props.protocol.desc} anchor={sub('protocol')}>
           <select
             className="field"
             aria-label={props.protocol.label}
@@ -152,6 +196,7 @@ export function ConnectionRows(props: {
         <>
           <Row
             label={labels.provider}
+            anchor={sub('provider')}
             desc={
               mismatch
                 ? `${matched?.name ?? 'This provider'} is a ${kind === 'decide' ? 'chat' : 'decision'} model. Switch the sort protocol to use it, or pick a preset that speaks this one.`
@@ -160,16 +205,12 @@ export function ConnectionRows(props: {
           >
             <select
               className="field"
-              aria-label={labels.provider}
+              aria-label={aria(labels.provider)}
               value={matchedKind ? (matched?.id ?? 'custom') : 'custom'}
               onChange={(e) => {
                 const preset = llmProviders.find((p) => p.id === e.target.value)
                 if (!preset) return
-                void props.onChange({
-                  ...value,
-                  baseUrl: preset.llmBaseUrl ?? preset.baseUrl,
-                  llmModel: preset.llmModels[0]?.id ?? value.llmModel
-                })
+                void props.onChange(presetConnection(preset, value))
               }}
             >
               <option value="custom">Custom</option>
@@ -182,20 +223,22 @@ export function ConnectionRows(props: {
           </Row>
           <Row
             label={labels.baseUrl}
+            anchor={sub('base-url')}
             desc={kind === 'decide' ? "The decision endpoint's base URL, ending in /v1." : 'Any OpenAI-compatible chat endpoint.'}
           >
             <TextSetting
               wide
+              label={aria(labels.baseUrl)}
               value={value.baseUrl}
               placeholder={placeholders.baseUrl}
               onCommit={(baseUrl) => void props.onChange({ ...value, baseUrl })}
             />
           </Row>
           <PlainHttpNote url={value.baseUrl} />
-          <Row label={labels.model} desc="Pick a suggestion or type any model id this provider offers.">
+          <Row label={labels.model} anchor={sub('model')} desc="Pick a suggestion or type any model id this provider offers.">
             {matched && matched.llmModels.length > 0 ? (
               <ModelPicker
-                label={labels.model}
+                label={aria(labels.model)}
                 value={value.llmModel}
                 options={matched.llmModels.map((m) => m.id)}
                 placeholder={placeholders.model}
@@ -203,6 +246,7 @@ export function ConnectionRows(props: {
               />
             ) : (
               <TextSetting
+                label={aria(labels.model)}
                 value={value.llmModel}
                 placeholder={placeholders.model}
                 onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
@@ -210,12 +254,13 @@ export function ConnectionRows(props: {
             )}
           </Row>
           {shared ? (
-            <Row label={labels.key} desc={labels.sharedDesc}>
+            <Row label={labels.key} anchor={sub('key')} desc={labels.sharedDesc}>
               <span className="dim">shared</span>
             </Row>
           ) : (
             <Row
               label={labels.key}
+              anchor={sub('key')}
               block
               desc={
                 props.keyStatus.present
@@ -230,7 +275,7 @@ export function ConnectionRows(props: {
                   type="password"
                   className="field"
                   placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
-                  aria-label={labels.key}
+                  aria-label={aria(labels.key)}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -243,6 +288,7 @@ export function ConnectionRows(props: {
                 {props.keyStatus.present && (
                   <button
                     className="btn btn-remove"
+                    aria-label={`Remove ${aria(labels.key)}`}
                     onClick={() => {
                       void props.api.clearKey().then(props.onKeyStatus)
                       setTest(null)
@@ -253,6 +299,7 @@ export function ConnectionRows(props: {
                 )}
                 <button
                   className="btn"
+                  aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
                   onClick={() => void run()}
                   disabled={!props.keyStatus.present || testing}
                 >
@@ -262,9 +309,7 @@ export function ConnectionRows(props: {
                   <span className="status-dim">testing…</span>
                 ) : (
                   test && (
-                    <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                      {test.ok ? 'connected' : test.detail}
-                    </span>
+                    <span className={verdict?.ok ? 'status-ok' : 'status-bad'}>{verdict?.message}</span>
                   )
                 )}
               </div>

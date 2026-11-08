@@ -6,7 +6,15 @@ import { applyChanges, cleanNotes, htmlToText, prBody, rateChanges } from './pri
 
 const text = readFileSync(join(__dirname, '..', '..', 'shared', 'provider-catalog.json'), 'utf8')
 const catalog = JSON.parse(text)
-const today = '2026-10-01'
+// Today is the day after the bundled catalog's newest date, so a rate
+// check that moves the shipped dates forward never makes these tests go
+// stale, and today is still a fresher date than every shipped one.
+const addDays = (day, n) => {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+const today = addDays([catalog.verifiedOn, ...catalog.providers.map((p) => p.verifiedOn)].sort().at(-1), 1)
 const edited = (edit) => {
   const copy = structuredClone(catalog)
   edit(copy)
@@ -64,7 +72,7 @@ describe('rateChanges', () => {
     expect(rateChanges(catalog, edited((c) => (c.verifiedOn = '9999-12-31')), today).ok).toBe(false)
     expect(rateChanges(catalog, edited((c) => (c.verifiedOn = '2020-01-01')), today).ok).toBe(false)
     expect(rateChanges(catalog, edited((c) => (c.verifiedOn = 'today')), today).ok).toBe(false)
-    expect(rateChanges(catalog, edited((c) => (c.verifiedOn = '2026-10-02')), today).ok).toBe(true)
+    expect(rateChanges(catalog, edited((c) => (c.verifiedOn = addDays(today, 1))), today).ok).toBe(true)
   })
 })
 

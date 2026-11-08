@@ -5,6 +5,7 @@ import {
   type ProviderCatalog,
   catalogRefusal,
   costPer1kWords,
+  modelListed,
   providerForBaseUrl,
   providerForKeyMask,
   ratesFromCatalog,
@@ -129,7 +130,14 @@ describe('providerForBaseUrl', () => {
 
 describe('catalogRefusal', () => {
   const shipped = validateCatalog(bundled) as ProviderCatalog
-  const today = '2026-10-01'
+  // Today is the shipped catalog's newest date, so a rate check that
+  // moves the shipped dates forward never makes this test go stale.
+  const addDays = (day: string, n: number): string => {
+    const d = new Date(`${day}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  const today = [shipped.verifiedOn, ...shipped.providers.map((p) => p.verifiedOn)].sort().at(-1) as string
   const edited = (edit: (c: ProviderCatalog) => void): ProviderCatalog => {
     const copy = structuredClone(shipped)
     edit(copy)
@@ -172,10 +180,10 @@ describe('catalogRefusal', () => {
     expect(catalogRefusal(edited((c) => (c.verifiedOn = '9999-12-31')), shipped, today)).toBe(
       'verifiedOn malformed or in the future'
     )
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-01z')), shipped, today)).toBe(
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = `${today}z`)), shipped, today)).toBe(
       'verifiedOn malformed or in the future'
     )
-    expect(catalogRefusal(edited((c) => (c.providers[1].verifiedOn = '2026-10-05')), shipped, today)).toBe(
+    expect(catalogRefusal(edited((c) => (c.providers[1].verifiedOn = addDays(today, 4))), shipped, today)).toBe(
       `${shipped.providers[1].id} verifiedOn malformed or in the future`
     )
   })
@@ -206,7 +214,37 @@ describe('catalogRefusal', () => {
   })
 
   it('allows one day ahead for time zones east of this machine', () => {
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-02')), shipped, today)).toBeNull()
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-03')), shipped, today)).not.toBeNull()
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = addDays(today, 1))), shipped, today)).toBeNull()
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = addDays(today, 2))), shipped, today)).not.toBeNull()
+  })
+})
+
+describe('modelListed (US-154)', () => {
+  const groq = JSON.stringify({ object: 'list', data: [{ id: 'whisper-large-v3-turbo' }, { id: 'openai/gpt-oss-120b' }] })
+
+  it('finds a model in an OpenAI-compatible list, ignoring stray spaces', () => {
+    expect(modelListed(groq, 'whisper-large-v3-turbo')).toBe(true)
+    expect(modelListed(groq, ' openai/gpt-oss-120b ')).toBe(true)
+  })
+
+  it('never calls a working model missing: Ollama tags, aliases, another case, more pages', () => {
+    const ollama = JSON.stringify({ object: 'list', data: [{ id: 'llama3.2:latest' }, { id: 'qwen3:8b' }] })
+    expect(modelListed(ollama, 'llama3.2')).toBe(true)
+    expect(modelListed(ollama, 'qwen3')).toBe(false)
+    expect(modelListed(JSON.stringify({ data: [{ id: 'm-2026-10', aliases: ['m-latest'] }] }), 'm-latest')).toBe(true)
+    expect(modelListed(groq, 'OpenAI/GPT-OSS-120B')).toBeNull()
+    expect(modelListed(JSON.stringify({ data: [{ id: 'a' }], has_more: true }), 'b')).toBeNull()
+  })
+
+  it('says a typo is not listed', () => {
+    expect(modelListed(groq, 'openai/gpt-oss-12b')).toBe(false)
+  })
+
+  it('reads the other shapes, and never guesses on a body it cannot read', () => {
+    expect(modelListed(JSON.stringify({ models: [{ name: 'llama3' }] }), 'llama3')).toBe(true)
+    expect(modelListed(JSON.stringify(['a', 'b']), 'b')).toBe(true)
+    expect(modelListed('<html>nope</html>', 'a')).toBeNull()
+    expect(modelListed(JSON.stringify({ data: [] }), 'a')).toBeNull()
+    expect(modelListed(JSON.stringify({ error: 'x' }), 'a')).toBeNull()
   })
 })

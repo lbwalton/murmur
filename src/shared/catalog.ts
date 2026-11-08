@@ -288,3 +288,43 @@ export function providerForBaseUrl(catalog: ProviderCatalog, baseUrl: string): C
     ) ?? null
   )
 }
+
+/**
+ * Whether a provider's model list (the body of GET /models) names a
+ * model (US-154). OpenAI-compatible lists put { id } entries under
+ * data; a few use models or a bare array. null when the body is not a
+ * list this can read, so Test never claims a model is missing on a
+ * guess.
+ */
+export function modelListed(body: string, model: string): boolean | null {
+  if (body.length > 16_000_000) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body)
+  } catch {
+    return null
+  }
+  let list: unknown[] | null = null
+  if (Array.isArray(parsed)) list = parsed
+  else if (isRecord(parsed) && Array.isArray(parsed.data)) list = parsed.data
+  else if (isRecord(parsed) && Array.isArray(parsed.models)) list = parsed.models
+  if (!list) return null
+  const ids = list
+    .map((entry) => (typeof entry === 'string' ? entry : isRecord(entry) ? (entry.id ?? entry.name) : null))
+    .filter((id): id is string => typeof id === 'string')
+  if (ids.length === 0) return null
+  const wanted = model.trim()
+  // Ollama lists llama3.2:latest and takes llama3.2 for it.
+  const names = wanted.includes(':') ? [wanted] : [wanted, `${wanted}:latest`]
+  const aliases = list.flatMap((entry) =>
+    isRecord(entry) && Array.isArray(entry.aliases) ? entry.aliases.filter((a): a is string => typeof a === 'string') : []
+  )
+  if ([...ids, ...aliases].some((id) => names.includes(id))) return true
+  // The same id in another case may or may not work, depending on the
+  // host, and a list with more pages may hold it on a later one: in
+  // both cases this cannot say.
+  const lower = wanted.toLowerCase()
+  if (ids.some((id) => id.toLowerCase() === lower)) return null
+  if (isRecord(parsed) && parsed.has_more === true) return null
+  return false
+}

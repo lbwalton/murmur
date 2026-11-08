@@ -22,7 +22,7 @@ The diagnostics report adds these up for the last 30 days, or as far back as the
 
 ## What happens when a dictation fails, and how do I retry it?
 
-murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the API keys list under Settings, Provider and keys), then click **retry** beside the take, or **retry all** when several are waiting.
+murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the Key row under Settings, Provider and keys, Speech), then click **retry** beside the take, or **retry all** when several are waiting.
 
 A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
 
@@ -49,7 +49,7 @@ Yes. Many companies run a security service (Zscaler, Netskope, and others) that 
 If dictation still fails on a work network:
 
 1. Open your provider's address in your browser, for example `https://api.groq.com/openai/v1/models`. A short error about a missing or invalid API key means the network lets the provider through. A page from your company's security service saying the site is blocked means your company blocks that provider: ask IT to allow it, or switch to a provider your company allows.
-2. Press **Test** on the Connection row under Settings, Provider and keys. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
+2. Press **Test** on the Key row under Settings, Provider and keys, Speech. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
 3. Send diagnostics (above). The log names the same reason for each failed dictation.
 
 ## Why did murmur type words I never said, or words in another language, after a quiet take?

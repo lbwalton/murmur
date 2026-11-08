@@ -17,6 +17,8 @@ export function TextSetting(props: {
    *  turns headings off), so an emptied field commits instead of
    *  snapping back. */
   allowEmpty?: boolean
+  /** The field's accessible name, when the row label alone is ambiguous. */
+  label?: string
   onCommit: (value: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
@@ -31,6 +33,7 @@ export function TextSetting(props: {
     <>
       <input
         className={`field mono-field ${props.wide ? 'wide-field' : ''}`}
+        aria-label={props.label}
         value={draft}
         placeholder={props.placeholder}
         list={props.listId}
@@ -144,10 +147,18 @@ export function Section(props: {
    *  results still name the section by its title alone. */
   mark?: React.ReactNode
   sub?: string
+  /** The rows-in-a-well layout (US-154, US-155): the section's children
+   *  are Groups, each its own panel, instead of rows on 1 panel. */
+  grouped?: boolean
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <section className="sec" id={`sec-${props.id}`} data-sec={props.id} aria-labelledby={`sec-${props.id}-title`}>
+    <section
+      className={props.grouped ? 'sec sec-grouped' : 'sec'}
+      id={`sec-${props.id}`}
+      data-sec={props.id}
+      aria-labelledby={`sec-${props.id}-title`}
+    >
       {/* Focusable by script only: the rail moves keyboard focus here
           when it scrolls to the section. */}
       <h2 className="sec-title" id={`sec-${props.id}-title`} tabIndex={-1}>
@@ -155,7 +166,33 @@ export function Section(props: {
         {props.mark}
       </h2>
       {props.sub && <p className="sec-sub">{props.sub}</p>}
-      <div className="panel">{props.children}</div>
+      {props.grouped ? <div className="sec-groups">{props.children}</div> : <div className="panel">{props.children}</div>}
+    </section>
+  )
+}
+
+/**
+ * A group of rows inside a grouped Section (US-154): a heading a step
+ * below the section's, a line on what the group does, and its rows
+ * inset in a well a step darker than the panel, so what belongs
+ * together reads as 1 thing (LaBroi's pick, rows in a well, 2026-11-08).
+ */
+export function Group(props: {
+  id: string
+  title: string
+  sub?: string
+  /** A line under the well: what else rides on this group, and links. */
+  note?: React.ReactNode
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <section className="group" id={`group-${props.id}`} aria-labelledby={`group-${props.id}-title`}>
+      <h3 className="group-title" id={`group-${props.id}-title`}>
+        {props.title}
+      </h3>
+      {props.sub && <p className="group-sub">{props.sub}</p>}
+      <div className="group-rows">{props.children}</div>
+      {props.note && <p className="group-note">{props.note}</p>}
     </section>
   )
 }
