@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/146 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (101/152 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -158,3 +158,9 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-143** A policy file IT can deploy
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
+- [ ] **US-147** Home with a rail: find any take fast
+- [ ] **US-148** History settings move into Settings
+- [ ] **US-149** Choices you can tell apart
+- [ ] **US-150** Glass over your desktop
+- [ ] **US-151** Look settings for Pro
+- [ ] **US-152** Clearer cleanup on another provider
