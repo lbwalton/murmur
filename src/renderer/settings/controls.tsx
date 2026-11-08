@@ -241,7 +241,15 @@ export function Segmented<T extends string>(props: {
           disabled={props.disabled}
           onClick={() => props.onChange(o.value)}
         >
-          {o.label}
+          {/* The check shows on the picked option only, so the choice reads
+              without color (US-149). Every option keeps its space, and the
+              label reserves its bold width, so picking never shifts the row. */}
+          <svg className="seg-check" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="seg-label" data-label={o.label}>
+            {o.label}
+          </span>
         </button>
       ))}
     </div>

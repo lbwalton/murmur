@@ -2395,7 +2395,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started."
+      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started. Built 2026-11-08 on feature/redesign. Every choice goes through the 1 Segmented component in controls.tsx, so all 8 of them get the change at once. Options share 1 width (an inline grid of equal columns). The picked option has a lifted fill, a new --brand-edge-strong gold edge, a check, and bold text. Each option keeps the check's space and reserves its bold width, so picking never shifts the row. Buttons in a settings row share a 32 px height and an 84 px minimum width, and every button has a visible cream edge, Remove included. controls.test.tsx checks 1 picked option, a hidden-from-screen-readers check on every option, the gold edge at 3:1 or better against the ink track (it measures 4.5), and both label colors at 4.5:1 or better. The design lint is clean, and 1358 tests pass. A capture of Settings shows Cleanup runs on and Trigger with equal widths and the checked, gold-edged pick. Left: the visual pass over System (Updates) and Look, and LaBroi's live check."
     },
     {
       "id": "US-150",

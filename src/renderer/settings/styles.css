@@ -969,7 +969,7 @@ select.field {
 
 .btn {
   background: var(--ink);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid var(--cream-14);
   border-radius: 8px;
   color: var(--text);
   padding: 7px 14px;
@@ -2559,19 +2559,28 @@ html {
   cursor: default;
 }
 
-/* A short choice shown whole. Outer radius 8 = inner 6 + 2 padding. */
+/* A short choice shown whole. Outer radius 8 = inner 6 + 2 padding.
+   Every option is as wide as the widest, and the picked one is lifted,
+   edged in gold, and checked, so it reads at a glance and without color
+   (US-149, LaBroi's style C, 2026-11-08). */
 .seg {
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 2px;
   height: 32px;
   padding: 2px;
   flex: none;
   background: var(--ink);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid var(--cream-14);
   border-radius: 8px;
 }
 
 .seg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   height: 26px;
   padding: 0 12px;
   border: none;
@@ -2592,12 +2601,47 @@ html {
 .seg button[aria-checked='true'] {
   background: var(--panel-lift);
   color: var(--text);
-  box-shadow: 0 0 0 1px var(--cream-14);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--brand-edge-strong);
+}
+
+.seg-check {
+  flex: none;
+  color: var(--brand);
+  visibility: hidden;
+}
+
+.seg button[aria-checked='true'] .seg-check {
+  visibility: visible;
+}
+
+/* The label is as wide as its bold self, so the pick never nudges the row. */
+.seg-label {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.seg-label::after {
+  content: attr(data-label) / '';
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .seg button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Buttons that sit together in a row share 1 height and at least 1 width,
+   so a Save, a Test, and a Remove line up as a set (US-149). */
+.settings-layout .row-control .btn,
+.settings-layout .inline > .btn,
+.wizard-panel .inline > .btn {
+  min-height: 32px;
+  min-width: 84px;
 }
 
 .settings-layout :is(.btn, .switch, .seg button, .rail-item, .health, .capture, summary):focus-visible,

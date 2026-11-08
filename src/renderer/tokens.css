@@ -30,6 +30,9 @@
      still outshines the hardware (LaBroi direction, 2026-09-07). */
   --brand: #d9a441;
   --brand-edge: rgba(217, 164, 65, 0.5);
+  /* The picked option's edge in a choice (US-149): strong enough for 3:1
+     against the ink track, so the pick shows at a glance (LaBroi, 2026-11-08). */
+  --brand-edge-strong: rgba(217, 164, 65, 0.72);
   /* the bright gold glow as a Pro mark fills (US-107, LaBroi 2026-10-23) */
   --brand-glow: rgba(217, 164, 65, 0.8);
   --brand-glow-fade: rgba(217, 164, 65, 0.5);
