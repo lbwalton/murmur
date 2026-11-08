@@ -2451,6 +2451,20 @@
       "passes": false,
       "needs_human": true,
       "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started."
+    },
+    {
+      "id": "US-153",
+      "title": "Build tool security alert, November: minimatch",
+      "description": "Dependabot alert 21 (GHSA-g3hv-75wg-m249): minimatch from 7.0.0 up to 11.0.1 can be made to spend a long time on some patterns. Only the build tools use it (app-builder-lib had 10.2.6 and @electron/universal had 9.0.9), and nothing ships in the app, but LaBroi asked for it to be updated on 2026-11-08.",
+      "acceptance": [
+        "No minimatch in the vulnerable range is left in package-lock.json, and npm audit finds 0 vulnerabilities",
+        "glob, dir-compare, @electron/asar and jake's filelist keep the minimatch 3 and 5 they need",
+        "An unsigned universal Mac build packs the same files as the previous build, and the app stays universal",
+        "Typecheck and the full test suite pass, and CI is green on Mac and Windows"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Done 2026-11-08 with an npm override that replaces only minimatch versions >=7.0.0 <11.0.1 with ^11.0.1 (11.0.5). npm ls: 3.1.5 (glob, @electron/asar, dir-compare), 5.1.9 (filelist), 11.0.5 (app-builder-lib and @electron/universal); npm audit 0. An unsigned universal Mac dir build packed 411 files in app.asar, the same as the 6c128bf build, with identical unpacked files and a universal binary. The review gate replayed the builder's file matching over 13,555 paths on minimatch 10.2.6 and 11.0.5 with the same 46 files kept, and the x64ArchFiles glob answers the same on 9.0.9 and 11.0.5. Typecheck and 1354 tests pass."
     }
   ]
 }
