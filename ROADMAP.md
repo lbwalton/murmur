@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/152 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (100/152 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,7 +104,6 @@
 - [x] **US-130** Report this take
 - [x] **US-138** History encrypted on disk
 - [x] **US-140** Warn before sending over plain http
-- [x] **US-145** Hide words
 
 ## Built, awaiting live verification
 
@@ -118,6 +117,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-095** The founder practices: gates, practice belt, and promotions
 - [ ] **US-099** Deleting asks first, in red
 - [ ] **US-109** Work networks that inspect secure traffic: every request rides Chromium's network stack
+- [ ] **US-145** Hide words
 
 ## To do
 

@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [x] US-145 Hide words: passed 2026-11-08 on the 6c128bf test build (LaBroi: the switch, wrap-up, the notes notification, and quit and reopen all hold).
+- [ ] US-145 Hide words: the switch, wrap-up, the notes notification, and quit and reopen pass (2026-11-08). Last steps: (1) with Hide words off, save a note with your Notes shortcut and leave its notification sitting in Notification Center; turn Hide words on, and that notification disappears. (2) Open Settings, Notes: any held lines say Words hidden, and pressing Test on the reminder shows no words. (3) Press copy on a take and paste into another app: the words arrive, and paste last works too.
 - [x] US-138 encrypted history: passed 2026-11-08 on the 6c128bf test build. All 552 lines sealed on first launch with no Keychain prompt; switched off, all 558 lines are plain again.
 - [x] US-128 see what cleanup changed: passed 2026-11-08 (LaBroi: struck words show and copy back).
 - [x] US-130 Report this take: passed 2026-11-08. The panel now says We read it to make murmur better; it no longer names LaBroi.
