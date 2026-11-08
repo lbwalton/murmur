@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (100/152 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (101/153 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,6 +104,7 @@
 - [x] **US-130** Report this take
 - [x] **US-138** History encrypted on disk
 - [x] **US-140** Warn before sending over plain http
+- [x] **US-153** Build tool security alert, November: minimatch
 
 ## Built, awaiting live verification
 
