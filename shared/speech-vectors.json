@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "comment": "Shared cases for the speech gate and the hallucination filters (ios/prd.json IOS-003), run by desktop (src/shared/speech-vectors.test.ts) and by MurmurCore (SpeechVectorTests). Signals are built from segments, never from audio files: silence is that many zero samples; square is that many samples alternating between +amplitude and -amplitude every periodSamples / 2 samples (periodSamples is always even), starting positive, each stored as a 32-bit float. Expected values use speech-gate.json. hallucinations check the whole-transcript filter against the phrases in hallucinations.json; trailing checks the end-of-transcript strip against its artifactTails.",
+  "signals": [
+    {
+      "name": "an empty take",
+      "sampleRate": 16000,
+      "segments": [],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0,
+        "deadStream": true
+      }
+    },
+    {
+      "name": "loud but shorter than one window",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "square",
+          "samples": 100,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        }
+      ],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0.30000001192092896,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "a second of silence",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "silence",
+          "samples": 16000
+        }
+      ],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0,
+        "deadStream": true
+      }
+    },
+    {
+      "name": "breath under the threshold",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "square",
+          "samples": 16000,
+          "amplitude": 0.005,
+          "periodSamples": 80
+        }
+      ],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0.004999999888241291,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "a dead capture stream",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "square",
+          "samples": 16000,
+          "amplitude": 0.0005,
+          "periodSamples": 80
+        }
+      ],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0.0005000000237487257,
+        "deadStream": true
+      }
+    },
+    {
+      "name": "exactly the threshold is quiet, because 0.01 as a 32-bit sample is just under it",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "square",
+          "samples": 16000,
+          "amplitude": 0.01,
+          "periodSamples": 80
+        }
+      ],
+      "expected": {
+        "voicedMs": 0,
+        "hasSpeech": false,
+        "trimmedSamples": 0,
+        "peak": 0.009999999776482582,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "just above the threshold",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "square",
+          "samples": 9600,
+          "amplitude": 0.02,
+          "periodSamples": 80
+        }
+      ],
+      "expected": {
+        "voicedMs": 600,
+        "hasSpeech": true,
+        "trimmedSamples": 9600,
+        "peak": 0.019999999552965164,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "speech with silence around it",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "silence",
+          "samples": 8000
+        },
+        {
+          "kind": "square",
+          "samples": 4800,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        },
+        {
+          "kind": "silence",
+          "samples": 8000
+        }
+      ],
+      "expected": {
+        "voicedMs": 330,
+        "hasSpeech": true,
+        "trimmedSamples": 13280,
+        "peak": 0.30000001192092896,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "a click shorter than the minimum voiced time",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "silence",
+          "samples": 8000
+        },
+        {
+          "kind": "square",
+          "samples": 1440,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        },
+        {
+          "kind": "silence",
+          "samples": 8000
+        }
+      ],
+      "expected": {
+        "voicedMs": 120,
+        "hasSpeech": false,
+        "trimmedSamples": 9920,
+        "peak": 0.30000001192092896,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "two bursts with a pause",
+      "sampleRate": 16000,
+      "segments": [
+        {
+          "kind": "silence",
+          "samples": 3200
+        },
+        {
+          "kind": "square",
+          "samples": 3200,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        },
+        {
+          "kind": "silence",
+          "samples": 9600
+        },
+        {
+          "kind": "square",
+          "samples": 3200,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        },
+        {
+          "kind": "silence",
+          "samples": 3200
+        }
+      ],
+      "expected": {
+        "voicedMs": 450,
+        "hasSpeech": true,
+        "trimmedSamples": 22400,
+        "peak": 0.30000001192092896,
+        "deadStream": false
+      }
+    },
+    {
+      "name": "a 48 kHz take",
+      "sampleRate": 48000,
+      "segments": [
+        {
+          "kind": "silence",
+          "samples": 24000
+        },
+        {
+          "kind": "square",
+          "samples": 14400,
+          "amplitude": 0.3,
+          "periodSamples": 80
+        },
+        {
+          "kind": "silence",
+          "samples": 24000
+        }
+      ],
+      "expected": {
+        "voicedMs": 330,
+        "hasSpeech": true,
+        "trimmedSamples": 39840,
+        "peak": 0.30000001192092896,
+        "deadStream": false
+      }
+    }
+  ],
+  "hallucinations": [
+    {
+      "text": "Thank you.",
+      "expected": true
+    },
+    {
+      "text": "thank you for watching!",
+      "expected": true
+    },
+    {
+      "text": "“Thank you.”",
+      "expected": true
+    },
+    {
+      "text": "Thank you for the update.",
+      "expected": false
+    },
+    {
+      "text": "",
+      "expected": true
+    },
+    {
+      "text": "   ",
+      "expected": true
+    },
+    {
+      "text": "Please subscribe.",
+      "expected": true
+    },
+    {
+      "text": "send the invoice tomorrow",
+      "expected": false
+    },
+    {
+      "text": "thank-you",
+      "expected": false
+    },
+    {
+      "text": "Bye bye.",
+      "expected": true
+    },
+    {
+      "text": "Copyright",
+      "expected": true
+    },
+    {
+      "text": "So.",
+      "expected": true
+    },
+    {
+      "text": "So we ship today.",
+      "expected": false
+    }
+  ],
+  "trailing": [
+    {
+      "text": "Send the report today. Thanks for watching.",
+      "expected": "Send the report today."
+    },
+    {
+      "text": "Send it. Thank you.",
+      "expected": "Send it. Thank you."
+    },
+    {
+      "text": "Thanks for watching.",
+      "expected": "Thanks for watching."
+    },
+    {
+      "text": "Call me back! Please subscribe. Like and subscribe.",
+      "expected": "Call me back!"
+    },
+    {
+      "text": "Is it done? Transcribed by",
+      "expected": "Is it done?"
+    },
+    {
+      "text": "Ship it.  Subscribe to my channel!",
+      "expected": "Ship it."
+    }
+  ]
+}

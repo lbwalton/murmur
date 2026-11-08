@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import hallucinations from './hallucinations.json'
+import hallucinations from '../../shared/hallucinations.json'
 import {
   LOW_LOGPROB_THRESHOLD,
   MIN_STEADY_MS,

@@ -5,15 +5,17 @@
 // model itself scores as silence (US-119), and a sanity filter for empty
 // output and the stock phrases Whisper-family models hallucinate on
 // silence. Any one of them leaving nothing means nothing is ever
-// inserted.
+// inserted. The numbers the iPhone app shares live in
+// shared/speech-gate.json.
+import gate from '../../shared/speech-gate.json'
 
 /** The gate's defaults: a 30 ms window whose RMS reaches this counts
  *  as voiced, and a take needs this much voiced time to be speech (a
  *  take no key was held through also needs MIN_STEADY_MS of steady
  *  sound). Hands-free's silence watch (US-117) judges quiet by the same
  *  two. */
-export const SPEECH_RMS_THRESHOLD = 0.01
-export const MIN_VOICED_MS = 200
+export const SPEECH_RMS_THRESHOLD = gate.rmsThreshold
+export const MIN_VOICED_MS = gate.minVoicedMs
 
 export interface GateOptions {
   windowMs?: number
@@ -27,7 +29,7 @@ export function voicedMs(
   sampleRate: number,
   options: GateOptions = {}
 ): number {
-  const { windowMs = 30, rmsThreshold = SPEECH_RMS_THRESHOLD } = options
+  const { windowMs = gate.windowMs, rmsThreshold = SPEECH_RMS_THRESHOLD } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let voiced = 0
   for (let start = 0; start + windowSize <= samples.length; start += windowSize) {
@@ -153,7 +155,7 @@ export function peakLevel(samples: Float32Array): number {
 /** An order of magnitude under any real room's noise floor (and 10x
  *  under the speech gate's own RMS threshold): a take peaking below
  *  this is a dead capture stream, not a quiet human. */
-export const DEAD_STREAM_PEAK = 0.001
+export const DEAD_STREAM_PEAK = gate.deadStreamPeak
 
 export function isDeadStream(peak: number): boolean {
   return peak < DEAD_STREAM_PEAK
@@ -164,7 +166,7 @@ export function trimSilence(
   sampleRate: number,
   options: GateOptions & { paddingMs?: number } = {}
 ): Float32Array {
-  const { windowMs = 30, rmsThreshold = SPEECH_RMS_THRESHOLD, paddingMs = 250 } = options
+  const { windowMs = gate.windowMs, rmsThreshold = SPEECH_RMS_THRESHOLD, paddingMs = gate.paddingMs } = options
   const windowSize = Math.max(1, Math.round((windowMs / 1000) * sampleRate))
   let firstVoiced = -1
   let lastVoiced = -1

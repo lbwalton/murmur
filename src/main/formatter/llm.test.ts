@@ -254,13 +254,133 @@ describe('validatePolish with corrections', () => {
 
   it('never lets an everyday no earn the deeper cut', () => {
     // No problem is content, and so common that dropping it must not
-    // unlock a deep cut; no as a fix stays a prompt cue only.
+    // unlock a deep cut; no counts only as a paused cue (No, after a pause).
     const v = validatePolish(
       'No problem, I can cover the Thursday shift. Tell the team I will be in early on Friday too.',
       'I can cover the Thursday shift. Tell the team.',
       { corrections: true }
     )
     expect(v).toMatchObject({ ok: false, reason: 'length ratio' })
+  })
+
+  describe('a No that takes back the last sentence (IOS-030)', () => {
+    // Twelve words to seven, between the floors: only a paused No can
+    // be the cue that earns the deeper cut.
+    const fix = 'Put the meeting on Wednesday after lunch.'
+    const cut = (input: string): ReturnType<typeof validatePolish> =>
+      validatePolish(input, fix, { corrections: true })
+
+    it('counts a No the speaker paused after', () => {
+      expect(cut('Put the meeting on Monday. No, put it on Wednesday after lunch.')).toEqual({ ok: true, text: fix })
+      expect(cut('Put the meeting on Monday. No. Put it on Wednesday after lunch.')).toEqual({ ok: true, text: fix })
+    })
+
+    it('never counts a No without a pause, a questioning No, or a word that starts with no', () => {
+      expect(cut('Put the meeting on Monday. No put it on Wednesday after lunch.')).toMatchObject({
+        ok: false,
+        reason: 'length ratio'
+      })
+      expect(cut('Put the meeting on Monday. No? Put it on Wednesday after lunch.')).toMatchObject({
+        ok: false,
+        reason: 'length ratio'
+      })
+      expect(cut('Put the meeting on Monday, nobody, put it on Wednesday after lunch.')).toMatchObject({
+        ok: false,
+        reason: 'length ratio'
+      })
+    })
+
+    it('credits a dropped No only when the word left the answer, not just its comma', () => {
+      // Fourteen words to eight, the No kept with its comma gone.
+      expect(
+        validatePolish('Put the meeting on Monday at nine. No, put it on Wednesday after lunch.', 'No put the meeting on Wednesday after lunch.', {
+          corrections: true
+        })
+      ).toMatchObject({ ok: false, reason: 'length ratio' })
+    })
+
+    it('never counts a No that answers a question, opens the take, or follows a word', () => {
+      const cuts: Array<[string, string]> = [
+        ['Is the report ready for the board? No, it still needs the charts and the summary from finance.', 'It still needs the charts and the summary from finance.'],
+        ["No, I don't think that's right, the numbers look off to me.", 'The numbers look off to me.'],
+        ['Oh no, the build failed again on the release branch and the demo for the client starts in ten minutes.', 'The build failed again on the release branch.'],
+        ['I asked the landlord about fixing the heater before winter and he said no.', 'I asked the landlord about fixing the heater.']
+      ]
+      for (const [input, answer] of cuts) {
+        expect(validatePolish(input, answer, { corrections: true })).toMatchObject({ ok: false, reason: 'length ratio' })
+      }
+    })
+
+    it('never credits a kept No for an everyday no the answer dropped', () => {
+      const cuts: Array<[string, string]> = [
+        [
+          'I checked the logs this morning. No, nothing failed overnight, but I have no idea why the import took three hours again.',
+          'I checked the logs this morning. No, nothing failed overnight.'
+        ],
+        [
+          'The report for the board meeting is not done yet. No, it still needs the charts, and there is no budget for the design review this quarter.',
+          'The report for the board meeting is not done yet. No, it still needs the charts.'
+        ]
+      ]
+      for (const [input, answer] of cuts) {
+        expect(validatePolish(input, answer, { corrections: true })).toMatchObject({ ok: false, reason: 'length ratio' })
+      }
+    })
+
+    it('never counts a No after marks alone or after a word that opens a sentence', () => {
+      const cuts: Array<[string, string]> = [
+        ['Is the report ready for the board? ... No, it still needs the charts and the summary from finance.', 'It still needs the charts and the summary from finance.'],
+        ["... No, I don't think that's right, the numbers look off to me today.", 'The numbers look off to me today.'],
+        ['Is the report ready for the board? Well, no, it still needs the charts and the summary from finance.', 'It still needs the charts and the summary from finance.'],
+        ["Unfortunately, no, we can't make it to the dinner on Friday because the kids have a recital that evening.", "We can't make it to the dinner on Friday."]
+      ]
+      for (const [input, answer] of cuts) {
+        expect(validatePolish(input, answer, { corrections: true })).toMatchObject({ ok: false, reason: 'length ratio' })
+      }
+    })
+
+    it('counts a No after a comma inside a sentence', () => {
+      // Seventeen words to ten: the deeper floor, earned by the No.
+      expect(
+        validatePolish(
+          'Put it on the shared drive in the finance folder for the quarter, no, the legal folder.',
+          'Put it on the shared drive in the legal folder.',
+          { corrections: true }
+        )
+      ).toEqual({ ok: true, text: 'Put it on the shared drive in the legal folder.' })
+    })
+
+    it('counts a run of Nos, or a No beside another cue, as one take-back', () => {
+      // Thirty-nine words to nineteen: a cut of twenty, past the twelve
+      // one cue allows, though three Nos would allow twenty-eight.
+      expect(
+        validatePolish(
+          'No, no, no, that is not what we agreed at all. We agreed the vendor would ship the first batch in March and the second batch in May, and we would pay half up front and half on delivery.',
+          'That is not what we agreed at all. We agreed the vendor would ship the second batch in May.',
+          { corrections: true }
+        )
+      ).toMatchObject({ ok: false, reason: 'length ratio' })
+      // Thirty words to fourteen with Sorry, no: one take-back, a cut of
+      // sixteen past its twelve.
+      expect(
+        validatePolish(
+          'Book the large room on the third floor for the whole team on Monday morning after the planning call. Sorry, no, book the small room for the team on Tuesday.',
+          'Book the small room on the third floor for the whole team on Tuesday.',
+          { corrections: true }
+        )
+      ).toMatchObject({ ok: false, reason: 'length ratio' })
+    })
+
+    it('gives each separate No its own share of the cap', () => {
+      // Thirty words to sixteen: a cut of fourteen, which two Nos allow.
+      expect(
+        validatePolish(
+          'Book the large room on the third floor for Monday morning. No, book the small room. Invite the whole design team and the sales team. No, just the sales team.',
+          'Book the small room on the third floor for Monday morning. Invite just the sales team.',
+          { corrections: true }
+        )
+      ).toMatchObject({ ok: true })
+    })
   })
 
   it('never cuts below the 0.4 floor', () => {
@@ -279,6 +399,155 @@ describe('validatePolish with corrections', () => {
         { smartLists: true, corrections: true }
       )
     ).toMatchObject({ ok: true })
+  })
+})
+
+// IOS-032: a model that answers the dictation instead of cleaning it up.
+// The answers below are the shapes the live probe saw (answers.probe.test.ts,
+// 2026-10-22), and the Tokyo one is the question that started the story.
+describe('validatePolish catches an answer (IOS-032)', () => {
+  const answered = { ok: false, reason: 'answered' }
+
+  it.each([
+    ['What time is it in Tokyo?', 'It is 3 PM in Tokyo.'],
+    ['Can you send me the report by Friday?', "I'll send you the report by Friday."],
+    ["What's the capital of Australia?", 'Canberra.'],
+    ["What's the capital of Australia?", 'The capital of Australia is **Canberra**.'],
+    ["What's twelve times eight?", '96.'],
+    ['Give me a synonym for happy.', 'Joyful.'],
+    ['Hello.', 'Hello! How can I help you today?'],
+    ['Thanks.', 'You’re welcome!'],
+    ['Is this working?', 'Yes, it’s working!'],
+    ['Make this sound more professional.', 'Could you please provide the text you’d like me to refine?']
+  ])('rejects %j answered with %j', (input, answer) => {
+    expect(validatePolish(input, answer)).toMatchObject(answered)
+    expect(validatePolish(input, answer, { smartLists: true, corrections: true })).toMatchObject(answered)
+  })
+
+  it.each([
+    ['Their going to be late because of the whether.', 'They’re going to be late because of the weather.'],
+    ['Lets meet at noon.', 'Let’s meet at noon.'],
+    ['Ok.', 'Okay.'],
+    ['Grab two coffees on the way in.', 'Grab 2 coffees on the way in.'],
+    ['Two hundred and fifty.', '250.'],
+    ['Twenty-one, twenty-two.', '21, 22.'],
+    ['Can you send me the report by Friday?', 'Can you send me the report by Friday?'],
+    ['Can you by milk on the way home?', 'Can you buy milk on the way home?'],
+    ['What time is it in Tokyo', 'What time is it in Tokyo?'],
+    ["I wonder if it's done?", "I wonder if it's done."],
+    ['Yeah, so, I think the, the plan is fine, honestly.', 'Yeah, so, I think the plan is fine, honestly.']
+  ])('keeps %j cleaned to %j', (input, cleaned) => {
+    expect(validatePolish(input, cleaned)).toMatchObject({ ok: true })
+  })
+
+  it('judges a list or a correction cut by its own rule, never as dropped words', () => {
+    const list = 'I want to make a list. First I want to add eggs, then bacon, then toast.'
+    expect(validatePolish(list, 'I want to make a list:\n1. eggs\n2. bacon\n3. toast', { smartLists: true })).toMatchObject({
+      ok: true
+    })
+    // Eight of fifteen words dropped, more than half, and the corrections
+    // rule earned the cut.
+    expect(
+      validatePolish(
+        'Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday.',
+        'Send the invoice to Mark on Wednesday.',
+        { corrections: true }
+      )
+    ).toMatchObject({ ok: true })
+    expect(validatePolish('Go Monday, no, sorry, Wednesday.', 'Go Wednesday.', { corrections: true })).toMatchObject({
+      ok: true
+    })
+    // A cut shaped like a correction is judged as before even with apply
+    // corrections off: the base prompt still applies self-corrections, and
+    // a short take's fix passed the length check (review gate, IOS-032).
+    expect(validatePolish('Go Monday, no, sorry, Wednesday.', 'Go Wednesday.')).toMatchObject({ ok: true })
+  })
+
+  it('keeps a corrected question, with apply corrections on or off', () => {
+    for (const corrections of [true, false]) {
+      expect(
+        validatePolish('Can we meet Monday? Sorry, I mean can we meet Tuesday?', 'Can we meet Tuesday?', { corrections })
+      ).toMatchObject({ ok: true })
+      expect(validatePolish('Is the call at two? Wait, is it at three?', 'Is the call at three?', { corrections })).toMatchObject({
+        ok: true
+      })
+    }
+  })
+
+  it.each([
+    ['Calculate twelve times eight.', '96.'],
+    ['Add five and seven.', '12.']
+  ])('rejects %j computed as %j: one digit word stands for one run of spoken numbers', (input, answer) => {
+    expect(validatePolish(input, answer)).toMatchObject(answered)
+  })
+
+  it.each([
+    ['We need two hundred and fifty chairs and forty tables for the event.', 'We need 250 chairs and 40 tables for the event.'],
+    ['The meeting is at three thirty on the twenty first.', 'The meeting is at 3:30 on the 21st.'],
+    ['Grab two coffees and two teas.', 'Grab 2 coffees and 2 teas.']
+  ])('keeps %j with its numbers written as %j', (input, cleaned) => {
+    expect(validatePolish(input, cleaned)).toMatchObject({ ok: true })
+  })
+
+  it.each([
+    ['Are you free tomorrow?', 'Are you free tomorrow? Yes.'],
+    ['What is two plus two?', 'What is 2 plus 2? 4.'],
+    ['Do you know when the meeting starts today?', 'Do you know when the meeting starts today? It starts at noon.']
+  ])('rejects %j answered after the question: %j', (input, answer) => {
+    expect(validatePolish(input, answer)).toMatchObject(answered)
+  })
+
+  it('keeps a take that ends in its questions', () => {
+    expect(validatePolish('Is it done? Is it ready?', 'Is it done? Is it ready?')).toMatchObject({ ok: true })
+    expect(validatePolish('Did he say "go?"', 'Did he say, "go?"')).toMatchObject({ ok: true })
+  })
+
+  it('lets a long take lose a question mark while fixing one slip', () => {
+    expect(
+      validatePolish(
+        'So I was wondering if you could send me the deck? Also their going to need the numbers by Friday.',
+        "So I was wondering if you could send me the deck. Also, they're going to need the numbers by Friday."
+      )
+    ).toMatchObject({ ok: true })
+  })
+
+  it('counts an Arabic question mark as a question', () => {
+    expect(validatePolish('ما هذا؟', 'هذا كتاب.')).toMatchObject(answered)
+  })
+
+  it('still catches a list padded with things never said', () => {
+    expect(
+      validatePolish('I need eggs, bacon, and toast.', '- eggs\n- bacon\n- toast\n- orange juice\n- coffee\n- butter', {
+        smartLists: true
+      })
+    ).toMatchObject(answered)
+  })
+
+  it('counts only ASCII digits as spoken numbers written as digits', () => {
+    expect(validatePolish('Two hundred and fifty.', '٢٥٠.')).toMatchObject(answered)
+  })
+
+  it('counts a fullwidth question mark as a question', () => {
+    expect(validatePolish('東京は何時ですか？', '午後3時です。')).toMatchObject(answered)
+    expect(validatePolish('東京は何時ですか？', '東京は何時ですか？')).toMatchObject({ ok: true })
+  })
+
+  it('leaves every earlier rejection its own reason', () => {
+    expect(validatePolish(INPUT, 'Sure, I will send it.')).toMatchObject({ ok: false, reason: 'meta chatter' })
+    expect(validatePolish('Hi.', 'One two three four five six seven eight nine ten.')).toMatchObject({
+      ok: false,
+      reason: 'length delta'
+    })
+  })
+
+  it('fails open with the reason, never the words', async () => {
+    const reasons: string[] = []
+    const typed = await polishTranscript("What's the capital of Australia?", cfg, {
+      fetchImpl: (async () => chatResponse('Canberra.')) as typeof fetch,
+      onFallback: (reason) => reasons.push(reason)
+    })
+    expect(typed).toBeNull()
+    expect(reasons).toEqual(['validate: answered'])
   })
 })
 

@@ -1,0 +1,188 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# murmur for iPhone as an XcodeGen recipe (ios/prd.json IOS-001).
+# npm run ios:generate turns this into murmur.xcodeproj, which is
+# git-ignored: change this file, never the project.
+name: murmur
+options:
+  bundleIdPrefix: com.lbwalton.murmur
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    # The three to change for your own build. Every bundle id, the app
+    # group in both entitlements, AppGroup.swift, and scripts/ios.js all
+    # read these, so nothing else needs editing.
+    DEVELOPMENT_TEAM: 4B55ZVBVKN
+    MURMUR_BUNDLE_ID: com.lbwalton.murmur.ios
+    MURMUR_APP_GROUP: group.com.lbwalton.murmur
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # The commit a release was built from; npm run ios:release sets it.
+    MURMUR_COMMIT: ""
+    # iPhone only until iPad (IOS-027). XcodeGen gives each target its own
+    # "1,2" default over this one, so every target sets it again.
+    TARGETED_DEVICE_FAMILY: "1"
+packages:
+  MurmurCore:
+    path: MurmurCore
+targets:
+  murmur:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+      - path: Live
+      - path: Generated/Tokens.swift
+      - path: Generated/Assets.xcassets
+      - path: Generated/shared
+        type: folder
+        buildPhase: resources
+      - path: Generated/web
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - target: murmurKeyboard
+      - target: murmurWidgets
+      - package: MurmurCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(MURMUR_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: murmur
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Generated/App-Info.plist
+      properties:
+        CFBundleDisplayName: murmur
+        # murmur Pro's in-app purchase (IOS-025), named after the bundle id.
+        MurmurProProduct: $(MURMUR_BUNDLE_ID).pro
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        MurmurAppGroup: $(MURMUR_APP_GROUP)
+        MurmurCommit: $(MURMUR_COMMIT)
+        # The keyboard opens murmur with <scheme>://take (IOS-009); the
+        # bundle id keeps the scheme unique to each build.
+        MurmurURLScheme: $(MURMUR_BUNDLE_ID)
+        CFBundleURLTypes:
+          - CFBundleURLName: $(MURMUR_BUNDLE_ID)
+            CFBundleURLSchemes: [$(MURMUR_BUNDLE_ID)]
+        # A note's receipt opens in Obsidian only when Obsidian is there to
+        # take the link (IOS-023).
+        LSApplicationQueriesSchemes: [obsidian]
+        # New note on a press and hold of murmur's icon (IOS-023).
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: $(MURMUR_BUNDLE_ID).note
+            UIApplicationShortcutItemTitle: New note
+            UIApplicationShortcutItemIconSymbolName: square.and.pencil
+        NSMicrophoneUsageDescription: murmur listens only while you dictate and sends what you say to the provider you chose.
+        NSPhotoLibraryAddUsageDescription: murmur adds the cards you choose to save, your paintings and your belt card, to your photos, and never looks at your library.
+        # The session's Live Activity (IOS-016).
+        NSSupportsLiveActivities: true
+        UIBackgroundModes: [audio]
+        UILaunchScreen:
+          UIColorName: LaunchInk
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    entitlements:
+      path: Generated/murmur.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(MURMUR_APP_GROUP)
+  murmurKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Keyboard
+      - path: Shared
+      - path: Generated/Tokens.swift
+    dependencies:
+      - package: MurmurCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(MURMUR_BUNDLE_ID).keyboard
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: murmurKeyboard
+    info:
+      path: Generated/Keyboard-Info.plist
+      properties:
+        CFBundleDisplayName: murmur
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        MurmurAppGroup: $(MURMUR_APP_GROUP)
+        MurmurURLScheme: $(MURMUR_BUNDLE_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: en-US
+            RequestsOpenAccess: true
+    entitlements:
+      path: Generated/murmurKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(MURMUR_APP_GROUP)
+  # The Start murmur control and the session's Live Activity (IOS-016).
+  murmurWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Live
+      - path: Shared/Pill.swift
+      - path: Shared/Ink.swift
+      - path: Shared/AppGroup.swift
+      - path: Generated/Tokens.swift
+    dependencies:
+      - package: MurmurCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(MURMUR_BUNDLE_ID).widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_NAME: murmurWidgets
+    info:
+      path: Generated/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: murmur
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        MurmurAppGroup: $(MURMUR_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Generated/murmurWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(MURMUR_APP_GROUP)
+  murmurTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: murmur
+      - sdk: StoreKitTest.framework
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(MURMUR_BUNDLE_ID).tests
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/murmur.app/murmur
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  murmur:
+    build:
+      targets:
+        murmur: all
+        murmurTests: [test]
+    test:
+      targets:
+        - murmurTests

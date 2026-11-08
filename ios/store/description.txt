@@ -1,0 +1,24 @@
+murmur is a keyboard you talk to. Tap the pill, say what you mean, tap again, and your words land in whatever app you are in, cleaned up: fillers gone, punctuation in.
+
+It is free and open source (GPLv3), with no account. murmur runs on your own API key: paste a free Groq key once, and you pay your provider directly, usually cents a month. Your voice goes from your iPhone to the provider you pick, and nowhere else. murmur collects nothing.
+
+What it does
+- The murmur keyboard: a dictation pad in every app. It types only the words you dictate and makes no network requests of its own.
+- Cleanup you choose: Off, Light, or Full. Full adds spoken punctuation, scratch that, numbers, and a polish pass by a cleanup model. If polish fails, chats, or replies to what you said, murmur types your words instead.
+- Lists and corrections when you want them: turn on Smart lists, say first, then, and then, and get a numbered list. Turn on Apply corrections, say Tuesday, oh wait, I mean Wednesday, and only Wednesday is typed.
+- Notes by voice: keep a take as a note instead of typing it, in murmur or in your notes vault. Turn on sorting and murmur files your tasks and ideas, with reminders for tasks.
+- Transform: select text, say how to change it, and murmur rewrites it.
+- Your words: a dictionary for names spelled your way, and expansions for things you say often.
+- Start anywhere: Control Center, the Action Button, and the Lock Screen.
+- History stays on your iPhone, and you can delete it at any time.
+
+Practice, painted
+Every take counts toward belts and stripes, like a martial art, earned by practice and never sold. Each day gets a painting that grows a stroke with every take and is sealed in your belt's color. The Journey shows your path, and a daily recap tells you how much time talking gave you back.
+
+Any provider
+Groq is the default, or use any OpenAI-compatible service, such as OpenAI or Mistral. Your keys stay in your iPhone's Keychain.
+
+murmur Pro
+An optional one-time purchase that supports murmur and adds provider profiles, early access, and the supporter mark. It covers murmur on your Mac or PC too. Everything above stays free.
+
+murmur is also on Mac and Windows at murmurapp.app.

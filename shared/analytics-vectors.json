@@ -1,0 +1,581 @@
+{
+  "note": "Desktop's analytics (src/shared/analytics.ts), time back (src/shared/timeback.ts), and recap (src/shared/recap.ts) on fixed takes. cardDays: the share card's month, desktop's CARD_DAYS. dailyTotals: words and takes for each of the last count days ending today, oldest first, zero-filled, by each take's stored day, the share card's month (US-078). aggregate: this month, today, lifetime, the last 14 days, and the typical day, with time back at the typing speed and the cost at rates, the rates from shared/provider-catalog.json as ratesFromCatalog reads them. heatmap: the activity wall's days, summed up as their span and the days with words. Desktop runs each case with its clock at local noon on today. Both platforms run these (IOS-021, IOS-022).",
+  "cardDays": 30,
+  "dailyTotals": [
+    {
+      "name": "nothing yet",
+      "today": "2026-10-13",
+      "count": 30,
+      "takes": [],
+      "expect": [
+        { "day": "2026-09-14", "words": 0, "sessions": 0 },
+        { "day": "2026-09-15", "words": 0, "sessions": 0 },
+        { "day": "2026-09-16", "words": 0, "sessions": 0 },
+        { "day": "2026-09-17", "words": 0, "sessions": 0 },
+        { "day": "2026-09-18", "words": 0, "sessions": 0 },
+        { "day": "2026-09-19", "words": 0, "sessions": 0 },
+        { "day": "2026-09-20", "words": 0, "sessions": 0 },
+        { "day": "2026-09-21", "words": 0, "sessions": 0 },
+        { "day": "2026-09-22", "words": 0, "sessions": 0 },
+        { "day": "2026-09-23", "words": 0, "sessions": 0 },
+        { "day": "2026-09-24", "words": 0, "sessions": 0 },
+        { "day": "2026-09-25", "words": 0, "sessions": 0 },
+        { "day": "2026-09-26", "words": 0, "sessions": 0 },
+        { "day": "2026-09-27", "words": 0, "sessions": 0 },
+        { "day": "2026-09-28", "words": 0, "sessions": 0 },
+        { "day": "2026-09-29", "words": 0, "sessions": 0 },
+        { "day": "2026-09-30", "words": 0, "sessions": 0 },
+        { "day": "2026-10-01", "words": 0, "sessions": 0 },
+        { "day": "2026-10-02", "words": 0, "sessions": 0 },
+        { "day": "2026-10-03", "words": 0, "sessions": 0 },
+        { "day": "2026-10-04", "words": 0, "sessions": 0 },
+        { "day": "2026-10-05", "words": 0, "sessions": 0 },
+        { "day": "2026-10-06", "words": 0, "sessions": 0 },
+        { "day": "2026-10-07", "words": 0, "sessions": 0 },
+        { "day": "2026-10-08", "words": 0, "sessions": 0 },
+        { "day": "2026-10-09", "words": 0, "sessions": 0 },
+        { "day": "2026-10-10", "words": 0, "sessions": 0 },
+        { "day": "2026-10-11", "words": 0, "sessions": 0 },
+        { "day": "2026-10-12", "words": 0, "sessions": 0 },
+        { "day": "2026-10-13", "words": 0, "sessions": 0 }
+      ]
+    },
+    {
+      "name": "a month with gaps, two takes on one day, one too old, one tomorrow",
+      "today": "2026-10-13",
+      "count": 30,
+      "takes": [
+        { "day": "2026-09-13", "words": 999 },
+        { "day": "2026-09-14", "words": 120 },
+        { "day": "2026-09-20", "words": 40 },
+        { "day": "2026-10-01", "words": 300 },
+        { "day": "2026-10-01", "words": 45 },
+        { "day": "2026-10-13", "words": 7 },
+        { "day": "2026-10-14", "words": 500 }
+      ],
+      "expect": [
+        { "day": "2026-09-14", "words": 120, "sessions": 1 },
+        { "day": "2026-09-15", "words": 0, "sessions": 0 },
+        { "day": "2026-09-16", "words": 0, "sessions": 0 },
+        { "day": "2026-09-17", "words": 0, "sessions": 0 },
+        { "day": "2026-09-18", "words": 0, "sessions": 0 },
+        { "day": "2026-09-19", "words": 0, "sessions": 0 },
+        { "day": "2026-09-20", "words": 40, "sessions": 1 },
+        { "day": "2026-09-21", "words": 0, "sessions": 0 },
+        { "day": "2026-09-22", "words": 0, "sessions": 0 },
+        { "day": "2026-09-23", "words": 0, "sessions": 0 },
+        { "day": "2026-09-24", "words": 0, "sessions": 0 },
+        { "day": "2026-09-25", "words": 0, "sessions": 0 },
+        { "day": "2026-09-26", "words": 0, "sessions": 0 },
+        { "day": "2026-09-27", "words": 0, "sessions": 0 },
+        { "day": "2026-09-28", "words": 0, "sessions": 0 },
+        { "day": "2026-09-29", "words": 0, "sessions": 0 },
+        { "day": "2026-09-30", "words": 0, "sessions": 0 },
+        { "day": "2026-10-01", "words": 345, "sessions": 2 },
+        { "day": "2026-10-02", "words": 0, "sessions": 0 },
+        { "day": "2026-10-03", "words": 0, "sessions": 0 },
+        { "day": "2026-10-04", "words": 0, "sessions": 0 },
+        { "day": "2026-10-05", "words": 0, "sessions": 0 },
+        { "day": "2026-10-06", "words": 0, "sessions": 0 },
+        { "day": "2026-10-07", "words": 0, "sessions": 0 },
+        { "day": "2026-10-08", "words": 0, "sessions": 0 },
+        { "day": "2026-10-09", "words": 0, "sessions": 0 },
+        { "day": "2026-10-10", "words": 0, "sessions": 0 },
+        { "day": "2026-10-11", "words": 0, "sessions": 0 },
+        { "day": "2026-10-12", "words": 0, "sessions": 0 },
+        { "day": "2026-10-13", "words": 7, "sessions": 1 }
+      ]
+    },
+    {
+      "name": "across a new year",
+      "today": "2027-01-05",
+      "count": 30,
+      "takes": [
+        { "day": "2026-12-07", "words": 10 },
+        { "day": "2026-12-31", "words": 250 },
+        { "day": "2027-01-01", "words": 80 },
+        { "day": "2027-01-05", "words": 1200 },
+        { "day": "2026-12-06", "words": 3 }
+      ],
+      "expect": [
+        { "day": "2026-12-07", "words": 10, "sessions": 1 },
+        { "day": "2026-12-08", "words": 0, "sessions": 0 },
+        { "day": "2026-12-09", "words": 0, "sessions": 0 },
+        { "day": "2026-12-10", "words": 0, "sessions": 0 },
+        { "day": "2026-12-11", "words": 0, "sessions": 0 },
+        { "day": "2026-12-12", "words": 0, "sessions": 0 },
+        { "day": "2026-12-13", "words": 0, "sessions": 0 },
+        { "day": "2026-12-14", "words": 0, "sessions": 0 },
+        { "day": "2026-12-15", "words": 0, "sessions": 0 },
+        { "day": "2026-12-16", "words": 0, "sessions": 0 },
+        { "day": "2026-12-17", "words": 0, "sessions": 0 },
+        { "day": "2026-12-18", "words": 0, "sessions": 0 },
+        { "day": "2026-12-19", "words": 0, "sessions": 0 },
+        { "day": "2026-12-20", "words": 0, "sessions": 0 },
+        { "day": "2026-12-21", "words": 0, "sessions": 0 },
+        { "day": "2026-12-22", "words": 0, "sessions": 0 },
+        { "day": "2026-12-23", "words": 0, "sessions": 0 },
+        { "day": "2026-12-24", "words": 0, "sessions": 0 },
+        { "day": "2026-12-25", "words": 0, "sessions": 0 },
+        { "day": "2026-12-26", "words": 0, "sessions": 0 },
+        { "day": "2026-12-27", "words": 0, "sessions": 0 },
+        { "day": "2026-12-28", "words": 0, "sessions": 0 },
+        { "day": "2026-12-29", "words": 0, "sessions": 0 },
+        { "day": "2026-12-30", "words": 0, "sessions": 0 },
+        { "day": "2026-12-31", "words": 250, "sessions": 1 },
+        { "day": "2027-01-01", "words": 80, "sessions": 1 },
+        { "day": "2027-01-02", "words": 0, "sessions": 0 },
+        { "day": "2027-01-03", "words": 0, "sessions": 0 },
+        { "day": "2027-01-04", "words": 0, "sessions": 0 },
+        { "day": "2027-01-05", "words": 1200, "sessions": 1 }
+      ]
+    },
+    {
+      "name": "a leap day, two weeks",
+      "today": "2028-03-10",
+      "count": 14,
+      "takes": [
+        { "day": "2028-02-26", "words": 5 },
+        { "day": "2028-02-29", "words": 64 },
+        { "day": "2028-03-01", "words": 32 },
+        { "day": "2028-02-25", "words": 9 }
+      ],
+      "expect": [
+        { "day": "2028-02-26", "words": 5, "sessions": 1 },
+        { "day": "2028-02-27", "words": 0, "sessions": 0 },
+        { "day": "2028-02-28", "words": 0, "sessions": 0 },
+        { "day": "2028-02-29", "words": 64, "sessions": 1 },
+        { "day": "2028-03-01", "words": 32, "sessions": 1 },
+        { "day": "2028-03-02", "words": 0, "sessions": 0 },
+        { "day": "2028-03-03", "words": 0, "sessions": 0 },
+        { "day": "2028-03-04", "words": 0, "sessions": 0 },
+        { "day": "2028-03-05", "words": 0, "sessions": 0 },
+        { "day": "2028-03-06", "words": 0, "sessions": 0 },
+        { "day": "2028-03-07", "words": 0, "sessions": 0 },
+        { "day": "2028-03-08", "words": 0, "sessions": 0 },
+        { "day": "2028-03-09", "words": 0, "sessions": 0 },
+        { "day": "2028-03-10", "words": 0, "sessions": 0 }
+      ]
+    },
+    {
+      "name": "the spring clock change",
+      "today": "2027-03-20",
+      "count": 30,
+      "takes": [
+        { "day": "2027-03-13", "words": 21 },
+        { "day": "2027-03-14", "words": 34 },
+        { "day": "2027-03-15", "words": 55 },
+        { "day": "2027-02-19", "words": 89 }
+      ],
+      "expect": [
+        { "day": "2027-02-19", "words": 89, "sessions": 1 },
+        { "day": "2027-02-20", "words": 0, "sessions": 0 },
+        { "day": "2027-02-21", "words": 0, "sessions": 0 },
+        { "day": "2027-02-22", "words": 0, "sessions": 0 },
+        { "day": "2027-02-23", "words": 0, "sessions": 0 },
+        { "day": "2027-02-24", "words": 0, "sessions": 0 },
+        { "day": "2027-02-25", "words": 0, "sessions": 0 },
+        { "day": "2027-02-26", "words": 0, "sessions": 0 },
+        { "day": "2027-02-27", "words": 0, "sessions": 0 },
+        { "day": "2027-02-28", "words": 0, "sessions": 0 },
+        { "day": "2027-03-01", "words": 0, "sessions": 0 },
+        { "day": "2027-03-02", "words": 0, "sessions": 0 },
+        { "day": "2027-03-03", "words": 0, "sessions": 0 },
+        { "day": "2027-03-04", "words": 0, "sessions": 0 },
+        { "day": "2027-03-05", "words": 0, "sessions": 0 },
+        { "day": "2027-03-06", "words": 0, "sessions": 0 },
+        { "day": "2027-03-07", "words": 0, "sessions": 0 },
+        { "day": "2027-03-08", "words": 0, "sessions": 0 },
+        { "day": "2027-03-09", "words": 0, "sessions": 0 },
+        { "day": "2027-03-10", "words": 0, "sessions": 0 },
+        { "day": "2027-03-11", "words": 0, "sessions": 0 },
+        { "day": "2027-03-12", "words": 0, "sessions": 0 },
+        { "day": "2027-03-13", "words": 21, "sessions": 1 },
+        { "day": "2027-03-14", "words": 34, "sessions": 1 },
+        { "day": "2027-03-15", "words": 55, "sessions": 1 },
+        { "day": "2027-03-16", "words": 0, "sessions": 0 },
+        { "day": "2027-03-17", "words": 0, "sessions": 0 },
+        { "day": "2027-03-18", "words": 0, "sessions": 0 },
+        { "day": "2027-03-19", "words": 0, "sessions": 0 },
+        { "day": "2027-03-20", "words": 0, "sessions": 0 }
+      ]
+    }
+  ],
+  "rates": {
+    "stt": {
+      "minimumBillableSeconds": 10,
+      "models": {
+        "whisper-large-v3-turbo": 0.04,
+        "whisper-large-v3": 0.111,
+        "gpt-transcribe": 0.27,
+        "gpt-4o-mini-transcribe": 0.18,
+        "whisper-1": 0.36,
+        "voxtral-mini-latest": 0.18
+      },
+      "fallbackPerHourUsd": 0.04
+    },
+    "llm": {
+      "promptOverheadTokens": 180,
+      "tokensPerWord": 1.35,
+      "models": {
+        "openai/gpt-oss-120b": { "inputPerMTokUsd": 0.15, "outputPerMTokUsd": 0.6 },
+        "openai/gpt-oss-20b": { "inputPerMTokUsd": 0.075, "outputPerMTokUsd": 0.3 },
+        "gpt-5.6-luna": { "inputPerMTokUsd": 0.2, "outputPerMTokUsd": 1.2 },
+        "gpt-5-nano": { "inputPerMTokUsd": 0.05, "outputPerMTokUsd": 0.4 },
+        "deepseek-flash": { "inputPerMTokUsd": 0.3, "outputPerMTokUsd": 1.2 },
+        "jev-latest": { "inputPerMTokUsd": 0.042, "outputPerMTokUsd": 0 }
+      },
+      "fallback": { "inputPerMTokUsd": 0.15, "outputPerMTokUsd": 0.6 }
+    }
+  },
+  "timeBack": {
+    "defaultWpm": 40,
+    "minutesBack": [
+      { "words": 100, "durationMs": 60000, "wpm": 40, "minutesBack": 1.5 },
+      { "words": 400, "durationMs": 120000, "wpm": 40, "minutesBack": 8 },
+      { "words": 400, "durationMs": 120000, "wpm": 36, "minutesBack": 9.11111111111111 },
+      { "words": 10, "durationMs": 90000, "wpm": 40, "minutesBack": -1.25 },
+      { "words": 250, "durationMs": 30000, "wpm": 5, "minutesBack": 24.5 },
+      { "words": 250, "durationMs": 30000, "wpm": 500, "minutesBack": 0.75 },
+      { "words": 0, "durationMs": 0, "wpm": 40, "minutesBack": 0 }
+    ],
+    "clamp": [
+      { "value": null, "clamped": 40 },
+      { "value": 0, "clamped": 10 },
+      { "value": 9, "clamped": 10 },
+      { "value": 10, "clamped": 10 },
+      { "value": 36, "clamped": 36 },
+      { "value": 200, "clamped": 200 },
+      { "value": 201, "clamped": 200 },
+      { "value": 72.5, "clamped": 72.5 }
+    ],
+    "shown": [
+      { "raw": -3, "shown": 0 },
+      { "raw": 0, "shown": 0 },
+      { "raw": 0.04, "shown": 0 },
+      { "raw": 0.44, "shown": 0 },
+      { "raw": 0.45, "shown": 1 },
+      { "raw": 0.5, "shown": 1 },
+      { "raw": 1.449, "shown": 1 },
+      { "raw": 59.96, "shown": 60 },
+      { "raw": 125.25, "shown": 125 }
+    ],
+    "format": [
+      { "minutes": -1, "short": "0 min", "words": "0 minutes" },
+      { "minutes": 0, "short": "0 min", "words": "0 minutes" },
+      { "minutes": 0.3, "short": "under a minute", "words": "under a minute" },
+      { "minutes": 0.6, "short": "1 min", "words": "1 minute" },
+      { "minutes": 1, "short": "1 min", "words": "1 minute" },
+      { "minutes": 12.4, "short": "12 min", "words": "12 minutes" },
+      { "minutes": 59.6, "short": "1 h", "words": "1 hour" },
+      { "minutes": 60, "short": "1 h", "words": "1 hour" },
+      { "minutes": 65, "short": "1 h 5 min", "words": "1 hour 5 minutes" },
+      { "minutes": 120, "short": "2 h", "words": "2 hours" },
+      { "minutes": 754, "short": "12 h 34 min", "words": "12 hours 34 minutes" }
+    ],
+    "typicalLine": [
+      { "share": 0, "typical": 41, "line": "0% of your typical day (41 min)" },
+      { "share": 0.5, "typical": 41, "line": "50% of your typical day (41 min)" },
+      { "share": 1, "typical": 41, "line": "100% of your typical day (41 min)" },
+      { "share": 1.234, "typical": 12.5, "line": "123% of your typical day (13 min)" },
+      { "share": 2, "typical": 7, "line": "200% of your typical day (7 min)" },
+      { "share": 2.01, "typical": 7, "line": "More than double your typical day (7 min)" },
+      { "share": 0.995, "typical": 90, "line": "100% of your typical day (1 h 30 min)" }
+    ]
+  },
+  "typical": {
+    "dayBack": [
+      { "days": [], "typical": null },
+      { "days": [1, 2], "typical": null },
+      { "days": [3, 1, 2], "typical": 2 },
+      { "days": [4, 1, 2, 3], "typical": 2.5 },
+      { "days": [0.05, 0.04, 0.06], "typical": 0.1 },
+      { "days": [10.26, 3.333, 7.1, 7.1], "typical": 7.1 }
+    ],
+    "share": [
+      { "today": 0, "typical": 0, "share": 0 },
+      { "today": 3, "typical": 0, "share": 1 },
+      { "today": -1, "typical": 0, "share": 0 },
+      { "today": 5, "typical": 10, "share": 0.5 },
+      { "today": -2, "typical": 10, "share": 0 },
+      { "today": 25, "typical": 10, "share": 2.5 }
+    ]
+  },
+  "aggregate": [
+    {
+      "name": "nothing yet",
+      "today": "2026-10-13",
+      "typingWpm": 40,
+      "sttModel": "whisper-large-v3-turbo",
+      "llmModel": "openai/gpt-oss-20b",
+      "takes": [],
+      "expect": {
+        "lifetime": { "sessions": 0, "words": 0, "minutes": 0, "estCostUsd": 0, "avgWpm": 0, "minutesBack": 0 },
+        "month": { "sessions": 0, "words": 0, "minutes": 0, "estCostUsd": 0, "avgWpm": 0, "minutesBack": 0 },
+        "today": { "sessions": 0, "words": 0, "minutes": 0, "estCostUsd": 0, "avgWpm": 0, "minutesBack": 0 },
+        "days": [
+          { "day": "2026-09-30", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-01", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-02", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-03", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-04", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-05", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-06", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-07", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-08", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-09", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-10", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-11", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-12", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-13", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 }
+        ],
+        "typicalBack": null
+      }
+    },
+    {
+      "name": "a month with a typical day",
+      "today": "2026-10-13",
+      "typingWpm": 36,
+      "sttModel": "whisper-large-v3-turbo",
+      "llmModel": "openai/gpt-oss-20b",
+      "takes": [
+        { "day": "2026-08-30", "words": 900, "durationMs": 200000 },
+        { "day": "2026-09-14", "words": 300, "durationMs": 60000 },
+        { "day": "2026-09-20", "words": 120, "durationMs": 40000 },
+        { "day": "2026-09-29", "words": 640, "durationMs": 150000 },
+        { "day": "2026-09-30", "words": 55, "durationMs": 9000 },
+        { "day": "2026-10-01", "words": 400, "durationMs": 120000 },
+        { "day": "2026-10-01", "words": 260, "durationMs": 80000 },
+        { "day": "2026-10-05", "words": 1200, "durationMs": 300000 },
+        { "day": "2026-10-09", "words": 80, "durationMs": 50000 },
+        { "day": "2026-10-12", "words": 700, "durationMs": 150000 },
+        { "day": "2026-10-13", "words": 330, "durationMs": 75000 },
+        { "day": "2026-10-13", "words": 90, "durationMs": 20000 },
+        { "day": "2026-10-14", "words": 999, "durationMs": 100000 }
+      ],
+      "expect": {
+        "lifetime": { "sessions": 13, "words": 6074, "minutes": 22.6, "estCostUsd": 0.0183, "avgWpm": 269, "minutesBack": 146.2 },
+        "month": { "sessions": 8, "words": 4059, "minutes": 14.9, "estCostUsd": 0.0121, "avgWpm": 272, "minutesBack": 97.8 },
+        "today": { "sessions": 2, "words": 420, "minutes": 1.6, "estCostUsd": 0.0013, "avgWpm": 265, "minutesBack": 10.1 },
+        "days": [
+          { "day": "2026-09-30", "sessions": 1, "words": 55, "minutes": 0.2, "minutesBack": 1.4 },
+          { "day": "2026-10-01", "sessions": 2, "words": 660, "minutes": 3.3, "minutesBack": 15 },
+          { "day": "2026-10-02", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-03", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-04", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-05", "sessions": 1, "words": 1200, "minutes": 5, "minutesBack": 28.3 },
+          { "day": "2026-10-06", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-07", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-08", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-09", "sessions": 1, "words": 80, "minutes": 0.8, "minutesBack": 1.4 },
+          { "day": "2026-10-10", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-11", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-10-12", "sessions": 1, "words": 700, "minutes": 2.5, "minutesBack": 16.9 },
+          { "day": "2026-10-13", "sessions": 2, "words": 420, "minutes": 1.6, "minutesBack": 10.1 }
+        ],
+        "typicalBack": 15
+      }
+    },
+    {
+      "name": "too few days for a typical day, held longer than typing",
+      "today": "2027-01-02",
+      "typingWpm": 40,
+      "sttModel": "an unknown model",
+      "llmModel": "another unknown model",
+      "takes": [
+        { "day": "2026-12-30", "words": 20, "durationMs": 120000 },
+        { "day": "2027-01-01", "words": 400, "durationMs": 100000 },
+        { "day": "2027-01-02", "words": 5, "durationMs": 4000 }
+      ],
+      "expect": {
+        "lifetime": { "sessions": 3, "words": 425, "minutes": 3.7, "estCostUsd": 0.0031, "avgWpm": 114, "minutesBack": 6.9 },
+        "month": { "sessions": 2, "words": 405, "minutes": 1.7, "estCostUsd": 0.0017, "avgWpm": 234, "minutesBack": 8.4 },
+        "today": { "sessions": 1, "words": 5, "minutes": 0.1, "estCostUsd": 0.0001, "avgWpm": 75, "minutesBack": 0.1 },
+        "days": [
+          { "day": "2026-12-20", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-21", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-22", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-23", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-24", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-25", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-26", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-27", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-28", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-29", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2026-12-30", "sessions": 1, "words": 20, "minutes": 2, "minutesBack": 0 },
+          { "day": "2026-12-31", "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0 },
+          { "day": "2027-01-01", "sessions": 1, "words": 400, "minutes": 1.7, "minutesBack": 8.3 },
+          { "day": "2027-01-02", "sessions": 1, "words": 5, "minutes": 0.1, "minutesBack": 0.1 }
+        ],
+        "typicalBack": null
+      }
+    },
+    {
+      "name": "a slow typist, every day in the window",
+      "today": "2026-03-08",
+      "typingWpm": 20,
+      "sttModel": "whisper-large-v3",
+      "llmModel": "llama-3.3-70b-versatile",
+      "takes": [
+        { "day": "2026-02-07", "words": 50, "durationMs": 20000 },
+        { "day": "2026-02-08", "words": 147, "durationMs": 33000 },
+        { "day": "2026-02-09", "words": 244, "durationMs": 46000 },
+        { "day": "2026-02-10", "words": 341, "durationMs": 59000 },
+        { "day": "2026-02-11", "words": 438, "durationMs": 72000 },
+        { "day": "2026-02-12", "words": 135, "durationMs": 85000 },
+        { "day": "2026-02-13", "words": 232, "durationMs": 28000 },
+        { "day": "2026-02-14", "words": 329, "durationMs": 41000 },
+        { "day": "2026-02-15", "words": 426, "durationMs": 54000 },
+        { "day": "2026-02-16", "words": 123, "durationMs": 67000 },
+        { "day": "2026-02-17", "words": 220, "durationMs": 80000 },
+        { "day": "2026-02-18", "words": 317, "durationMs": 23000 },
+        { "day": "2026-02-19", "words": 414, "durationMs": 36000 },
+        { "day": "2026-02-20", "words": 111, "durationMs": 49000 },
+        { "day": "2026-02-21", "words": 208, "durationMs": 62000 },
+        { "day": "2026-02-22", "words": 305, "durationMs": 75000 },
+        { "day": "2026-02-23", "words": 402, "durationMs": 88000 },
+        { "day": "2026-02-24", "words": 99, "durationMs": 31000 },
+        { "day": "2026-02-25", "words": 196, "durationMs": 44000 },
+        { "day": "2026-02-26", "words": 293, "durationMs": 57000 },
+        { "day": "2026-02-27", "words": 390, "durationMs": 70000 },
+        { "day": "2026-02-28", "words": 87, "durationMs": 83000 },
+        { "day": "2026-03-01", "words": 184, "durationMs": 26000 },
+        { "day": "2026-03-02", "words": 281, "durationMs": 39000 },
+        { "day": "2026-03-03", "words": 378, "durationMs": 52000 },
+        { "day": "2026-03-04", "words": 75, "durationMs": 65000 },
+        { "day": "2026-03-05", "words": 172, "durationMs": 78000 },
+        { "day": "2026-03-06", "words": 269, "durationMs": 21000 },
+        { "day": "2026-03-07", "words": 366, "durationMs": 34000 },
+        { "day": "2026-03-08", "words": 63, "durationMs": 47000 }
+      ],
+      "expect": {
+        "lifetime": { "sessions": 30, "words": 7295, "minutes": 26.1, "estCostUsd": 0.0565, "avgWpm": 280, "minutesBack": 338.7 },
+        "month": { "sessions": 8, "words": 1788, "minutes": 6, "estCostUsd": 0.0132, "avgWpm": 296, "minutesBack": 83.4 },
+        "today": { "sessions": 1, "words": 63, "minutes": 0.8, "estCostUsd": 0.0015, "avgWpm": 80, "minutesBack": 2.4 },
+        "days": [
+          { "day": "2026-02-23", "sessions": 1, "words": 402, "minutes": 1.5, "minutesBack": 18.6 },
+          { "day": "2026-02-24", "sessions": 1, "words": 99, "minutes": 0.5, "minutesBack": 4.4 },
+          { "day": "2026-02-25", "sessions": 1, "words": 196, "minutes": 0.7, "minutesBack": 9.1 },
+          { "day": "2026-02-26", "sessions": 1, "words": 293, "minutes": 1, "minutesBack": 13.7 },
+          { "day": "2026-02-27", "sessions": 1, "words": 390, "minutes": 1.2, "minutesBack": 18.3 },
+          { "day": "2026-02-28", "sessions": 1, "words": 87, "minutes": 1.4, "minutesBack": 3 },
+          { "day": "2026-03-01", "sessions": 1, "words": 184, "minutes": 0.4, "minutesBack": 8.8 },
+          { "day": "2026-03-02", "sessions": 1, "words": 281, "minutes": 0.7, "minutesBack": 13.4 },
+          { "day": "2026-03-03", "sessions": 1, "words": 378, "minutes": 0.9, "minutesBack": 18 },
+          { "day": "2026-03-04", "sessions": 1, "words": 75, "minutes": 1.1, "minutesBack": 2.7 },
+          { "day": "2026-03-05", "sessions": 1, "words": 172, "minutes": 1.3, "minutesBack": 7.3 },
+          { "day": "2026-03-06", "sessions": 1, "words": 269, "minutes": 0.4, "minutesBack": 13.1 },
+          { "day": "2026-03-07", "sessions": 1, "words": 366, "minutes": 0.6, "minutesBack": 17.7 },
+          { "day": "2026-03-08", "sessions": 1, "words": 63, "minutes": 0.8, "minutesBack": 2.4 }
+        ],
+        "typicalBack": 12.3
+      }
+    }
+  ],
+  "heatmap": [
+    {
+      "name": "a new profile, lifetime",
+      "today": "2026-10-13",
+      "year": null,
+      "takes": [],
+      "expect": { "first": "2025-10-14", "last": "2026-10-13", "count": 365, "busy": [], "totalWords": 0, "years": [2026], "period": "lifetime" }
+    },
+    {
+      "name": "a recent start, lifetime pads back a year",
+      "today": "2026-10-13",
+      "year": null,
+      "takes": [
+        { "day": "2026-09-01", "words": 50, "durationMs": 10000 },
+        { "day": "2026-10-13", "words": 70, "durationMs": 10000 },
+        { "day": "2026-10-13", "words": 30, "durationMs": 5000 }
+      ],
+      "expect": {
+        "first": "2025-10-14",
+        "last": "2026-10-13",
+        "count": 365,
+        "busy": [
+          { "day": "2026-09-01", "words": 50 },
+          { "day": "2026-10-13", "words": 100 }
+        ],
+        "totalWords": 150,
+        "years": [2026],
+        "period": "lifetime"
+      }
+    },
+    {
+      "name": "an old first take, lifetime starts there",
+      "today": "2026-10-13",
+      "year": null,
+      "takes": [
+        { "day": "2024-12-25", "words": 10, "durationMs": 5000 },
+        { "day": "2026-02-28", "words": 40, "durationMs": 9000 }
+      ],
+      "expect": {
+        "first": "2024-12-25",
+        "last": "2026-10-13",
+        "count": 658,
+        "busy": [
+          { "day": "2024-12-25", "words": 10 },
+          { "day": "2026-02-28", "words": 40 }
+        ],
+        "totalWords": 50,
+        "years": [2024, 2026],
+        "period": "lifetime"
+      }
+    },
+    {
+      "name": "a past year",
+      "today": "2026-10-13",
+      "year": 2025,
+      "takes": [
+        { "day": "2024-12-25", "words": 10, "durationMs": 5000 },
+        { "day": "2025-03-01", "words": 99, "durationMs": 9000 },
+        { "day": "2026-01-01", "words": 7, "durationMs": 2000 }
+      ],
+      "expect": {
+        "first": "2025-01-01",
+        "last": "2025-12-31",
+        "count": 365,
+        "busy": [
+          { "day": "2025-03-01", "words": 99 }
+        ],
+        "totalWords": 99,
+        "years": [2024, 2025, 2026],
+        "period": 2025
+      }
+    },
+    {
+      "name": "this year, up to today",
+      "today": "2028-03-01",
+      "year": 2028,
+      "takes": [
+        { "day": "2028-02-29", "words": 64, "durationMs": 9000 },
+        { "day": "2027-12-31", "words": 3, "durationMs": 1000 }
+      ],
+      "expect": {
+        "first": "2028-01-01",
+        "last": "2028-03-01",
+        "count": 61,
+        "busy": [
+          { "day": "2028-02-29", "words": 64 }
+        ],
+        "totalWords": 64,
+        "years": [2027, 2028],
+        "period": 2028
+      }
+    }
+  ],
+  "recap": [
+    { "sessions": 0, "words": 0, "minutes": 0, "minutesBack": 0, "body": "A quiet day: no dictations. Your hotkey misses you." },
+    { "sessions": 1, "words": 12, "minutes": 0.3, "minutesBack": 0, "body": "1 session, 0.3 minutes, 12 words today." },
+    { "sessions": 4, "words": 1240, "minutes": 12, "minutesBack": 19, "body": "4 sessions, 12 minutes, 1,240 words today. 19 minutes back." },
+    { "sessions": 2, "words": 300, "minutes": 2.5, "minutesBack": 0.6, "body": "2 sessions, 2.5 minutes, 300 words today." },
+    {
+      "sessions": 9,
+      "words": 25000,
+      "minutes": 61.2,
+      "minutesBack": 125,
+      "body": "9 sessions, 61.2 minutes, 25,000 words today. 2 hours 5 minutes back."
+    }
+  ]
+}

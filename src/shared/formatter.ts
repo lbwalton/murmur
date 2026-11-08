@@ -58,7 +58,12 @@ function applyScratchThat(text: string, triggers: string[]): string {
 
 function applySpokenPunctuation(text: string, map: Record<string, string>): string {
   let out = text
-  const phrases = Object.keys(map).sort((a, b) => b.length - a.length)
+  // Longest first. Equal lengths go by symbol, then by phrase, so every
+  // platform keeps one order (format-spec.json); for the shipped map that
+  // is the file's own order (comma before colon, new paragraph before
+  // question mark), and it matters when two of them are spoken side by side.
+  const order = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0)
+  const phrases = Object.keys(map).sort((a, b) => b.length - a.length || order(map[a], map[b]) || order(a, b))
   for (const phrase of phrases) {
     const symbol = map[phrase]
     const pattern = new RegExp(`(?:^|\\s)${escapeRegExp(phrase)}(?=\\s|[.,]|$)[.,]?`, 'gi')

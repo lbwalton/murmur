@@ -3,6 +3,7 @@
 // transcript before formatting, so proper nouns land right even when
 // the speech model spells them wrong. Pure and word-boundary safe: a
 // dictionary can only ever change words that were actually spoken.
+import polish from '../../shared/polish.json'
 
 export interface DictionaryEntry {
   from: string
@@ -64,12 +65,13 @@ export function enforceDictionaryCasing(text: string, entries: readonly unknown[
 
 /**
  * One line of cleanup-model hint text, or null for an empty dictionary.
- * The "Preferred spellings" opener is load-bearing: the LLM layer uses
- * it as a sentinel to catch hint text echoed into output.
+ * Its opener comes from shared/polish.json (hintLead) and is
+ * load-bearing: the LLM layer looks for it (hintSentinel) to catch hint
+ * text echoed into output.
  */
 export function dictionaryHint(entries: readonly unknown[]): string | null {
   const usable = entries.filter(isUsableEntry)
   if (usable.length === 0) return null
   const pairs = usable.map((e) => `"${e.from.trim()}" is written "${e.to.trim()}"`).join('; ')
-  return `Preferred spellings, apply ONLY where these words already occur: ${pairs}.`
+  return `${polish.hintLead} ${pairs}.`
 }

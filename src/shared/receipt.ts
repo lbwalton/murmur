@@ -3,6 +3,7 @@
 // tray's Open last note, and Home's last note row say, and where they
 // point. Pure, so every surface words it the same way and tests can
 // pin it without Electron.
+import rules from '../../shared/sorter.json'
 
 /** Where a note or a sorted line landed: the inbox file it was spoken
  *  into, or the tasks and ideas files a sort copied lines to. */
@@ -26,10 +27,10 @@ export interface LastNote {
   sorted: ReceiptPlace[]
 }
 
-export const RECEIPT_LINE_MAX = 80
+export const RECEIPT_LINE_MAX = rules.receiptLineMax
 // The pill's window is 340 px; noted to plus ten characters of mono
 // leaves the bars their room in every look (overlayLooks proves it).
-const PILL_PLACE_MAX = 10
+const PILL_PLACE_MAX = rules.pillPlaceMax
 
 // List markers, checkboxes, headings, and quotes say nothing about the
 // note, so the first line starts after them.
