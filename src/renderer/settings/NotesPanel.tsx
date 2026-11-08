@@ -15,6 +15,7 @@ import {
   resolveNotePath
 } from '../../shared/notes'
 import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
+import { openTasksLine } from '../../shared/todo'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
 import { Advanced, Row, Section, Switch, TextSetting, TimeInput } from './controls'
@@ -46,12 +47,99 @@ function withStop(phrase: string): string {
   return /[.!?]["\u201d')\]]?$/.test(phrase) ? phrase : `${phrase}.`
 }
 
-function heldPhrase(line: NotesStatus['heldLines'][number]): string {
+export function heldPhrase(line: NotesStatus['heldLines'][number], hide: boolean): string {
   const item = line.match?.text ?? ''
-  if (line.reason === 'same') return `looks like a duplicate of: ${item}`
-  if (line.reason === 'completes') return `sounds like you finished: ${item}`
-  if (line.reason === 'done-before') return `you finished this before: ${item}`
+  if (line.reason === 'same') return hide ? 'looks like a duplicate of another item' : `looks like a duplicate of: ${item}`
+  if (line.reason === 'completes') return hide ? 'sounds like you finished another item' : `sounds like you finished: ${item}`
+  if (line.reason === 'done-before') return hide ? 'you finished this before' : `you finished this before: ${item}`
   return 'the model was not sure what this is'
+}
+
+/** A held line's label. The rail's search reads this text off the page,
+ *  so while Hide words is on it holds none of the line (US-145). */
+export function heldLabel(line: NotesStatus['heldLines'][number], hide: boolean): string {
+  if (hide) return 'Held: words hidden'
+  return `Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`
+}
+
+type ReminderTest = Awaited<ReturnType<SettingsApi['testNotesReminder']>>
+
+/** The Task reminders row's words, worked out on every render: a Test
+ *  result stays up for 6 seconds, and Hide words (US-145) can turn on
+ *  inside them, so the result is kept and masked here, never as a line. */
+export function reminderDesc(test: ReminderTest | null, settings: Settings): string {
+  if (test === null) {
+    return 'Notifications that read your tasks file and say what is still open; clicking one opens the list. A file with nothing open stays quiet, and clearing a time switches that one off.'
+  }
+  if (test.outcome === 'shown') return settings.history.hideWords ? openTasksLine(test.open) : test.body
+  if (test.outcome === 'empty') return 'nothing open right now, so a reminder would stay quiet'
+  if (test.outcome === 'suppressed') return 'this system is not showing notifications; check its notification settings for murmur'
+  return 'no tasks file yet, so there is nothing to read'
+}
+
+/** The lines the newest sort held (US-055). It reads Hide words itself
+ *  (US-145), so no caller can leave a line showing. */
+export function HeldLines(props: {
+  status: NotesStatus
+  settings: Settings
+  acting: number | null
+  onAct: (id: number, action: 'file' | 'skip' | 'tick') => void
+}): React.JSX.Element {
+  const hide = props.settings.history.hideWords
+  return (
+    <div className="held-list">
+      {props.status.lastAction && !props.status.lastAction.ok && (
+        <p className="row-desc held-note">{props.status.lastAction.reason ?? 'that did not work'}</p>
+      )}
+      {props.status.heldLines.map((line) => (
+        <Row
+          key={line.id}
+          anchor={`row-held-${line.id}`}
+          block
+          label={heldLabel(line, hide)}
+          desc={`${withStop(heldPhrase(line, hide))} It stays in the inbox as you said it.${
+            line.label === 'note'
+              ? ''
+              : ` File it anyway lands it as ${
+                  line.pieces && line.pieces.length > 1 ? `${line.pieces.length} ${line.label}s, one per item` : `a ${line.label}`
+                };`
+          } Skip leaves it there.${
+            line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done
+              ? ' Tick it marks that item done in your tasks file, one box and nothing else.'
+              : ''
+          }`}
+        >
+          <div className="inline">
+            {line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done && (
+              <button
+                className="btn"
+                onClick={() => props.onAct(line.id, 'tick')}
+                disabled={props.acting !== null}
+              >
+                Tick it
+              </button>
+            )}
+            {line.label !== 'note' && (
+              <button
+                className="btn"
+                onClick={() => props.onAct(line.id, 'file')}
+                disabled={props.acting !== null}
+              >
+                File it anyway
+              </button>
+            )}
+            <button
+              className="btn"
+              onClick={() => props.onAct(line.id, 'skip')}
+              disabled={props.acting !== null}
+            >
+              Skip
+            </button>
+          </div>
+        </Row>
+      ))}
+    </div>
+  )
 }
 
 /** One phrase for the sort outcome on the Last note line. */
@@ -118,7 +206,7 @@ export function NotesPanel(props: {
   // it commits on blur or Enter like every other text setting.
   const [pathDraft, setPathDraft] = useState(notes.pathTemplate)
   const [opened, setOpened] = useState<'file' | 'folder' | 'none' | null>(null)
-  const [reminderTest, setReminderTest] = useState<string | null>(null)
+  const [reminderTest, setReminderTest] = useState<ReminderTest | null>(null)
   const reminderTestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
     if (reminderTestTimer.current) clearTimeout(reminderTestTimer.current)
@@ -234,16 +322,7 @@ export function NotesPanel(props: {
     void update({ reminders: { ...reminders, times } })
   }
   const testReminder = async (): Promise<void> => {
-    const result = await bridge().testNotesReminder()
-    setReminderTest(
-      result.outcome === 'shown'
-        ? result.body
-        : result.outcome === 'empty'
-          ? 'nothing open right now, so a reminder would stay quiet'
-          : result.outcome === 'suppressed'
-            ? 'this system is not showing notifications; check its notification settings for murmur'
-            : 'no tasks file yet, so there is nothing to read'
-    )
+    setReminderTest(await bridge().testNotesReminder())
     if (reminderTestTimer.current) clearTimeout(reminderTestTimer.current)
     reminderTestTimer.current = setTimeout(() => setReminderTest(null), 6000)
   }
@@ -399,58 +478,7 @@ export function NotesPanel(props: {
       </Row>
 
       {notes.sort && status && status.heldLines.length > 0 && (
-        <div className="held-list">
-          {status.lastAction && !status.lastAction.ok && (
-            <p className="row-desc held-note">{status.lastAction.reason ?? 'that did not work'}</p>
-          )}
-          {status.heldLines.map((line) => (
-            <Row
-              key={line.id}
-              anchor={`row-held-${line.id}`}
-              block
-              label={`Held: ${line.lead ? `${line.lead.text.replace(/:$/, '')}: ` : ''}${line.text}`}
-              desc={`${withStop(heldPhrase(line))} It stays in the inbox as you said it.${
-                line.label === 'note'
-                  ? ''
-                  : ` File it anyway lands it as ${
-                      line.pieces && line.pieces.length > 1 ? `${line.pieces.length} ${line.label}s, one per item` : `a ${line.label}`
-                    };`
-              } Skip leaves it there.${
-                line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done
-                  ? ' Tick it marks that item done in your tasks file, one box and nothing else.'
-                  : ''
-              }`}
-            >
-              <div className="inline">
-                {line.reason === 'completes' && line.match?.file === 'tasks' && line.match.checkbox && !line.match.done && (
-                  <button
-                    className="btn"
-                    onClick={() => void heldAction(line.id, 'tick')}
-                    disabled={acting !== null}
-                  >
-                    Tick it
-                  </button>
-                )}
-                {line.label !== 'note' && (
-                  <button
-                    className="btn"
-                    onClick={() => void heldAction(line.id, 'file')}
-                    disabled={acting !== null}
-                  >
-                    File it anyway
-                  </button>
-                )}
-                <button
-                  className="btn"
-                  onClick={() => void heldAction(line.id, 'skip')}
-                  disabled={acting !== null}
-                >
-                  Skip
-                </button>
-              </div>
-            </Row>
-          ))}
-        </div>
+        <HeldLines status={status} settings={props.settings} acting={acting} onAct={(id, action) => void heldAction(id, action)} />
       )}
 
       <Row
@@ -518,10 +546,7 @@ export function NotesPanel(props: {
           anchor="row-notes-reminders"
           block
           keywords="notification todo nudge"
-          desc={
-            reminderTest ??
-            'Notifications that read your tasks file and say what is still open; clicking one opens the list. A file with nothing open stays quiet, and clearing a time switches that one off.'
-          }
+          desc={reminderDesc(reminderTest, props.settings)}
         >
           <div className="inline">
             <Switch

@@ -50,7 +50,7 @@ if ((process.env.CF_PAGES || process.env.SITE_DEPLOY) && !SUPPORT_EMAIL) {
   console.error('site: set SUPPORT_EMAIL (support@murmurapp.app) before a deploy build; the support page must carry it')
   process.exit(1)
 }
-const { links, facts, title, description, faq: allFaq, compare, privacy, support } = content(SITE_URL, { supportEmail: SUPPORT_EMAIL })
+const { links, facts, title, description, faq: allFaq, compare, privacy, security, support } = content(SITE_URL, { supportEmail: SUPPORT_EMAIL })
 // The home answers: one that points at a doc (its doc) shows only when
 // that doc is on the site, since a deploy reads the docs at the release it
 // serves, which may not have it yet (the iPhone doc). Set once the docs
@@ -299,6 +299,7 @@ function footerHtml() {
         <a href="/wispr-flow-alternative/">murmur vs Wispr Flow</a>
         <a href="/support/">support</a>
         <a href="/privacy/">privacy</a>
+        <a href="/security/">security</a>
         <a href="${links.releases}" target="_blank" rel="noopener noreferrer">releases</a>
         <a href="${links.repo}" target="_blank" rel="noopener noreferrer">source</a>
       </nav>
@@ -400,6 +401,7 @@ function sitemapXml(docs) {
     ['/', site, '1.0'],
     ['/wispr-flow-alternative/', compareDate(), '0.9'],
     ['/privacy/', privacy.updated, '0.5'],
+    ['/security/', security.updated, '0.5'],
     ['/support/', gitDate('site/content.js'), '0.6'],
     ['/docs/', [...docs.map((d) => d.updated), gitDate('site/content.js')].sort().at(-1), '0.8'],
     ...docs.map((d) => [`/docs/${d.name}/`, d.updated, '0.7'])
@@ -441,6 +443,7 @@ ${docs.map((d) => `- ${d.title}: ${links.doc(d.name)}`).join('\n')}
 - ${links.compare} : murmur compared with Wispr Flow
 - ${SITE_URL}/support/ : how to get help
 - ${SITE_URL}/privacy/ : what leaves each device, and why (murmur collects nothing)
+- ${SITE_URL}/security/ : for security reviewers: data flow, keys, updates, signing, what murmur does not have, and how to report a problem
 
 ## Compared with Wispr Flow
 ${c.answer}
@@ -453,7 +456,7 @@ Wispr Flow's plans, prices, platforms, and requirements checked ${c.checked} aga
 
 ${qa}
 
-${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4. ${FILM_TEXT}\n\n` : ''}## Contact
+${hasFilm() ? `## Film\n- One drop (15 s): ${SITE_URL}/film/one-drop.mp4?v=${fileHash('film/one-drop.mp4')}. ${FILM_TEXT}\n\n` : ''}## Contact
 - Issues and support: ${links.issues}${SUPPORT_EMAIL ? `\n- Email: ${SUPPORT_EMAIL}` : ''}
 `
 }
@@ -780,6 +783,7 @@ function infoPage({ path, name, info, font }) {
         <nav class="crumbs" aria-label="Breadcrumb"><a href="/">murmur</a> <span aria-hidden="true">/</span> <span aria-current="page">${name}</span></nav>
         <h1>${escapeHtml(info.h1)}</h1>
         <p class="lede">${escapeHtml(info.lede)}</p>
+        ${info.summary ? `<ul class="points" id="summary">\n          ${info.summary.map(([lead, rest]) => `<li><strong>${escapeHtml(lead)}</strong> ${answerHtml(rest)}</li>`).join('\n          ')}\n        </ul>` : ''}
         ${info.items.map((item) => `<h2 id="${slugify(item.q)}">${escapeHtml(item.q)}</h2>\n        ${answer(item)}`).join('\n\n        ')}
         ${info.updated ? `<p class="sources">Last changed ${info.updated}.</p>` : ''}
       </article>`
@@ -922,15 +926,19 @@ async function fetchFont() {
 // ---------------------------------------------------- fingerprints ---
 
 /**
- * Every script, stylesheet, and the font gets a ?v= of its own content
- * in the files that point at it. The page itself is never cached
- * (Pages serves it with max-age=0), so a deploy reaches returning
- * visitors on their next load even though the zone keeps assets for
- * hours, and an old script can never meet a new page.
+ * Every script, stylesheet, the font, and the film get a ?v= of their
+ * own content in the files that point at them. The page itself is never
+ * cached (Pages serves it with max-age=0), so a deploy reaches returning
+ * visitors on their next load even though these files are kept for a
+ * year (headers.js), and an old script can never meet a new page.
  */
-function fingerprint() {
+function fileHash(file) {
   const { createHash } = require('node:crypto')
-  const hash = (file) => createHash('sha256').update(readFileSync(join(out, file))).digest('hex').slice(0, 10)
+  return createHash('sha256').update(readFileSync(join(out, file))).digest('hex').slice(0, 10)
+}
+
+function fingerprint() {
+  const hash = fileHash
   const stamp = (file, refs) => {
     let text = readFileSync(join(out, file), 'utf8')
     for (const ref of refs) {
@@ -945,8 +953,10 @@ function fingerprint() {
         .join(`'./${ref}?v=${v}'`)
         .split(`(${ref})`)
         .join(`(${ref}?v=${v})`)
+        .split(`${SITE_URL}/${ref}"`)
+        .join(`${SITE_URL}/${ref}?v=${v}"`)
       // A reference written some other way would stay unstamped and
-      // stale for hours; the build stops instead.
+      // stale for a year; the build stops instead.
       if (!text.includes(`${ref}?v=${v}`)) throw new Error(`site: ${file} has no stampable reference to ${ref}`)
     }
     writeFileSync(join(out, file), text)
@@ -992,6 +1002,7 @@ async function main() {
     ...docs.map((d) => [`/docs/${d.name}/`, `docs/${d.name}/index.html`, docPage(docs, d, font.file)]),
     ['/wispr-flow-alternative/', 'wispr-flow-alternative/index.html', comparePage(font.file)],
     ['/privacy/', 'privacy/index.html', infoPage({ path: '/privacy/', name: 'privacy', info: privacy, font: font.file })],
+    ['/security/', 'security/index.html', infoPage({ path: '/security/', name: 'security', info: security, font: font.file })],
     ['/support/', 'support/index.html', infoPage({ path: '/support/', name: 'support', info: support, font: font.file })],
     ['/404', '404.html', notFoundPage(font.file)]
   ]

@@ -94,6 +94,9 @@ const api = {
   clearPolishKey: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:clear'),
   getPolishKeyStatus: (): Promise<KeyStatus> => ipcRenderer.invoke('polishkey:status'),
   testProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:test'),
+  getUpdateOffer: (): Promise<import('../main/updater-rules').UpdateOffer> => ipcRenderer.invoke('updates:offer'),
+  downloadUpdate: (): Promise<import('../main/updater-rules').UpdateOffer> => ipcRenderer.invoke('updates:download'),
+  openReleases: (): Promise<void> => ipcRenderer.invoke('updates:openReleases'),
   saveDiagnostics: (): Promise<boolean> => ipcRenderer.invoke('diag:save'),
   openLogFolder: (): Promise<void> => ipcRenderer.invoke('diag:openLogs'),
   testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
@@ -146,6 +149,8 @@ const api = {
   /** Empties the log; answers with how many entries it removed. */
   clearHistory: (): Promise<number> => ipcRenderer.invoke('history:clear'),
   countHistory: (): Promise<number> => ipcRenderer.invoke('history:count'),
+  /** Whether saved words are sealed, for the switch beside Keep history. */
+  getHistorySealStatus: (): Promise<import('../shared/history').SealStatus> => ipcRenderer.invoke('history:sealStatus'),
   /** Today's painting and the four weeks before it (US-098). */
   listPaintings: (): Promise<import('../shared/painting').PaintingBook> => ipcRenderer.invoke('paintings:list'),
   onHistoryAppended: (cb: (event: SessionEvent) => void): (() => void) => {
@@ -154,6 +159,12 @@ const api = {
     // The home view mounts and unmounts with its tab: give it a real
     // unsubscribe so listeners never pile up across switches.
     return () => ipcRenderer.removeListener('history:appended', handler)
+  },
+  /** An existing entry changed, such as a held take's words coming back. */
+  onHistoryChanged: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('history:changed', handler)
+    return () => ipcRenderer.removeListener('history:changed', handler)
   },
   listWaitingTakes: (): Promise<import('../main/transcribe/recovery').WaitingTake[]> => {
     return ipcRenderer.invoke('recovery:list')
@@ -168,6 +179,10 @@ const api = {
     return () => ipcRenderer.removeListener('recovery:changed', handler)
   },
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
+  getKeepImpact: (retentionDays: number): Promise<{ takes: number; recordings: number }> =>
+    ipcRenderer.invoke('history:keepImpact', retentionDays),
+  /** Null opens a blank message, for a report copied by hand. */
+  openReportMail: (body: string | null): Promise<void> => ipcRenderer.invoke('report:mail', body),
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
   },

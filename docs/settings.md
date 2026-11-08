@@ -20,7 +20,45 @@ Settings most people never touch sit under a fold at the bottom of their section
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. The retention control at the bottom of the home view prunes entries older than 30 days, 90 days, or a year, or keeps everything forever. **Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
+History lives only on your machine, in murmur's local data folder. **Keep history for**, at the bottom of the home view, sets how long:
+
+- **30 days, 90 days, a year, or forever.** Entries older than that are removed.
+- **24 hours.** The words of a take go after 24 hours, checked every 15 minutes while murmur runs. The numbers stay, so your stats, belts, and paintings keep counting.
+- **Don't keep.** No words are saved to disk, only the numbers. This session's takes stay in memory on the home tab, so you can copy one or paste the last one, and their words are gone when you quit murmur, leaving the numbers on each row. A take that reached neither an app nor your clipboard, such as one a locked mic stopped on its own, keeps its recording on the waiting list, so Retry can bring its words back after a quit. That recording goes after 24 hours, the next time murmur runs, or sooner once paste last puts the words in an app. A take left on your clipboard because the paste keystroke failed is not held. Notes are different: they are your own files, so they still land in your notes folder.
+
+Changing this tells you what it will remove first, whichever way you move it. Going to a day limit removes older entries with their numbers, so your totals drop. A take with no words says so on its row, and what you said and report are not available for it. Under 24 hours and Don't keep, a recording waiting to retry goes after 24 hours, the next time murmur runs, since until then it is the only copy of a take that failed. A recording held for a take that reached no app goes the same way, whatever you change this to. Choosing a day limit removes recordings older than it, after asking. At most 20 recordings wait at once, and the oldest go first, except that a held recording whose words are still on the home tab goes before them.
+
+**Clear all** asks first, in place, with the count of everything in your history (for example, Clear all 1,204 entries from your history?), because it cannot be undone: your stats, time back, and belt progress are counted from your history and start over. **keep them** is selected, so Enter or Escape leaves it as it was; click the red **clear** button to empty it. Note files stay in your notes folder, and recordings waiting to retry are not touched. Nothing about your history is ever uploaded anywhere.
+
+## Is my history encrypted?
+
+Yes, by default. The words in your history are encrypted on disk with a key your system's secure storage holds: the Keychain on Mac, and your account's protected storage on Windows. **Encrypt saved words**, beside **Keep history for** on the home tab, turns it off and on, and murmur changes the whole file right then.
+
+- **It protects the file, not your screen.** A copied history file or folder cannot be read elsewhere. On a Mac, another program has to ask the Keychain first. On Windows, a program already running as you can still reach the key, so there this guards copies more than programs. Your words still show on the home tab, so turning this on does not hide them while you share your screen or film. [Hide words](#how-do-i-hide-my-words-while-i-share-my-screen-or-film) does that.
+- **Your notes stay plain files.** They are your own, so they stay readable in any app. Recordings waiting to retry and your settings are not encrypted either, and the numbers in your history stay readable so your stats, belts, and paintings always work.
+- **A history file or folder copied to another machine cannot be read there.** The key stays in this computer's secure storage. On the other machine you keep the numbers, and the rows say their words cannot be opened. Moving your whole account can bring that storage along, such as Migration Assistant, a Time Machine restore, or a roaming Windows profile, and then your words read as before.
+- **If your system loses the key,** such as after a Keychain reset, the same is true here: rows keep their numbers and say their words cannot be opened. Those words stay in the file, so they read again if the key comes back, until Clear all or a 24 hours or Don't keep limit removes them. The line beside the switch counts them.
+- **If secure storage is not available,** murmur keeps working, keeps your words as plain text, and says so beside the switch. It encrypts them once it can.
+- **Older copies stay as they were.** Backups made before this was on still hold plain text.
+
+## How do I hide my words while I share my screen or film?
+
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is on the home tab, just above your history, and in Settings, under System. They are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
+
+- **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
+- **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.
+- **Copy and paste last keep working.** A copy button still copies the words, and your paste last shortcut still pastes them. What you paste shows in that app.
+- **Report is off while this is on,** because a report shows your words so you can check them before anything goes. The report button says so. Turn off Hide words to report a take.
+- **Try it, the practice box, is off** too, because what you dictate into it would show there.
+- **Notifications leave the words out.** A note receipt says where the note went, and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
+
+It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
+
+## How do I see what cleanup changed, and get my words back?
+
+Open the home tab. When cleanup changed any of your words, that take shows **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
+
+These are the words your speech provider heard, so if it misheard you, this shows that too.
 
 ## What happens on first launch?
 
@@ -126,14 +164,24 @@ Turn on Apply corrections in Settings, Dictation. With it on and formatting at F
 - "Send the invoice to Mark on Tuesday. Oh wait, actually what I mean is Wednesday." types "Send the invoice to Mark on Wednesday."
 - "The budget is fifteen thousand, sorry, fifty thousand for the quarter." types "The budget is fifty thousand for the quarter."
 - "I think we should, we should ship on Friday." types "I think we should ship on Friday."
+- "The printer is on the second floor, on the third floor by the kitchen." types "The printer is on the third floor by the kitchen."
+- "I was thinking we could paint the hallway, you know what, never mind, let's replace the carpet first." types "Let's replace the carpet first."
 
 It is off by default, and off means dictation behaves exactly as it always has: your slip-ups stay in the text.
 
-**What counts as a correction?** A cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one. Restarted phrases and stumbled repeats are dropped too.
+**What counts as a correction?** 3 shapes, and murmur reads the whole take before deciding:
 
-**Will it remove "actually" or "I mean" when I mean them?** No. When nothing is being taken back, the cue word is part of what you said and stays: "Actually, the tests are passing now" and "I mean, it works, but it could be faster" type exactly as spoken.
+- A fix with a cue word that takes back something you just said: oh wait, wait, actually, I mean, sorry, no, rather, make that, what I meant was, let me rephrase that. The fix can come in the same sentence or the next one.
+- A restatement with no cue word, where you say a phrase and then say it again a better way. The later version stays.
+- An abandoned start, where you begin a thought and drop it: forget that, never mind, you know what, hold on, start over, or just trailing off. The dropped thought goes, and what you said next stays. A reversal counts too: say one thing, then the opposite, and only the last one is typed.
 
-**Can it lose words?** The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech carried a cue word, the cut removed one, the cut is no bigger than those cues explain (about one wrong phrase each), and every word left is a word you said. A rewrite in new words never earns that deeper cut, and no cut may remove more than 60% of what you said. Measured on Groq with gpt-oss-120b (2026-10-17, 23 test sentences, 10 runs each, with Smart lists on and off), it fixed all 280 corrections and kept all 180 cue words that were meant. In an earlier run while the instructions were being tuned, the model once dropped a few real words next to a fix, so read back anything that matters.
+Words you stumbled into repeating go as well.
+
+**Will it remove "actually" or "I mean" when I mean them?** No. When nothing is being taken back, the cue word is part of what you said and stays: "Actually, the tests are passing now" and "I mean, it works, but it could be faster" type exactly as spoken. The same goes for "Never mind the rain, the game is still on."
+
+**Can it lose words?** Rarely, so read back anything that matters. The cleanup pass still fails open: when the model's answer does not look like a correction, murmur types your formatted words instead. A cut deeper than ordinary cleanup is accepted only when your speech shows it: every typed word was spoken, in the order you spoke it, the take still ends on your last word, and each cut part ends in a cue word or is said again right after. murmur also refuses an answer that kept only what you said before you changed your mind. These checks catch most bad answers, not all of them: they read words, not meaning, so a model can still drop a fact in ordinary cleanup.
+
+**Does the cleanup model matter?** Yes. Catching a restatement with no cue word takes judgment, and models differ. On murmur's scored test set of made-up messy speech, some cleanup models catch far more than others. See [providers](providers.md) if you want to try a different one.
 
 Corrections need the cleanup pass (Full formatting and a working cleanup model). Saying "scratch that" deletes the current sentence at Full formatting with or without this switch.
 
@@ -247,7 +295,7 @@ Three guards. Before upload: if the recording contains under about a fifth of a 
 
 ## Where does my data live?
 
-Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
+Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest, and by default so are the words in your history. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
 
 ## What is the "getting active" grid on the analytics page?
 
@@ -264,6 +312,16 @@ Yes. The accent you pick under Settings, Look (any earned belt color, or the spe
 ## Why don't I see murmur notifications on my Mac?
 
 Almost always a macOS permission. The Test button on the Daily recap row (Settings, Time back and recap) fires a real notification through the same pipe as belt promotions and achievements, so use it to check. If nothing appears: open System Settings, then Notifications, find the app in the list, switch Allow Notifications on, and pick the Banners or Alerts style. While running from source the app is listed as Electron; the installed app is listed as murmur. Notifications also stay hidden while a Focus mode is on.
+
+## How do I control when murmur updates?
+
+Settings, System, **Updates** has 3 choices:
+
+- **Automatic**, the default. murmur checks every few hours, downloads quietly, and installs when you quit.
+- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click the notification, or Download in Settings.
+- **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself. On a Mac, an update that had already finished downloading still installs when you quit.
+
+The provider list has its own switch, because it is a separate request to GitHub. Both are explained on the [privacy page](https://murmurapp.app/privacy/).
 
 ## Where do I see what changed in an update?
 

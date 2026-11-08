@@ -6,16 +6,18 @@
 // (see deliverRetried). Retries run one at a time, so Retry all and a
 // double click can never deliver the same take twice, and the audio is
 // removed only after its words are safe.
-import { type BrowserWindow, clipboard, ipcMain } from 'electron'
+import { type BrowserWindow, clipboard } from 'electron'
+import { ipc } from './ipc'
 import { deliverRetried } from './dictation'
-import { readHistory } from './history'
+import { heldTakeSaved, readHistory, wordsInMemory } from './history'
 import { isSmoke, registerSmokeCheck } from './smoke'
-import { recoveryDir, setRecoveryListener, transcribeWav } from './transcribe'
+import { recoveryDir, setRecoveryListener, setWordsInMemoryCheck, transcribeWav } from './transcribe'
 import {
   type WaitingTake,
   getRecovery,
   listRecovery,
   markRecoveryFailed,
+  markRecoveryHeld,
   readRecoveryWav,
   removeRecovery,
   saveRecovery
@@ -37,11 +39,23 @@ async function log(line: string): Promise<void> {
   }
 }
 
+const busy = new Set<string>()
+
 /** Tell the settings window the waiting list changed. Only that window
  *  hears about takes, never the overlay or audio windows. */
 function notifyChanged(): void {
   const win = getTargetWindow()
   if (win && !win.isDestroyed()) win.webContents.send('recovery:changed')
+}
+
+/** Tell the home tab a take left the list for another reason. */
+export function recoveryChanged(): void {
+  notifyChanged()
+}
+
+/** Whether a take is running or queued, so nothing removes it meanwhile. */
+export function isRetrying(id: string): boolean {
+  return busy.has(id)
 }
 
 async function retryNow(id: string): Promise<RetryResult> {
@@ -62,7 +76,14 @@ async function retryNow(id: string): Promise<RetryResult> {
     notifyChanged()
     return delivered
   }
-  removeRecovery(dir, id)
+  // Under Don't keep the words are in memory only, so the recording stays
+  // held until its 24 hours pass. Anywhere else it has done its job.
+  if (delivered.heldAt !== null) {
+    markRecoveryHeld(dir, id, delivered.heldAt)
+    heldTakeSaved()
+  } else {
+    removeRecovery(dir, id)
+  }
   await log(`outcome=delivered kind=${take.kind} location=${delivered.location} words=${delivered.words}`)
   notifyChanged()
   return { ok: true, kind: take.kind, words: delivered.words, location: delivered.location }
@@ -70,7 +91,8 @@ async function retryNow(id: string): Promise<RetryResult> {
 
 /** Retry one take, after any retry already running. */
 export function retryTake(id: string): Promise<RetryResult> {
-  const next = queue.then(() => retryNow(id))
+  busy.add(id)
+  const next = queue.then(() => retryNow(id)).finally(() => busy.delete(id))
   queue = next.catch(() => undefined)
   return next.catch(async (error) => {
     console.error('[murmur] retry threw:', error)
@@ -85,20 +107,31 @@ export function discardTake(id: string): void {
   notifyChanged()
 }
 
+/** The words of a held take reached an app, so its recording goes. */
+export function releaseHeldTake(loggedAt: number): void {
+  const dir = recoveryDir()
+  const take = listRecovery(dir).find((waiting) => waiting.loggedAt === loggedAt)
+  if (!take || isRetrying(take.id)) return
+  removeRecovery(dir, take.id)
+  void log('released')
+  notifyChanged()
+}
+
 const asId = (value: unknown): string | null =>
   typeof value === 'string' && /^recovery-\d{10,16}$/.test(value) ? value : null
 
 export function initRetry(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   setRecoveryListener(notifyChanged)
+  setWordsInMemoryCheck(wordsInMemory)
 
-  ipcMain.handle('recovery:list', () => listRecovery(recoveryDir()))
-  ipcMain.handle('recovery:retry', (_event, id: unknown) => {
+  ipc.handle('recovery:list', () => listRecovery(recoveryDir()))
+  ipc.handle('recovery:retry', (_event, id: unknown) => {
     const valid = asId(id)
     if (!valid) return { ok: false, failure: { kind: 'gone', detail: 'not a saved take' } }
     return retryTake(valid)
   })
-  ipcMain.handle('recovery:discard', (_event, id: unknown) => {
+  ipc.handle('recovery:discard', (_event, id: unknown) => {
     const valid = asId(id)
     if (valid) discardTake(valid)
     return listRecovery(recoveryDir())

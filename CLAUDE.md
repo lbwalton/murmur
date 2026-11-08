@@ -25,6 +25,10 @@ This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walt
 - `git pull --rebase` before every commit; parallel sessions may run on other machines.
 - Review gate (LaBroi directive, 2026-09-05): before a story's push, an independent reviewer agent examines the full uncommitted diff against these rules and reports findings; confirmed findings get fixed and re-verified before the push. The reviewer never edits, the builder never skips the gate. Findings the builder disputes, and anything needing human judgment, escalate to LaBroi instead of being quietly dropped.
 
+## Security
+
+Follow `security.mdc`, and run the `security-hardening` skill before shipping. `INCIDENT_RESPONSE.md` has the runbooks for a leaked key, a taken-over GitHub account, and a bad release.
+
 ## Hard constraints
 
 - No native modules that require compilation. uiohook-napi is allowed only because it ships prebuilt N-API binaries; `npmRebuild` stays false in the builder config. Contributors must never need Visual Studio Build Tools or Xcode to run `npm install`.

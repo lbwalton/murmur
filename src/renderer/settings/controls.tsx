@@ -169,10 +169,12 @@ export function Advanced(props: {
   label?: string
   /** What is inside, so the fold says what it holds while closed. */
   hint: string
+  /** Opens the fold when something inside needs attention. */
+  open?: boolean
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <details className="adv">
+    <details className="adv" open={props.open}>
       <summary className="adv-summary">
         <span>{props.label ?? 'Advanced'}</span>
         <span className="adv-hint">{props.hint}</span>

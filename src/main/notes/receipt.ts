@@ -10,15 +10,18 @@
 // never reach the log.
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type BrowserWindow, Notification, app, ipcMain, shell } from 'electron'
+import { type BrowserWindow, Notification, app, shell } from 'electron'
+import { ipc } from '../ipc'
 import {
   type LastNote,
   parseLastNote,
+  receiptBody,
   receiptLine,
   receiptTarget,
   receiptTitle,
   revealLabel
 } from '../../shared/receipt'
+import { KEEP_NO_TEXT } from '../../shared/history'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE } from '../../shared/notes'
 import { getSettings, updateSettings } from '../settings'
@@ -77,12 +80,22 @@ export function getLastNote(): LastNote | null {
 function setLastNote(note: LastNote): void {
   lastNote = note
   try {
-    replaceViaTemp(storeFile(), `${JSON.stringify(note)}\n`)
+    // Don't keep holds no words on disk, here included (US-137).
+    const keepsText = getSettings().history.retentionDays !== KEEP_NO_TEXT
+    replaceViaTemp(storeFile(), `${JSON.stringify(keepsText ? note : { ...note, line: '' })}\n`)
   } catch (error) {
     // The record is a convenience; the note itself is already safe.
     say(`remember failed reason=${errorCode(error)}`)
   }
   notify(note)
+}
+
+/** Takes the words out of the stored receipt once it is past the limit.
+ *  The note itself is the person's own file and stays. */
+export function scrubLastNoteLine(cutoff: number): void {
+  const note = getLastNote()
+  if (note === null || note.at >= cutoff || note.line === '') return
+  setLastNote({ ...note, line: '' })
 }
 
 function notify(note: LastNote | null): void {
@@ -97,6 +110,15 @@ function notify(note: LastNote | null): void {
   }
 }
 
+/** Take back a receipt still on screen or in Notification Center. */
+export function withdrawReceipt(): void {
+  current?.close()
+  current = null
+  // A receipt left from before a restart has no object here; macOS can
+  // still take it out of Notification Center by its id.
+  if (process.platform === 'darwin' && !isSmoke) Notification.remove(RECEIPT_ID)
+}
+
 /** Forget the last note: the record, its file, and a receipt still
  *  sitting in Notification Center. Clear all on the home tab calls it;
  *  the note file itself is never touched. */
@@ -107,11 +129,7 @@ export function forgetLastNote(): void {
   } catch (error) {
     say(`forget failed reason=${errorCode(error)}`)
   }
-  current?.close()
-  current = null
-  // A receipt left from before a restart has no object here; macOS can
-  // still take it out of Notification Center by its id.
-  if (process.platform === 'darwin' && !isSmoke) Notification.remove(RECEIPT_ID)
+  withdrawReceipt()
   lastShown = null
   say('forgotten')
   notify(null)
@@ -178,7 +196,7 @@ function showReceipt(note: LastNote): void {
   }
   const receipt: ShownReceipt = {
     title: receiptTitle(note),
-    body: note.line !== '' ? note.line : 'Click to open the note.',
+    body: receiptBody(note, getSettings().history.hideWords),
     file: target.file,
     actions
   }
@@ -331,9 +349,9 @@ export function initReceipts(options: {
   chooseFolder: () => Promise<void>
 }): void {
   chooseFolder = options.chooseFolder
-  ipcMain.handle(IpcChannels.notesLast, () => getLastNote())
-  ipcMain.handle(IpcChannels.notesOpenLast, () => openLastNote('home'))
-  ipcMain.handle(IpcChannels.notesRevealLast, () => revealLastNote('home'))
+  ipc.handle(IpcChannels.notesLast, () => getLastNote())
+  ipc.handle(IpcChannels.notesOpenLast, () => openLastNote('home'))
+  ipc.handle(IpcChannels.notesRevealLast, () => revealLastNote('home'))
   // Only the settings window hears about notes, never the overlay.
   onLastNoteChanged(() => {
     const win = options.settingsWindow()
@@ -423,6 +441,17 @@ export function initReceipts(options: {
       const quietNote = noteSaved(quiet, 'A quiet note.')
       const offStaysQuiet = shownCount === countOff && quietNote !== null && getLastNote() === quietNote
       const stored = parseLastNote(JSON.parse(readFileSync(storeFile(), 'utf8')))
+      // Hide words (US-145): the receipt says where the note went and
+      // keeps none of its words, and the record still holds them.
+      updateSettings({ notes: { receipts: true }, history: { hideWords: true } })
+      const hiddenLine = 'A hidden note about the dentist.'
+      const hiddenNote = noteSaved(saveNote(hiddenLine, new Date(2026, 9, 2, 9, 17)), hiddenLine)
+      const hiddenReceipt = lastShown
+      updateSettings({ history: { hideWords: false } })
+      const wordsHidden =
+        hiddenReceipt?.body === 'Click to open the note.' &&
+        hiddenReceipt.title === 'Noted to inbox/2026-10-02.md' &&
+        hiddenNote?.line === hiddenLine
       const joined = await joinedSortStep(vault)
       forgetLastNote()
       const forgotten = getLastNote() === null && !existsSync(storeFile()) && !trayMenuLabels().includes('Open last note')
@@ -441,6 +470,7 @@ export function initReceipts(options: {
         openedTarget: openOutcome === 'opened' && opened[0] === tasks,
         refusedNonNotes: refused.every((r) => r === 'refused') && revealRefused && opened.length === 1,
         offStaysQuiet,
+        wordsHidden,
         stored: stored?.inbox.file === quiet.file && stored.line === 'A quiet note.' && stored.at === quiet.when.getTime(),
         ...joined,
         forgotten,

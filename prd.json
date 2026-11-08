@@ -980,7 +980,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "On hold, LaBroi decision 2026-09-26: no new recurring costs until murmur has sales. Nothing here starts until he lifts the hold; the $9.99 a month begins the day the Azure account is created, so the account is not opened early either. Until then US-063 and US-066 tell Windows users plainly how to get past the unsigned-installer warning. When the hold lifts, re-verify the price and eligibility against Microsoft's pages before starting, since the facts above were checked 2026-09-26. Hold reaffirmed 2026-09-27: LaBroi will focus on the Mac and the iOS app first; Windows keeps its unsigned-installer note (US-070)."
+      "notes": "On hold, LaBroi decision 2026-09-26: no new recurring costs until murmur has sales. Nothing here starts until he lifts the hold; the $9.99 a month begins the day the Azure account is created, so the account is not opened early either. Until then US-063 and US-066 tell Windows users plainly how to get past the unsigned-installer warning. When the hold lifts, re-verify the price and eligibility against Microsoft's pages before starting, since the facts above were checked 2026-09-26. Hold reaffirmed 2026-09-27: LaBroi will focus on the Mac and the iOS app first; Windows keeps its unsigned-installer note (US-070). Reaffirmed 2026-11-05: stays on hold unless a customer or reviewer specifically asks, since the monthly cost starts before there are paying users to cover it."
     },
     {
       "id": "US-065",
@@ -1898,6 +1898,449 @@
       "needs_human": true,
       "passes": true,
       "notes": "Built 2026-11-05 on feature/hands-free after LaBroi's go the same day. Evidence 2026-11-01: 2 near-silent hands-free takes of 22 to 28 seconds on whisper-large-v3-turbo returned invented Japanese; the energy gate counted tap clicks plus room noise as speech. Verified: typecheck clean, 946 passed, 1 skipped (before fix round 1); after it 958 passed, 1 skipped, smoke ok, smoke ok with provider, chromiumNet, handsFree, retry true. Fix round 1 (review): format fallback narrowed to 400, 415, 422 and kept for the rest of the call, kept segments joined without added spaces, non-JSON bodies never quoted, docs/settings.md says 3 guards, soft-speech live step added. LaBroi decided 2026-11-05: a take the filter emptied does not keep its audio for Retry (it ends as no speech, so accidental quiet takes never pile up on Home). Regression proof: making the filter keep everything (the no_speech threshold raised to 99) turned the smoke provider check and ok false; reverted and smoke green again. Notes (deliverNote) log lines were left without the score suffix. Test build 5d262d0 installed on his Mac 2026-11-05. Live step 1 failed on it the same day (see the description). Round 2 review (locked takes only: skip the hotkey taps at the edges, need 400 ms of 120 ms runs): no code bugs, but it lost short real takes (yes, send it, testing testing) and let keystroke pairs merge into runs; replaced. Round 3 review (steady rule on 10 ms frames for every take): code correct, but deep and creaky voices (pitch below about 60 Hz) broke every stretch and some short words were lost at some alignments. Round 4, this build: loudness over 20 ms every 10 ms, the steady rule only for takes no key was held through, held takes unchanged. A dip allowance (letting a stretch continue a little under the threshold) halved the speech losses but let a noisy room (RMS 0.007 to 0.009) keep a stretch going for seconds, so it was dropped. Bench on the bundled real module (scratchpad rv/sim3_r.mjs, clicks3_r.mjs, glottal_r.mjs, noise_r.mjs; the reviewer's 110 say files from 9 voices and 5 languages, levels 0.0105 to 0.08, 3 noise floors, 3 alignments, hotkey knocks at both ends): 154 of 5,940 short single-phrase takes the old rule kept are lost, nearly all at 0.0105 to 0.015 (barely above the voiced threshold), and at 0.03 and above only a fast Mandarin 好的 (3 of 9); the glottal model loses nothing from 40 Hz up; a lone click counts only from an 80 ms decay, a keystroke only at a 30 ms decay with its clicks 40 ms apart (exactly 90); noisy rooms up to 0.009 RMS stay under 90 except 1 loud slow knock at 0.009. Verified: typecheck clean, 967 passed, 1 skipped, smoke ok (84 checks). Mutants caught: unit tests catch a 10 ms window, a 120 ms minimum, the steady rule on every take, the steady rule on none, and no fade rule; smoke handsFree catches a missing dictationLocked call (case a) and toggle takes counted as held (case n). Round 4 review: approve on code (0 must-fix); its should-fix, that tap to start and stop takes now get the steady rule (the mode for people who cannot comfortably hold a key, who may speak softly), goes to LaBroi with the scope question, with a toggle live step added and the advice reworded. LaBroi approved the scope change 2026-11-06 (toggle takes included); test build a12e0df installed on his Mac the same day. Live-verified by LaBroi 2026-11-06 on a12e0df (his words: All checks pass); the log, numbers only: quiet 22 s hands-free take nospeech voiced=60 steady=40 held=0; quiet 6 s hold nospeech voiced=0; normal held sentence voiced=1320 steady=320; a 63 s hands-free take with pauses delivered 60 words (steady=1100); soft held okay steady=140 and 160, low-voice held sentence steady=190; hands-free testing testing steady=190; typing during a quiet 18 s hands-free take nospeech voiced=570 steady=80 held=0 (the old voiced rule alone would have uploaded it; 10 ms under the minimum, so typing is the case to watch); lowest-voice hands-free phrase steady=360; tap to start and stop soft okay delivered, steady=130 held=0. Every segment again scored noSpeech=0.00 on whisper-large-v3-turbo. Every criterion verified. Passed."
+    },
+    {
+      "id": "US-120",
+      "title": "The privacy page says the important parts first",
+      "description": "A scanner run on 2026-11-05 read only the top of /privacy/ and reported unclear retention and limited user rights. The page is honest but says those things late, purchase records have no stated period, and the warm mic is not mentioned. Reviewers read the same way scanners do. The rule to meet: say how long each kind of record is kept, or the test that decides it, and keep it no longer than the reason needs.",
+      "acceptance": [
+        "/privacy/ opens with a summary, above the first question, covering: what murmur collects, how long each kind of record is kept, what rights a person has (see, correct, delete, no sale or sharing), and that the site sets no cookies, so it shows no cookie banner",
+        "A retention list covers every kind of record: history on the device (the Keep history setting), recordings waiting for a retry, purchase and license records, and support email. Each has a period or a stated test",
+        "Purchase and license records are kept for 10 years after purchase, for tax and business audits, then deleted. The page says Stripe keeps its own copy under its own policy, and docs/pro.md says a lost key can be reissued while that record exists",
+        "The page says plainly that the mic stays ready while murmur runs, that the last 300 ms live in memory only, and that nothing is saved or sent until you press",
+        "Rights mention GDPR and California's CCPA by name, and every contact on the page is a real readable address in the served HTML",
+        "A build test fails if the summary is removed or falls below the first question",
+        "LaBroi approves the wording before it deploys; the Last changed date moves",
+        "A rescan clears the retention and user rights findings, or the reason is recorded here"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Wording and periods are LaBroi's to approve (Claude drafts). Decided 2026-11-06: purchase records 10 years after purchase, for audits; support and security email 3 years after the last message; Report this take emails 90 days. A daily script in his Google account does the deleting (kept outside this repo), and Gmail empties Trash 30 days later, so the page says cleared within about 30 days. That script must be running before the page makes the promise. Drafted 2026-11-06 on the branch, not deployed: a summary above the first question, a retention list, a rights question naming GDPR and CCPA, and a microphone question, with build tests. Left: LaBroi reads and approves the wording, the Gmail cleanup runs first, and a rescan after deploy. Review gate 2026-11-06: the pages now say nothing reaches Eze Media on its own, and name the http exception. Open for LaBroi: deleting on request vs a 10 year business period needs a legal answer; the retention list leaves out logs (capped by size) and paintings (about 400 days); and SECURITY.md promises no legal action for good faith research."
+    },
+    {
+      "id": "US-121",
+      "title": "A year-long cache for fingerprinted files",
+      "description": "CSS, scripts, the font, and the film are cached 4 hours even though every link carries a ?v= fingerprint of the file. Scanners read that as no caching strategy, and returning visitors download files they already have.",
+      "acceptance": [
+        "Fingerprinted paths are served with public, max-age=31536000, immutable; HTML stays must-revalidate",
+        "A build test fails if any page or script references a cached file without its fingerprint, including brush.js inside hero.js",
+        "Files whose names never change and are not fingerprinted (favicon, preview image, robots.txt, sitemap) keep a short cache",
+        "After a deploy, curl -sI shows the new header on each fingerprinted path and the posture check's cache line passes"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "LaBroi runs the deploy. Built 2026-11-06, not deployed. headers.js sets a year-long immutable cache on the fingerprinted paths and nothing else; the film's absolute links in the structured data are stamped too; a build test fails on any unstamped reference in html, css, or js, including brush.js in hero.js; a real build with the film stamps all 4 film links. Left: after the next deploy, curl -sI each path and read the posture check's cache line. Review gate 2026-11-06: the film link in llms.txt is stamped too, and the test now scans text files."
+    },
+    {
+      "id": "US-122",
+      "title": "The repo's security basics",
+      "description": "A reviewer looking at the public repo should find a security policy and locked-down automation. The 2026-11-05 review found no SECURITY.md, private vulnerability reporting off, CodeQL not set up, no Dependabot config, and a ci.yml with default token permissions and actions pinned to tags. pricing-watch.yml already does this right.",
+      "acceptance": [
+        "SECURITY.md says how to report a bug, what is in scope, and what reply to expect, and matches security.txt",
+        "ci.yml sets permissions: contents: read and pins every action to a commit",
+        ".github/dependabot.yml checks npm and GitHub Actions weekly",
+        "CodeQL runs on JavaScript and TypeScript on every push and PR, with no open high findings, or each one recorded here",
+        "Private vulnerability reporting is on (LaBroi approves the repo setting)",
+        "npm run typecheck, npm test, and CI stay green on macOS and Windows"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-06. SECURITY.md, ci.yml with read-only permissions and pinned actions, dependabot.yml, and codeql.yml are written; the YAML parses; none has run yet, because nothing is pushed. The 3 business day reply in SECURITY.md is a promise for LaBroi to approve. Left: push, watch CI on macOS and Windows and the first CodeQL run, and LaBroi turns on private vulnerability reporting (off on 2026-11-06), after which SECURITY.md can name it."
+    },
+    {
+      "id": "US-123",
+      "title": "A weekly outside check, an incident plan, and the rules file",
+      "description": "Security that depends on nobody making a mistake drifts. Nothing watches the live site between deploys, there is no written plan for a leaked key or a bad release, and future coding sessions do not see the security rules.",
+      "acceptance": [
+        "A scheduled weekly workflow runs the posture check on https://murmurapp.app, opens 1 issue on a new FAIL, and warns 30 days before security.txt expires. It writes no secrets and asks only for read access",
+        "The workflow keeps a clean result for what is true by design (no database, no third-party scripts)",
+        "An incident plan lives in the repo root as INCIDENT_RESPONSE.md: who does what for a leaked key, a compromised GitHub account, and a bad release, including how to stop an update reaching installed copies",
+        "security.mdc, trimmed to what applies to a static site and an Electron app, is in the repo and referenced from CLAUDE.md",
+        "The incident plan names a yearly check of who can publish a release"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": "Built 2026-11-06, not yet run on GitHub. scripts/posture-check.mjs is copied from the security-hardening skill, and security-posture.yml runs it Mondays. It needs issues: write as well as read, to open the 1 issue. A security.txt within 30 days of expiring counts as a failure. INCIDENT_RESPONSE.md and a trimmed security.mdc are in the repo root, and CLAUDE.md points to them. Left: after the push, run the workflow by hand with test_alert ticked, and see the issue open and close."
+    },
+    {
+      "id": "US-124",
+      "title": "A public security page",
+      "description": "Security reviewers ask the same questions of every vendor. murmur's honest answer is unusually good (no server, no account, your own key), but it is scattered. 1 page should answer most of a vendor questionnaire and be the page to send.",
+      "acceptance": [
+        "/security/ is on the site, in the footer, and in the sitemap, with headings phrased as the questions reviewers ask and short answers first",
+        "It covers: what leaves the device and where it goes, who processes data (the provider the user chose), what is stored and where, how keys are stored, how updates and licenses are verified, what is signed on each platform, and how to report a bug",
+        "It states plainly what murmur does not have: no SOC 2 or ISO 27001 report, no penetration test, and that the Windows installer is unsigned, with what to do about the warning",
+        "It says HIPAA and similar duties depend on the provider a person picks",
+        "Every drifting fact carries a verified-on date, and the page follows the site's headers and CSP with no inline script",
+        "seo-geo-aeo checklist passes for the new page, and llms.txt lists it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "LaBroi approves the wording. Drafted 2026-11-06 on the branch, not deployed: /security/ in the footer, sitemap, and llms.txt, with tests. It states the Windows installer is unsigned, that there is no update off switch yet, and that history is not encrypted, so it changes when US-136 and US-138 ship. It says the file SECURITY.md lives on main, so it needs US-122 merged first. Left: LaBroi approves the wording, and the seo-geo-aeo checklist at deploy."
+    },
+    {
+      "id": "US-125",
+      "title": "A scored test set for messy speech",
+      "description": "LaBroi, 2026-11-05: when someone stumbles, goes back, and says what they really meant, the best tools keep only the final thought, and murmur still struggles. A live probe that day on the default model (openai/gpt-oss-120b on Groq, Apply corrections and smart lists on, 3 runs per sentence) put numbers on it: fixes with a cue word 3 of 3, real cue words kept 9 of 9, restatements with no cue word 6 of 15, abandoned starts 2 of 18. 11 of those 33 fell back because validatePolish rejected the answer for length. Quality work needs a scoreboard before it needs a new prompt, so this grows the US-105 probe into 1 set of cases every cleanup change is measured against.",
+      "acceptance": [
+        "shared/cleanup-cases.json holds at least 80 made-up cases, each with a kind, the spoken text, phrases that must survive, and phrases that must go. Kinds: fix with a cue word, restatement, abandoned start, real cue words, lists, long structure, and plain prose that must stay untouched",
+        "No real dictation enters the set unless the person who said it agreed and it was rewritten without names or details",
+        "npm run probe:cleanup runs the set against a real model, skipped without a key and never part of npm test or CI, and prints pass rate and fallback reasons per kind and per model",
+        "Lost content is scored apart from missed fixes: any case where a must-survive phrase vanished is listed by name, since losing what someone meant is worse than leaving a stumble in",
+        "A unit test checks the case file's shape and minimum counts per kind",
+        "Rerunning with the same prompt moves each kind's pass rate by 5 points or less, or the run count rises until it does",
+        "The baseline for the default model is recorded in notes before US-126 starts"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Verified 2026-11-06. shared/cleanup-cases.json holds 98 made-up cases: cue-fix 17, restatement 16, abandoned-start 15, real-cue-word 21, list 11, long-structure 8, plain-prose 10. npm run probe:cleanup runs them through formatTranscript, polishTranscript, validatePolish, and the app's 8 s limit; the file name is outside the unit globs, a guard test proves it, and it skips without a key. It prints pass rate, lost content by name, fallback reasons, passes that only came from falling back, and a held out rate per kind, per model. MURMUR_PROBE_OUT and MURMUR_PROBE_REPLAY regrade saved answers for free. Stability: at 3 runs abandoned starts moved 7 points and long structure 9. Runs now spread over whole passes, default 16, tripled for long structure, since at 16 it still moved 7. Baseline, 2 reruns, openai/gpt-oss-120b on Groq via OpenRouter, corrections and smart lists on, 16 runs (48 for long structure): cue-fix 100, 100. restatement 34.8, 37.1 (held out 30, 33). abandoned-start 13.3, 11.7. real-cue-word 100, 100. list 79.0, 78.4. long-structure 77.3, 76.0. plain-prose 100, 100. Largest move 2.3 points. Fell back 8% of takes, 6% for length, against the US-126 target of under 2%. Lost content: start-cancel-order 14 of 16 (Move it to the following Tuesday instead, with no order named), long-change-of-plan, long-bug-report, long-support-reply. Review gate: 2 rounds, 11 findings then 5, all fixed or recorded; the reviewer's 98 correct answers all pass the grader, and validatePolish refuses 13 of them today (11 length, 2 list entries), which is US-126's work. Smoke: 84 of 84 on the rerun; the first run failed recording once with load at 6, the known audio flake, and no app code changed."
+    },
+    {
+      "id": "US-126",
+      "title": "Restarts and restated thoughts come out clean",
+      "description": "The 2 causes behind the US-125 numbers. The corrections prompt defines only fixes that turn on a cue word, so a restatement with no cue (as a gift, as a present) or a thought dropped halfway (you know what, forget that, just send me the numbers) is left in. And the cue list misses forget that, never mind, you know what, hold on, and start over, so validatePolish refuses the right answer for being too short and the raw text is typed instead.",
+      "acceptance": [
+        "The corrections prompt defines 3 shapes, each with an example, and tells the model to read the whole take first: a fix with a cue word, a restatement with no cue word, and an abandoned start. The real cue word examples stay",
+        "The cue list adds at least forget that, never mind, you know what, hold on, start over, and well not",
+        "validatePolish accepts a deeper cut only when every output word was spoken, the kept words stay in spoken order, and the take's final thought survives. A summary, a rewrite, or an answer is still rejected. Unit tests cover accept and reject",
+        "On the US-125 set with the default model: fixes with a cue word at least 95%, restatements at least 85%, abandoned starts at least 85%, real cue words 100%, plain prose unchanged, 0 cases of lost content, and fewer than 2% fall back for length. Before and after numbers go in notes",
+        "At least 1 other cleanup model from the catalog reaches 80% on restatements and abandoned starts with 0 lost content",
+        "Every existing test vector and prompt injection case still passes: dictated instructions stay content",
+        "The formatter still fails open, and with Apply corrections off nothing changes",
+        "Docs: the settings page explains the 3 shapes with examples",
+        "Live: LaBroi dictates 5 of his own stumbles in the real app and each comes out as the final thought alone"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "iPhone parity needs an IOS story once these rules move to shared/polish.json (feature/ios). Also check the 8 validate: meta chatter fallbacks in LaBroi's log, the most common reason there, for false rejections of real dictation. Review of US-125 found 2 list cases that cannot pass today: list-fix-inside and list-dropped-entry hold a correction inside a list, impliedEntryCount counts the cut words as entries and refuses the right answer as missing entries, and SMART_LISTS_PROMPT says never drop an entry. Fix them here or say why not. Do not copy a case into a prompt example: the unit test makes a case that close carry tuned true. Built 2026-11-06, targets not met, so passes stays false. The prompt names the 3 shapes and ends with a self-check; the cue list grew; validatePolish adds a narrow faithful cut, plus 2 refusals with corrections on: an answer that kept only the first attempt, and a cut opening cue. Before and after on openai/gpt-oss-120b on Groq (after: 756 answers, a run cut short by OpenRouter credit running out): cue fixes 100 to 99, restatements 36 to 72, abandoned starts 12 to 79, real cue words 100 to 100, lists 79 to 83, long structure 77 to 76, plain prose 100 to 100, fell back 8% to 1%, under 1% for length. Target is 85 on restatements and abandoned starts, and 0 lost content; accepted answers still lost content in 25 of those 756, most also passing the old rule. 16 fresh sentences written after the prompt froze: restatements 82, abandoned starts 88, real cue words 100. Other models on the same prompt, 2 runs, restatements, abandoned starts, real cue words, and cue fixes only: gpt-5.6-luna 100, 90, 98, 100; deepseek-v4-flash 100, 80, 100, 97 with timeouts; mistral-small 84, 80, 93, 97. Fresh sentences on luna, before the opening cue refusal: restatements 100, abandoned starts 65, real cue words 69. So a stronger cleanup model is the biggest remaining lever, and no model has run the full set. Review gate found the first validator let real content, obeyed instructions, and answers through: 63 attack pairs; the rewritten rule leaves 4 that the old rule refused: 2 parallel facts said with a comma (Our Boston office closes at five, our Denver office closes at six), which words alone cannot tell from a restatement, plus The plan is to sell. Hold on. The plan is to buy. The plan is to buy. cut to The plan is to sell. The plan is to buy., and Do not, wait, call Sam after lunch, but do not call Ann. cut to Do not call Ann. The prompt line about phrases that fill the same spot may invite that; left for LaBroi, since nothing could be measured with no credit. 7 trap cases were added after the last run and have no score yet. Left: rerun the full set on a Groq key, check the 8 meta chatter fallbacks, the live check, and the iPhone story. 2026-11-07, LaBroi said yes to the parallel facts fix: validatePolish now refuses, as cut parallel fact, a cut with no cue whose 2 phrases line up word for word and differ in 2 separate spots, with the cut phrase ending on a real word. It is refused whatever the length, since a short take clears every length check, and the words are typed in full. Review widened it: 2 meaning words must differ, a run of joiners (and, but, while, then, also, so, plus, or) is not part of either phrase, in the cut or beside it, a 3 word fact counts, and cutting the later fact is refused too. Not covered: a 3 phrase series with 1 spot changed (add milk, add eggs, add bread), and phrases that do not line up word for word (our big Denver office), which still read as restatements. Regraded for free on 649 saved answers (101 from gpt-oss-120b, 548 from Haiku 5.5): no right answer newly refused. A fourth review (2026-11-07) found that 2 word joiners such as and then, but then, and and also got past it, so the joiner handling was widened again; a free regrade of all 816 graded saved answers (gpt-oss-120b, Haiku 5.5, Qwen) gave every grade exactly as before that change, and the 8 new joiner tests fail on the earlier rule. The live rerun did not happen: a Groq key on the free plan allows 200,000 tokens a day per model, shared with live cleanup and the nightly monitor, and it ran out. MURMUR_PROBE_PACE_MS added for such a key. The prompt is unchanged, since no run has shown the model cutting these. Qwen on the same prompt, 2026-11-07, qwen/qwen3.8-27b on Groq, 1 pass only, a first look: restatements 95 (21 of 22, 1 lost content), abandoned starts 86 (18 of 21), plain prose 93 (14 of 15). Both targets met on this small run. Cue fixes then scored 100 (17 of 17, 0 fell back) on 1 pass the same day, paced 1 call every 5 minutes, and a free regrade under the widened joiner rule gave the same 17 of 17. Real cue words, lists, and long structure have no score yet, and cost per take is about 5 times gpt-oss-120b, so the default stays until those run and LaBroi decides. Luna on the same prompt, 2026-11-08, through OpenRouter, the full set at 16 runs (2,055 graded each, 0 ungraded): openai/gpt-6-luna: cue fixes 100, restatements 100, abandoned starts 93, real cue words 100, lists 92, long structure 86, plain prose 100, all 96; fell back 5% (long structure 44 of 360 passed by falling back, 24 timeouts); lost content 17 (4 abandoned starts, 13 long structure); about 2.6 seconds a call. openai/gpt-5.6-luna: cue fixes 100, restatements 98, abandoned starts 83, real cue words 99, lists 91, long structure 84, plain prose 100, all 94; fell back 4%; lost content 58 (48 in long structure); about 1.3 seconds a call. Both meet the restatement target; gpt-6-luna meets both targets of 85. The 2 runs cost $0.31 together. Neither model is on Groq, so making one the default changes which company users need a key for; that is LaBroi's call, and passes stays false."
+    },
+    {
+      "id": "US-127",
+      "title": "Apply corrections and smart lists on for everyone",
+      "description": "Both switches default off, so a new user never sees murmur's best output. Comparable tools clean up by default. This waits for US-126, since turning on a weaker fix for everyone would be worse than leaving it off.",
+      "acceptance": [
+        "New installs default both switches on; a person can still turn either off",
+        "Existing installs turn on once through a versioned migration, with a what's new line; a switch turned off after that stays off",
+        "Starts only after US-126 meets its targets",
+        "Smoke and unit tests cover the defaults and the migration",
+        "Docs and the settings copy describe the new defaults"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Changing existing users' settings is LaBroi's call; he can keep this to new installs."
+    },
+    {
+      "id": "US-128",
+      "title": "See what cleanup changed, and take it back",
+      "description": "History already keeps the raw words beside the final text, but nobody can see them. If cleanup removes something wrongly, a person should see it and recover it in 1 click. It also makes a bad take easy to spot and report.",
+      "acceptance": [
+        "A history row whose raw and final text differ offers What you said, which shows the raw words with the removed words marked",
+        "Copy what you said copies the raw words, on click only; nothing else touches the clipboard",
+        "Paste last, stats, and belts are unaffected",
+        "Transform rows and takes with no difference do not offer it",
+        "It works by keyboard and with reduced motion, and uses night studio tokens with no paint",
+        "Docs cover it; smoke and unit tests cover the row and the word diff"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-06. word-diff.ts marks the removed words with a longest common run, unit tested with a smoke check; the row uses plain buttons and night studio tokens with no paint or motion. Not seen on screen yet: LaBroi opens a take with a fix in it, sees the struck words, and copies them. Review gate 2026-11-06: list marks no longer count as a change."
+    },
+    {
+      "id": "US-129",
+      "title": "A quality log that never holds your words",
+      "description": "LaBroi asked for logging to catch when cleanup misses. Today the log records fallback reasons but nothing about takes that went through and still kept a stumble, and it must never hold transcript text.",
+      "acceptance": [
+        "Each take writes 1 [quality] line: level, switches, model, outcome (cleaned, or the fallback reason), words in and out, and cue word counts before and after",
+        "A cue that survives is flagged as a hint, not a verdict, since real cue words should stay",
+        "A unit test feeds marked text through the path and proves no transcript, dictionary, or key text reaches the line",
+        "The diagnostics report gains a 30 day summary: takes, fallback rate by reason, and hint rate",
+        "It stays on the device, adds nothing to the dictation path's wait, and stays inside the log's size caps",
+        "Docs: troubleshooting says what the line means and that it holds no words"
+      ],
+      "passes": true,
+      "needs_human": false,
+      "notes": "Verified 2026-11-06. quality.ts writes 1 [quality] line per take from maybePolish, fire and forget, through the capped log. A unit test feeds marked text through every field. The diagnostics report sums the last 30 days from the log and its rotated copies, and smoke checks both. Docs: troubleshooting. Review gate 2026-11-06: the first test could not fail, since swapping spaces for underscores kept the words. Each field now has a closed shape, anything else logs as other, a test reads every fallback reason out of llm.ts, and the marked text is proven absent."
+    },
+    {
+      "id": "US-130",
+      "title": "Report this take",
+      "description": "LaBroi asked for 1 click from history to tell us a take came out wrong, so we can study it. murmur has no server and promises that nothing reaches Eze Media LLC on its own, so a report has to be something the person sees and sends themselves. That keeps the privacy page and the App Store label true.",
+      "acceptance": [
+        "Every dictation in history has a Report action, reachable by keyboard",
+        "A panel shows exactly what would go, and it can be edited: what you said, what murmur typed, an optional what it should have been, plus version, platform, formatting switches, and model names",
+        "Audio, keys, base URLs, dictionary, expansions, and other takes are never included; a unit test with marked values proves it",
+        "Send opens a prefilled message to support@murmurapp.app in the person's own mail app. A report too long for that offers Copy report, then opens a blank message. murmur itself sends nothing",
+        "The panel says in 1 sentence who reads it and that it is kept 90 days, and /privacy/ and the docs match. The subject line starts murmur report, which is how the 90 day cleanup finds it",
+        "A written rule in the repo says a report becomes a test case only with the sender's yes, rewritten without names or details",
+        "Live: LaBroi reports a take and his mail app opens with it filled in"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "iPhone parity needs its own IOS story. A hosted inbox could replace email later; that would change the privacy page and the App Store label, so it is a separate decision. Built 2026-11-06. reportBody takes only the fields it lists, and a unit test with marked values proves keys, base URLs, the dictionary, expansions, and audio cannot reach it. The main process opens only mailto links to the 1 address and subject. The written rule is in security.mdc, /privacy/, and docs/troubleshooting.md. Not seen on screen. Left: the live check, and the panel's sentence names LaBroi as the reader, which he should approve. Review gate 2026-11-06: wording now matches the privacy page, and says a typed expansion can appear in what murmur typed."
+    },
+    {
+      "id": "US-131",
+      "title": "Long dictation reads like it was written",
+      "description": "Output quality is structure as well as words. A long take should arrive in paragraphs, and something shaped like an email should look like one.",
+      "acceptance": [
+        "A take of 80 words or more gets paragraph breaks at real topic shifts, with no word changed",
+        "A dictated email keeps its greeting and sign-off on their own lines",
+        "Spoken new line and new paragraph commands still win, and lists are never broken",
+        "The long structure cases in the US-125 set reach at least 85% with 0 lost content",
+        "It rides the smart lists switch, renamed if the name no longer fits, and fails open like the rest of cleanup",
+        "Docs and live: LaBroi dictates a long update and an email"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "The long structure cases in US-125 grade words only: every single paragraph answer passes them. This story adds the paragraph and greeting check to the grader before it counts that 85%."
+    },
+    {
+      "id": "US-132",
+      "title": "Writing style by kind of app",
+      "description": "Comparable tools write more casually in chat and more formally in email. They do it by reading the screen, which murmur will not do. murmur can get most of the value from the name of the front app alone, with no screen or text box access.",
+      "acceptance": [
+        "A setting offers Formal and Casual, with optional per-app overrides, off by default",
+        "Only the front app's name is used. It stays on the device and is never sent to a provider, and no screen or text box content is read",
+        "Casual changes only what the style needs (for example the final period) and keeps the speaker's words",
+        "It needs no compiled native code and no new permission beyond what murmur already asks",
+        "/privacy/ and the docs state what is read; the set in US-125 gains style cases",
+        "Live: LaBroi checks a chat app and an email app"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Design call: confirm reading the front app's name fits the privacy promise before building."
+    },
+    {
+      "id": "US-133",
+      "title": "Measure what the recognizer hears",
+      "description": "Cleanup can only fix what the recognizer gave it. murmur has never measured its speech models side by side on real speech, with names, jargon, numbers, and stumbles.",
+      "acceptance": [
+        "At least 20 clips of LaBroi speaking, kept outside the repo since no binaries go in it",
+        "A script scores each speech model in the catalog: word error rate, whether names and numbers survive, whether stumbles are kept for cleanup to see, and speed and cost",
+        "It also checks that dictionary hints help and do not leak into the text",
+        "Results go in notes, and the default only changes with LaBroi's yes"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-134",
+      "title": "Paste on Windows without PowerShell",
+      "description": "Every paste on Windows starts powershell.exe with a COM object, which endpoint security tools can flag and Constrained Language Mode can block. uiohook-napi, already an allowed dependency, can press the keys itself through keyTap, with no shell and no new native code.",
+      "acceptance": [
+        "On Windows, paste and copy use keyTap, and no powershell.exe starts on any insertion path",
+        "A test fails if src/main/insertion names powershell again",
+        "Paste last still waits for the chord, transforms still read the selection, and a dictation stays recoverable through paste last if the keystroke fails",
+        "macOS keeps osascript unless keyTap proves better; the choice and reason go in notes",
+        "Smoke stays green on both platforms in CI",
+        "Live on Windows: Notepad, a browser, and a chat app each receive the words, and paste last works"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-135",
+      "title": "Close the mic between takes, and say so plainly",
+      "description": "murmur keeps the mic open so the first syllable lands. It holds 300 ms in memory and saves nothing, but the Mac's permission text says murmur records while you hold the hotkey, and a reviewer will ask why the mic is always on. The market leader says nothing is captured until you press. People should have that choice.",
+      "acceptance": [
+        "Settings, Microphone offers Keep the mic ready (the default) and Open the mic only when I press",
+        "In the second mode no capture stream exists between takes: the Mac's orange dot and the Windows mic icon are off, and smoke proves the stream is closed",
+        "The added delay on the first press is measured and shown in the setting's description, and the listening cue plays only once the mic is live",
+        "NSMicrophoneUsageDescription is accurate for both modes",
+        "docs/microphone.md explains both modes, what the 300 ms is, and that it is never saved or sent",
+        "Hands-free, notes, and transforms work in both modes",
+        "Live: LaBroi checks both modes on his Mac"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-06, default unchanged: every new path runs only with the mic set to open on press. In that mode no capture stream exists between takes, the watchdog and device follow stand down, and the listening cue waits for the first real sound, 1.5 s at most. A micClosedBetweenTakes smoke check proves the stream is closed, a take works, and it closes again, on synthetic audio only. The delay is measured on each press and shown in the setting, so no number is written down yet. Left: LaBroi checks both modes on his Mac, watching the orange dot, and the Windows mic icon. Review gate 2026-11-06: fixed a second press waiting 5 s on a dead attempt, a stale listening cue after a take ended, a take losing audio when switched to Keep the mic ready, and the mic opening after a revive. The 1.5 s cue fallback is gone, so the cue only ever means live. Open for LaBroi: with sounds off nothing says the mic is live, so the pill could show it; and press mode has no press-time heal, so a graph that comes back dead after a wake loses that take, and the next press opens a fresh one."
+    },
+    {
+      "id": "US-136",
+      "title": "Choose how updates arrive",
+      "description": "Updates download and install with no switch. IT teams want to decide that, and some people simply want to.",
+      "acceptance": [
+        "Settings offers Automatic (the default), Ask first, and Off",
+        "Ask first checks and tells you, and downloads only after a click. Off makes no update request at all",
+        "With updates off, the setting says security fixes will not arrive and links to the releases page",
+        "The provider catalog keeps its own switch, and both are explained on /privacy/ and in the docs",
+        "Smoke and unit tests cover the 3 modes; the updater still fails open",
+        "Live: LaBroi sees Ask first offer a real update"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen. Review gate 2026-11-06: leaving Automatic now cancels a running download, Off also stops install on quit where the platform allows it (Windows yes, Mac no, since the file is with the system once downloaded, and the docs say so), a click after Off does nothing, Ask first offers a version once, and the row refreshes."
+    },
+    {
+      "id": "US-137",
+      "title": "Keep history for 24 hours, or not at all",
+      "description": "History offers 30 days, 90 days, a year, or forever. Some people and most reviewers want less. Belts, numbers, and paintings read history, so words and numbers have to come apart.",
+      "acceptance": [
+        "Keep history for adds 24 hours and Don't keep",
+        "Don't keep writes no transcript text to disk. Numbers still count, so belts, stats, and the painting keep working",
+        "Paste last keeps the last take in memory only in that mode",
+        "Pruning runs on a timer, so a 24 hour limit holds while murmur stays open",
+        "Switching to a shorter limit says what will be removed before removing it, and recordings waiting for a retry follow the same limit",
+        "What you said and Report say why they are unavailable on a take with no text",
+        "/privacy/ and the docs match; smoke and unit tests cover pruning and textless events",
+        "Live: LaBroi dictates in Don't keep and the newest line in history.jsonl has empty rawText and finalText and no sealed field"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-06. 24 hours and Don't keep take the words out and keep the numbers, on a 15 minute timer. A failed take's recording stays up to 24 hours under Don't keep: the criterion says it follows the same limit, but it is the only copy of a take, and the formatter's rule is that a transcription is never lost, so this is LaBroi's call to change. Unit tests and a keepNoText smoke check cover it. Note the day limits still remove whole entries, numbers included, as they always have. Not seen on screen. Left: the live check, dictating in Don't keep and finding the newest line in history.jsonl has empty rawText and finalText and no sealed field. Searching the file for the words proves nothing now that history is sealed. Review gate 2026-11-06: a single memory slot could destroy a take, since a retried or saved take has no other home and its recording is deleted, so this session's words now stay in memory on Home until quit, and the messages say until you quit. LaBroi chose 2026-11-07 to hold the recording, so under Don't keep a take that reaches no app (a hands-free stop, a note neither folder could take, a too-long transform's instruction, and any retry) keeps its recording on the Retry list. It goes after 24 hours from when it was saved, whatever Keep history is changed to: on a timer set for that moment while murmur runs, backed by the 15 minute check, and at the next launch if murmur was closed, so the promise is worded as the next time murmur runs. At most 20 recordings wait and the oldest go, except that a held take goes first while its words are still in memory, since then its recording is a spare; after a quit it is the only copy, so it goes oldest first like any take. When the cap takes a held take straight back, saveRecovery says so, and neither the log nor the notice promises a recording. A paste that threw used to lose the words on every setting: only the paste is caught now, the words are logged, and under Don't keep the recording is held with reason paste-failed. When the log fails on a take that reached nothing, or on the hands-free save path, the recording goes on the Retry list as unlogged whatever Keep history says, and a retry that cannot log fails and keeps its audio. A paste that landed shows no error if the log fails after it. Moving Don't keep to 24 hours drops session words past the cutoff. A hands-free note that could not be filed says its words are in history. Retry puts the words back on the take's own entry with its numbers untouched, so nothing counts twice, paste-last then aims at that entry until something newer lands, and a paste-last that lands removes the recording. A held take retried on an older app after a downgrade can count again, since that app does not know the entry; not built for. A take left on the clipboard because the paste keystroke failed is not held, since the words are on the clipboard. Smoke keepNoTextHeld covers it, with dictation.test.ts and history/index.test.ts for the wiring. Smoke keepNoText and transformLoop's memory-only step now read the line itself, since sealed words would pass a search of the file; breaking each on purpose fails its check. Every Keep history change now asks, since going to a day limit removes numbers. The last note's stored line goes under both short limits. Recordings removed show at once and skip running takes. Day limits remove recordings only when chosen, never at launch, so an update cannot delete a waiting take unasked, which narrows the criterion; 24 hours and Don't keep do hold at launch. A fourth review (2026-11-07) found a transform that went on to the model when history had never opened, since recordSession returns null then instead of throwing, and lost its recording on the too-long path. Both paths now treat null like a refused log, the take goes to the Retry list as unlogged, murmur.log gets unlogged kind=transform kept=, and the 2 new transform tests fail on the earlier code."
+    },
+    {
+      "id": "US-138",
+      "title": "History encrypted on disk",
+      "description": "history.jsonl is plain text, so any program running as you, and any backup, can read it. Encrypting it with the same system storage that protects the API key removes that.",
+      "acceptance": [
+        "Transcript text is encrypted at rest with a key held by the system's secure storage; a marked sentence cannot be found in the file",
+        "Existing history migrates once, and a failed migration loses nothing",
+        "If secure storage is unavailable, murmur keeps working, keeps the text as it was, and says so in Settings",
+        "Notes stay plain files, since they are the person's own, and the docs say so",
+        "The docs explain that a history copied to another machine cannot be read there",
+        "Dictation never waits longer because of this; smoke and unit tests cover read, write, prune, and clear"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-07, on by default with a switch beside Keep history, which is LaBroi's call from the same day. Only rawText and finalText are sealed, with AES-256-GCM under a random key wrapped by safeStorage and kept in history-keys.json, so numbers read with no key and belts, stats, paintings, and Keep history need none. Stats, paintings, and the entry count read through readNumbers, which opens nothing, so a take never pays to decrypt the log, and 1,000 appends stay under a second in smoke. Keys are only added, never replaced: if one stops opening a new one joins it, so a Keychain that comes back opens old lines again. A line no key opens reads as an entry with no words, and prune, the switch, and every rewrite keep its sealed words, except that 24 hours and Don't keep still remove them. Migration runs at launch on the side, checks each line opens back to the same words, and swaps the file in at once, so a failure leaves it as it was and the next launch tries again. Every rewrite reaches the disk before its rename, with the folder after it where the system allows, so a power cut cannot empty the file. Off opens every line it can, and on seals them. Without secure storage murmur keeps the text as it was and says so beside the switch. It protects the file on disk, not the screen: words still show on Home, and the line beside the switch says so. Notes stay plain files, and docs/settings.md says so and says a copied history file or folder cannot be read elsewhere, while a move of the whole account, such as Migration Assistant, a Time Machine restore, or a roaming Windows profile, can bring the key along. The key is fsynced before its rename and the folder after it, before any line is sealed. Out of scope and still plain: recordings waiting to retry, and the last note's stored line, which is a copy of a plain note. A row with words no key opens says so, through an unreadable flag set on reading and never stored, and the line beside the switch counts them. A sealed field that is not text is dropped on reading and its line keeps its numbers. A log that cannot be read counts as no stats, with a line in the log, and only there: a rewrite still sees the error, so it can never replace the file with nothing. A failed rewrite on a Keep history change or the 15 minute check logs a line with no words and stops nothing, and held recordings are watched before anything else in history starts. Unit tests cover read, write, prune, clear, migrate, a failed migration, a failed rename, a leftover copy, the switch both ways, no secure storage, a lost key, a damaged key file, and a moved line; smoke historySealed runs the same on real safeStorage. Not seen on screen. Left: the live check on a signed build, including that no Keychain prompt appears. The private report reads this file, so on LaBroi's Mac it needs a choice once this ships; its README says what."
+    },
+    {
+      "id": "US-139",
+      "title": "Every IPC call proves where it came from",
+      "description": "murmur has 71 IPC handlers and none checks who is calling. Windows only ever show murmur's own pages, so the risk is low, but this is a standard check and 1 wrapper covers all of them.",
+      "acceptance": [
+        "1 wrapper registers every handler, checks senderFrame is murmur's own bundled page and that the window may use that channel, and refuses and logs anything else",
+        "A test fails if ipcMain.handle or ipcMain.on is called outside the wrapper",
+        "Every handler checks its arguments by type, length, and allowed values before acting",
+        "A smoke check proves a throwaway page cannot reach a handler",
+        "Nothing a person does changes; smoke stays green on both platforms"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": "Built 2026-11-06. src/main/ipc.ts registers every handler and checks the main frame is 1 of murmur's own pages and that page may use the channel; a refused call is logged by channel and protocol only. A unit test fails on ipcMain.handle, on, or once anywhere else, and another compares the audio channel list with its preload. Arguments were reviewed handler by handler, with length limits added on keys, base URLs, names, clipboard and mail text, and the share card. The ipcSender smoke check loads a throwaway page holding the real settings bridge and it is refused. Smoke is green twice on macOS. Left: CI on Windows after a push, which is why passes stays false. Review gate 2026-11-06: an install path with ~, [, ], or % refused every window on real Electron, a total outage for that install, so both sides are undone to 1 spelling, and the tests build the root with pathToFileURL. Windows paths are still unproven until CI and a real install."
+    },
+    {
+      "id": "US-140",
+      "title": "Warn before sending over plain http",
+      "description": "Provider presets refuse plain http to remote hosts, but a typed base URL is not checked, so 1 typo would send a key and a voice unencrypted.",
+      "acceptance": [
+        "The base URL fields for transcription, cleanup, transform, and sorting warn on http:// to anything but this machine",
+        "A home network server still works after a clear confirmation, and localhost never warns",
+        "The key is not sent to a plain http remote host until confirmed",
+        "Unit tests cover https, loopback, private addresses, public hosts, and bad URLs",
+        "docs/providers.md explains the warning"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": "Built 2026-11-06. plainHttpHost decides, appFetch refuses before any request goes, so every provider call is covered from 1 place, and the note sits under all 4 base URL fields. Unit tests and a smoke check pass. Not seen on screen yet, so passes stays false. Left: type http://192.168.1.5/v1 in a base URL field, see the warning, confirm, and see the note change. Review gate 2026-11-06: a redirect carried the key and audio past the first check, reproduced on Electron, so holdPlainHttpHops now checks every hop, with a plainHttpRedirect smoke check. An https to https redirect still carries the key to the new host, as any client does. A held take now says so plainly and is not retried, and the fold opens when a warning is inside."
+    },
+    {
+      "id": "US-141",
+      "title": "Stronger fuses and fewer Mac permissions",
+      "description": "Electron fuses are switches burned into the app at build time. 3 are set. 2 more stop a tampered app from running, and allow-unsigned-executable-memory may no longer be needed.",
+      "acceptance": [
+        "electronFuses adds onlyLoadAppFromAsar and enableEmbeddedAsarIntegrityValidation",
+        "allow-unsigned-executable-memory is removed if a notarized build runs without it; the result goes in notes either way",
+        "A changed app.asar stops the packaged app from starting",
+        "A universal Mac build and both Windows builds start and pass smoke, with userData proven isolated first",
+        "Notarization and stapler validate still pass, and auto update installs over the old version",
+        "Live: LaBroi installs the test build and dictates"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "A packaged smoke once wiped a real profile: prove isolation before launching."
+    },
+    {
+      "id": "US-142",
+      "title": "Checksums and a parts list with every release",
+      "description": "IT teams want to verify a download and see what is inside it. Releases carry neither today.",
+      "acceptance": [
+        "Each release attaches SHA256SUMS for every installer and a CycloneDX SBOM of what ships",
+        "RELEASING.md adds the step, and it runs before a release is published",
+        "docs/download.md shows how to verify a download on Mac and Windows",
+        "The next release carries both, and the sums match the published files"
+      ],
+      "passes": false,
+      "needs_human": false,
+      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. Left: the next release carries both."
+    },
+    {
+      "id": "US-143",
+      "title": "A policy file IT can deploy",
+      "description": "On hold until a company asks. Admin controls are how teams enforce settings; murmur has no accounts or server, so a machine-wide file is the honest version.",
+      "acceptance": [
+        "A machine-wide policy file can set history limit, update mode, mic mode, and allowed base URLs",
+        "A locked setting shows Set by your organization and cannot be changed in the app",
+        "A broken or missing file changes nothing, and dictation still fails open",
+        "Docs show a working example for each platform"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "On hold, LaBroi 2026-11-05: build only when a company asks."
+    },
+    {
+      "id": "US-144",
+      "title": "Rescan and sign off",
+      "description": "The closing check for this run of work: the same scanners over https, the before and after in one place, and a short note a reviewer can read.",
+      "acceptance": [
+        "Observatory, SSL Labs, and securityheaders.com stay A+; the posture check shows 0 FAIL, and every WARN has a fix or a written reason",
+        "BrowserTotal over https shows headers A or better and risk Low; any section below that has its reason and evidence",
+        "axe-core shows 0 violations on the same pages plus /security/",
+        "A paste-ready note for reviewers lists what changed, and LaBroi sends it himself",
+        "Scan reports stay out of the public repo"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": ""
+    },
+    {
+      "id": "US-145",
+      "title": "Hide words",
+      "description": "People share their screen or film while using murmur, and encrypted history protects the file, not the screen. One stored switch keeps dictated words out of murmur's own windows and notifications, so the app can be shown without showing what was said.",
+      "acceptance": [
+        "One stored setting, Hide words, default off, survives a restart, and a restart with it on shows no words, not for one frame",
+        "While on, no dictated words appear in murmur's windows: the Home log, what you said, a transform's instruction and original, the last note row, the wrap-up takes, held lines in Notes, the Test reminder line, and the Try it boxes. The one exception is a dictation aimed at murmur's own text fields, and docs/settings.md says so",
+        "The words are not rendered at all, not blurred, so a title, a selection, or a hover has nothing to show, and there is no reveal",
+        "Note receipts and task reminders leave the words out. Turning the switch on takes back what it can reach: on a Mac, a waiting one in Notification Center by its id; on Windows, only one shown since murmur last started",
+        "Masked rows keep the time, word count, pace, and status; numbers and everything without dictated words stay as they are",
+        "Copy and paste-last keep working",
+        "Report this take is off while it is on, and says why in a plain sentence, because a report promises every word is on screen first",
+        "The switch sits on Home next to the history list and in Settings, a quiet control with no paint, and both show the same value",
+        "It says what it hides and that it does not hide what lands in other apps; docs/settings.md answers it",
+        "Nothing new leaves the device",
+        "Removing a mask turns a render test or a smoke check red"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-07, automated criteria verified. Render tests, static React markup off and on: log rows, what you said, the Report gate, the wrap-up row, held rows, the Test reminder line, the Try it box, the wizard's try step. Removing each of 20 masks by hand turned them red. Guard test: fails when a renderer line names a dictated field that is off its list, as it did for note?.line, lastNote.line, and line.match.text. It reads names, so a field reached through a destructure or a helper gets past it. Smoke check hideWords, on the real window: a marked word shows on Home, in what you said and report, on the wrap-up, and in Try it with it off; with it on the word is nowhere in the page, any attribute, or a field; numbers and copy buttons stay; both switches agree; it is saved to disk; a reload shows no words in any DOM change; the Settings switch turns it off and the words return. Breaking each of 6 call sites in HomeView and App in turn (log row, what you said, report, last note, wrap-up, Settings Try it) turned it red. noteReceipt and notesReminder read the notification wording, and breaking each in main turned that check red. Report is closed with a sentence, not masked, because its promise is that every word is on screen before it goes. Keep history and Encrypt saved words live only on Home, so the Settings switch sits under System. Not verified: nobody has seen it on screen. Held rows, the Test reminder line, and the wizard step never ran in a real window, and nothing tests that NotesPanel and WizardView still call them. Withdrawing a delivered notification never ran on a desktop. Copy and paste-last were not clicked, since smoke leaves the clipboard alone; their code is unchanged. Text fields in murmur's own window still show a dictation aimed at them."
+    },
+    {
+      "id": "US-146",
+      "title": "Cleanup with your ChatGPT plan",
+      "description": "People who pay for ChatGPT can let cleanup, transforms, and note sorting run on their plan instead of an API key, through OpenAI's Sign in with ChatGPT for open-source apps. Speech stays with the speech provider, because the plan route takes no audio. It is opt-in and free for everyone.",
+      "acceptance": [
+        "Before any code: OpenAI has answered in writing whether murmur qualifies on the open-source path while it sells an optional Pro, and which data rule covers requests on this route. LaBroi signs off the privacy wording that follows from the answer",
+        "Free for everyone, never behind Pro: under Provider and keys, Use your ChatGPT plan has a Continue with ChatGPT button, stays off until the person signs in, and leaves their API key setup untouched",
+        "Sign-in opens the system browser and listens on 127.0.0.1 only, on a free port, at /auth/callback. It uses PKCE S256 with a fresh state and nonce for each attempt, and closes the listener after 1 answer or 5 minutes",
+        "The first sign-in registers with dynamic_agent_client, agent_name_hint murmur, and an ext_agent_host_id made once per install as a urn:uuid. The issued client_id is saved and reused; dynamic_agent_client is never saved",
+        "The ID token is checked against OpenAI's published keys for signature, issuer, audience, expiry, and nonce. Plan use turns on only when the granted scopes include chatgpt.tokens.use.direct; without it the person stays signed in with plan use off, and the window says so",
+        "Tokens are sealed with safeStorage and never logged, put in a URL, or sent to a renderer. Refresh happens near the 1 hour expiry, 1 at a time. Sign out revokes the refresh token and says so when revocation could not be confirmed",
+        "Cleanup, transforms, and note sorting send POST /v1/responses through appFetch with store false and stream true, the rules in the instructions field, and no temperature or max_output_tokens. A result counts only after response.completed",
+        "The model list comes from GET /v1/models for the signed-in account, showing models marked visibility list, and the choice is saved",
+        "Fails open: any error, a usage limit (subscription_sharing_usage_limit_exceeded), or a stream that ends early types the raw words, keeps the take, and shows the reason with a Manage usage link to chatgpt.com/settings/usage. A request never moves to another paid route",
+        "The window follows OpenAI's guidelines: Using ChatGPT plan with Manage usage beside the provider, and a one-time You're using your ChatGPT plan note after the first sign-in. Any OpenAI mark uses approved branding and adds no binary file to the repo; if that cannot work, ask LaBroi",
+        "No code from OpenAI's Sign in with ChatGPT DevKit, whose license is noncommercial. Built from the public docs, with no new native modules",
+        "The scored set runs on this route, with its numbers beside the default model's in notes, and docs/providers.md says how it compares",
+        "docs/providers.md gets a How do I use my ChatGPT plan with murmur section with a verified-on date. Before release, /privacy/ and SECURITY.md say that OpenAI receives the words and which data rule applies",
+        "Tests cover a wrong state, a wrong nonce, a missing scope, an expired token, 2 refreshes at once, and a stream without response.completed. Smoke adds a chatgptPlan check against a local fake of the sign-in and Responses endpoints",
+        "Live check on a Mac and on Windows with a real Plus or Pro account: sign in, dictate, see cleaned words land, reach or simulate the limit, and sign out"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-07 at LaBroi's request, not started. Checked 2026-11-07 against developers.openai.com/siwc (quickstart, open-source sign-in, models and inference, preview limitations, token reference, UI/UX guidelines), the Sign in with ChatGPT Terms effective 2026-11-04, and OpenAI Help. Open-source apps that run on the person's machine need no approval or client secret. The terms require that people can use their plan without paying the app or upgrading, that tokens stay local, and that the plan serves only the connected app. The docs send paid or remotely hosted apps to an interest form, which is why the first criterion asks OpenAI. The route takes text, images, and files, not audio or the transcription API. Plus has a 5-hour limit shared across apps; Pro does not. Content on personal ChatGPT plans may train models unless the person opts out, while API content does not by default, and no page says which rule covers this route. Out of scope: iPhone, where the loopback sign-in is unproven."
     }
   ]
 }

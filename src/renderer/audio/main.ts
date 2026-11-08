@@ -34,6 +34,8 @@ const recorder = new Recorder({
   minSignalChunks: msParam('minSignalChunks'),
   maxSilentRearms: msParam('maxSilentRearms'),
   deviceChangeMs: msParam('deviceChangeMs'),
+  keepReady: params.get('micMode') !== 'press',
+  onLive: (ms) => bridge.live(ms),
   // Settings shows the inputs and the one in use (US-110); names only.
   onMics: (report) => bridge.mics(report),
   onLevel: (rms) => {
@@ -68,6 +70,10 @@ bridge.onRearm(() => {
 
 bridge.onMic((choice) => {
   recorder.setMicChoice(choice)
+})
+
+bridge.onMicMode((keepReady) => {
+  recorder.setKeepReady(keepReady)
 })
 
 if (synthetic) {
@@ -112,12 +118,15 @@ bridge.onCue((cue, volume) => {
 // opened; main answers at once, and a second at most stands in for it.
 const firstChoice = Promise.race([
   bridge.micChoice(),
-  new Promise<{ id: string; label: string }>((resolve) => setTimeout(() => resolve({ id: '', label: '' }), 1_000))
-]).catch(() => ({ id: '', label: '' }))
+  new Promise<{ id: string; label: string; keepReady?: boolean }>((resolve) => setTimeout(() => resolve({ id: '', label: '' }), 1_000))
+]).catch((): { id: string; label: string; keepReady?: boolean } => ({ id: '', label: '' }))
 void firstChoice
   .then((choice) => {
     recorder.setMicChoice(choice)
-    return recorder.arm()
+    // The address keeps the launch's mode across a revive, so this answer
+    // is what counts, and it arrives before anything opens.
+    if (choice.keepReady !== undefined) recorder.setKeepReady(choice.keepReady)
+    return recorder.armIfReady()
   })
   .then(
     () => bridge.ready(),

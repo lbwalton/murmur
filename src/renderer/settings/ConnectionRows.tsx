@@ -3,6 +3,7 @@
 // or a separate provider with its own base URL, model, and ring key.
 // The cleanup connection and the sort connection (US-051) both render
 // through here, so a fix lands in both and their rules cannot drift.
+import { PlainHttpNote } from './PlainHttpNote'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
 import { type CatalogKind, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
@@ -190,6 +191,7 @@ export function ConnectionRows(props: {
               onCommit={(baseUrl) => void props.onChange({ ...value, baseUrl })}
             />
           </Row>
+          <PlainHttpNote url={value.baseUrl} />
           <Row label={labels.model} desc="Pick a suggestion or type any model id this provider offers.">
             {matched && matched.llmModels.length > 0 ? (
               <ModelPicker

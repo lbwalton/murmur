@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   type LastNote,
   RECEIPT_LINE_MAX,
+  lastNoteLine,
   parseLastNote,
   pillPlace,
   placeName,
+  receiptBody,
   receiptLine,
   receiptTarget,
   receiptTitle,
@@ -116,5 +118,24 @@ describe('parseLastNote', () => {
     expect(parseLastNote({ ...note(), sorted: [inbox] })).toBeNull()
     expect(parseLastNote({ ...note(), sorted: [{ kind: 'tasks', file: 3 }] })).toBeNull()
     expect(parseLastNote({ ...note(), sorted: 'todo.md' })).toBeNull()
+  })
+})
+
+describe('Hide words on the receipt (US-145)', () => {
+  const place = { kind: 'inbox' as const, file: '/v/inbox/2026-10-02.md', relative: 'inbox/2026-10-02.md' }
+  const note: LastNote = { at: 1, line: 'Feed the zebrafinch.', location: 'folder', inbox: place, sorted: [] }
+
+  it('keeps the way to the note and drops its first line from the notification', () => {
+    expect(receiptBody(note, false)).toBe('Feed the zebrafinch.')
+    expect(receiptBody(note, true)).toBe('Click to open the note.')
+    expect(receiptBody({ ...note, line: '' }, false)).toBe('Click to open the note.')
+  })
+
+  it('drops the line from Home, and the title and place never held any', () => {
+    expect(lastNoteLine(note, false)).toBe('Feed the zebrafinch.')
+    expect(lastNoteLine(note, true)).toBe('Words hidden.')
+    expect(lastNoteLine({ ...note, line: '' }, false)).toBe('An empty note')
+    expect(receiptTitle(note)).not.toContain('zebrafinch')
+    expect(receiptWhere(note)).not.toContain('zebrafinch')
   })
 })

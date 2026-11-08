@@ -44,12 +44,21 @@ const api = {
   onMic: (cb: (choice: { id: string; label: string }) => void): void => {
     ipcRenderer.on('audio:mic', (_e, choice: { id?: unknown; label?: unknown } | null) => cb(micChoice(choice)))
   },
+  /** Whether the stream stays up between takes (US-135). */
+  onMicMode: (cb: (keepReady: boolean) => void): void => {
+    ipcRenderer.on('audio:mic-mode', (_e, keepReady: unknown) => cb(keepReady !== false))
+  },
+  /** The stream is live after a press, this many milliseconds on. */
+  live: (ms: number): void => {
+    ipcRenderer.send('audio:live', ms)
+  },
   /** The pick, asked for before the first arm so a picked mic opens first. */
-  micChoice: async (): Promise<{ id: string; label: string }> => {
-    return micChoice(await ipcRenderer.invoke('audio:mic-choice'))
+  micChoice: async (): Promise<{ id: string; label: string; keepReady: boolean }> => {
+    const answer = await ipcRenderer.invoke('audio:mic-choice')
+    return { ...micChoice(answer), keepReady: answer?.keepReady !== false }
   },
   /** The inputs by name and the one in use, for the Settings picker. */
-  mics: (report: { devices: Array<{ id: string; label: string }>; current: string; standIn: boolean }): void => {
+  mics: (report: { devices: Array<{ id: string; label: string }>; current: string; standIn: boolean; open: boolean; openMs: number | null }): void => {
     ipcRenderer.send('audio:mics', report)
   },
   ready: (): void => {

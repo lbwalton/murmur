@@ -4,7 +4,8 @@
 // a slept machine gets its recap late, once. Never fires UI in smoke.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Notification, app, ipcMain } from 'electron'
+import { Notification, app } from 'electron'
+import { ipc } from '../ipc'
 import { dayKey, eventDay } from '../../shared/history'
 import { type RecapSummary, recapBody, shouldFire } from '../../shared/recap'
 import { dayMinutesBack } from '../../shared/timeback'
@@ -90,7 +91,7 @@ export function initRecap(handlers: { openWrapup: () => void }): void {
   app.on('before-quit', () => clearInterval(timer))
 
   // The test button fires immediately without consuming today's recap.
-  ipcMain.handle('recap:test', () => {
+  ipc.handle('recap:test', () => {
     fireNotification()
     return recapBody(todaySummary())
   })

@@ -32,9 +32,33 @@ const HEADERS = [
   ['Access-Control-Expose-Headers', SECURITY_HEADERS.map(([name]) => name).join(', ')]
 ]
 
-/** Cloudflare Pages' _headers format: every path gets every header. */
+// These files are only ever linked with a ?v= of their own content
+// (build.js, fingerprint), so a change gets a new address and the old
+// copy can live for a year. Scanners read anything shorter as no caching
+// strategy (US-121). A file named here without a ?v= fails the site tests.
+const LONG_CACHE = 'public, max-age=31536000, immutable'
+const FINGERPRINTED_PATHS = [
+  '/tokens.css',
+  '/fonts.css',
+  '/paint.css',
+  '/styles.css',
+  '/pill.css',
+  '/pages.css',
+  '/app.js',
+  '/hero.js',
+  '/brush.js',
+  '/fonts/*',
+  '/film/*'
+]
+
+/**
+ * Cloudflare Pages' _headers format: every path gets every header, and
+ * rules that match the same path add together.
+ */
 function headersFile() {
-  return `/*\n${HEADERS.map(([k, v]) => `  ${k}: ${v}`).join('\n')}\n`
+  const everyPath = `/*\n${HEADERS.map(([k, v]) => `  ${k}: ${v}`).join('\n')}\n`
+  const longCache = FINGERPRINTED_PATHS.map((path) => `${path}\n  Cache-Control: ${LONG_CACHE}\n`).join('')
+  return everyPath + longCache
 }
 
-module.exports = { HEADERS, SECURITY_HEADERS, headersFile }
+module.exports = { FINGERPRINTED_PATHS, HEADERS, LONG_CACHE, SECURITY_HEADERS, headersFile }

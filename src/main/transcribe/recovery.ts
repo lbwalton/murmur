@@ -24,6 +24,10 @@ export interface TakeRecord {
   /** When the hotkey went down. */
   startedAt: number
   failure: TakeFailure
+  /** A held take (US-137): when its entry was logged. Its words reached
+   *  no app under Don't keep, so they live only in memory; the recording
+   *  can bring them back, and its numbers are already counted. */
+  loggedAt?: number
 }
 
 /** A saved take as the home tab sees it. No audio, no words. */
@@ -37,7 +41,12 @@ export interface WaitingTake {
   kind: TakeKind
   /** Null for a take saved before records existed. */
   failure: TakeFailure | null
+  /** Set on a held take: see TakeRecord. */
+  loggedAt?: number
 }
+
+/** Whether a held take's words are still in memory, by its logged entry. */
+export type WordsInMemory = (loggedAt: number) => boolean
 
 const ID = /^recovery-(\d{10,16})$/
 
@@ -52,30 +61,42 @@ function recordPath(dir: string, id: string): string {
 }
 
 /** Save a WAV (and, for a live take, its record) into the recovery
- *  folder. Returns the WAV's path. */
+ *  folder. Returns the WAV's path, or null when the cap took it back. */
 export function saveRecovery(
   wav: Uint8Array,
   dir: string,
-  options: { now?: () => number; take?: TakeRecord } = {}
-): string {
+  options: { now?: () => number; take?: TakeRecord; wordsInMemory?: WordsInMemory } = {}
+): string | null {
   mkdirSync(dir, { recursive: true })
   const id = `recovery-${(options.now ?? Date.now)()}`
   const file = wavPath(dir, id)
   writeFileSync(file, wav)
   if (options.take) writeFileSync(recordPath(dir, id), JSON.stringify(options.take))
-  pruneRecovery(dir)
-  return file
+  pruneRecovery(dir, options.wordsInMemory)
+  return existsSync(file) ? file : null
 }
 
 /** Keep only the newest RECOVERY_KEEP takes (names sort by timestamp),
- *  and drop any record whose audio is gone. */
-export function pruneRecovery(dir: string): void {
+ *  and drop any record whose audio is gone. Over the cap the oldest go,
+ *  except that a held take goes first while its words are in memory,
+ *  since then its recording is a spare. After a quit it is the only
+ *  copy, the same as any other take. */
+export function pruneRecovery(dir: string, wordsInMemory: WordsInMemory = () => false): void {
   const names = readdirSync(dir)
   const takes = names
     .filter((name) => /^recovery-\d+\.wav$/.test(name))
     .map((name) => name.slice(0, -'.wav'.length))
     .sort()
-  const dropped = new Set(takes.slice(0, Math.max(0, takes.length - RECOVERY_KEEP)))
+  const over = Math.max(0, takes.length - RECOVERY_KEEP)
+  const spare = new Set(
+    over === 0
+      ? []
+      : takes.filter((id) => {
+          const loggedAt = readRecord(dir, id)?.loggedAt
+          return loggedAt !== undefined && wordsInMemory(loggedAt)
+        })
+  )
+  const dropped = new Set([...spare, ...takes.filter((id) => !spare.has(id))].slice(0, over))
   const kept = new Set(takes.filter((id) => !dropped.has(id)))
   for (const name of names) {
     const match = /^(recovery-\d+)\.(wav|json)$/.exec(name)
@@ -121,7 +142,8 @@ function readRecord(dir: string, id: string): TakeRecord | null {
       failure: {
         kind: typeof failure?.kind === 'string' ? failure.kind : 'unknown',
         detail: typeof failure?.detail === 'string' ? failure.detail : ''
-      }
+      },
+      ...(typeof r.loggedAt === 'number' ? { loggedAt: r.loggedAt } : {})
     }
   } catch {
     return null
@@ -141,7 +163,8 @@ export function getRecovery(dir: string, id: string): WaitingTake | null {
     startedAt: record && record.startedAt > 0 ? record.startedAt : savedAt - audioMs,
     audioMs,
     kind: record?.kind ?? 'dictation',
-    failure: record?.failure ?? null
+    failure: record?.failure ?? null,
+    ...(record?.loggedAt !== undefined ? { loggedAt: record.loggedAt } : {})
   }
 }
 
@@ -163,8 +186,40 @@ export function readRecoveryWav(dir: string, id: string): Uint8Array {
 export function markRecoveryFailed(dir: string, id: string, failure: TakeFailure): void {
   const take = getRecovery(dir, id)
   if (!take) return
-  const record: TakeRecord = { kind: take.kind, startedAt: take.startedAt, failure }
+  const record: TakeRecord = {
+    kind: take.kind,
+    startedAt: take.startedAt,
+    failure,
+    ...(take.loggedAt !== undefined ? { loggedAt: take.loggedAt } : {})
+  }
   writeFileSync(recordPath(dir, id), JSON.stringify(record))
+}
+
+/** A retry put the words in memory only, so the audio stays as a held
+ *  take, tied to the entry those words belong to. */
+export function markRecoveryHeld(dir: string, id: string, loggedAt: number): void {
+  const take = getRecovery(dir, id)
+  if (!take) return
+  const record: TakeRecord = {
+    kind: take.kind,
+    startedAt: take.startedAt,
+    failure: { kind: 'held', detail: 'retried' },
+    loggedAt
+  }
+  writeFileSync(recordPath(dir, id), JSON.stringify(record))
+}
+
+/** Held takes older than the limit. Whatever Keep history says now, a
+ *  held recording goes at the first check after that, which is the next
+ *  launch if murmur was closed when it came due. */
+export function heldPastLimit(takes: readonly WaitingTake[], now: number, limitMs: number): string[] {
+  return takes.filter((take) => take.loggedAt !== undefined && take.savedAt < now - limitMs).map((take) => take.id)
+}
+
+/** How long until the next held take passes the limit, or null with none. */
+export function nextHeldDue(takes: readonly WaitingTake[], now: number, limitMs: number): number | null {
+  const held = takes.filter((take) => take.loggedAt !== undefined).map((take) => take.savedAt + limitMs + 1 - now)
+  return held.length === 0 ? null : Math.max(0, Math.min(...held))
 }
 
 /** Delete a take's audio and record. */

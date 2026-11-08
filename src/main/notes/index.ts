@@ -8,7 +8,9 @@
 // Nothing here ever logs the text itself.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { type BrowserWindow, type OpenDialogOptions, app, dialog, ipcMain, shell } from 'electron'
+import { type BrowserWindow, type OpenDialogOptions, app, dialog, shell } from 'electron'
+import { ipc } from '../ipc'
+import { MAX_URL_CHARS } from '../ipc-rules'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, renderNoteEntry } from '../../shared/notes'
 import { getApiKeyFor, getSettings, updateSettings } from '../settings'
@@ -185,37 +187,39 @@ export async function chooseNotesFolder(win: BrowserWindow | null): Promise<bool
 }
 
 export function initNotes(settingsWindow: () => BrowserWindow | null): void {
-  ipcMain.handle(IpcChannels.notesChooseFolder, async () => {
+  ipc.handle(IpcChannels.notesChooseFolder, async () => {
     const win = settingsWindow()
     if (!win || win.isDestroyed()) return getNotesStatus()
     await chooseNotesFolder(win)
     return getNotesStatus()
   })
-  ipcMain.handle(IpcChannels.notesStatus, () => getNotesStatus())
-  ipcMain.handle(IpcChannels.notesOpenToday, () => openTodayNote())
-  ipcMain.handle(IpcChannels.notesSortLast, async () => {
+  ipc.handle(IpcChannels.notesStatus, () => getNotesStatus())
+  ipc.handle(IpcChannels.notesOpenToday, () => openTodayNote())
+  ipc.handle(IpcChannels.notesSortLast, async () => {
     await sortLastNote()
     return getNotesStatus()
   })
   // The three held-line actions: every one is a click, and every one
   // reports what it did so the panel never has to guess.
   const heldId = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) ? v : -1)
-  ipcMain.handle(IpcChannels.notesFileHeld, (_event, at: unknown) => {
+  ipc.handle(IpcChannels.notesFileHeld, (_event, at: unknown) => {
     fileHeldLine(heldId(at))
     return getNotesStatus()
   })
-  ipcMain.handle(IpcChannels.notesSkipHeld, (_event, at: unknown) => {
+  ipc.handle(IpcChannels.notesSkipHeld, (_event, at: unknown) => {
     skipHeldLine(heldId(at))
     return getNotesStatus()
   })
-  ipcMain.handle(IpcChannels.notesTickHeld, (_event, at: unknown) => {
+  ipc.handle(IpcChannels.notesTickHeld, (_event, at: unknown) => {
     tickHeldMatch(heldId(at))
     return getNotesStatus()
   })
   // The connection test for a decision connection is shaped like the
   // endpoint it tests; a chat-shaped probe would call a good key bad.
-  ipcMain.handle(IpcChannels.providerTestDecideFor, async (_event, baseUrl: unknown) => {
-    if (typeof baseUrl !== 'string' || baseUrl === '') return { ok: false, detail: 'no base URL set' }
+  ipc.handle(IpcChannels.providerTestDecideFor, async (_event, baseUrl: unknown) => {
+    if (typeof baseUrl !== 'string' || baseUrl === '' || baseUrl.length > MAX_URL_CHARS) {
+      return { ok: false, detail: 'no base URL set' }
+    }
     return probeDecision(baseUrl, getApiKeyFor(baseUrl))
   })
 

@@ -9,6 +9,7 @@
 // with a reason in the log. Never the text itself in the log.
 import { applyDictionary } from '../../shared/dictionary'
 import hallucinations from '../../shared/hallucinations.json'
+import type { SessionEvent } from '../../shared/history'
 import { isHallucination, stripTrailingHallucinations } from '../../shared/speech-gate'
 import { playCue } from '../audio'
 import type { PolishConfig } from '../formatter/llm'
@@ -34,6 +35,8 @@ export type TransformOutcome =
   | 'unreadable'
   | 'empty'
   | 'too-long'
+  /** The log could not take it, so nothing was sent. */
+  | 'unlogged'
   | 'no-connection'
   | 'rejected'
   | 'transcribe-failed'
@@ -46,6 +49,9 @@ export interface TransformDeps {
   /** The spoken instruction, transcribed. Called only after the
    *  selection was read, so an unreadable selection sends nothing. */
   transcribe: () => Promise<TranscribeResult>
+  /** The instruction was logged but never sent: it is all that remains
+   *  of the take, so the caller can hold its recording. */
+  onUnsent?: (event: SessionEvent | null) => void
   /** Test seams: the copy keystroke, the model fetch, the connection. */
   sendCopy?: () => Promise<boolean>
   /** How long to wait for the copy to land; smoke shortens it. */
@@ -67,6 +73,19 @@ function fail(hint: string | null): void {
   setOverlayPhase('error', null, hint ? { hint } : {})
   playCue('error')
 }
+
+// The log refused the take, so nothing goes to the model: the selection
+// stays as it was, and the caller keeps the recording for Retry.
+async function unlogged(error: unknown): Promise<TransformOutcome> {
+  console.error('[murmur] could not log a transform:', error)
+  await log('the history log refused the take; nothing sent')
+  fail(null)
+  return 'unlogged'
+}
+
+// recordSession returns null while history never opened, which leaves
+// the take as unrecorded as a throw does.
+const HISTORY_CLOSED = new Error('history is not open')
 
 async function resolveConnection(): Promise<{ config: PolishConfig; slot: string } | null> {
   const { resolveTransformConnection } = await import('../formatter')
@@ -114,13 +133,20 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   if (original.length > TRANSFORM_MAX_CHARS) {
     // Nothing goes to the model, and the thought is not lost: the
     // spoken instruction becomes the newest entry, one paste-last away.
-    recordSession({
-      startedAt: deps.startedAt,
-      rawText: heard.text,
-      finalText: instruction,
-      kind: 'transform',
-      unsent: true
-    })
+    let unsent: SessionEvent | null
+    try {
+      unsent = recordSession({
+        startedAt: deps.startedAt,
+        rawText: heard.text,
+        finalText: instruction,
+        kind: 'transform',
+        unsent: true
+      })
+    } catch (error) {
+      return unlogged(error)
+    }
+    if (unsent === null) return unlogged(HISTORY_CLOSED)
+    deps.onUnsent?.(unsent)
     await log(`selection too long chars=${original.length} max=${TRANSFORM_MAX_CHARS}; nothing sent`)
     fail(tooLongHint(original.length))
     return 'too-long'
@@ -129,13 +155,19 @@ export async function performTransform(deps: TransformDeps): Promise<TransformOu
   // Recoverability before anything else: the original is recorded
   // before the model sees it, so paste-last restores it whatever the
   // model or the paste does next.
-  recordSession({
-    startedAt: deps.startedAt,
-    rawText: instruction,
-    finalText: original,
-    kind: 'transform',
-    persist: settings.transform.keepOriginals
-  })
+  let recorded: SessionEvent | null
+  try {
+    recorded = recordSession({
+      startedAt: deps.startedAt,
+      rawText: instruction,
+      finalText: original,
+      kind: 'transform',
+      persist: settings.transform.keepOriginals
+    })
+  } catch (error) {
+    return unlogged(error)
+  }
+  if (recorded === null) return unlogged(HISTORY_CLOSED)
   if (!settings.transform.keepOriginals) await log('original held in memory only')
 
   const resolved =
@@ -284,15 +316,20 @@ export function initTransform(): void {
       // Too long: the instruction is saved, the model is never called.
       clipboard.writeText(before)
       sentBody = ''
+      let unsentAt: number | null = null
       const long = await run({
         transcribe: heard('shorten this a lot'),
         sendCopy: copyOf('a'.repeat(TRANSFORM_MAX_CHARS + 1)),
         fetchImpl: model('x'),
-        connection
+        connection,
+        onUnsent: (event) => {
+          unsentAt = event?.at ?? null
+        }
       })
       const last = readHistory().at(-1)
       const tooLong =
         long === 'too-long' &&
+        unsentAt === last?.at &&
         sentBody === '' &&
         last?.unsent === true &&
         last.finalText === 'shorten this a lot' &&
@@ -307,19 +344,22 @@ export function initTransform(): void {
         updateSettings({ transform: { keepOriginals: false } })
         clipboard.writeText(before)
         const secret = 'Private smoke selection never on disk.'
+        const { readFileSync } = await import('node:fs')
+        const { join } = await import('node:path')
+        const { app } = await import('electron')
+        const historyFile = join(app.getPath('userData'), 'history.jsonl')
+        // Sealed words would pass a search, so the file must not change.
+        const historyBefore = readFileSync(historyFile, 'utf8')
         await run({
           transcribe: heard('tighten this'),
           sendCopy: copyOf(secret),
           fetchImpl: model('Private.'),
           connection
         })
-        const { readFileSync } = await import('node:fs')
-        const { join } = await import('node:path')
-        const { app } = await import('electron')
-        const onDisk = readFileSync(join(app.getPath('userData'), 'history.jsonl'), 'utf8')
+        const unchanged = readFileSync(historyFile, 'utf8') === historyBefore
         setOverlayPhase('idle')
         await pasteLastDictation()
-        memoryOnly = !onDisk.includes(secret) && (await clipboard.readText()) === secret
+        memoryOnly = unchanged && (await clipboard.readText()) === secret
       } finally {
         updateSettings({ transform: { keepOriginals: keep } })
       }

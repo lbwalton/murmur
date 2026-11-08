@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { appFetch } from './net'
+import { appFetch, readTrustedHttpHostsFrom } from './net'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -22,6 +22,29 @@ describe('appFetch', () => {
   })
 })
 
+describe('plain http (US-140)', () => {
+  afterEach(() => readTrustedHttpHostsFrom(() => []))
+
+  it('sends no key to a remote plain http host until it is confirmed', async () => {
+    const sent = vi.fn(async () => new Response('ok'))
+    vi.stubGlobal('fetch', sent)
+    const url = 'http://192.168.1.20:8000/v1/models'
+    await expect(appFetch(url, { headers: { Authorization: 'Bearer k' } })).rejects.toThrow('not confirmed')
+    expect(sent).not.toHaveBeenCalled()
+    readTrustedHttpHostsFrom(() => ['192.168.1.20'])
+    await expect(appFetch(url)).resolves.toBeInstanceOf(Response)
+    expect(sent).toHaveBeenCalledOnce()
+  })
+
+  it('never holds this machine or https', async () => {
+    const sent = vi.fn(async () => new Response('ok'))
+    vi.stubGlobal('fetch', sent)
+    await appFetch('http://localhost:8000/v1/models')
+    await appFetch('https://api.groq.com/openai/v1/models')
+    expect(sent).toHaveBeenCalledTimes(2)
+  })
+})
+
 // Node's fetch ignores the operating system's certificates, so a main
 // process request that bypasses appFetch fails on every network that
 // inspects secure traffic (US-109). Types (typeof fetch) and injected
@@ -34,7 +57,7 @@ describe('main-process requests', () => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry)
       if (statSync(full).isDirectory()) sources(full, out)
-      else if (entry.endsWith('.ts') && !entry.endsWith('.test.ts')) out.push(full)
+      else if (entry.endsWith('.ts') && !/\.(?:test|probe)\.ts$/.test(entry)) out.push(full)
     }
     return out
   }

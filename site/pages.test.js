@@ -2,17 +2,52 @@
 // The privacy and support pages the App Store listing links to (ios/prd.json
 // IOS-026): what they say, and that every page links them.
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { content } from './content'
+import { FINGERPRINTED_PATHS } from './headers'
 import PRO from '../shared/pro.json'
 
 const SITE = 'https://murmurapp.app'
 const EMAIL = 'support@murmurapp.app'
 const plain = (pieces) => pieces.map((p) => (typeof p === 'string' ? p : p.text)).join('')
 const allText = (items) => items.map((item) => [item.q, plain(item.a), ...(item.points ?? []).map(([lead, rest]) => `${lead} ${plain(rest)}`)].join(' ')).join(' ')
+
+describe('fingerprinted files (US-121)', () => {
+  const dist = mkdtempSync(join(tmpdir(), 'murmur-cache-'))
+  afterAll(() => rmSync(dist, { recursive: true, force: true }))
+  const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
+    )
+
+  it('are never linked without their fingerprint, or a year of cache would serve the old copy', () => {
+    const run = spawnSync(process.execPath, ['site/build.js'], {
+      cwd: join(__dirname, '..'),
+      encoding: 'utf8',
+      env: { ...process.env, SITE_OFFLINE: '1', FILM_DIR: join(dist, 'no-film'), SITE_OUT: dist, SITE_URL: SITE, SUPPORT_EMAIL: EMAIL }
+    })
+    expect(run.status, run.stderr).toBe(0)
+    const pages = files(dist).filter((file) => /\.(?:html|css|js|txt)$/.test(file))
+    expect(pages.length).toBeGreaterThan(5)
+    const named = FINGERPRINTED_PATHS.filter((path) => !path.endsWith('*')).map((path) => path.slice(1))
+    const reference = new RegExp(
+      `(?<![\\w-])(?:${named.map((path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')}|fonts/[\\w.-]+\\.woff2|film/[\\w.-]+\\.(?:mp4|png))(\\?v=[0-9a-f]{10})?`,
+      'g'
+    )
+    const unstamped = pages.flatMap((file) => {
+      const text = readFileSync(file, 'utf8')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+      return [...text.matchAll(reference)].filter((match) => !match[1]).map((match) => `${file}: ${match[0]}`)
+    })
+    expect(unstamped).toEqual([])
+    expect(readFileSync(join(dist, 'index.html'), 'utf8')).toMatch(/app\.js\?v=[0-9a-f]{10}/)
+    expect(readFileSync(join(dist, 'hero.js'), 'utf8')).toMatch(/brush\.js\?v=[0-9a-f]{10}/)
+  })
+})
 
 describe('the privacy page', () => {
   const { privacy } = content(SITE, { supportEmail: EMAIL })
@@ -34,7 +69,7 @@ describe('the privacy page', () => {
   })
 
   it('says how to remove everything on each platform, and what Eze Media keeps', () => {
-    for (const fact of ['Library/Application Support/murmur', '%APPDATA%\\murmur', 'Remove key', 'recordings waiting to be retried', 'tax records', 'deletes them when you ask']) {
+    for (const fact of ['Library/Application Support/murmur', '%APPDATA%\\murmur', 'Remove key', 'recordings waiting to be retried', 'tax and business audits', 'deletes them when you ask']) {
       expect(text).toContain(fact)
     }
     expect(text).not.toContain('uninstalling murmur removes the rest')
@@ -119,6 +154,39 @@ describe('the site build (IOS-026)', () => {
       const run = build({ SITE_URL: SITE, SUPPORT_EMAIL: EMAIL }, dist)
       expect(run.status, run.stderr).toBe(0)
     }, 60_000)
+
+    it('opens the privacy page with the summary, above the first question', () => {
+      const html = read('privacy/index.html')
+      const summary = html.indexOf('id="summary"')
+      const firstQuestion = html.indexOf('<h2 id=')
+      expect(summary).toBeGreaterThan(-1)
+      expect(summary).toBeLessThan(firstQuestion)
+      const top = html.slice(summary, firstQuestion)
+      for (const fact of ['collects', 'kept', 'rights', 'correct', 'delete', 'sold', 'no cookie banner']) {
+        expect(top).toContain(fact)
+      }
+    })
+
+    it('gives every kind of record a period or a rule, and names the laws', () => {
+      const html = read('privacy/index.html')
+      for (const fact of ['Keep history', 'waiting for a retry', '10 years after purchase', '3 years after the last message', 'GDPR', 'CCPA', '300 milliseconds']) {
+        expect(html).toContain(fact)
+      }
+      expect(html).not.toContain('[email protected]')
+    })
+
+    it('writes the security page, says what murmur lacks, and lists it everywhere', () => {
+      const html = read('security/index.html')
+      for (const fact of ['SOC 2', 'ISO 27001', 'penetration test', 'Not code signed', 'HIPAA', 'security@murmurapp.app', 'Checked 2026-11-05']) {
+        expect(html).toContain(fact)
+      }
+      expect(html).not.toMatch(/<script(?![^>]*(?:src=|application\/ld\+json))/)
+      for (const file of ['index.html', 'docs/index.html', 'privacy/index.html', 'security/index.html', '404.html']) {
+        expect(read(file)).toContain('href="/security/"')
+      }
+      expect(read('sitemap.xml')).toContain(`${SITE}/security/`)
+      expect(read('llms.txt')).toContain(`${SITE}/security/`)
+    })
 
     it('writes both pages, with their questions and the address', () => {
       expect(read('privacy/index.html')).toContain('Does murmur collect my data?')

@@ -7,8 +7,11 @@ import { encodeWavPcm16 } from '../../shared/wav'
 import {
   RECOVERY_KEEP,
   getRecovery,
+  heldPastLimit,
   listRecovery,
   markRecoveryFailed,
+  markRecoveryHeld,
+  nextHeldDue,
   readRecoveryWav,
   removeRecovery,
   saveRecovery,
@@ -36,7 +39,7 @@ afterEach(() => {
 describe('saveRecovery', () => {
   it('writes the wav bytes and returns the path', () => {
     const wav = new Uint8Array([82, 73, 70, 70])
-    const file = saveRecovery(wav, dir, { now: () => T })
+    const file = saveRecovery(wav, dir, { now: () => T }) ?? ''
     expect(file.endsWith(`recovery-${T}.wav`)).toBe(true)
     expect(existsSync(file)).toBe(true)
     expect(Array.from(readFileSync(file))).toEqual([82, 73, 70, 70])
@@ -133,5 +136,72 @@ describe('one take', () => {
       expect(() => readRecoveryWav(dir, bad)).toThrow()
       expect(() => removeRecovery(dir, bad)).toThrow()
     }
+  })
+
+  it('a held take keeps its logged entry through a failed retry', () => {
+    saveRecovery(wavOf(500), dir, {
+      now: () => T,
+      take: { ...take(T - 500), failure: { kind: 'held', detail: 'idle' }, loggedAt: T - 100 }
+    })
+    const id = `recovery-${T}`
+    expect(getRecovery(dir, id)?.loggedAt).toBe(T - 100)
+    markRecoveryFailed(dir, id, { kind: 'network', detail: 'fetch failed' })
+    expect(getRecovery(dir, id)?.loggedAt).toBe(T - 100)
+    expect(getRecovery(dir, id)?.failure?.kind).toBe('network')
+  })
+
+  it('a retried take can be held for the entry its words went to', () => {
+    saveRecovery(wavOf(500), dir, { now: () => T, take: take(T - 500) })
+    const id = `recovery-${T}`
+    expect(getRecovery(dir, id)?.loggedAt).toBeUndefined()
+    markRecoveryHeld(dir, id, T)
+    expect(getRecovery(dir, id)).toMatchObject({ loggedAt: T, kind: 'dictation', failure: { kind: 'held' } })
+  })
+
+  it('only held takes past the limit are listed, so a failed take is never caught', () => {
+    const HOUR = 60 * 60 * 1000
+    saveRecovery(wavOf(500), dir, { now: () => T - 25 * HOUR, take: { ...take(T), loggedAt: T - 25 * HOUR } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 23 * HOUR, take: { ...take(T), loggedAt: T - 23 * HOUR } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 48 * HOUR, take: take(T) })
+    expect(heldPastLimit(listRecovery(dir), T, 24 * HOUR)).toEqual([`recovery-${T - 25 * HOUR}`])
+  })
+
+  it('says how long until the next held take is due, and null with none', () => {
+    const HOUR = 60 * 60 * 1000
+    saveRecovery(wavOf(500), dir, { now: () => T - 48 * HOUR, take: take(T) })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBeNull()
+    saveRecovery(wavOf(500), dir, { now: () => T - 20 * HOUR, take: { ...take(T), loggedAt: T } })
+    saveRecovery(wavOf(500), dir, { now: () => T - 23 * HOUR, take: { ...take(T), loggedAt: T } })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBe(HOUR + 1)
+    saveRecovery(wavOf(500), dir, { now: () => T - 30 * HOUR, take: { ...take(T), loggedAt: T } })
+    expect(nextHeldDue(listRecovery(dir), T, 24 * HOUR)).toBe(0)
+  })
+
+  it('a held take goes first over the cap only while its words are in memory', () => {
+    saveRecovery(wavOf(100), dir, { now: () => T - 50, take: { ...take(T), loggedAt: 111 } })
+    for (let i = 0; i < RECOVERY_KEEP - 1; i += 1) saveRecovery(wavOf(100), dir, { now: () => T + i, take: take(T) })
+    saveRecovery(wavOf(100), dir, { now: () => T - 60, take: { ...take(T), loggedAt: 222 } })
+    expect(listRecovery(dir)).toHaveLength(RECOVERY_KEEP)
+    // Oldest first: the older held take went, and the failed takes stayed.
+    expect(getRecovery(dir, `recovery-${T - 60}`)).toBeNull()
+    saveRecovery(wavOf(100), dir, { now: () => T + 500, take: take(T), wordsInMemory: (at) => at === 111 })
+    expect(getRecovery(dir, `recovery-${T - 50}`)).toBeNull()
+    expect(getRecovery(dir, `recovery-${T}`)).not.toBeNull()
+  })
+
+  it('after a quit a held take is the only copy, so it goes oldest first like any take', () => {
+    for (let i = 0; i < RECOVERY_KEEP - 1; i += 1) saveRecovery(wavOf(100), dir, { now: () => T + i, take: take(T) })
+    saveRecovery(wavOf(100), dir, { now: () => T + 100, take: { ...take(T), loggedAt: 111 } })
+    saveRecovery(wavOf(100), dir, { now: () => T + 200, take: take(T) })
+    expect(getRecovery(dir, `recovery-${T + 100}`)).not.toBeNull()
+    expect(getRecovery(dir, `recovery-${T}`)).toBeNull()
+  })
+
+  it('says when the take just saved did not survive the cap', () => {
+    for (let i = 0; i < RECOVERY_KEEP; i += 1) saveRecovery(wavOf(100), dir, { now: () => T + i, take: take(T) })
+    const held = { ...take(T), loggedAt: 111 }
+    expect(saveRecovery(wavOf(100), dir, { now: () => T + 100, take: held, wordsInMemory: () => true })).toBeNull()
+    expect(getRecovery(dir, `recovery-${T + 100}`)).toBeNull()
+    expect(saveRecovery(wavOf(100), dir, { now: () => T + 101, take: held })).toEqual(expect.stringContaining(`recovery-${T + 101}.wav`))
   })
 })

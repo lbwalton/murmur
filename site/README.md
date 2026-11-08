@@ -51,7 +51,7 @@ npx wrangler pages deploy site/dist --project-name murmur --branch main
 
 The docs pages come from the tag of the version in package.json, and the download buttons serve GitHub's latest published release, so deploy a new version's site only after its release is published (not while it is a draft). Until then, a deploy from a branch that already carries the new version fails for want of its tag; set `DOCS_REF` to the published tag to deploy anyway.
 
-Cloudflare keeps the scripts, stylesheets, and font in browsers for four hours while the page itself is always fetched fresh, so the build stamps each of those references with a fingerprint of the file (`?v=` plus a short hash) and a deploy reaches returning visitors on their next load.
+The scripts, stylesheets, font, and film are kept in browsers for a year while the page itself is always fetched fresh, so the build stamps every reference to them with a fingerprint of the file. A new file gets a new address, and a test fails on any reference without one. Add a new file of this kind to `FINGERPRINTED_PATHS` in `site/headers.js` and to the stamp list in `site/build.js`.
 
 `site/headers.js` is the one list of security headers: the build writes it into `dist/_headers`, which Pages applies to every response, and the preview server sends the same list.
 

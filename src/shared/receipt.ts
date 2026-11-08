@@ -3,6 +3,7 @@
 // tray's Open last note, and Home's last note row say, and where they
 // point. Pure, so every surface words it the same way and tests can
 // pin it without Electron.
+import { WORDS_HIDDEN } from './history'
 
 /** Where a note or a sorted line landed: the inbox file it was spoken
  *  into, or the tasks and ideas files a sort copied lines to. */
@@ -92,6 +93,18 @@ export function receiptWhere(note: LastNote): string {
   if (note.sorted.length === 0) return inbox
   const filed = note.sorted.map((p) => placeName(p.relative))
   return `${inbox}, filed to ${filed.length === 1 ? filed[0] : `${filed.slice(0, -1).join(', ')} and ${filed[filed.length - 1]}`}`
+}
+
+/** The notification's second line. Hide words (US-145) drops the note's
+ *  first line and keeps the way to it. */
+export function receiptBody(note: LastNote, hideWords: boolean): string {
+  return note.line !== '' && !hideWords ? note.line : 'Click to open the note.'
+}
+
+/** Home's line for the last note. */
+export function lastNoteLine(note: LastNote, hideWords: boolean): string {
+  if (hideWords) return WORDS_HIDDEN
+  return note.line !== '' ? note.line : 'An empty note'
 }
 
 /** The reveal action names the platform's file manager. */

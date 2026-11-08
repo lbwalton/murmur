@@ -51,6 +51,26 @@ That is a real trade: Smart App Control is one of several protections Windows ru
 
 Verified 2026-09-26 against Microsoft's [Smart App Control FAQ](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions).
 
+## How do I check that my download is the real one?
+
+Each release publishes a `SHA256SUMS` file listing a fingerprint for every installer. Compare yours with the matching line from the release's page on [GitHub](https://github.com/lbwalton/murmur/releases).
+
+On a Mac, open Terminal in your Downloads folder and run:
+
+```
+shasum -a 256 murmur-mac.dmg
+```
+
+On Windows, open PowerShell in your Downloads folder and run:
+
+```
+Get-FileHash murmur-windows.exe -Algorithm SHA256
+```
+
+The long string it prints must match the file's line exactly (Windows prints it in capitals, which is fine). If it does not, delete the download and get it again from this site.
+
+Releases also carry a parts list, `murmur-<version>.cdx.json`, in the CycloneDX format, which security tools can read to see what is inside. Releases before these files existed do not have them.
+
 ## Do I need to download murmur again to update it?
 
 No. Installed copies update themselves; see [how murmur updates itself](./quickstart.md#how-does-murmur-update-itself). The download links are only for a first install or a new computer.

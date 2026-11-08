@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node scripts/check-headers.js && node scripts/check-design.js && vitest run",
     "test:watch": "vitest",
+    "probe:cleanup": "vitest run --config vitest.probe.config.ts",
     "smoke": "npm run build && node scripts/smoke.js",
     "roadmap": "node scripts/roadmap.js",
     "dist:mac": "node scripts/fetch-display-face.js --require && node scripts/gen-icons.js --require-brush && electron-vite build && electron-builder --mac",
@@ -22,6 +23,7 @@
     "check:headers": "node scripts/check-headers.js",
     "notices": "node scripts/gen-notices.js",
     "release:stable": "node scripts/stable-assets.js",
+    "release:manifest": "node scripts/release-manifest.js",
     "site": "node site/build.js"
   },
   "build": {
@@ -71,7 +73,7 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "murmur records your voice while you hold the hotkey and sends it only to the transcription provider you configured.",
+        "NSMicrophoneUsageDescription": "murmur uses the microphone to hear what you dictate. Unless you choose otherwise in Settings, it keeps the mic ready so your first word is not cut off. Nothing is saved or sent until you press your hotkey, and your voice goes only to the transcription provider you configured.",
         "LSUIElement": true
       },
       "notarize": true

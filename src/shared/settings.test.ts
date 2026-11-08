@@ -10,6 +10,17 @@ describe('mergeSettings', () => {
     expect(mergeSettings(DEFAULT_SETTINGS, [1, 2])).toEqual(DEFAULT_SETTINGS)
   })
 
+  it('ships Hide words off, and a file from before it gets the default', () => {
+    expect(DEFAULT_SETTINGS.history.hideWords).toBe(false)
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { retentionDays: 30 } }).history.hideWords).toBe(false)
+  })
+
+  it('keeps Hide words when set, beside the other history settings, and refuses a non-boolean', () => {
+    const on = mergeSettings(DEFAULT_SETTINGS, { history: { hideWords: true } })
+    expect(on.history).toEqual({ ...DEFAULT_SETTINGS.history, hideWords: true })
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { hideWords: 'yes' } }).history.hideWords).toBe(false)
+  })
+
   it('ships note mode dormant with the default file layout', () => {
     expect(DEFAULT_SETTINGS.notes).toEqual({
       binding: '',
@@ -210,5 +221,10 @@ describe('sanitized entry lists', () => {
     expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 1.3 }).windowZoom).toBe(1.25)
     expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 'big' }).windowZoom).toBe(1)
     expect(mergeSettings(DEFAULT_SETTINGS, { windowZoom: 40 }).windowZoom).toBe(3)
+  })
+
+  it('turns encrypted history on for settings saved before it existed, and keeps an off', () => {
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { retentionDays: 30 } }).history).toEqual({ retentionDays: 30, encrypt: true, hideWords: false })
+    expect(mergeSettings(DEFAULT_SETTINGS, { history: { encrypt: false } }).history.encrypt).toBe(false)
   })
 })

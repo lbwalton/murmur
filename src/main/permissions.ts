@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Permission status and System Settings deep links for the settings
 // surface. macOS is the interesting platform; Windows reports granted.
-import { ipcMain, shell, systemPreferences } from 'electron'
+import { shell, systemPreferences } from 'electron'
+import { ipc } from './ipc'
 import { getHotkeysStatus } from './hotkeys'
 
 export interface PermissionsStatus {
@@ -30,12 +31,12 @@ export function getPermissionsStatus(): PermissionsStatus {
 }
 
 export function initPermissions(): void {
-  ipcMain.handle('perms:status', () => getPermissionsStatus())
-  ipcMain.handle('perms:open', (_event, pane: unknown) => {
+  ipc.handle('perms:status', () => getPermissionsStatus())
+  ipc.handle('perms:open', (_event, pane: unknown) => {
     // Own keys only: an inherited name like constructor is not a pane.
     const key = String(pane)
     const url = Object.hasOwn(PANES, key) ? PANES[key] : undefined
     if (url && process.platform === 'darwin') void shell.openExternal(url)
   })
-  ipcMain.handle('hotkeys:status', () => getHotkeysStatus())
+  ipc.handle('hotkeys:status', () => getHotkeysStatus())
 }

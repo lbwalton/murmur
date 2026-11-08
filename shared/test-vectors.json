@@ -182,8 +182,8 @@
       "settings": {
         "dictionary": [
           {
-            "from": "tinuity",
-            "to": "Tinuiti"
+            "from": "acmee",
+            "to": "Acme"
           },
           {
             "from": "cat",
@@ -191,8 +191,8 @@
           }
         ]
       },
-      "input": "send tinuity the concatenated report",
-      "expected": "Send Tinuiti the concatenated report."
+      "input": "send acmee the concatenated report",
+      "expected": "Send Acme the concatenated report."
     },
     {
       "name": "dictionary never injects into unrelated dictation",

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
-import { countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute } from './history'
+import { type SessionEvent, countsTowardStats, countWords, dayKey, groupByDay, isSessionEvent, wordsPerMinute, KEEP_24_HOURS, KEEP_FOREVER, KEEP_NO_TEXT, hasText, pasteTarget, recordingLimitMs, textCutoff, withoutText } from './history'
 
 const event = (at: number, words = 10): ReturnType<typeof make> => make(at, words)
 function make(at: number, words: number) {
@@ -66,5 +66,57 @@ describe('transform entries (US-054)', () => {
     expect(countsTowardStats({ ...base, kind: 'transform' })).toBe(false)
     expect(countsTowardStats({ ...base, kind: 'note' })).toBe(true)
     expect(countsTowardStats(base)).toBe(true)
+  })
+})
+
+describe('Keep history (US-137)', () => {
+  const NOW = 1_800_000_000_000
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('knows which limits take words and which take entries', () => {
+    expect(textCutoff(KEEP_NO_TEXT, NOW)).toBe(Number.POSITIVE_INFINITY)
+    expect(textCutoff(KEEP_24_HOURS, NOW)).toBe(NOW - DAY)
+    expect(textCutoff(30, NOW)).toBeNull()
+    expect(textCutoff(KEEP_FOREVER, NOW)).toBeNull()
+  })
+
+  it('gives a recording the same limit, and 24 hours under Don\'t keep', () => {
+    expect(recordingLimitMs(KEEP_NO_TEXT)).toBe(DAY)
+    expect(recordingLimitMs(KEEP_24_HOURS)).toBe(DAY)
+    expect(recordingLimitMs(30)).toBe(30 * DAY)
+    expect(recordingLimitMs(KEEP_FOREVER)).toBeNull()
+  })
+
+  it('keeps a transform\'s instruction length when its words go', () => {
+    const event = { at: 1, durationMs: 2, rawText: 'make it shorter', finalText: 'A.', words: 9, wpm: 3, kind: 'transform' as const }
+    expect(withoutText(event).instructionWords).toBe(3)
+  })
+
+  it('takes out the words and nothing else', () => {
+    const event = { at: 1, durationMs: 2, rawText: 'a', finalText: 'A.', words: 1, wpm: 3, day: '2026-11-06' }
+    expect(withoutText(event)).toEqual({ ...event, rawText: '', finalText: '' })
+    expect(hasText(event)).toBe(true)
+    expect(hasText(withoutText(event))).toBe(false)
+  })
+})
+
+describe('pasteTarget', () => {
+  const entry = (at: number, finalText: string): SessionEvent => ({ at, durationMs: 1, rawText: finalText, finalText, words: 1, wpm: 1 })
+
+  it('is the newest entry with no words put back', () => {
+    expect(pasteTarget([entry(1, 'a'), entry(2, 'b')], null)?.at).toBe(2)
+  })
+
+  it('is the entry a held take went back to, though newer lines follow it', () => {
+    expect(pasteTarget([entry(1, 'a'), entry(2, 'b')], 1)?.at).toBe(1)
+  })
+
+  it('falls back to the newest entry when those words are gone', () => {
+    expect(pasteTarget([entry(1, ''), entry(2, 'b')], 1)?.at).toBe(2)
+    expect(pasteTarget([entry(2, 'b')], 1)?.at).toBe(2)
+  })
+
+  it('is nothing with nothing logged', () => {
+    expect(pasteTarget([], 1)).toBeUndefined()
   })
 })

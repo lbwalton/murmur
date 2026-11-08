@@ -6,10 +6,11 @@
 // closes an item. Counts reach the log, never task text.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Notification, app, ipcMain, shell } from 'electron'
+import { Notification, app, shell } from 'electron'
+import { ipc } from '../ipc'
 import { IpcChannels } from '../../shared/ipc'
 import { DEFAULT_TASKS_TEMPLATE } from '../../shared/notes'
-import { dueReminders, markFired, openItems, parseTodo, reminderBody, resettleFired } from '../../shared/todo'
+import { dueReminders, hiddenReminderBody, markFired, openItems, parseTodo, reminderBody, resettleFired } from '../../shared/todo'
 import { getSettings, onSettingsChanged, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
@@ -17,6 +18,18 @@ import { notesBases, notesFolder, resolveTemplateOrDefault } from './files'
 import { openableNote } from './safe-fs'
 
 let stateFile = ''
+
+// One fixed id, like the note receipt: a new reminder replaces the last,
+// and macOS can take it back from Notification Center by its id.
+const REMINDER_ID = 'murmur-task-reminder'
+let shownReminder: Notification | null = null
+
+/** Take back a reminder still on screen or in Notification Center. */
+export function withdrawReminder(): void {
+  shownReminder?.close()
+  shownReminder = null
+  if (process.platform === 'darwin' && !isSmoke) Notification.remove(REMINDER_ID)
+}
 
 function readFired(): Record<string, string> {
   try {
@@ -104,7 +117,9 @@ export function runReminder(options: { show?: boolean; due?: string } = {}): Rem
     return { outcome: 'missing', body: '', open: 0 }
   }
   const open = openItems(items).length
-  const body = reminderBody(items)
+  // Hide words (US-145) leaves the count. The Test button in Settings
+  // shows this same line, so it is masked here at the one source.
+  const body = getSettings().history.hideWords ? hiddenReminderBody(items) : reminderBody(items)
   if (body === '') {
     say('outcome=empty')
     return { outcome: 'empty', body: '', open: 0 }
@@ -116,7 +131,9 @@ export function runReminder(options: { show?: boolean; due?: string } = {}): Rem
     say(`outcome=suppressed reason=unsupported open=${open}`)
     return { outcome: 'suppressed', body, open }
   }
-  const notification = new Notification({ title: 'murmur tasks', body })
+  shownReminder?.close()
+  const notification = new Notification({ id: REMINDER_ID, title: 'murmur tasks', body })
+  shownReminder = notification
   // Clicking opens the list itself, which is where the work is.
   notification.on('click', () => {
     if (openableNote(file)) void shell.openPath(file)
@@ -179,7 +196,7 @@ export function initReminders(): void {
 
   // The Test button reads the real file and shows the real reminder
   // without consuming any of today's scheduled ones.
-  ipcMain.handle(IpcChannels.notesTestReminder, () => runReminder())
+  ipc.handle(IpcChannels.notesTestReminder, () => runReminder())
 
   registerSmokeCheck('notesReminder', () => {
     // The read path end to end against a real file: open items counted
@@ -208,6 +225,12 @@ export function initReminders(): void {
       writeFileSync(tasks, '## 2026-09-18\r\n- [ ] Call the dentist.\r\n- [x] Book the flight.\r\n')
       const windows = runReminder({ show: false, due: '08:30' })
 
+      // Hide words (US-145): the count stays and the task's words go, on
+      // the one path both the notification and the Test button read.
+      updateSettings({ history: { hideWords: true } })
+      const hidden = runReminder({ show: false, due: '08:30' })
+      updateSettings({ history: { hideWords: false } })
+
       writeFileSync(tasks, '## 2026-09-18\n- [x] Call the dentist.\n')
       const empty = runReminder({ show: false, due: '08:30' })
 
@@ -221,6 +244,9 @@ export function initReminders(): void {
         shown.body === '1 open task: Call the dentist.' &&
         windows.outcome === 'shown' &&
         windows.open === 1 &&
+        hidden.outcome === 'shown' &&
+        hidden.open === 1 &&
+        hidden.body === '1 open task' &&
         empty.outcome === 'empty' &&
         log.includes('[reminder] due=08:30 outcome=missing reason=folder-unreachable path=murmur/todo.md') &&
         log.includes('[reminder] due=08:30 outcome=missing reason=no-file path=murmur/todo.md') &&

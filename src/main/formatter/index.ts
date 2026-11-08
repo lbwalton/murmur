@@ -6,7 +6,8 @@ import { dictionaryHint } from '../../shared/dictionary'
 import type { Settings } from '../../shared/settings'
 import { getApiKey, getApiKeyFor, getPolishApiKey, getSettings, ringClearKey, ringSetKey } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
-import { type PolishConfig, polishTranscript } from './llm'
+import { type PolishConfig, cueCount, polishTranscript } from './llm'
+import { qualityLine, wordCount } from './quality'
 
 // The polish slot is in force only when complete: enabled, base URL,
 // model, and its own saved key. ONE predicate feeds both the pipeline
@@ -55,18 +56,40 @@ export function resolveTransformConnection(
   return cleanup ? { config: cleanup, slot: 'cleanup' } : null
 }
 
+// 1 line per take (US-129). Fire and forget, so the log never adds to
+// the wait for the words to land.
+function noteQuality(settings: Settings, input: string, output: string, model: string, outcome: string): void {
+  const line = qualityLine({
+    level: settings.formatting.level,
+    smartLists: settings.formatting.smartLists,
+    corrections: settings.formatting.corrections,
+    model,
+    outcome,
+    wordsIn: wordCount(input),
+    wordsOut: wordCount(output),
+    cuesIn: cueCount(input),
+    cuesOut: cueCount(output)
+  })
+  void import('../window-watch').then(({ writeAppLog }) => writeAppLog(line))
+}
+
 /**
  * Polish deterministic output through the configured cleanup model.
  * Returns the input unchanged for any reason at all: wrong level, no
  * key, smoke mode, or a failed or rejected model response.
  */
 export async function maybePolish(text: string): Promise<string> {
-  if (isSmoke) return text
   const settings = getSettings()
-  if (settings.formatting.level !== 'full') return text
+  const skip = (): string => {
+    noteQuality(settings, text, text, effectiveLlmModel(settings), 'skipped')
+    return text
+  }
+  if (isSmoke) return skip()
+  if (settings.formatting.level !== 'full') return skip()
   const connection = resolvePolishConnection(settings)
-  if (!connection) return text
+  if (!connection) return skip()
   const hint = dictionaryHint(settings.dictionary)
+  let outcome = 'cleaned'
   const polished = await polishTranscript(text, connection, {
     smartLists: settings.formatting.smartLists,
     corrections: settings.formatting.corrections,
@@ -74,13 +97,16 @@ export async function maybePolish(text: string): Promise<string> {
     // list and a network blip look identical (2026-09-15, a perfect
     // grocery list was silently rejected for days of debugging).
     onFallback: (reason) => {
+      outcome = reason
       void import('../window-watch').then(({ writeAppLog }) => {
         writeAppLog(`[polish] fell back reason=${reason} model=${connection.model}`)
       })
     },
     ...(hint ? { hints: [hint] } : {})
   })
-  return polished ?? text
+  const result = polished ?? text
+  noteQuality(settings, text, result, connection.model, outcome)
+  return result
 }
 
 export function initFormatter(): void {
@@ -142,6 +168,41 @@ export function initFormatter(): void {
     } finally {
       ringClearKey(url)
       updateSettings({ transform: { connection: before.transform.connection } })
+    }
+  })
+
+  // US-140: an unconfirmed plain http host gets nothing, and it must
+  // fail before the network, so this needs no server.
+  registerSmokeCheck('plainHttpHold', async () => {
+    const { appFetch } = await import('../net')
+    const refused = await appFetch('http://192.0.2.1/v1/models').then(
+      () => false,
+      (error: Error) => error.message.includes('not confirmed')
+    )
+    return refused
+  })
+
+  // The hold has to cover every hop: a local server that redirects to an
+  // unconfirmed host gets cancelled at once, before any connection.
+  registerSmokeCheck('plainHttpRedirect', async () => {
+    const { createServer } = await import('node:http')
+    const { appFetch } = await import('../net')
+    const server = createServer((_request, response) => {
+      response.writeHead(307, { Location: 'http://192.0.2.1/v1/audio' })
+      response.end()
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    const port = typeof address === 'object' && address !== null ? address.port : 0
+    const started = Date.now()
+    try {
+      const outcome = await appFetch(`http://127.0.0.1:${port}/`, { method: 'POST', body: 'probe' }).then(
+        () => 'reached',
+        (error: Error) => error.message
+      )
+      return outcome.includes('BLOCKED') && Date.now() - started < 2_000
+    } finally {
+      server.close()
     }
   })
 

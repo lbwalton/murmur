@@ -17,6 +17,7 @@ import { PaintCanvas } from './PaintCanvas'
 import { daySummary } from './dayPaint'
 import { journeyColors, sealPaint } from './journeyPaint'
 import { EmptyState } from './EmptyState'
+import { TakeWords } from './HideWords'
 import { LIGHT_WORDS, lightFor, planLight } from './paintLight'
 import { DISPLAY, loadDisplayFace } from './ShareCard'
 import {
@@ -298,12 +299,34 @@ function PastPainting(props: { day: string; today: string; record: PaintingRecor
   )
 }
 
+/** One row of the takes list. */
+export function WrapUpTake(props: { event: SessionEvent; hide: boolean }): React.JSX.Element {
+  const { event, hide } = props
+  return (
+    <div className="log-entry">
+      <div className="log-meta">
+        <span className="mono-inline dim">
+          {new Date(event.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        </span>
+        <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
+      </div>
+      {event.finalText.length > 0 ? (
+        <TakeWords text={event.finalText} hide={hide} />
+      ) : (
+        <p className="log-text dim">Words not kept.</p>
+      )}
+    </div>
+  )
+}
+
 export function WrapUpView(props: {
   /** The speed time back is measured against, from the settings App
    *  already holds, so the sentence never flashes a placeholder. */
   typingWpm: number
   /** The dictation hotkey, for the empty state's sentence. */
   hotkey: string
+  /** Hide words (US-145): the takes keep their numbers. */
+  hideWords: boolean
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
   // Nothing renders until the list arrives, so a full day never flashes
@@ -490,15 +513,7 @@ export function WrapUpView(props: {
           <p className="micro-label">the takes</p>
           <div className="log-list">
             {[...events].reverse().map((event) => (
-              <div className="log-entry" key={event.at}>
-                <div className="log-meta">
-                  <span className="mono-inline dim">
-                    {new Date(event.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </span>
-                  <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
-                </div>
-                <p className="log-text">{event.finalText}</p>
-              </div>
+              <WrapUpTake key={event.at} event={event} hide={props.hideWords} />
             ))}
           </div>
         </section>

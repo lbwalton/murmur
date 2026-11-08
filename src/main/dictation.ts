@@ -15,12 +15,13 @@ import {
   silenceLogSuffix,
   stripTrailingHallucinations
 } from '../shared/speech-gate'
+import { KEEP_NO_TEXT, type SessionEvent } from '../shared/history'
 import { TARGET_SAMPLE_RATE, wavSamples } from '../shared/wav'
 import { cancelRecording, playCue, rearmCapture, startRecording, stopRecording } from './audio'
 import { NOTE_FOLDER_HINT } from '../shared/notes'
 import { resolveTransformConnection } from './formatter'
 import { getSettings } from './settings'
-import { insertText } from './insertion'
+import { type InsertOutcome, insertText } from './insertion'
 import { type NoteSaveResult, notesConfigured, saveNote } from './notes'
 import { noteSaved, sortWithReceipt } from './notes/receipt'
 import { rememberForSort } from './notes/sorter'
@@ -53,6 +54,14 @@ let sessionKind: DictationKind = 'dictation'
 // capture window (US-117). No take starts meanwhile: a result carries no
 // id, so a new take's stop could be answered with the cancelled audio.
 let cancelsKeeping = 0
+
+// Whether the last stopped take holds a recording, for its notice.
+let heldLastTake = false
+
+/** Whether the take just stopped holds a recording. */
+export function lastTakeHeld(): boolean {
+  return heldLastTake
+}
 
 // One content-free breadcrumb per dictation outcome. Never transcript
 // text, never key material; failures here never break a dictation.
@@ -105,8 +114,7 @@ export function dictationStart(kind: DictationKind = 'dictation'): boolean {
   // take (hotkeys/index.ts: hold, or toggle for every chord); keep the
   // two in step if that choice ever changes.
   sessionHeld = getSettings().hotkey.mode === 'hold'
-  startRecording()
-  playCue(kind === 'note' ? 'noteStart' : 'start')
+  startRecording(() => playCue(kind === 'note' ? 'noteStart' : 'start'))
   return true
 }
 
@@ -134,10 +142,11 @@ export function liveSessionKind(): DictationKind | null {
 }
 
 /** What became of a stopped take: its words reached their place
- *  (pasted, saved, filed, or transformed), it held no speech, its
- *  transcription failed and the audio waits in Retry, or it failed some
+ *  (pasted, saved, filed, or transformed), they reached only history
+ *  (the paste or the note file failed), it held no speech, its words
+ *  could not be had and the audio waits in Retry, or it failed some
  *  other way (nothing began, a dead capture, a failed write). */
-export type StopOutcome = 'delivered' | 'nospeech' | 'retry' | 'failed'
+export type StopOutcome = 'delivered' | 'logged' | 'nospeech' | 'retry' | 'failed'
 
 /**
  * End the live take and deliver it. With save (a hands-free take that
@@ -150,6 +159,7 @@ export async function dictationStop(
   kind: DictationKind = 'dictation',
   opts: { save?: StopReason } = {}
 ): Promise<StopOutcome> {
+  heldLastTake = false
   if (getOverlayPhase() !== 'recording') return 'failed'
   if (sessionKind !== kind) return 'failed'
   const held = sessionHeld
@@ -212,8 +222,14 @@ export async function dictationStop(
       const startedAt = sessionStartedAt
       const outcome = await performTransform({
         startedAt,
-        transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt })
+        transcribe: () => transcribeWav(upload, { kind: 'transform', startedAt }),
+        onUnsent: (event) => holdRecording(upload, 'transform', startedAt, event?.at, 'too-long')
       })
+      if (outcome === 'unlogged') {
+        const kept = keepUnlogged(upload, 'transform', startedAt)
+        void logDictation(`unlogged kind=transform kept=${kept}`)
+        return kept ? 'retry' : 'failed'
+      }
       return outcome === 'transformed' || outcome === 'copied' ? 'delivered' : 'failed'
     } catch (error) {
       console.error('[murmur] transform threw:', error)
@@ -259,30 +275,51 @@ export async function dictationStop(
     return 'nospeech'
   }
 
-  if (kind === 'note') return (await deliverNote(heardText, finalText, `peak=${peak.toFixed(4)}${gateDetail}`)) ? 'delivered' : 'failed'
+  if (kind === 'note') return deliverNote(heardText, finalText, `peak=${peak.toFixed(4)}${gateDetail}`, upload)
 
+  const startedAt = sessionStartedAt
   try {
     if (opts.save) {
-      const { recordSession } = await import('./history')
-      const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
+      const event = await logTake({ startedAt, rawText: heardText, finalText })
+      if (event === null) {
+        // The take reached nothing and the log refused it, so the
+        // recording is all that remains.
+        const kept = keepUnlogged(upload, 'dictation', startedAt)
+        void logDictation(`unlogged reason=${opts.save} kept=${kept}`)
+        setOverlayPhase('error')
+        playCue('error')
+        return kept ? 'retry' : 'failed'
+      }
+      holdRecording(upload, 'dictation', startedAt, event.at, opts.save)
       // The clipboard stays the user's: Cmd+V keeps pasting what they
       // copied. The words wait in history for the paste-last shortcut.
       void logDictation(
-        `delivered outcome=saved reason=${opts.save} words=${event?.words ?? 0}${gateDetail}${silenceLogSuffix(result.silence)}`
+        `delivered outcome=saved reason=${opts.save} words=${event.words}${gateDetail}${silenceLogSuffix(result.silence)}`
       )
-      setOverlayPhase('inserted', event?.wpm ?? null)
+      setOverlayPhase('inserted', event.wpm)
       playCue('insert')
       refreshOverlayConfig()
       return 'delivered'
     }
-    const outcome = await insertText(finalText)
+    // Only the paste is caught here: a throw must not skip the log below,
+    // where the words wait for paste-last.
+    let outcome: InsertOutcome
+    try {
+      outcome = await insertText(finalText)
+    } catch (error) {
+      console.error('[murmur] insertion failed:', error)
+      outcome = 'error'
+    }
+    const event = await logTake({ startedAt, rawText: heardText, finalText })
     if (outcome === 'error') {
+      const kept = event === null && keepUnlogged(upload, 'dictation', startedAt)
+      holdRecording(upload, 'dictation', startedAt, event?.at, 'paste-failed')
+      void logDictation(`paste-failed logged=${event !== null} kept=${kept}`)
       setOverlayPhase('error')
       playCue('error')
-      return 'failed'
+      if (event !== null) return 'logged'
+      return kept ? 'retry' : 'failed'
     } else {
-      const { recordSession } = await import('./history')
-      const event = recordSession({ startedAt: sessionStartedAt, rawText: heardText, finalText })
       // outcome=copied means the paste keystroke failed and the text
       // waits on the clipboard: the exact trail the Windows missed
       // insertion reports need. Never the text itself.
@@ -340,6 +377,66 @@ export async function finishTranscript(heardText: string): Promise<string | null
   }
 }
 
+type TakeInput = Parameters<typeof import('./history').recordSession>[0]
+
+/** A take into history, or null when the log could not take it. A log
+ *  that fails never fails the take: the words may already have landed.
+ *  loggedAt is a held take's entry, which its words go back on. */
+async function logTake(input: TakeInput, loggedAt?: number): Promise<SessionEvent | null> {
+  try {
+    if (loggedAt === undefined) {
+      const { recordSession } = await import('./history')
+      return recordSession(input)
+    }
+    const { logWords } = await import('./history')
+    return logWords(input, loggedAt)
+  } catch (error) {
+    console.error('[murmur] could not log a take:', error)
+    return null
+  }
+}
+
+const UNLOGGED = { kind: 'unlogged', detail: 'the log could not be written' }
+
+/** The log refused a take that reached nothing, so its recording goes on
+ *  the Retry list whatever Keep history says. False when even that failed. */
+function keepUnlogged(wav: Uint8Array, kind: DictationKind, startedAt: number): boolean {
+  try {
+    return saveTakeForRetry(wav, { kind, startedAt, failure: UNLOGGED }) !== null
+  } catch (error) {
+    console.error('[murmur] could not keep the recording:', error)
+    return false
+  }
+}
+
+/**
+ * Under Don't keep, words that reached no app live only in memory, so
+ * a quit would lose them. The recording goes on the Retry list for up
+ * to 24 hours to bring them back. Its numbers are logged already, which
+ * loggedAt records so a retry never counts them twice. A failure here
+ * never costs the take: its words are already in memory.
+ */
+export function holdRecording(
+  wav: Uint8Array,
+  kind: DictationKind,
+  startedAt: number,
+  loggedAt: number | undefined,
+  reason: string
+): void {
+  if (loggedAt === undefined || getSettings().history.retentionDays !== KEEP_NO_TEXT) return
+  try {
+    if (saveTakeForRetry(wav, { kind, startedAt, loggedAt, failure: { kind: 'held', detail: reason } }) === null) {
+      void logDictation(`not held kind=${kind} reason=${reason}: the recordings are full`)
+      return
+    }
+    heldLastTake = true
+    void logDictation(`held kind=${kind} reason=${reason}`)
+    void import('./history').then(({ heldTakeSaved }) => heldTakeSaved())
+  } catch (error) {
+    console.error('[murmur] could not hold the recording:', error)
+  }
+}
+
 /**
  * File a note and record it: the file first (the notes folder, then
  * murmur's own data folder), history second. History keeps the words
@@ -349,8 +446,9 @@ export async function finishTranscript(heardText: string): Promise<string | null
 async function fileNote(
   heardText: string,
   finalText: string,
-  timing: { startedAt: number; at?: number; retried?: boolean }
-): Promise<{ saved: NoteSaveResult | null; receipt: LastNote | null; words: number; wpm: number | null }> {
+  timing: { startedAt: number; at?: number; retried?: boolean },
+  loggedAt?: number
+): Promise<{ saved: NoteSaveResult | null; receipt: LastNote | null; event: SessionEvent | null }> {
   let saved: NoteSaveResult | null = null
   try {
     // A retried note files under the day and time it was spoken.
@@ -365,9 +463,8 @@ async function fileNote(
   } catch (error) {
     console.error('[murmur] note receipt threw:', error)
   }
-  const { recordSession } = await import('./history')
-  const event = recordSession({ ...timing, rawText: heardText, finalText, kind: 'note' })
-  return { saved, receipt, words: event?.words ?? 0, wpm: event?.wpm ?? null }
+  const event = await logTake({ ...timing, rawText: heardText, finalText, kind: 'note' }, loggedAt)
+  return { saved, receipt, event }
 }
 
 /** The sorter runs after the words are safe; it decides for itself
@@ -379,27 +476,38 @@ function startSort(finalText: string, saved: NoteSaveResult, receipt: LastNote |
 }
 
 /** A live note's delivery: filed and recorded, then the overlay, then
- *  the sorter once the pill has spoken. True when the file was written. */
-async function deliverNote(heardText: string, finalText: string, levels: string): Promise<boolean> {
-  const { saved, receipt, words, wpm } = await fileNote(heardText, finalText, { startedAt: sessionStartedAt })
+ *  the sorter once the pill has spoken. */
+async function deliverNote(heardText: string, finalText: string, levels: string, wav: Uint8Array): Promise<StopOutcome> {
+  const startedAt = sessionStartedAt
+  const { saved, receipt, event } = await fileNote(heardText, finalText, { startedAt })
+  const words = event?.words ?? 0
   if (!saved?.ok) {
+    const kept = event === null && keepUnlogged(wav, 'note', startedAt)
+    holdRecording(wav, 'note', startedAt, event?.at, 'note-failed')
     void logDictation(`note-failed words=${words} ${levels}`)
     setOverlayPhase('error')
     playCue('error')
-    return false
+    if (event !== null) return 'logged'
+    return kept ? 'retry' : 'failed'
   }
   void logDictation(`delivered kind=note location=${saved.location} words=${words} ${levels}`)
   // The pill says where in words (noted to inbox); the click-through
   // link is the receipt.
-  setOverlayPhase('inserted', wpm, { hint: pillPlace(saved.relative, saved.location) })
+  setOverlayPhase('inserted', event?.wpm ?? null, { hint: pillPlace(saved.relative, saved.location) })
   playCue('noted')
   refreshOverlayConfig()
   startSort(finalText, saved, receipt)
-  return true
+  return 'delivered'
 }
 
 export type RetriedDelivery =
-  | { ok: true; words: number; location: 'log' | 'folder' | 'fallback' | 'history' }
+  | {
+      ok: true
+      words: number
+      location: 'log' | 'folder' | 'fallback' | 'history'
+      /** The entry to hold the recording for: its words are in memory only. */
+      heldAt: number | null
+    }
   | { ok: false; failure: { kind: string; detail: string } }
 
 /**
@@ -410,14 +518,20 @@ export type RetriedDelivery =
  * the clipboard is left alone (LaBroi, 2026-11-01); a note files
  * like a live note under the day and time it was spoken; a transform's
  * instruction is kept unsent, since the selection it was for is gone.
+ * A held take already has its numbers in the log, so its words go back
+ * on that entry and nothing is counted twice.
  */
 export async function deliverRetried(
-  take: { kind: DictationKind; startedAt: number; savedAt: number },
+  take: { kind: DictationKind; startedAt: number; savedAt: number; loggedAt?: number },
   heardText: string
 ): Promise<RetriedDelivery> {
   const timing = { startedAt: take.startedAt, at: take.savedAt, retried: true }
   const nothing = { ok: false as const, failure: { kind: 'nospeech', detail: 'no speech in the audio' } }
-  const { recordSession } = await import('./history')
+  // A retry that reaches no history is a failure, so its audio stays: it
+  // is the only copy, and the caller removes it only on success.
+  const unlogged = { ok: false as const, failure: UNLOGGED }
+  const heldAt = (event: SessionEvent): number | null =>
+    getSettings().history.retentionDays === KEEP_NO_TEXT ? event.at : null
 
   if (take.kind === 'transform') {
     if (isHallucination(heardText, hallucinations.phrases)) return nothing
@@ -425,23 +539,28 @@ export async function deliverRetried(
     const spoken = stripTrailingHallucinations(heardText, hallucinations.artifactTails)
     const instruction = applyDictionary(spoken, getSettings().dictionary).trim()
     if (instruction.length === 0) return nothing
-    const event = recordSession({ ...timing, rawText: heardText, finalText: instruction, kind: 'transform', unsent: true })
-    return { ok: true, words: event?.words ?? 0, location: 'log' }
+    const event = await logTake({ ...timing, rawText: heardText, finalText: instruction, kind: 'transform', unsent: true }, take.loggedAt)
+    if (event === null) return unlogged
+    return { ok: true, words: event.words, location: 'log', heldAt: heldAt(event) }
   }
 
   const finalText = await finishTranscript(heardText)
   if (finalText === null || finalText.trim().length === 0) return nothing
 
   if (take.kind === 'note') {
-    const { saved, receipt, words } = await fileNote(heardText, finalText, timing)
-    if (!saved?.ok) return { ok: true, words, location: 'history' }
+    const { saved, receipt, event } = await fileNote(heardText, finalText, timing, take.loggedAt)
+    if (!saved?.ok) {
+      if (event === null) return unlogged
+      return { ok: true, words: event.words, location: 'history', heldAt: heldAt(event) }
+    }
     startSort(finalText, saved, receipt)
-    return { ok: true, words, location: saved.location }
+    return { ok: true, words: event?.words ?? 0, location: saved.location, heldAt: null }
   }
 
-  const event = recordSession({ ...timing, rawText: heardText, finalText })
+  const event = await logTake({ ...timing, rawText: heardText, finalText }, take.loggedAt)
+  if (event === null) return unlogged
   refreshOverlayConfig()
-  return { ok: true, words: event?.words ?? 0, location: 'log' }
+  return { ok: true, words: event.words, location: 'log', heldAt: heldAt(event) }
 }
 
 export function dictationCancel(): void {
@@ -515,13 +634,13 @@ async function keepForRetry(
   const { trimSilence } = await import('../shared/speech-gate')
   const { encodeWavPcm16 } = await import('../shared/wav')
   const upload = encodeWavPcm16(trimSilence(samples, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE)
-  saveTakeForRetry(upload, {
+  const saved = saveTakeForRetry(upload, {
     kind,
     startedAt,
     failure: { kind: 'parked', detail: reason }
   })
-  void logDictation(`${step} kept${gate.detail}`)
-  return 'kept'
+  void logDictation(`${step} ${saved === null ? 'not kept' : 'kept'}${gate.detail}`)
+  return saved === null ? 'failed' : 'kept'
 }
 
 /**
@@ -566,9 +685,8 @@ export async function pasteLastDictation(): Promise<void> {
     void logDictation(`paste-last ignored phase=${phase}`)
     return
   }
-  const { readHistory, isMemoryOnly } = await import('./history')
-  const events = readHistory()
-  const last = events[events.length - 1]
+  const { eventToPaste, isMemoryOnly } = await import('./history')
+  const last = eventToPaste()
   if (!last || last.finalText.length === 0) {
     void logDictation('paste-last found nothing to paste')
     playCue('nospeech')
@@ -585,6 +703,11 @@ export async function pasteLastDictation(): Promise<void> {
     )
     if (outcome === 'error') playCue('error')
     else playCue('insert')
+    // The words reached an app, so a recording held for them can go.
+    if (outcome === 'inserted' && getSettings().history.retentionDays === KEEP_NO_TEXT) {
+      const { releaseHeldTake } = await import('./retry')
+      releaseHeldTake(last.at)
+    }
   } catch (error) {
     console.error('[murmur] paste last dictation failed:', error)
     void logDictation(`paste-last failed source=${source}`)

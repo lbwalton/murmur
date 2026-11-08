@@ -1,0 +1,12 @@
+# Weekly checks on what the repo depends on (US-122). Updates arrive as
+# PRs; nothing merges by itself.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

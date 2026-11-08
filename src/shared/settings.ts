@@ -12,6 +12,11 @@ import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 import { normalizeZoom } from './zoom'
 
+export type MicMode = 'ready' | 'press'
+
+export const UPDATE_MODES = ['auto', 'ask', 'off'] as const
+export type UpdateMode = (typeof UPDATE_MODES)[number]
+
 export interface Settings {
   hotkey: {
     mode: 'hold' | 'toggle'
@@ -96,6 +101,13 @@ export interface Settings {
   }
   history: {
     retentionDays: number
+    /** Seal the words in history.jsonl (US-138). It protects the file on
+     *  disk: words still show on Home. */
+    encrypt: boolean
+    /** Keep dictated words out of murmur's windows and notifications
+     *  while sharing a screen or filming (US-145). Stored, so a restart
+     *  mid-recording reveals nothing. Copy and paste-last still work. */
+    hideWords: boolean
   }
   recap: {
     enabled: boolean
@@ -185,7 +197,13 @@ export interface Settings {
   /** Refresh the bundled provider catalog (rates, presets, nuances)
    *  from the murmur repo at launch: a read-only file fetch to the same
    *  GitHub host the updater already contacts, carrying no user data. */
+  /** Whether the mic stays ready or opens on the press (US-135). */
+  micMode: MicMode
+  /** How updates arrive (US-136). Off also stops every update request. */
+  updates: UpdateMode
   catalogRefresh: boolean
+  /** Plain http hosts the person confirmed sending to (US-140). */
+  trustedHttpHosts: string[]
   /** Last app version whose what's new section the user opened; the
    *  home tab shows a quiet marker while it trails the running one. */
   whatsNewSeenVersion: string
@@ -275,7 +293,9 @@ export const DEFAULT_SETTINGS: Settings = {
     volume: 0.5
   },
   history: {
-    retentionDays: 90
+    retentionDays: 90,
+    encrypt: true,
+    hideWords: false
   },
   recap: {
     enabled: false,
@@ -320,7 +340,10 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: false,
   showDockIcon: false,
   windowZoom: 1,
+  micMode: 'ready',
+  updates: 'auto',
   catalogRefresh: true,
+  trustedHttpHosts: [],
   whatsNewSeenVersion: '',
   onboarding: {
     completed: false
@@ -380,6 +403,13 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   }
   if (Array.isArray(out.expansions)) {
     out.expansions = out.expansions.filter((e) => stringPair(e, 'trigger', 'text'))
+  }
+  // Anything unknown means Automatic: a damaged file must never quietly
+  // stop security fixes.
+  if ('updates' in out && !UPDATE_MODES.includes(out.updates as UpdateMode)) out.updates = 'auto'
+  if ('micMode' in out && out.micMode !== 'press') out.micMode = 'ready'
+  if (Array.isArray(out.trustedHttpHosts)) {
+    out.trustedHttpHosts = out.trustedHttpHosts.filter((host) => typeof host === 'string')
   }
   // Reminder times feed a scheduler that runs every minute, so a
   // non-string here would throw on a timer forever (review gate

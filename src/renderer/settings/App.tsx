@@ -22,9 +22,13 @@ import { ApiKeys } from './ApiKeys'
 import { HomeView } from './HomeView'
 import { PageTitle } from './PageTitle'
 import { JourneyView } from './JourneyView'
+import { HideWordsRow, TryBox } from './HideWords'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
 import { ConnectionRows } from './ConnectionRows'
+import { PlainHttpNote } from './PlainHttpNote'
+import { plainHttpHost } from '../../shared/plain-http'
+import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
@@ -725,7 +729,7 @@ export function App(): React.JSX.Element {
             />
           )}
           {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
-          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} />}
+          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} hideWords={settings.history.hideWords} />}
           {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} accent={guiAccent} />}
         </div>
       )}
@@ -934,7 +938,10 @@ export function App(): React.JSX.Element {
               </p>
             )}
 
-            <Advanced hint="base URL, profiles, price refresh, defaults">
+            <Advanced
+              hint="base URL, profiles, price refresh, defaults"
+              open={plainHttpHost(settings.provider.baseUrl) !== null}
+            >
               <Row
                 label="Base URL"
                 anchor="row-base-url"
@@ -948,6 +955,7 @@ export function App(): React.JSX.Element {
                   onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
                 />
               </Row>
+              <PlainHttpNote url={settings.provider.baseUrl} />
 
               <ProfilesRow
                 settings={settings}
@@ -1157,9 +1165,9 @@ export function App(): React.JSX.Element {
               anchor="row-try-it"
               block
               keywords="test dictation practice"
-              desc={`Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
+              desc={settings.history.hideWords ? undefined : `Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
             >
-              <textarea className="field trybox" placeholder="dictate here…" rows={2} aria-label="Test dictation" />
+              <TryBox settings={settings} className="field trybox" rows={2} label="Test dictation" />
             </Row>
           </Section>
 
@@ -1414,6 +1422,7 @@ export function App(): React.JSX.Element {
           </Section>
 
           <Section id="system" title="System" sub="Sounds, startup, permissions, and diagnostics.">
+            <HideWordsRow settings={settings} anchor="row-hide-words" onUpdate={update} />
             <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
               <div className="inline">
                 <VolumeSlider
@@ -1440,6 +1449,8 @@ export function App(): React.JSX.Element {
                 onChange={(autostart) => void update({ autostart })}
               />
             </Row>
+
+            <UpdatesRow settings={settings} onChange={(updates) => void update({ updates })} />
 
             {isMac && (
               <Row

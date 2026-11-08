@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import type { SettingsApi } from '../../preload/settings'
 import type { MicReport } from '../../shared/mic'
 import type { Settings } from '../../shared/settings'
-import { Row } from './controls'
+import { Row, Segmented } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -58,7 +58,10 @@ export function MicRow(props: {
     desc = `murmur stays on this mic whenever it is plugged in.${inUse}`
   }
 
+  const press = props.settings.micMode === 'press'
+  const lastPress = report?.openMs ?? null
   return (
+    <>
     <Row label="Microphone" anchor="row-mic" keywords="microphone mic input device audio headset" desc={desc}>
       <select
         className="field"
@@ -83,5 +86,27 @@ export function MicRow(props: {
         {picked && !matched && <option value={UNPLUGGED}>{`${pick.label || 'Your pick'} (unplugged)`}</option>}
       </select>
     </Row>
+    <Row
+      label="Between takes"
+      keywords="microphone always on privacy orange dot closed open warm"
+      desc={
+        press
+          ? `The mic is off until you press, and the listening sound plays once it is live, so with sounds on, wait for it before you speak.${
+              lastPress === null ? '' : ` Your last press took ${lastPress} ms.`
+            }`
+          : 'The mic stays ready so your first word is not cut off. The last 300 ms sit in memory, and nothing is saved or sent until you press.'
+      }
+    >
+      <Segmented
+        label="Between takes"
+        value={props.settings.micMode}
+        options={[
+          { value: 'ready', label: 'Keep the mic ready' },
+          { value: 'press', label: 'Open the mic only when I press' }
+        ]}
+        onChange={(micMode) => void props.onUpdate({ micMode })}
+      />
+    </Row>
+    </>
   )
 }

@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   alreadyPast,
   dueReminders,
+  hiddenReminderBody,
   markFired,
   openItems,
+  openTasksLine,
   parseListItems,
   parseTodo,
   reminderBody,
@@ -242,5 +244,23 @@ describe('nested runs under a lead line (US-062)', () => {
   it('tick counts a nested box like any other', () => {
     const ticked = tickLine(file, 1)
     expect(ticked.ok && ticked.text.includes('  - [x] apples')).toBe(true)
+  })
+})
+
+describe('hiddenReminderBody (US-145)', () => {
+  it('says the count and none of the words', () => {
+    const items = parseTodo('- [ ] Feed the zebrafinch.\n- [ ] Call the vet.\n- [x] Done already.\n')
+    expect(reminderBody(items)).toContain('zebrafinch')
+    expect(hiddenReminderBody(items)).toBe('2 open tasks')
+    expect(hiddenReminderBody(parseTodo('- [ ] One thing.\n'))).toBe('1 open task')
+  })
+
+  it('stays empty with nothing open, so nothing fires', () => {
+    expect(hiddenReminderBody(parseTodo('- [x] Done.\n'))).toBe('')
+  })
+
+  it('counts in the same words as a full reminder', () => {
+    expect(openTasksLine(1)).toBe('1 open task')
+    expect(reminderBody(parseTodo('- [ ] One.\n- [ ] Two.\n')).startsWith(`${openTasksLine(2)}: `)).toBe(true)
   })
 })

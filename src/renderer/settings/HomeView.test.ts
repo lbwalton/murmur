@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import type { WaitingTake } from '../../main/transcribe/recovery'
-import { clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
+import { keepLine, retryFailedMessage, sealLine, waitingIntro, shorterKeepQuestion, clearAllQuestion, discardAllQuestion, discardedMessage, retriedDictationMessage, waitingLine } from './HomeView'
 
 describe('clear all', () => {
   it('asks with the whole log count and says what starts over', () => {
@@ -9,6 +9,51 @@ describe('clear all', () => {
       'Clear all 1,204 entries from your history? This cannot be undone. Your stats, time back, and belt progress are counted from your history, so they start over. Note files stay in your notes folder.'
     )
     expect(clearAllQuestion(1)).toMatch(/^Clear the 1 entry in your history\? /)
+  })
+})
+
+describe('the Encrypt saved words line', () => {
+  const status = { state: 'sealed', unreadable: 0, pending: 0 } as const
+
+  it('says it protects the file and not the screen, and that notes stay plain', () => {
+    expect(sealLine(status)).toContain('This protects the file, not your screen: for that, use Hide words.')
+    expect(sealLine(status)).toContain('a copied history file or folder cannot be read elsewhere')
+    expect(sealLine(status)).toContain('Notes stay plain files.')
+  })
+
+  it('says so when secure storage is not available', () => {
+    expect(sealLine({ ...status, state: 'unavailable' })).toMatch(/^This computer's secure storage is not available/)
+  })
+
+  it('says what off means', () => {
+    expect(sealLine({ ...status, state: 'plain' })).toMatch(/^Saved words are plain text/)
+  })
+
+  it('counts entries it cannot read and entries still waiting', () => {
+    expect(sealLine({ ...status, unreadable: 1 })).toContain('1 entry cannot be read on this computer, so it shows numbers only.')
+    expect(sealLine({ ...status, unreadable: 2 })).toContain('2 entries cannot be read on this computer, so they show numbers only.')
+    expect(sealLine({ ...status, pending: 3 })).toContain('3 entries could not be encrypted yet.')
+  })
+})
+
+describe('a shorter Keep history', () => {
+  it('says the words go and the numbers stay', () => {
+    expect(shorterKeepQuestion(1, 1204, 2)).toBe(
+      'This removes the words of 1,204 entries and 2 recordings waiting to retry now, and it cannot be undone. Your numbers and belts stay.'
+    )
+    expect(shorterKeepQuestion(-1, 1, 0)).toBe(
+      'This removes the words of 1 entry now, and it cannot be undone. Your numbers and belts stay.'
+    )
+  })
+
+  it('says whole entries go on the day limits', () => {
+    expect(shorterKeepQuestion(30, 12, 1)).toBe(
+      'This removes 12 entries and 1 recording waiting to retry now, and it cannot be undone. Their numbers go too, so your totals drop.'
+    )
+  })
+
+  it('asks nothing when nothing goes', () => {
+    expect(shorterKeepQuestion(1, 0, 0)).toBe('')
   })
 })
 
@@ -46,6 +91,78 @@ describe('a waiting take', () => {
       'not transcribed: murmur could not reach the provider'
     )
     expect(waitingLine(take(null), 'win32')).toBe('not transcribed: saved before murmur kept reasons')
+  })
+
+  it('a held take says its recording stays up to 24 hours, not that it failed', () => {
+    expect(waitingLine(take({ kind: 'held', detail: 'idle' }), 'darwin')).toBe(
+      'never reached an app, so its recording goes after 24 hours'
+    )
+  })
+
+  it('a take the log refused says it was transcribed', () => {
+    expect(waitingLine(take({ kind: 'unlogged', detail: 'x' }), 'darwin')).toBe('transcribed, but its words could not be saved')
+  })
+
+  it('the intro never says a held take was not transcribed', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    expect(waitingIntro([failed], 90)).toMatch(/^Recorded but not transcribed\./)
+    expect(waitingIntro([held], 90)).toMatch(/^Transcribed, but the words never reached an app\./)
+    expect(waitingIntro([held], 90)).toContain('goes after 24 hours, the next time murmur runs')
+    expect(waitingIntro([failed, held], 90)).toMatch(/^Some takes were not transcribed, and some never reached an app\./)
+  })
+
+  it('the intro never says a take the log refused was not transcribed', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const unsaved = take({ kind: 'unlogged', detail: 'x' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    expect(waitingIntro([unsaved], 90)).toBe(
+      'Transcribed, but the words could not be saved. Retry sends the audio to your provider again. The audio stays on this computer until you retry or discard it.'
+    )
+    expect(waitingIntro([unsaved], 1)).toContain('or it goes after 24 hours, the next time murmur runs')
+    expect(waitingIntro([failed, unsaved], 90)).toBe(
+      'Some takes were not transcribed, and some were transcribed but could not be saved. The audio stays on this computer until you retry or discard it.'
+    )
+    expect(waitingIntro([held, unsaved], 90)).toMatch(/^Some takes never reached an app, and some were transcribed but could not be saved\./)
+    expect(waitingIntro([held, unsaved], 90)).toContain('A take that never reached an app goes after 24 hours')
+    expect(waitingIntro([failed, held, unsaved], 90)).toMatch(
+      /^Some takes were not transcribed, some never reached an app, and some were transcribed but could not be saved\./
+    )
+  })
+
+  it('a held take the log refused again keeps its held line', () => {
+    const refused = { ...take({ kind: 'unlogged', detail: 'x' }), loggedAt: 1 }
+    expect(waitingIntro([refused], 90)).toMatch(/^Transcribed, but the words never reached an app\./)
+  })
+
+  it('a retry that fails says what really failed', () => {
+    const stays = 'The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.'
+    expect(retryFailedMessage(['network'])).toBe(`Still could not transcribe. ${stays}`)
+    expect(retryFailedMessage(['unlogged'])).toBe(`Transcribed, but the words still could not be saved. ${stays}`)
+    expect(retryFailedMessage(['unlogged', 'unlogged'])).toMatch(/^Transcribed, /)
+    expect(retryFailedMessage(['network', 'unlogged'])).toBe(`Still not delivered. ${stays}`)
+  })
+
+  it('says a failed take goes after 24 hours only under the 2 short limits', () => {
+    const failed = take({ kind: 'auth', detail: '' })
+    const held = { ...take({ kind: 'held', detail: 'idle' }), loggedAt: 1 }
+    for (const short of [-1, 1]) {
+      expect(waitingIntro([failed], short)).toContain('or it goes after 24 hours, the next time murmur runs')
+      expect(waitingIntro([failed, held], short)).toContain('or it goes after 24 hours, the next time murmur runs')
+    }
+    for (const long of [30, 90, 365, 0]) {
+      expect(waitingIntro([failed], long)).toBe('Recorded but not transcribed. The audio stays on this computer until you retry or discard it.')
+      expect(waitingIntro([failed, held], long)).toContain('A take that never reached an app goes after 24 hours')
+    }
+  })
+
+  it('Keep history says what each setting really does', () => {
+    expect(keepLine(-1)).toContain('No words are saved to disk')
+    expect(keepLine(1)).toContain('Words go after 24 hours')
+    expect(keepLine(0)).toContain('Entries stay until you clear them')
+    for (const days of [30, 90, 365]) expect(keepLine(days)).toContain('Older entries are removed automatically, with their numbers')
+    expect(keepLine(0)).not.toContain('Older entries')
+    expect(keepLine(1)).not.toContain('Older entries')
   })
 
   it('a hands-free take parked on sleep or quit says when it was saved', () => {

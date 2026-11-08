@@ -30,6 +30,71 @@ export interface SessionEvent {
   /** Delivered by a retry from the home tab (US-068), after the live
    *  transcription failed; logged at the time it was spoken. */
   retried?: boolean
+  /** A transform's instruction length, kept when its words are removed. */
+  instructionWords?: number
+  /** Set on reading, never stored: its words are encrypted under a key
+   *  this computer cannot open, so they still exist (US-138). */
+  unreadable?: boolean
+}
+
+/** What the switch beside Keep history reports (US-138). */
+export interface SealStatus {
+  state: 'sealed' | 'plain' | 'unavailable'
+  /** Sealed lines no key here can open. They read as numbers only. */
+  unreadable: number
+  /** Lines with words not sealed yet, after a sealing that failed. */
+  pending: number
+}
+
+/** The Keep history values with their own meaning (US-137). Every other
+ *  value is days, after which a whole entry goes. */
+export const KEEP_FOREVER = 0
+export const KEEP_24_HOURS = 1
+export const KEEP_NO_TEXT = -1
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** How long a take that reached no app holds its recording (US-137). */
+export const HELD_RECORDING_MS = DAY_MS
+
+/** Words older than this go while the numbers stay, so belts, stats, and
+ *  the painting keep working. Null when this setting removes whole
+ *  entries or nothing. */
+export function textCutoff(retentionDays: number, now: number): number | null {
+  if (retentionDays === KEEP_NO_TEXT) return Number.POSITIVE_INFINITY
+  if (retentionDays === KEEP_24_HOURS) return now - DAY_MS
+  return null
+}
+
+/** A transform's stroke weighs its spoken instruction, so that count
+ *  outlives the words. */
+export function withoutText(event: SessionEvent): SessionEvent {
+  const instruction = event.kind === 'transform' ? { instructionWords: countWords(event.rawText) } : {}
+  return { ...event, rawText: '', finalText: '', ...instruction }
+}
+
+/** What a row says in place of its words while Hide words is on (US-145). */
+export const WORDS_HIDDEN = 'Words hidden.'
+
+export function hasText(event: SessionEvent): boolean {
+  return event.rawText.length > 0 || event.finalText.length > 0
+}
+
+/** How long a recording waiting for a retry may stay. Don't keep is
+ *  about transcripts, and a failed take or one that reached no app has
+ *  no other copy, so it gets the same 24 hours to be retried. Null keeps
+ *  it until it is retried. */
+export function recordingLimitMs(retentionDays: number): number | null {
+  if (retentionDays === KEEP_NO_TEXT || retentionDays === KEEP_24_HOURS) return DAY_MS
+  return retentionDays > 0 ? retentionDays * DAY_MS : null
+}
+
+/** What paste-last pastes: the entry a held take's words just went back
+ *  to, until something newer lands, or else the newest entry. Those words
+ *  sit on an older line, so the newest line would be another take. */
+export function pasteTarget(events: readonly SessionEvent[], restoredAt: number | null): SessionEvent | undefined {
+  const restored = restoredAt === null ? undefined : events.find((event) => event.at === restoredAt)
+  return restored !== undefined && restored.finalText.length > 0 ? restored : events.at(-1)
 }
 
 /** Whether an event counts toward words, belts, achievements, recaps,

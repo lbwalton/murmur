@@ -6,11 +6,27 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## How do I tell you a take came out wrong?
+
+Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. What you said, what it typed, and what it should have been can all be edited here, and the rest in your mail app, so take out anything private.
+
+**Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, other takes, and your dictionary and expansion lists are never included. What murmur typed can hold an expansion that fired or a dictionary spelling, so read it first. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
+
+LaBroi reads reports to improve murmur. They are kept 90 days, then cleared within about 30 days. A report becomes a test case only if you agree, rewritten without names or details.
+
+## What does a [quality] line in the log mean?
+
+Each take writes 1 line saying how cleanup went, and it never holds your words: the formatting level, whether Smart lists and Apply corrections were on, the model, the outcome (cleaned, skipped, or why cleanup fell back), the word counts before and after, and how many correction cue words there were before and after. `hint=1` means a cue word such as "actually" survived. That is a hint and not a mistake, since many cue words are real.
+
+The diagnostics report adds these up for the last 30 days, or as far back as the log reaches: takes, how often cleanup fell back and why, and how often a cue word survived. The log stays on your computer, and it leaves only if you send it yourself.
+
 ## What happens when a dictation fails, and how do I retry it?
 
 murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the API keys list under Settings, Provider and keys), then click **retry** beside the take, or **retry all** when several are waiting.
 
 A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
+
+A take can also wait there after it was transcribed. If murmur could not write the words to your history, for example on a full disk, and they reached no app, the row says transcribed, but its words could not be saved. Only the recording is left, so **retry** sends it to your provider again. If the words still cannot be saved, the take stays listed and the audio stays with it.
 
 What a retry does: it sends the saved audio to your provider with your current settings and runs the same cleanup as a live dictation. Where the words go depends on what you were doing when you spoke:
 
@@ -18,7 +34,7 @@ What a retry does: it sends the saved audio to your provider with your current s
 - **A note** is filed into your notes folder like any note, under the day and time you spoke it, sorting included.
 - **A transform** keeps your spoken instruction in the log. The text you had selected is gone, so nothing is changed.
 
-If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?, in red) and then deletes it on a second click (a quick double click counts as one click, so it never deletes by accident). A retried dictation counts toward your stats on the day you spoke it.
+A recording waits until you retry or discard it, or until the limit you set under Keep history for removes it. At most 20 wait at once, and the oldest go first. If a retry fails again, the take stays with the new reason. A take that turns out to hold no speech says so; **discard** asks once (delete audio?, in red) and then deletes it on a second click (a quick double click counts as one click, so it never deletes by accident). A retried dictation counts toward your stats on the day you spoke it.
 
 The audio never leaves your computer except to your own provider when you retry, exactly as for a live dictation. It lives in the recovery folder inside murmur's data folder, and murmur keeps the 20 most recent takes.
 

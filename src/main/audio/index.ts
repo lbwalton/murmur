@@ -6,7 +6,9 @@
 // sleeping only ever sees the unlock). The mic picked in Settings rides
 // to the capture window, and the inputs it sees ride back (US-110).
 import { join } from 'node:path'
-import { BrowserWindow, app, ipcMain, powerMonitor } from 'electron'
+import { BrowserWindow, app, powerMonitor } from 'electron'
+import { ipc } from '../ipc'
+import { getSettings } from '../settings'
 import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { markMicrophoneWindow } from '../hardening'
 import { reviveOnDeath } from '../revive'
@@ -24,7 +26,7 @@ function aliveAudio(): BrowserWindow | null {
 let readyResolvers: Array<() => void> = []
 let ready = false
 // What the capture window last said about the inputs, for the picker.
-let micReport: MicReport = { devices: [], current: '', standIn: false }
+let micReport: MicReport = { devices: [], current: '', standIn: false, open: false, openMs: null }
 
 function whenAudioReady(): Promise<void> {
   if (ready) return Promise.resolve()
@@ -33,10 +35,15 @@ function whenAudioReady(): Promise<void> {
 
 /** Hand the capture window the mic picked in Settings. */
 function sendMicChoice(): void {
-  void import('../settings').then(({ getSettings }) => {
-    aliveAudio()?.webContents.send(IpcChannels.audioMic, getSettings().microphone)
-  })
+  const settings = getSettings()
+  aliveAudio()?.webContents.send(IpcChannels.audioMic, settings.microphone)
+  aliveAudio()?.webContents.send(IpcChannels.audioMicMode, settings.micMode !== 'press')
 }
+
+// With the mic closed between takes, the listening cue waits until sound
+// is arriving (US-135), however long that takes: a cue on a timer would
+// tell someone to talk into a mic that is not there.
+let cueWhenLive: (() => void) | null = null
 
 export function initAudio(settingsWindow: () => BrowserWindow | null = () => null): void {
   audioWindow = new BrowserWindow({
@@ -53,7 +60,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   // The one window allowed the microphone (US-072).
   markMicrophoneWindow(audioWindow.webContents)
 
-  ipcMain.on(IpcChannels.audioReady, () => {
+  ipc.on(IpcChannels.audioReady, () => {
     ready = true
     for (const resolve of readyResolvers) resolve()
     readyResolvers = []
@@ -63,25 +70,29 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
 
   // Only the capture window speaks for the inputs; the report is bounded
   // before it is kept, and only Settings hears that it changed.
-  ipcMain.on(IpcChannels.audioMics, (event, report: unknown) => {
+  ipc.on(IpcChannels.audioMics, (event, report: unknown) => {
     if (event.sender !== aliveAudio()?.webContents) return
     micReport = sanitizeMicReport(report)
     const win = settingsWindow()
     if (win && !win.isDestroyed()) win.webContents.send(IpcChannels.micsChanged)
   })
-  ipcMain.handle(IpcChannels.micsList, (): MicReport => micReport)
+  ipc.handle(IpcChannels.micsList, (): MicReport => micReport)
+  ipc.on(IpcChannels.audioLive, () => {
+    const cue = cueWhenLive
+    cueWhenLive = null
+    cue?.()
+  })
   // The capture window asks for the pick before its first arm, so a
   // picked mic is the first one it opens, not a move after launch.
-  ipcMain.handle(IpcChannels.audioMicChoice, async (event) => {
+  ipc.handle(IpcChannels.audioMicChoice, async (event) => {
     if (event.sender !== aliveAudio()?.webContents) return { id: '', label: '' }
-    const { getSettings } = await import('../settings')
-    return getSettings().microphone
+    return { ...getSettings().microphone, keepReady: getSettings().micMode !== 'press' }
   })
 
   void import('../settings').then(({ onSettingsChanged }) => {
     let lastChoice = ''
     onSettingsChanged((settings) => {
-      const key = `${settings.microphone.id}\n${settings.microphone.label}`
+      const key = `${settings.microphone.id}\n${settings.microphone.label}\n${settings.micMode}`
       if (key === lastChoice) return
       lastChoice = key
       sendMicChoice()
@@ -111,15 +122,58 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   // itself inside the per-check timeout.
   const smokeParams =
     'synthetic=1&watchTickMs=100&stallMs=250&armTimeoutMs=2500&silentMs=250&maxSilentRearms=4&deviceChangeMs=100'
-  const query = isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : undefined
+  // Read here too, so a closed mic never opens for the first arm.
+  const press = getSettings().micMode === 'press'
+  const query = {
+    ...(isSmoke ? Object.fromEntries(new URLSearchParams(smokeParams)) : {}),
+    ...(press ? { micMode: 'press' } : {})
+  }
   watchWindow(audioWindow, 'audio')
   const devServer = devRendererUrl()
   if (devServer) {
-    const suffix = isSmoke ? `?${smokeParams}` : ''
+    const search = new URLSearchParams(query).toString()
+    const suffix = search === '' ? '' : `?${search}`
     void audioWindow.loadURL(`${devServer}/audio/index.html${suffix}`)
   } else {
     void audioWindow.loadFile(join(__dirname, '../renderer/audio/index.html'), { query })
   }
+
+  // The closed mic mode's promise: no capture stream between takes, a
+  // real take on the press, and closed again after it (US-135).
+  registerSmokeCheck('micClosedBetweenTakes', async () => {
+    await whenAudioReady()
+    const { updateSettings } = await import('../settings')
+    const until = async (done: () => boolean): Promise<boolean> => {
+      for (let waited = 0; waited < 3_000; waited += 50) {
+        if (done()) return true
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return false
+    }
+    const before = getSettings().micMode
+    updateSettings({ micMode: 'press' })
+    sendMicChoice()
+    try {
+      const closed = await until(() => !micReport.open)
+      let cued = false
+      startRecording(() => {
+        cued = true
+      })
+      const opened = await until(() => micReport.open)
+      const heard = await until(() => cued)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      const wav = await stopRecording()
+      const closedAgain = await until(() => !micReport.open)
+      const bytes = wav?.length ?? 0
+      const passed = closed && opened && heard && bytes > 44 && closedAgain
+      if (!passed) console.error(`smoke micClosed: ${JSON.stringify({ closed, opened, heard, bytes, closedAgain })}`)
+      return passed
+    } finally {
+      updateSettings({ micMode: before })
+      sendMicChoice()
+      await until(() => micReport.open)
+    }
+  })
 
   registerSmokeCheck('recording', async () => {
     await whenAudioReady()
@@ -149,7 +203,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   registerSmokeCheck('cues', async () => {
     await whenAudioReady()
     const played = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioCuePlayed, (_event, cue: string) => resolve(cue === 'insert'))
+      ipc.once(IpcChannels.audioCuePlayed, (_event, cue: string) => resolve(cue === 'insert'))
     })
     // Near-silent volume: proves the synth path without waking anyone.
     aliveAudio()?.webContents.send(IpcChannels.audioCue, 'insert', 0.01)
@@ -159,7 +213,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   registerSmokeCheck('recordingRearm', async () => {
     await whenAudioReady()
     const armed = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(Boolean(ok)))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(Boolean(ok)))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioRearm)
     return armed
@@ -174,7 +228,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // The renderer acks the outage with armed=false; without the ack the
     // check cannot distinguish "recovered" from "never damaged".
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateOutage, 2)
     if (!(await acked)) {
@@ -203,7 +257,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // main after the seam. Three silent graphs against a budget of four.
     await whenAudioReady()
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 3)
     if (!(await acked)) {
@@ -262,7 +316,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     const exhaustedBefore = count('stayed silent after')
     const pressBefore = count('press found a silent stream')
     const acked = new Promise<boolean>((resolve) => {
-      ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+      ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
     })
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
     if (!(await acked)) {
@@ -311,7 +365,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     const exhaustedBefore = count('stayed silent after')
     const ack = (): Promise<boolean> =>
       new Promise<boolean>((resolve) => {
-        ipcMain.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
+        ipc.once(IpcChannels.audioArmed, (_event, ok: boolean) => resolve(ok === false))
       })
     const silenced = ack()
     aliveAudio()?.webContents.send(IpcChannels.audioSimulateSilence, 5)
@@ -509,7 +563,7 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
     // must come back on its own, and with it the warm mic.
     await whenAudioReady()
     const revived = new Promise<void>((resolve) => {
-      ipcMain.once(IpcChannels.audioReady, () => resolve())
+      ipc.once(IpcChannels.audioReady, () => resolve())
     })
     aliveAudio()?.webContents.forcefullyCrashRenderer()
     await revived
@@ -527,8 +581,14 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   })
 }
 
-export function startRecording(): void {
+export function startRecording(onLive?: () => void): void {
   aliveAudio()?.webContents.send(IpcChannels.audioStart)
+  if (onLive === undefined) return
+  if (getSettings().micMode !== 'press') {
+    onLive()
+    return
+  }
+  cueWhenLive = onLive
 }
 
 /** Ask the capture window to rebuild its graph now. Safe between
@@ -539,6 +599,7 @@ export function rearmCapture(): void {
 }
 
 export function cancelRecording(): void {
+  cueWhenLive = null
   aliveAudio()?.webContents.send(IpcChannels.audioCancel)
 }
 
@@ -546,16 +607,17 @@ const STOP_TIMEOUT_MS = 5_000
 
 /** Stop and collect the WAV. Resolves null on cancel or timeout. */
 export function stopRecording(): Promise<Uint8Array | null> {
+  cueWhenLive = null
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
-      ipcMain.removeListener(IpcChannels.audioResult, onResult)
+      ipc.removeListener(IpcChannels.audioResult, onResult)
       resolve(null)
     }, STOP_TIMEOUT_MS)
     const onResult = (_event: Electron.IpcMainEvent, wav: Uint8Array | null): void => {
       clearTimeout(timer)
       resolve(wav ? Uint8Array.from(wav) : null)
     }
-    ipcMain.once(IpcChannels.audioResult, onResult)
+    ipc.once(IpcChannels.audioResult, onResult)
     aliveAudio()?.webContents.send(IpcChannels.audioStop)
   })
 }

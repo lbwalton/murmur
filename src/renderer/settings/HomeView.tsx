@@ -6,9 +6,21 @@ import { useEffect, useRef, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
 import { sectionFor } from '../../shared/changelog'
-import { type SessionEvent, countsTowardStats, dayKey, groupByDay } from '../../shared/history'
-import { type LastNote, receiptWhere, revealLabel } from '../../shared/receipt'
+import {
+  KEEP_24_HOURS,
+  KEEP_FOREVER,
+  KEEP_NO_TEXT,
+  type SealStatus,
+  type SessionEvent,
+  WORDS_HIDDEN,
+  countsTowardStats,
+  dayKey,
+  groupByDay,
+  hasText
+} from '../../shared/history'
+import { type LastNote, lastNoteLine, receiptWhere, revealLabel } from '../../shared/receipt'
 import { formatMinutesBack } from '../../shared/timeback'
+import { heardWords, offersWhatYouSaid } from '../../shared/word-diff'
 import { type ProFacts, shouldOfferPro, thanksDue } from '../../shared/proMark'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
@@ -17,7 +29,10 @@ import { PageTitle, useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
+import { Switch } from './controls'
+import { HideWordsRow, TakeWords } from './HideWords'
 import { ProMark } from './ProMark'
+import { ReportTake } from './ReportPanel'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -78,6 +93,9 @@ function reasonText(take: WaitingTake): string {
     return f.detail === 'no API key configured' ? 'no API key was saved' : 'the provider did not accept the key'
   }
   if (f.kind === 'network') return 'murmur could not reach the provider'
+  if (f.kind === 'plainhttp') {
+    return 'the provider address is not encrypted, so nothing was sent; confirm it under Base URL in Settings'
+  }
   if (f.kind === 'timeout') return 'the provider did not answer in time'
   if (f.kind === 'server') return 'the provider had a problem on its end'
   if (f.kind === 'badrequest') return 'the provider refused the audio or the model name'
@@ -86,15 +104,66 @@ function reasonText(take: WaitingTake): string {
 }
 
 /** A waiting take's line. A hands-free take parked on sleep, quit, or
- *  Escape (US-117) was never tried, so it says when it was saved instead. */
+ *  Escape (US-117) was never tried, so it says when it was saved instead.
+ *  A held take was transcribed, and only its recording waits (US-137). */
 export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
   const f = take.failure
+  if (f?.kind === 'held') return 'never reached an app, so its recording goes after 24 hours'
+  if (f?.kind === 'unlogged') return 'transcribed, but its words could not be saved'
   if (f?.kind === 'parked') {
     if (f.detail === 'quit') return 'saved when murmur quit'
     if (f.detail === 'cancel') return 'saved when you cancelled it'
     return `saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
   }
   return `not transcribed: ${reasonText(take)}`
+}
+
+/** The line above the waiting takes. A held take was transcribed, and so
+ *  was one the log refused, so the usual line would be false for both,
+ *  and under 24 hours and Don't keep a failed take goes too. */
+export function waitingIntro(takes: readonly WaitingTake[], retentionDays: number): string {
+  const held = takes.filter((take) => take.loggedAt !== undefined).length
+  const unsaved = takes.filter((take) => take.loggedAt === undefined && take.failure?.kind === 'unlogged').length
+  const failed = takes.length - held - unsaved
+  const goes = 'after 24 hours, the next time murmur runs'
+  const short = retentionDays === KEEP_24_HOURS || retentionDays === KEEP_NO_TEXT
+  const stays = short
+    ? `The audio stays on this computer until you retry or discard it, or it goes ${goes}.`
+    : 'The audio stays on this computer until you retry or discard it.'
+  if (failed === takes.length) return `Recorded but not transcribed. ${stays}`
+  if (held === takes.length) {
+    return `Transcribed, but the words never reached an app. Retry brings them back from the audio, which stays on this computer and goes ${goes}.`
+  }
+  if (unsaved === takes.length) return `Transcribed, but the words could not be saved. Retry sends the audio to your provider again. ${stays}`
+  const parts = [
+    failed > 0 ? 'were not transcribed' : '',
+    held > 0 ? 'never reached an app' : '',
+    unsaved > 0 ? 'were transcribed but could not be saved' : ''
+  ].filter((part) => part !== '')
+  const mixed = parts.length === 3 ? `Some takes ${parts[0]}, some ${parts[1]}, and some ${parts[2]}.` : `Some takes ${parts.join(', and some ')}.`
+  return short || held === 0 ? `${mixed} ${stays}` : `${mixed} ${stays} A take that never reached an app goes ${goes}.`
+}
+
+/** What Home says when a retry delivered nothing. A take the log refused
+ *  was transcribed, so could not transcribe would be false for it. */
+export function retryFailedMessage(kinds: readonly string[]): string {
+  const stays = 'The reason is updated below; the audio stays until you retry or discard it, or your Keep history limit passes.'
+  const unsaved = kinds.filter((kind) => kind === 'unlogged').length
+  if (unsaved === 0) return `Still could not transcribe. ${stays}`
+  return unsaved === kinds.length ? `Transcribed, but the words still could not be saved. ${stays}` : `Still not delivered. ${stays}`
+}
+
+/** What Keep history does at each setting. */
+export function keepLine(retentionDays: number): string {
+  const here = 'Everything stays on this machine.'
+  if (retentionDays === KEEP_NO_TEXT) {
+    return 'No words are saved to disk, and your numbers, belts, and paintings keep counting. Takes stay here in memory until you quit murmur. A take that reached neither an app nor your clipboard keeps its recording for Retry, as does one waiting to retry. Those recordings go after 24 hours, the next time murmur runs. Notes still land in your notes folder.'
+  }
+  if (retentionDays === KEEP_24_HOURS) {
+    return `Words go after 24 hours, and your numbers, belts, and paintings keep counting. Recordings waiting to retry go after 24 hours, the next time murmur runs. ${here}`
+  }
+  if (retentionDays === KEEP_FOREVER) return `Entries stay until you clear them. ${here}`
+  return `Older entries are removed automatically, with their numbers. ${here}`
 }
 
 function whenOf(at: number): string {
@@ -111,7 +180,7 @@ function lengthOf(ms: number): string {
 /** The note receipt's Home half (US-082): the newest note, where it
  *  landed, and the two ways back to it. Opening goes through main's
  *  note opener, which refuses anything that is not a note file. */
-function LastNoteRow(): React.JSX.Element | null {
+function LastNoteRow(props: { hide: boolean }): React.JSX.Element | null {
   const [note, setNote] = useState<LastNote | null>(null)
   const [said, setSaid] = useState<string | null>(null)
 
@@ -141,7 +210,7 @@ function LastNoteRow(): React.JSX.Element | null {
       <p className="micro-label">last note</p>
       <div className="last-note-row">
         <div className="last-note-text">
-          <p className="last-note-line">{note.line !== '' ? note.line : 'An empty note'}</p>
+          <p className="last-note-line">{lastNoteLine(note, props.hide)}</p>
           <p className="mono-inline dim">
             {receiptWhere(note)} · {whenOf(note.at)}
           </p>
@@ -209,20 +278,121 @@ export function discardedMessage(gone: number, asked: number): string {
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
 }
 
+const entries = (count: number): string => `${count.toLocaleString()} ${count === 1 ? 'entry' : 'entries'}`
+
+/** What a shorter Keep history removes, said before it happens (US-137).
+ *  Empty when it removes nothing. */
+export function shorterKeepQuestion(retentionDays: number, takes: number, recordings: number): string {
+  const wordsOnly = retentionDays === KEEP_24_HOURS || retentionDays === KEEP_NO_TEXT
+  const parts = [
+    takes > 0 ? (wordsOnly ? `the words of ${entries(takes)}` : entries(takes)) : '',
+    recordings > 0 ? `${recordings.toLocaleString()} ${recordings === 1 ? 'recording' : 'recordings'} waiting to retry` : ''
+  ].filter((part) => part.length > 0)
+  if (parts.length === 0) return ''
+  const numbers = wordsOnly
+    ? ' Your numbers and belts stay.'
+    : takes > 0
+      ? ' Their numbers go too, so your totals drop.'
+      : ''
+  return `This removes ${parts.join(' and ')} now, and it cannot be undone.${numbers}`
+}
+
+const WORDS_NOT_KEPT = 'Words not kept, so what you said and report are not available for this take.'
+const WORDS_LOCKED = 'Words encrypted with a key this computer cannot open, so they stay saved but cannot be shown.'
+
+/** What the Encrypt saved words switch means right now (US-138). It
+ *  protects the file on disk, not the screen, and says so. */
+export function sealLine(status: SealStatus): string {
+  const base =
+    status.state === 'sealed'
+      ? "Saved words are encrypted on disk with a key your system's secure storage holds, so a copied history file or folder cannot be read elsewhere. This protects the file, not your screen: for that, use Hide words. Notes stay plain files."
+      : status.state === 'unavailable'
+        ? "This computer's secure storage is not available, so saved words stay as plain text. murmur encrypts them once it is."
+        : "Saved words are plain text in murmur's data folder, so other programs and backups can read them. Notes stay plain files."
+  const unreadable = status.unreadable > 0 ? ` ${entries(status.unreadable)} cannot be read on this computer, so ${status.unreadable === 1 ? 'it shows' : 'they show'} numbers only.` : ''
+  const pending = status.pending > 0 ? ` ${entries(status.pending)} could not be encrypted yet. murmur tries again the next time it starts.` : ''
+  return `${base}${unreadable}${pending}`
+}
+
+/** The words as heard, with what cleanup removed struck through (US-128).
+ *  The clipboard is touched only on the click, and Hide words (US-145)
+ *  leaves the count and the copy. */
+export function WhatYouSaid(props: { id: string; event: SessionEvent; hide: boolean }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+  const words = heardWords(props.event.rawText, props.event.finalText)
+  const removed = words.filter((word) => word.removed).length
+  return (
+    <div className="log-said" id={props.id}>
+      <p className="micro-label log-original">what you said</p>
+      {props.hide ? (
+        <p className="log-text dim">{WORDS_HIDDEN}</p>
+      ) : (
+        <p className="log-text dim">
+          {words.map((word, index) => (
+            <span key={index}>
+              {index > 0 && ' '}
+              {word.removed ? <s className="log-removed">{word.text}</s> : word.text}
+            </span>
+          ))}
+        </p>
+      )}
+      <p className="log-said-foot">
+        <span className="mono-inline dim">{removed === 0 ? 'words changed' : `${removed} removed`}</span>
+        <button
+          className="btn quiet-btn"
+          onClick={() => {
+            void bridge()
+              .copyText(props.event.rawText)
+              .then(() => setCopied(true))
+          }}
+        >
+          {copied ? 'copied' : 'Copy what you said'}
+        </button>
+      </p>
+    </div>
+  )
+}
+
+/** What a log row says under its time and numbers. */
+export function LogWords(props: { event: SessionEvent; hide: boolean }): React.JSX.Element {
+  const { event, hide } = props
+  return (
+    <>
+      {event.kind === 'transform' && !event.unsent && hasText(event) && !hide && (
+        <p className="log-instruction dim">you said: {event.rawText}</p>
+      )}
+      {event.kind === 'transform' && event.unsent && (
+        <p className="log-instruction dim">
+          {event.retried
+            ? 'retried after the text it was for was gone; your instruction is kept below'
+            : 'the selection was too long to send; your words are kept below'}
+        </p>
+      )}
+      {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
+      {hasText(event) ? (
+        <TakeWords text={event.finalText} hide={hide} />
+      ) : (
+        <p className="log-text dim">{event.unreadable ? WORDS_LOCKED : WORDS_NOT_KEPT}</p>
+      )}
+    </>
+  )
+}
+
 /** The result line after one retried dictation: the clipboard is
  *  untouched. The paste-last chord is named only while it is armed; a
  *  saved chord that is disarmed (it clashes with another hotkey or no
  *  longer parses) does nothing, so the line points at the log instead. */
-export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean): string {
+export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean, untilQuit = false): string {
   const paste =
     pasteLastBinding && pasteArmed
       ? ` Press ${pasteLastBinding} in any app to paste them there.`
       : ' Click copy on it in the log below.'
-  return `Done: the words are in your log.${paste}`
+  return `Done: the words are in your log${untilQuit ? ' until you quit murmur' : ''}.${paste}`
 }
 
 /**
- * Takes that were recorded but not transcribed (US-068). Retry runs the
+ * Takes that were recorded but not transcribed (US-068), and under Don't
+ * keep, takes whose words reached no app (US-137). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, where paste-last finds a dictation, and the
  * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
@@ -231,7 +401,13 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
  * are deleted, so a take that fails while it is open is kept. Keep them
  * has focus, so a double press never deletes. One question at a time.
  */
-function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }): React.JSX.Element | null {
+function WaitingTakes(props: {
+  retentionDays: number
+  pasteLastBinding: string
+  pasteArmed: boolean
+}): React.JSX.Element | null {
+  const untilQuit = props.retentionDays === KEEP_NO_TEXT
+  const untilQuitWords = untilQuit ? ' until you quit murmur' : ''
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -280,29 +456,31 @@ function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }):
     setConfirming(null)
     setCounted(null)
     const done: Array<{ kind: WaitingTake['kind']; location: string }> = []
-    let failed = 0
+    const failures: string[] = []
     for (const id of ids) {
       setBusy(id)
       const result = await bridge().retryTake(id)
       if (result.ok) done.push({ kind: result.kind, location: result.location })
-      else failed += 1
+      else failures.push(result.failure.kind)
     }
     setBusy(null)
-    if (done.length === 1 && failed === 0) {
+    if (done.length === 1 && failures.length === 0) {
       const { kind, location } = done[0]
       setMessage(
         kind === 'note'
           ? location === 'history'
-            ? 'Transcribed, but the note could not be written to your notes folder or murmur\'s data folder. The words are safe in your log.'
-            : 'Done: the note is filed under the time you spoke it, and it is in your log.'
+            ? `Transcribed, but the note could not be written to your notes folder or murmur's data folder. The words are safe in your log${untilQuitWords}.`
+            : `Done: the note is filed under the time you spoke it, and it is in your log${untilQuitWords}.`
           : kind === 'transform'
-            ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed)
+            ? `Done: your instruction is in the log${untilQuitWords}. The text it was for is gone, so nothing was changed.`
+            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed, untilQuit)
       )
     } else if (done.length > 0) {
-      setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
+      setMessage(
+        `${done.length} delivered to your log${untilQuitWords}${failures.length > 0 ? `, ${failures.length} still waiting` : ''}.`
+      )
     } else {
-      setMessage('Still could not transcribe. The reason is updated below; the audio stays until you retry or discard it.')
+      setMessage(retryFailedMessage(failures))
     }
   }
 
@@ -393,9 +571,7 @@ function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }):
         />
       )}
       {takes.length > 0 && (
-        <p className="dim waiting-intro">
-          Recorded but not transcribed. The audio stays on this computer until you retry or discard it.
-        </p>
+        <p className="dim waiting-intro">{waitingIntro(takes, props.retentionDays)}</p>
       )}
       {/* Always mounted, so screen readers hear a new message. */}
       <p className={message ? 'waiting-message' : 'visually-hidden'} ref={messageRef} tabIndex={-1} role="status">
@@ -454,6 +630,9 @@ export function HomeView(props: {
   // the first-run invitation while it loads.
   const [loaded, setLoaded] = useState(false)
   const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const [openSaid, setOpenSaid] = useState<number | null>(null)
+  const [openReport, setOpenReport] = useState<number | null>(null)
+  const [keepAsk, setKeepAsk] = useState<{ value: number; question: string } | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   // Clear all asks first (US-099): the whole log's count while the
   // question is open, null while it is closed.
@@ -469,6 +648,21 @@ export function HomeView(props: {
   useEffect(() => {
     if (cleared) clearedRef.current?.focus()
   }, [cleared])
+  const applyKeep = (retentionDays: number): void => {
+    setKeepAsk(null)
+    void props
+      .onUpdateSettings({ history: { retentionDays } } as Partial<Settings>)
+      .then(async () => setEvents(await bridge().listHistory()))
+  }
+  const chooseKeep = async (retentionDays: number): Promise<void> => {
+    setKeepAsk(null)
+    // Asked on every change: going from Don't keep to 30 days is longer
+    // for words, and still removes old entries with their numbers.
+    const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
+    const question = shorterKeepQuestion(retentionDays, takes, recordings)
+    if (question === '') applyKeep(retentionDays)
+    else setKeepAsk({ value: retentionDays, question })
+  }
   const askClear = (): void => {
     if (counting.current) return
     if (clearAsk !== null) {
@@ -552,6 +746,14 @@ export function HomeView(props: {
     })
   }, [])
 
+  useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
+
+  const [sealStatus, setSealStatus] = useState<SealStatus | null>(null)
+  const encrypt = props.settings.history.encrypt
+  useEffect(() => {
+    void bridge().getHistorySealStatus().then(setSealStatus)
+  }, [encrypt, cleared, props.settings.history.retentionDays])
+
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
   useEffect(() => {
@@ -570,6 +772,7 @@ export function HomeView(props: {
     setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
   }
 
+  const hide = props.settings.history.hideWords
   const grouped = groupByDay(events)
   // The how-to teaches the first few dictations, then gets out of the
   // way for good (US-086): once five exist it is remembered, so a Clear
@@ -597,7 +800,7 @@ export function HomeView(props: {
         </p>
       )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
+      <WaitingTakes retentionDays={props.settings.history.retentionDays} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>
@@ -642,7 +845,12 @@ export function HomeView(props: {
           )}
         </section>
       )}
-      <LastNoteRow />
+      <LastNoteRow hide={hide} />
+      {loaded && (
+        <section className="panel">
+          <HideWordsRow settings={props.settings} anchor="home-hide-words" onUpdate={props.onUpdateSettings} />
+        </section>
+      )}
       {loaded && grouped.length === 0 && (
         <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
       )}
@@ -663,22 +871,46 @@ export function HomeView(props: {
                     <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
                   )}
                   {event.retried && <span className="mono-inline dim">retried</span>}
-                  <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
-                    {copiedAt === event.at ? 'copied' : 'copy'}
-                  </button>
+                  {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
+                    <span className="mono-inline dim">until you quit</span>
+                  )}
+                  {offersWhatYouSaid(event) && (
+                    <button
+                      className="btn quiet-btn log-said-toggle"
+                      aria-expanded={openSaid === event.at}
+                      aria-controls={`said-${event.at}`}
+                      onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
+                    >
+                      what you said
+                    </button>
+                  )}
+                  {event.kind !== 'transform' && hasText(event) && (
+                    <button
+                      className="btn quiet-btn log-said-toggle"
+                      aria-expanded={openReport === event.at}
+                      aria-controls={`report-${event.at}`}
+                      onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
+                    >
+                      report
+                    </button>
+                  )}
+                  {hasText(event) && (
+                    <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
+                      {copiedAt === event.at ? 'copied' : 'copy'}
+                    </button>
+                  )}
                 </div>
-                {event.kind === 'transform' && !event.unsent && (
-                  <p className="log-instruction dim">you said: {event.rawText}</p>
+                {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
+                {openReport === event.at && (
+                  <ReportTake
+                    id={`report-${event.at}`}
+                    event={event}
+                    settings={props.settings}
+                    hide={hide}
+                    onClose={() => setOpenReport(null)}
+                  />
                 )}
-                {event.kind === 'transform' && event.unsent && (
-                  <p className="log-instruction dim">
-                    {event.retried
-                      ? 'retried after the text it was for was gone; your instruction is kept below'
-                      : 'the selection was too long to send; your words are kept below'}
-                  </p>
-                )}
-                {event.kind === 'transform' && !event.unsent && <p className="micro-label log-original">original</p>}
-                <p className="log-text">{event.finalText}</p>
+                <LogWords event={event} hide={hide} />
               </div>
             ))}
           </div>
@@ -691,18 +923,16 @@ export function HomeView(props: {
           <div className="row">
             <div className="row-text">
               <div className="row-label">Keep history for</div>
-              <div className="row-desc">Older entries are pruned automatically. Everything stays on this machine.</div>
+              <div className="row-desc">{keepLine(props.settings.history.retentionDays)}</div>
             </div>
             <div className="row-control inline">
               <select
                 className="field"
                 value={props.settings.history.retentionDays}
-                onChange={(e) =>
-                  void props.onUpdateSettings({
-                    history: { retentionDays: Number(e.target.value) }
-                  })
-                }
+                onChange={(e) => void chooseKeep(Number(e.target.value))}
               >
+                <option value={KEEP_NO_TEXT}>don't keep</option>
+                <option value={KEEP_24_HOURS}>24 hours</option>
                 <option value={30}>30 days</option>
                 <option value={90}>90 days</option>
                 <option value={365}>a year</option>
@@ -720,6 +950,30 @@ export function HomeView(props: {
               </button>
             </div>
           </div>
+          <div className="row">
+            <div className="row-text">
+              <div className="row-label">Encrypt saved words</div>
+              <div className="row-desc">{sealStatus ? sealLine(sealStatus) : ''}</div>
+            </div>
+            <div className="row-control inline">
+              <Switch
+                checked={encrypt}
+                label="Encrypt saved words"
+                onChange={(next) => void props.onUpdateSettings({ history: { encrypt: next } } as Partial<Settings>)}
+              />
+            </div>
+          </div>
+          {keepAsk !== null && (
+            <AskFirst
+              id="keep-shorter-confirm"
+              question={keepAsk.question}
+              confirm="remove them"
+              keep="keep them"
+              busy={false}
+              onConfirm={() => applyKeep(keepAsk.value)}
+              onKeep={() => setKeepAsk(null)}
+            />
+          )}
           {clearAsk !== null && (
             <AskFirst
               id="clear-all-confirm"
