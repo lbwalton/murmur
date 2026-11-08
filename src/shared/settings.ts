@@ -7,7 +7,7 @@ import {
   DEFAULT_NOTE_PATH_TEMPLATE,
   DEFAULT_TASKS_TEMPLATE
 } from './notes'
-import { type OverlayLook, normalizeOverlayLook } from './overlay-state'
+import { LOOP_LEVEL_DEFAULT, type OverlayLook, normalizeLoopLevel, normalizeOverlayLook } from './overlay-state'
 import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
 import { normalizeZoom } from './zoom'
@@ -19,6 +19,8 @@ export interface Settings {
     /** Chord that pastes the newest history entry. Empty means the
      *  feature is disarmed; it only works once the user captures one. */
     pasteLastBinding: string
+    /** Hold to talk only: tap the hotkey twice to keep the mic open hands-free. */
+    doubleTap: boolean
   }
   provider: {
     baseUrl: string
@@ -71,6 +73,9 @@ export interface Settings {
     style: string
     /** How the pill is drawn (US-061): pill, compact, or bare. */
     look: OverlayLook
+    /** Where the hands-free loop rests after its fade, in percent
+     *  (US-117): 10 to 100 in steps of 5; 100 never fades. */
+    loopLevel: number
   }
   cosmetics: {
     accent: string
@@ -222,7 +227,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkey: {
     mode: 'hold',
     binding: isMacPlatform() ? 'Alt+Space' : 'Ctrl+Space',
-    pasteLastBinding: ''
+    pasteLastBinding: '',
+    doubleTap: true
   },
   provider: {
     baseUrl: 'https://api.groq.com/openai/v1',
@@ -253,7 +259,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   overlay: {
     style: 'bars',
-    look: 'pill'
+    look: 'pill',
+    loopLevel: LOOP_LEVEL_DEFAULT
   },
   cosmetics: {
     accent: 'amber',
@@ -398,7 +405,10 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   if ('windowZoom' in out) out.windowZoom = normalizeZoom(out.windowZoom)
   // A look outside the three would leave the pill undrawn.
   const overlay = out.overlay as Record<string, unknown> | undefined
-  if (overlay) overlay.look = normalizeOverlayLook(overlay.look)
+  if (overlay) {
+    overlay.look = normalizeOverlayLook(overlay.look)
+    overlay.loopLevel = normalizeLoopLevel(overlay.loopLevel)
+  }
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {
     provider.profiles = provider.profiles.filter(

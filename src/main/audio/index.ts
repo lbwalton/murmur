@@ -564,9 +564,20 @@ export function isAudioReady(): boolean {
   return ready
 }
 
+/** Smoke only: hold the capture window's thread for ms, as a stuck
+ *  window would, so whatever it is asked next is answered late (the
+ *  hands-free park's give-up, US-117). No-op outside smoke. */
+export function stallCaptureForSmoke(ms: number): void {
+  if (!isSmoke) return
+  const busy = `{ const until = Date.now() + ${Math.round(ms)}; while (Date.now() < until) {} }`
+  void aliveAudio()
+    ?.webContents.executeJavaScript(busy)
+    .catch(() => undefined)
+}
+
 /** Play a sound cue, honoring the sounds setting. Fire and forget. */
 export function playCue(
-  cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted'
+  cue: 'start' | 'stop' | 'insert' | 'error' | 'nospeech' | 'noteStart' | 'noted' | 'lock'
 ): void {
   void import('../settings').then(({ getSettings }) => {
     const sounds = getSettings().sounds
@@ -575,7 +586,24 @@ export function playCue(
   })
 }
 
+// A locked hands-free take parks before murmur quits (US-117), and its
+// audio lives in this window. This listener runs first (it registers at
+// import), so it asks before destroying the window; the quit that
+// follows the park finds nothing to keep.
+let keepAudioOnQuit: () => boolean = () => false
+export function setKeepAudioOnQuit(keep: () => boolean): void {
+  keepAudioOnQuit = keep
+}
+
+/** Windows ends a session (shutdown, restart, sign out) without a quit
+ *  event; the capture window hears it. No-op elsewhere. */
+export function onAudioSessionEnd(listener: () => void): void {
+  if (process.platform !== 'win32') return
+  aliveAudio()?.on('session-end', listener)
+}
+
 app.on('before-quit', () => {
+  if (keepAudioOnQuit()) return
   audioWindow?.destroy()
   audioWindow = null
 })

@@ -31,6 +31,12 @@ export class HotkeyDispatcher {
     shift: false,
     meta: false
   }
+  // Set when a joining key cut a press on a machine that takes
+  // interrupts: until every bound modifier is up, bound-modifier
+  // keydowns are not presses, so the tail of a shortcut like Ctrl+Alt+C
+  // never reads as the first tap of a double-tap. Releases still reach
+  // the machine, which clears its key-repeat latch on them.
+  private cut = false
 
   constructor(
     private readonly binding: ParsedBinding,
@@ -50,6 +56,15 @@ export class HotkeyDispatcher {
     return MODIFIER_NAMES.some((name) => this.down[name] && !this.binding[name])
   }
 
+  private joined(): void {
+    if (this.machine.interrupt) {
+      this.machine.interrupt()
+      if (MODIFIER_NAMES.some((name) => this.binding[name] && this.down[name])) this.cut = true
+    } else if (this.machine.isActive()) {
+      this.machine.keyUp()
+    }
+  }
+
   keydown(event: KeyEventLike): void {
     if (this.binding.code !== null) {
       if (matchesEvent(this.binding, event)) this.machine.keyDown()
@@ -59,7 +74,7 @@ export class HotkeyDispatcher {
     const modifier = this.codeToModifier.get(event.keycode)
     if (!modifier) {
       // A regular key while armed means the user is typing a shortcut.
-      if (this.machine.isActive()) this.machine.keyUp()
+      this.joined()
       return
     }
     this.down[modifier] = true
@@ -67,8 +82,9 @@ export class HotkeyDispatcher {
     this.down.alt ||= event.altKey
     this.down.shift ||= event.shiftKey
     this.down.meta ||= event.metaKey
+    if (this.cut) return
     if (this.chordExceeds()) {
-      if (this.machine.isActive()) this.machine.keyUp()
+      this.joined()
       return
     }
     if (this.chordEquals()) this.machine.keyDown()
@@ -85,5 +101,8 @@ export class HotkeyDispatcher {
     if (!modifier) return
     this.down[modifier] = false
     if (this.binding[modifier]) this.machine.keyUp()
+    if (this.cut && !MODIFIER_NAMES.some((name) => this.binding[name] && this.down[name])) {
+      this.cut = false
+    }
   }
 }

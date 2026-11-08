@@ -2,6 +2,14 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.17 (2026-11-06)
+
+- Hands-free: tap your hotkey twice and keep talking without holding it; one more tap stops the take and pastes your words. A brush loop around the pill shows the take is locked, and Escape cancels it while keeping the take for Retry on Home. A take also stops on its own after 2 minutes of quiet, at 12 minutes, when your screen locks, or from Stop hands-free in the tray menu; then nothing pastes, and your words wait in history. If your computer sleeps or murmur quits during a take, the take waits on Home for Retry. Turn it off under Settings, Dictation, Double-tap for hands-free; Loop once it settles sets how faint the loop gets.
+- murmur leaves your clipboard alone: Retry, a hands-free take that stops on its own, and Stop hands-free in the tray never put your words on the clipboard, so Cmd+V (Ctrl+V on Windows) keeps pasting what you copied. Press your paste last dictation shortcut to paste the words.
+- Long takes upload on ordinary home connections: murmur now waits as long as a big take needs (a 12 minute take is about 23 MB) instead of giving up after 30 seconds.
+- Quiet takes stay quiet: a hands-free or tap to start take that holds only key clicks, typing, or taps on the desk is now no speech and never leaves your computer. Before, the speech model could turn it into words you never said, often in another language. murmur also drops any stretch a Whisper model scores as silence, on the models that send that score. Takes you hold down work as before.
+- Brain dumps file only the item on every sort connection, decision models included: 0.1.16 trimmed the words around an item only on a chat sort.
+
 ## 0.1.16 (2026-10-27)
 
 - Brain dumps file only the to-do or the idea: when murmur sorts a note, it files just the words that are the task or idea, and the words around them (Oh, and an idea:, I think, honestly) stay in your inbox note with everything else you said. Intro words that say when or what for, like "Tomorrow I need to buy", still sit above their items. murmur still never rewrites a word; the model only points at where each item starts and ends.

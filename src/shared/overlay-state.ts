@@ -12,6 +12,10 @@ export type OverlayPhase =
   /** A short message with no session behind it (a chord pressed before
    *  its setting exists). Shown from rest, lingers, returns to idle. */
   | 'hint'
+  /** A live take thrown away with Escape (US-117): one dry grey scrape,
+   *  never red. Reached only from recording; lingers CANCEL_LINGER_MS,
+   *  then idle, and a new take may start while it lingers. */
+  | 'cancelled'
 
 /** What a session is for: the cursor, a note file, or an edit of the
  *  selection (US-054). Set when recording starts, carried through the
@@ -30,6 +34,20 @@ export function normalizeOverlayLook(value: unknown): OverlayLook {
   return (OVERLAY_LOOKS as readonly unknown[]).includes(value) ? (value as OverlayLook) : 'pill'
 }
 
+/** How strong the hands-free loop rests once it has faded (US-117), as a
+ *  whole percent. 10 is the floor so a locked take never looks like a
+ *  plain hold; 100 never fades. */
+export const LOOP_LEVEL_MIN = 10
+export const LOOP_LEVEL_MAX = 100
+export const LOOP_LEVEL_DEFAULT = 20
+
+/** A loop level the overlay can draw: the default for anything that is
+ *  not a finite number, else the nearest 5, kept within 10..100. */
+export function normalizeLoopLevel(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return LOOP_LEVEL_DEFAULT
+  return Math.min(LOOP_LEVEL_MAX, Math.max(LOOP_LEVEL_MIN, Math.round(value / 5) * 5))
+}
+
 /** The ink waveforms (US-074), drawn with the brush. Each is a
  *  cosmetic in shared/cosmetics.json, unlocked one per belt. */
 export const INK_STYLES = ['dabs', 'flecks', 'rings', 'ribbon'] as const
@@ -38,6 +56,10 @@ export type InkStyle = (typeof INK_STYLES)[number]
 export function isInkStyle(value: unknown): value is InkStyle {
   return (INK_STYLES as readonly unknown[]).includes(value)
 }
+
+/** How long the cancelled phase stays up before the pill rests: the
+ *  scrape is drawn and the pill has faded inside it (US-117). */
+export const CANCEL_LINGER_MS = 900
 
 export interface OverlayState {
   phase: OverlayPhase
@@ -50,6 +72,10 @@ export interface OverlayState {
    *  one worth saying (a selection that could not be read), or where a
    *  note landed on inserted (inbox); null otherwise. */
   hint: string | null
+  /** Hands-free (US-117): murmur holds the mic for this take, so the pill
+   *  closes its loop. Set only while recording; every transition clears
+   *  it, so it never outlives the take that was locked. */
+  locked: boolean
 }
 
 export interface TransitionExtras {
@@ -59,15 +85,23 @@ export interface TransitionExtras {
 
 const ALLOWED: Record<OverlayPhase, readonly OverlayPhase[]> = {
   idle: ['recording', 'hint'],
-  recording: ['processing', 'idle'],
+  recording: ['processing', 'idle', 'cancelled'],
   processing: ['inserted', 'error', 'nospeech', 'idle'],
   inserted: ['idle', 'recording', 'hint'],
   error: ['idle', 'recording', 'hint'],
   nospeech: ['idle', 'recording', 'hint'],
-  hint: ['idle', 'recording']
+  hint: ['idle', 'recording'],
+  cancelled: ['idle', 'recording']
 }
 
-const REST: OverlayState = { phase: 'idle', startedAt: null, wpm: null, mode: 'dictation', hint: null }
+const REST: OverlayState = {
+  phase: 'idle',
+  startedAt: null,
+  wpm: null,
+  mode: 'dictation',
+  hint: null,
+  locked: false
+}
 
 export class OverlayMachine {
   private state: OverlayState = { ...REST }
@@ -95,8 +129,18 @@ export class OverlayMachine {
       startedAt: to === 'recording' ? now() : to === 'processing' ? this.state.startedAt : null,
       wpm: to === 'inserted' ? wpm : null,
       mode,
-      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' || to === 'inserted' ? (extras.hint ?? null) : null
+      hint: to === 'hint' ? (extras.hint ?? '') : to === 'error' || to === 'inserted' ? (extras.hint ?? null) : null,
+      // A new take starts unlocked, and leaving a recording unlocks it.
+      locked: false
     }
+    return this.get()
+  }
+
+  /** Lock or unlock the live take (US-117). Only a recording can be
+   *  locked. Returns the new state, or null when nothing changed. */
+  setLocked(locked: boolean): OverlayState | null {
+    if (this.state.phase !== 'recording' || this.state.locked === locked) return null
+    this.state = { ...this.state, locked }
     return this.get()
   }
 }

@@ -11,6 +11,8 @@ export interface OverlayConfig {
   accent?: string
   /** pill, compact, or bare (US-061); the renderer normalizes it. */
   look?: string
+  /** Where the hands-free loop rests after its fade, in percent. */
+  loopLevel?: number
 }
 
 // The page subscribes once it has mounted, which can be after main's

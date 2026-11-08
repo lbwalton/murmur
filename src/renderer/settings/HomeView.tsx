@@ -85,6 +85,18 @@ function reasonText(take: WaitingTake): string {
   return 'something went wrong'
 }
 
+/** A waiting take's line. A hands-free take parked on sleep, quit, or
+ *  Escape (US-117) was never tried, so it says when it was saved instead. */
+export function waitingLine(take: WaitingTake, platform: 'darwin' | 'win32'): string {
+  const f = take.failure
+  if (f?.kind === 'parked') {
+    if (f.detail === 'quit') return 'saved when murmur quit'
+    if (f.detail === 'cancel') return 'saved when you cancelled it'
+    return `saved when your ${platform === 'darwin' ? 'Mac' : 'PC'} went to sleep`
+  }
+  return `not transcribed: ${reasonText(take)}`
+}
+
 function whenOf(at: number): string {
   const date = new Date(at)
   if (date.toDateString() === new Date().toDateString()) return `today ${timeOf(at)}`
@@ -190,17 +202,29 @@ export function discardedMessage(gone: number, asked: number): string {
   return `Discarded ${gone} of ${asked}. ${recordings(asked - gone)} could not be deleted and ${asked - gone === 1 ? 'is' : 'are'} still listed below.`
 }
 
+/** The result line after one retried dictation: the clipboard is
+ *  untouched. The paste-last chord is named only while it is armed; a
+ *  saved chord that is disarmed (it clashes with another hotkey or no
+ *  longer parses) does nothing, so the line points at the log instead. */
+export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: boolean): string {
+  const paste =
+    pasteLastBinding && pasteArmed
+      ? ` Press ${pasteLastBinding} in any app to paste them there.`
+      : ' Click copy on it in the log below.'
+  return `Done: the words are in your log.${paste}`
+}
+
 /**
  * Takes that were recorded but not transcribed (US-068). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
- * words land in the log, and a dictation also on the clipboard, where
- * paste-last finds it. Discard asks once, then deletes the audio.
+ * words land in the log, where paste-last finds a dictation, and the
+ * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
  * Discard all (US-096) asks in place, with the count, before deleting:
  * the question counts the takes listed when it opened, and only those
  * are deleted, so a take that fails while it is open is kept. Keep them
  * has focus, so a double press never deletes. One question at a time.
  */
-function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | null {
+function WaitingTakes(props: { pasteLastBinding: string; pasteArmed: boolean }): React.JSX.Element | null {
   const [takes, setTakes] = useState<WaitingTake[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -257,9 +281,6 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
       else failed += 1
     }
     setBusy(null)
-    const paste = props.pasteLastBinding
-      ? ` Press ${props.pasteLastBinding} in any app to paste it there.`
-      : ' Paste it wherever it belongs.'
     if (done.length === 1 && failed === 0) {
       const { kind, location } = done[0]
       setMessage(
@@ -269,7 +290,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
             : 'Done: the note is filed under the time you spoke it, and it is in your log.'
           : kind === 'transform'
             ? 'Done: your instruction is in the log. The text it was for is gone, so nothing was changed.'
-            : `Done: the words are in your log and on your clipboard.${paste}`
+            : retriedDictationMessage(props.pasteLastBinding, props.pasteArmed)
       )
     } else if (done.length > 0) {
       setMessage(`${done.length} delivered to your log${failed > 0 ? `, ${failed} still waiting` : ''}.`)
@@ -330,6 +351,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
   }
 
   if (takes.length === 0 && !message) return null
+  const platform = navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32'
 
   return (
     <section className="panel waiting">
@@ -400,7 +422,7 @@ function WaitingTakes(props: { pasteLastBinding: string }): React.JSX.Element | 
                 </button>
               </span>
             </div>
-            <p className="waiting-reason dim">not transcribed: {reasonText(take)}</p>
+            <p className="waiting-reason dim">{waitingLine(take, platform)}</p>
           </div>
         ))}
       </div>
@@ -416,6 +438,9 @@ export function HomeView(props: {
   onUpdatePro: (patch: Partial<Settings['pro']>) => Promise<void>
   /** Opens the Pro section in settings. */
   onSeePro: () => void
+  /** False when the saved paste-last chord is disarmed (main's hotkey
+   *  status), so Home never names a chord that does nothing. */
+  pasteArmed: boolean
 }): React.JSX.Element {
   const [events, setEvents] = useState<SessionEvent[]>([])
   // The empty state waits for the list, so a full history never flashes
@@ -565,7 +590,7 @@ export function HomeView(props: {
         </p>
       )}
       <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} />
+      <WaitingTakes pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
       {events.some(countsTowardStats) && summary && (
         <section className="panel">
           <p className="micro-label">back today</p>

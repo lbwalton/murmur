@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// What ends a hands-free take on its own (US-117), and what murmur says
+// when it does. Kept free of Electron so the rules can be unit tested;
+// handsfree.ts applies them.
+import { MIN_VOICED_MS, SPEECH_RMS_THRESHOLD } from '../shared/speech-gate'
+
+/** The longest locked take: 16 kHz 16-bit mono is 32 KB a second, so
+ *  12 minutes is about 23 MB, under the 25 MB upload limit. */
+export const TAKE_LIMIT_MS = 720_000
+/** Quiet is judged over this much of the newest audio. */
+export const SILENCE_WINDOW_MS = 120_000
+/** Under this much voice in the window is quiet: the speech gate's own
+ *  minimum, so a cough or a key click does not keep the mic open. */
+export const SILENCE_VOICED_MS = MIN_VOICED_MS
+/** A level at or above this is voice: the speech gate's RMS threshold. */
+export const VOICED_LEVEL = SPEECH_RMS_THRESHOLD
+/** One overlay level sample stands for this much audio. */
+export const LEVEL_FRAME_MS = 33
+/** A screen lock waits this long before it stops a take: a closing lid
+ *  locks the screen just before the sleep it brings, and a sleep keeps
+ *  the take for Retry instead of transcribing it into a sleeping Mac. */
+export const LOCK_SCREEN_WAIT_MS = 1_000
+
+/** Why a locked take stopped and was saved without a paste. */
+export type StopReason = 'silence' | 'lock' | 'limit' | 'menu' | 'changed'
+/** Why a locked take was kept for Retry without being transcribed. */
+export type ParkReason = 'sleep' | 'quit'
+/** A parked take, or one cancelled with Escape: an Escape meant for the
+ *  app in front must not lose a long take. */
+export type KeepReason = ParkReason | 'cancel'
+
+const TITLE = 'murmur hands-free'
+const RETRY = 'Your take is saved. Open murmur and press Retry on Home.'
+
+/**
+ * The live levels of one locked take, reduced to when voice was heard.
+ * Only voiced samples are kept, and only for one window, so a 12 minute
+ * take holds at most a window's worth of timestamps.
+ */
+export class SilenceWatch {
+  private voiced: number[] = []
+
+  constructor(private readonly windowMs = SILENCE_WINDOW_MS) {}
+
+  push(level: number, at: number): void {
+    if (level >= VOICED_LEVEL) this.voiced.push(at)
+    this.forget(at)
+  }
+
+  /** Voice heard in the last window, one level frame per voiced sample. */
+  voicedMs(now: number): number {
+    this.forget(now)
+    return this.voiced.length * LEVEL_FRAME_MS
+  }
+
+  /** Locked a whole window, and that window held too little voice. */
+  quiet(now: number, lockedAt: number): boolean {
+    return now - lockedAt >= this.windowMs && this.voicedMs(now) < SILENCE_VOICED_MS
+  }
+
+  private forget(now: number): void {
+    let drop = 0
+    while (drop < this.voiced.length && now - this.voiced[drop] >= this.windowMs) drop += 1
+    if (drop > 0) this.voiced.splice(0, drop)
+  }
+}
+
+const STOPPED: Record<StopReason, string> = {
+  silence: 'Stopped after 2 minutes of quiet. ',
+  lock: 'Stopped when your screen locked. ',
+  limit: 'Stopped at 12 minutes, the longest take. ',
+  menu: '',
+  changed: 'Stopped because the hotkey changed. '
+}
+
+/** The notification for a take that stopped on its own: why, then
+ *  where the words went (nothing was pasted and the clipboard was not
+ *  touched). pasteLastBinding is the raw paste-last setting, '' when
+ *  none is set; pasteArmed is false when that chord is saved but
+ *  disarmed (it clashes with another hotkey or no longer parses), so it
+ *  is never named as the way to the words, since pressing it does
+ *  nothing. */
+export function stopNotice(
+  reason: StopReason,
+  kind: 'dictation' | 'note',
+  pasteLastBinding: string,
+  pasteArmed: boolean
+): { title: string; body: string } {
+  const words =
+    pasteLastBinding && pasteArmed
+      ? `Your words are in history. Press ${pasteLastBinding} to paste them.`
+      : "Your words are in history on murmur's Home."
+  const where = kind === 'note' ? 'Your note is saved.' : words
+  return { title: TITLE, body: `${STOPPED[reason]}${where}` }
+}
+
+/** The notification for a take that stopped on its own but could not
+ *  be transcribed: why, then where it waits. */
+export function retryNotice(reason: StopReason): { title: string; body: string } {
+  return { title: TITLE, body: `${STOPPED[reason]}${RETRY}` }
+}
+
+/** The notification for a take that stopped on its own and was lost
+ *  (a dead capture, a failed write, no Retry save): why, then that
+ *  nothing was kept, so the user is never left waiting on words. */
+export function failedNotice(reason: StopReason): { title: string; body: string } {
+  return { title: TITLE, body: `${STOPPED[reason]}The take could not be saved.` }
+}
+
+/** The notification for a take kept for Retry: why, then where. */
+export function parkNotice(
+  reason: KeepReason,
+  platform: NodeJS.Platform = process.platform
+): { title: string; body: string } {
+  if (reason === 'cancel') return { title: TITLE, body: `Cancelled. ${RETRY}` }
+  const why =
+    reason === 'quit' ? 'murmur quit' : platform === 'win32' ? 'Your PC went to sleep' : 'Your Mac went to sleep'
+  return { title: TITLE, body: `${why}, so your take is saved. Open murmur and press Retry on Home.` }
+}
+
+/** The notification for a take cancelled with Escape whose audio could
+ *  not be kept (a dead capture, a failed write), since Escape promises
+ *  to keep it. A take with no speech in it says nothing. */
+export function cancelFailedNotice(): { title: string; body: string } {
+  return { title: TITLE, body: 'Cancelled. The take could not be saved.' }
+}

@@ -16,7 +16,7 @@ The build checks every link on every page: one that points at a page or a questi
 
 Here in `site/`, inside the murmur repo, decided 2026-09-26. The page reads the app's own `src/renderer/tokens.css`, paints with the app's own brush engine (`src/renderer/brush.ts`, stripped of its types by Node at build time), takes the belt colors from `shared/cosmetics.json`, draws its favicon and preview image with the same kit as the app icons (`scripts/lib/draw.js`), takes the version from `package.json`, and points at the stable release links from US-063. Keeping it in the repo means none of that can drift, and the design and header lints cover it too.
 
-It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework. The docs and comparison pages have no script at all. Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
+It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework. The docs and comparison pages ship no script of their own (Cloudflare adds one to pages that show an email address; see Security). Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
 
 ## Build and preview
 
@@ -55,8 +55,18 @@ Cloudflare keeps the scripts, stylesheets, and font in browsers for four hours w
 
 `site/headers.js` is the one list of security headers: the build writes it into `dist/_headers`, which Pages applies to every response, and the preview server sends the same list.
 
+## Security
+
+- **HTTPS only, forever.** The whole `.app` ending is on the browsers' HSTS preload list with `includeSubDomains` (Chrome, Firefox, Safari and Edge ship it built in; hstspreload.org reports murmurapp.app's preloaded domain as `app`). Browsers refuse plain HTTP for murmurapp.app and every subdomain, and nothing here can change that, so any new subdomain must serve valid HTTPS from its first minute or it will not load at all. `site/headers.js` still sends `includeSubDomains` and `preload`, because scanners grade them.
+- **Headers scanners can read.** Pages adds `Access-Control-Allow-Origin: *` to every response, so `headers.js` also sends `Access-Control-Expose-Headers` naming the security headers. Without it, a scanner that checks the site from its own web page (BrowserTotal) sees none of them and grades them missing (US-118).
+- **security.txt.** The build writes `/.well-known/security.txt` (RFC 9116) from `site/security-txt.js`: security reports go to security@murmurapp.app (LaBroi, 2026-10-31), forwarded by a Cloudflare Email Routing rule like support@. Its Expires date is 364 days after the build, so every deploy renews it; deploy again within 364 days of the last deploy, or it lapses.
+- **Not in the repo:** Cloudflare's Email Address Obfuscation adds a small script (`/cdn-cgi/scripts/.../email-decode.min.js`) to pages that show an email address. It is served from the site's own domain, so the CSP allows it. It can be turned off in the Cloudflare dashboard (the zone's Email Address Obfuscation setting); LaBroi decides.
+- `site/headers.test.js` fails if a security header goes missing, the CSP allows inline or eval code, HSTS loses preload readiness, a header is not exposed, or security.txt changes contact or expiry.
+- The full check: `node ~/.claude/skills/security-hardening/scripts/posture-check.mjs https://murmurapp.app --repo .` (LaBroi's security-hardening skill).
+
 After a deploy:
 
-- `curl -sI https://murmurapp.app/` shows Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.
+- `curl -sI https://murmurapp.app/` shows Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, and Access-Control-Expose-Headers.
+- `curl -s https://murmurapp.app/.well-known/security.txt` shows the Contact line and an Expires date about a year out.
 - `dig +short TXT murmurapp.app` shows the SPF record, and `dig +short TXT _dmarc.murmurapp.app` shows `v=DMARC1; p=reject`.
 - `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` load; the JSON-LD on the home page, a doc, and the comparison passes validator.schema.org; the sitemap is submitted in Google Search Console.
