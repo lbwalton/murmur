@@ -92,7 +92,10 @@ export function ProfileCards(props: {
     if (naming) nameRef.current?.focus()
   }, [naming])
   useEffect(() => {
-    if (renaming) renameRef.current?.select()
+    if (renaming) {
+      renameRef.current?.focus()
+      renameRef.current?.select()
+    }
   }, [renaming])
   useEffect(
     () => () => {

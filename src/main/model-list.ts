@@ -12,6 +12,7 @@ import { type ModelListResult, chatModelIds, httpsUrl } from '../shared/catalog'
 import { getCatalog } from './catalog'
 import { ipc } from './ipc'
 import { appFetch } from './net'
+import { readCapped } from './read-capped'
 import { getApiKey, getApiKeyFor, getPolishApiKey, getSettings } from './settings'
 import { registerSmokeCheck } from './smoke'
 
@@ -65,8 +66,9 @@ export async function listModels(baseUrl: string, key: string | null, now = Date
     }
     if (!response.ok) return { ok: false, detail: `http ${response.status}` }
     if (Number(response.headers.get('content-length') ?? 0) > MAX_LIST_BYTES) return { ok: false, detail: 'the list is too big' }
-    const body = await response.text()
-    const ids = body.length > MAX_LIST_BYTES ? null : chatModelIds(body)
+    const body = await readCapped(response, MAX_LIST_BYTES)
+    if (body === null) return { ok: false, detail: 'the list is too big' }
+    const ids = chatModelIds(body)
     if (!ids) return { ok: false, detail: 'its answer is not a model list' }
     cache.set(id, { ids, at: now })
     return { ok: true, ids }

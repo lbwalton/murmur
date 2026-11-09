@@ -66,6 +66,9 @@ export function ModelCombo(props: {
   const wrapRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const activeRef = useRef<HTMLDivElement>(null)
+  // Which request may still land: a load started for one base URL never
+  // fills the list after the field moved to another.
+  const request = useRef(0)
 
   useEffect(() => {
     if (pending !== null && props.value === pending) setPending(null)
@@ -75,7 +78,11 @@ export function ModelCombo(props: {
     if (!open) setQuery(effective)
   }, [effective, open])
   // A different provider is a different list.
-  useEffect(() => setList(null), [props.source])
+  useEffect(() => {
+    request.current++
+    setList(null)
+    setLoading(false)
+  }, [props.source])
   useEffect(() => activeRef.current?.scrollIntoView({ block: 'nearest' }), [active])
 
   const options = comboOptions(props.suggestions, list, typed ? query : '')
@@ -85,12 +92,17 @@ export function ModelCombo(props: {
     if (open) return
     setOpen(true)
     setActive(-1)
-    if (list === null && !loading) {
+    // A failed read is tried again on the next open (after saving a key,
+    // say); a good one stands until the base URL changes.
+    if ((list === null || !list.ok) && !loading) {
+      const mine = ++request.current
+      const land = (result: ModelListResult): void => {
+        if (mine !== request.current) return
+        setList(result)
+        setLoading(false)
+      }
       setLoading(true)
-      void props
-        .load()
-        .then(setList, () => setList({ ok: false, detail: 'network error' }))
-        .finally(() => setLoading(false))
+      void props.load().then(land, () => land({ ok: false, detail: 'network error' }))
     }
   }
   const close = (): void => {
@@ -139,6 +151,16 @@ export function ModelCombo(props: {
         if (open && typed) commit(query)
         else close()
       }}
+      onKeyDown={(e) => {
+        // Escape closes from the field or from the link below the list.
+        if (e.key === 'Escape' && open) {
+          e.preventDefault()
+          e.stopPropagation()
+          setQuery(effective)
+          close()
+          inputRef.current?.focus()
+        }
+      }}
     >
       <div className="combo-field">
         <input
@@ -175,11 +197,6 @@ export function ModelCombo(props: {
               e.preventDefault()
               if (open && active >= 0 && active < flat.length) commit(flat[active])
               else commit(query)
-            } else if (e.key === 'Escape' && open) {
-              e.preventDefault()
-              e.stopPropagation()
-              setQuery(effective)
-              close()
             }
           }}
         />
@@ -201,7 +218,9 @@ export function ModelCombo(props: {
         </button>
       </div>
       {open && (
-        <div className="combo-pop">
+        // A press anywhere in the list keeps focus in the field, so a
+        // click on a heading or a note never saves a half-typed id.
+        <div className="combo-pop" onMouseDown={(e) => e.preventDefault()}>
           <div className="combo-list" id={listId} role="listbox" aria-label={props.label}>
             {options.suggested.length > 0 && (
               <div role="group" aria-labelledby={`${base}-g1`}>

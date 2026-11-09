@@ -7,7 +7,9 @@
 //
 // Reads every chat provider's model list that needs no key, writes the
 // report, and exits 1 when a suggested model is missing or retiring, 2
-// when the script itself broke, and 0 otherwise.
+// when the script itself broke, 3 when no list could be read at all (an
+// outage says nothing either way, so the open issue stays as it is), and
+// 0 otherwise.
 const { readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { report, suggestionProblems } = require('./lib/model-watch')
@@ -19,6 +21,7 @@ async function main(out) {
   const catalog = JSON.parse(readFileSync(join(__dirname, '..', 'shared', 'provider-catalog.json'), 'utf8'))
   const problems = []
   const skipped = []
+  let read = 0
   for (const provider of catalog.providers) {
     if (!provider.kinds.includes('llm') || (provider.llmModels ?? []).length === 0) continue
     const base = (provider.llmBaseUrl ?? provider.baseUrl).replace(/\/$/, '')
@@ -34,6 +37,7 @@ async function main(out) {
         skipped.push(`${provider.name} (http ${response.status})`)
         continue
       }
+      read++
       problems.push(...suggestionProblems(provider, body))
     } catch (error) {
       skipped.push(`${provider.name} (${error instanceof Error ? error.message : 'network error'})`)
@@ -41,7 +45,8 @@ async function main(out) {
   }
   writeFileSync(out, report(problems, skipped, new Date().toISOString().slice(0, 10)))
   console.log(problems.length > 0 ? `${problems.length} suggested model(s) to update` : 'suggested models all listed')
-  return problems.length > 0 ? 1 : 0
+  if (problems.length > 0) return 1
+  return read === 0 ? 3 : 0
 }
 
 const out = process.argv[2]

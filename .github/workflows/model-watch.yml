@@ -47,10 +47,12 @@ jobs:
           code=$?
           set -e
           if [ "$code" -eq 2 ]; then exit 2; fi
+          # 3: no list could be read (an outage), so leave the issue as it is.
+          echo "unread=$([ "$code" -eq 3 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "failed=$([ "$code" -eq 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       - name: Open, update or close the model-watch issue
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.checks.outputs.unread != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

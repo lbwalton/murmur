@@ -8,7 +8,7 @@ import { dimAround } from './AskFirst'
 class Node {
   parentElement: Node | null = null
   children: Node[] = []
-  attrs = new Set<string>()
+  attrs = new Map<string, string>()
   constructor(
     readonly name: string,
     readonly tag = 'div',
@@ -31,8 +31,11 @@ class Node {
   hasAttribute(a: string): boolean {
     return this.attrs.has(a)
   }
-  setAttribute(a: string): void {
-    this.attrs.add(a)
+  getAttribute(a: string): string | null {
+    return this.attrs.get(a) ?? null
+  }
+  setAttribute(a: string, v: string): void {
+    this.attrs.set(a, v)
   }
   removeAttribute(a: string): void {
     this.attrs.delete(a)
@@ -60,7 +63,7 @@ describe('dimAround', () => {
     expect([cards, label, title, other].some(dim)).toBe(false)
   })
 
-  it('never dims another open question, and leaves what another box dimmed to that box', () => {
+  it('never dims another open question, and keeps the rest dim until both boxes close', () => {
     const first = new Node('first', 'div', ['ask-first'])
     const second = new Node('second', 'div', ['ask-first'])
     const cards = new Node('cards')
@@ -68,9 +71,9 @@ describe('dimAround', () => {
     const undoFirst = dimAround(first as unknown as HTMLElement)
     const undoSecond = dimAround(second as unknown as HTMLElement)
     expect(first.hasAttribute('data-ask-dim') || second.hasAttribute('data-ask-dim')).toBe(false)
-    undoSecond()
-    expect(cards.hasAttribute('data-ask-dim')).toBe(true)
     undoFirst()
+    expect(cards.hasAttribute('data-ask-dim')).toBe(true)
+    undoSecond()
     expect(cards.hasAttribute('data-ask-dim')).toBe(false)
   })
 })

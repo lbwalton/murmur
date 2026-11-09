@@ -9,21 +9,26 @@ import { useEffect, useRef } from 'react'
 
 /** Dims everything in the box's section except the box and the path to
  *  it, and returns the undo. Dimmed parts stay usable; another open
- *  question is never dimmed. */
+ *  question is never dimmed. The mark counts its boxes, so with 2 open,
+ *  closing 1 leaves what the other dimmed dim. */
 export function dimAround(box: HTMLElement): () => void {
   const scope = box.closest('section') ?? box.parentElement
   const dimmed: Element[] = []
   let node: HTMLElement = box
   while (node !== scope && node.parentElement) {
     for (const sibling of Array.from(node.parentElement.children)) {
-      if (sibling === node || sibling.classList.contains('ask-first') || sibling.hasAttribute('data-ask-dim')) continue
-      sibling.setAttribute('data-ask-dim', '')
+      if (sibling === node || sibling.classList.contains('ask-first')) continue
+      sibling.setAttribute('data-ask-dim', String(Number(sibling.getAttribute('data-ask-dim') ?? 0) + 1))
       dimmed.push(sibling)
     }
     node = node.parentElement
   }
   return () => {
-    for (const el of dimmed) el.removeAttribute('data-ask-dim')
+    for (const el of dimmed) {
+      const left = Number(el.getAttribute('data-ask-dim') ?? 1) - 1
+      if (left > 0) el.setAttribute('data-ask-dim', String(left))
+      else el.removeAttribute('data-ask-dim')
+    }
   }
 }
 
