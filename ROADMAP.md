@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/156 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (105/156 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,7 +104,11 @@
 - [x] **US-130** Report this take
 - [x] **US-138** History encrypted on disk
 - [x] **US-140** Warn before sending over plain http
+- [x] **US-148** History settings move into Settings
+- [x] **US-149** Choices you can tell apart
+- [x] **US-152** Clearer cleanup on another provider
 - [x] **US-153** Build tool security alert, November: minimatch
+- [x] **US-154** Provider and keys, rebuilt around profiles
 
 ## Built, awaiting live verification
 
@@ -160,11 +164,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
 - [ ] **US-147** Home with a rail: find any take fast
-- [ ] **US-148** History settings move into Settings
-- [ ] **US-149** Choices you can tell apart
 - [ ] **US-150** Glass over your desktop
 - [ ] **US-151** Look settings for Pro
-- [ ] **US-152** Clearer cleanup on another provider
-- [ ] **US-154** Provider and keys, rebuilt around profiles
 - [ ] **US-155** Every Settings section grouped, with rows in a well
 - [ ] **US-156** The look on every page
