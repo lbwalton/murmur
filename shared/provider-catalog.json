@@ -1,7 +1,7 @@
 {
   "comment": "Single source of truth for provider presets, model rates, and billing nuances. Estimates only; every provider bills you directly and murmur never sees it. Refreshed weekly by .github/workflows/pricing-watch.yml, which re-checks each rate against the vendor's primary source and opens a PR when a number drifts; the app can also fetch this file from the repo at launch (Settings, Price refresh). Rates without a currency are USD.",
   "catalogVersion": 1,
-  "verifiedOn": "2026-09-21",
+  "verifiedOn": "2026-11-09",
   "estimate": {
     "comment": "Cleanup-pass token model shared with analytics: roughly 1.35 tokens per word each way plus a fixed per-session prompt overhead, amortized here as sessionsPer1kWords typical dictation sessions. fallbackWpm seeds the cost preview before any history exists.",
     "tokensPerWord": 1.35,
@@ -117,7 +117,7 @@
       ],
       "baseUrl": "https://api.mistral.ai/v1",
       "keyUrl": "https://console.mistral.ai",
-      "verifiedOn": "2026-09-13",
+      "verifiedOn": "2026-11-09",
       "sources": [
         "https://mistral.ai/pricing/api/",
         "https://docs.mistral.ai/inference/pricing",
@@ -131,7 +131,7 @@
         {
           "id": "voxtral-mini-latest",
           "label": "recommended",
-          "perHourUsd": 0.18
+          "perHourUsd": 0.21
         }
       ],
       "llmModels": [
