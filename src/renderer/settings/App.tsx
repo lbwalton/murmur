@@ -26,7 +26,7 @@ import { TryBox } from './HideWords'
 import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
-import { ConnectionRows, VERDICT_CLASS, testVerdict } from './ConnectionRows'
+import { ConnectionRows, TestVerdict, testVerdict } from './ConnectionRows'
 import { ProfileCards, RunningStrip } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
 import { type KeysKnown, connectionsNow } from '../../shared/profiles'
@@ -892,6 +892,7 @@ export function App(): React.JSX.Element {
                 label="Key"
                 anchor="row-key"
                 block
+                indent
                 keywords="api key token secret password test connection verify"
                 desc={`Encrypted on this computer and sent only to ${providerName}. Test checks it, and the model, with ${providerName}.`}
               >
@@ -908,16 +909,20 @@ export function App(): React.JSX.Element {
                   onAssignLegacy={() => void bridge().assignLegacyKey().then(() => recheckKey())}
                   onRemoveLegacy={() => void bridge().removeLegacyKey().then(setKeyStatus)}
                 />
-                <div className="inline key-test">
-                  <button className="btn" onClick={() => void runTest()} disabled={!keyOk || testing}>
+                <div className="key-line key-line-end">
+                  <button
+                    className="btn btn-test"
+                    aria-label="Test speech connection"
+                    aria-busy={testing && keyOk}
+                    onClick={() => {
+                      if (!testing) void runTest()
+                    }}
+                    disabled={!keyOk}
+                  >
                     Test
                   </button>
-                  {testing && keyOk ? (
-                    <span className="status-dim">testing…</span>
-                  ) : (
-                    speechVerdict && <span className={VERDICT_CLASS[speechVerdict.tone]}>{speechVerdict.message}</span>
-                  )}
                 </div>
+                <TestVerdict testing={testing && keyOk} verdict={speechVerdict} />
               </Row>
             </Group>
 
@@ -1363,7 +1368,7 @@ export function App(): React.JSX.Element {
                   disabled={!settings.recap.enabled}
                   onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
                 />
-                <button className="btn" onClick={() => void bridge().testRecap()}>
+                <button className="btn btn-test" onClick={() => void bridge().testRecap()}>
                   Test
                 </button>
               </div>

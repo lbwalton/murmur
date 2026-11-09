@@ -2523,6 +2523,61 @@
       "passes": false,
       "needs_human": true,
       "notes": "Added 2026-11-08 at LaBroi's request: write it now, design it later. Not started."
+    },
+    {
+      "id": "US-157",
+      "title": "Key rows, Test, asking first, and renaming profiles",
+      "description": "LaBroi's follow-ups from the US-154 live check (2026-11-08), picked on the round 3 boards of the Provider and keys preview on 2026-11-09: the Key row reads as 1 section with its buttons on the right, Test looks like the optional action it is, the ask-first box draws the eye wherever the app asks first, and a profile can be renamed.",
+      "acceptance": [
+        "Every Key row (Speech, Cleanup, Notes sorting, Transform) sets its controls in under the label: a 16 px indent with a thin cream line on its left, so the field, the buttons and the test result read as part of Key",
+        "In those rows the key field grows to fill the space, Save, Remove and Test sit on the right edge, and the test result sits under them on the left, inside the indent",
+        "Every Test button (the 4 connection tests, Daily recap, and Task reminders) is fog glass: a cream fill at 30% strength with a soft top highlight and a blurred backdrop, set 8 px further from the button before it than the other buttons are from each other. Hover lifts it and a disabled Test still reads as disabled. LaBroi asked for 30% so it stands apart from the other buttons (2026-11-09)",
+        "While a connection test runs, a soft sheen crosses its Test button, and only then. The result fades in when it lands. With reduced motion on, neither plays and the result just appears",
+        "The ask-first box, in all 5 places the app asks first (Home Discard all, History Keep shorter and Clear all, Profiles switch and delete), is fog glass with a faint gold tint and a gold edge. It glows gold once as it opens, about 1.5 seconds, then keeps a faint steady glow. With reduced motion on, it appears with the steady glow and nothing moves",
+        "While the box is open, the rest of its section dims to about 40 percent and comes back the moment the box closes, whichever answer is given. The box, its question and its buttons never dim",
+        "The safe answer (keep it, keep them, stay) still has focus when the box opens, Escape still keeps, and the deleting button stays the only red",
+        "Each profile card has Rename beside Delete. Rename turns the card into a name field holding the current name, with Save and Cancel. Enter saves, Escape cancels, Save is off while the name is empty, and a name stops at 40 characters. Focus returns to the card after",
+        "Double-clicking a card renames it the same way without switching to that profile. A single click on another card still switches to it, and Enter or Space on a focused card switches with no wait",
+        "A rename keeps the profile's setup, its keys, and whether it is the active one. Renaming is a Pro-gated main-process action like the other profile actions, and the smoke check proves it refuses without Pro",
+        "No user-facing text names LaBroi. npm run typecheck, npm run test and npm run smoke are green",
+        "Live check on LaBroi's Mac: the Key rows, Test with and without reduced motion, the delete-a-profile question, and renaming by Rename and by double-click"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Picked 2026-11-09 from the round 3 boards (B3-KeyTest, B3-AskRename) on the Provider and keys canvas: indent and a line; fog glass that moves only while testing, clear, at 30% (his change from the board's 7%); fog, 1 glow, the rest dims, gold fog; Rename beside Delete with double-click too."
+    },
+    {
+      "id": "US-158",
+      "title": "Every model the provider offers, in the Model list",
+      "description": "LaBroi asked on 2026-11-08 how a user knows what model id to type, and on 2026-11-09 how the list stays current. He picked every model in the list, plus a link: murmur reads the list from the provider itself, so the only thing we keep up to date is our few suggestions, and a weekly check watches those.",
+      "acceptance": [
+        "The Model field for Cleanup, Transform, and Notes sorting on a chat model is a searchable list (a combobox): typing narrows it, the arrow keys, Enter and Escape work, a screen reader hears the options, and any typed model id can still be saved",
+        "murmur reads the provider's own model list (its /models) when the list first opens, sending the saved key when there is one, and remembers it for a day. The request has a time limit and a size cap and runs in the main process, so the key never reaches the window. A list that fails to load leaves the suggestions in place and says why in 1 line",
+        "Suggested (the catalog's models for that provider) sits on top, and a suggestion the provider no longer lists is left out. Below it is every other text model the provider offers, A to Z. Speech, image, embedding and moderation models stay out wherever the list says what a model does",
+        "A link under the list opens the provider's models page, from a new catalog field, modelsUrl, checked against each vendor's site on the day it is written",
+        "A weekly GitHub check reads every provider's model list that needs no key (OpenRouter's today). When a suggested model is missing or has a retirement date, it opens 1 issue, or updates the open one",
+        "docs/ says how to find a model id and that the list comes from the provider",
+        "npm run typecheck, npm run test and npm run smoke are green",
+        "Live check on LaBroi's Mac: open the Cleanup Model list on OpenRouter, search it, pick a model, and Test it"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Picked 2026-11-09. Checked 2026-11-09: OpenRouter's https://openrouter.ai/api/v1/models answers without a key, 461 models, 442 with text output, and 11 carry an expiration_date. Groq's and OpenAI's lists need a key, so the weekly check skips them and the in-app filter covers them."
+    },
+    {
+      "id": "US-159",
+      "title": "Pro: color the fog",
+      "description": "LaBroi asked on 2026-11-09 that murmur Pro let people change the fog on Test and on the ask-first box to their belt color or any color they want. Written now, designed later.",
+      "acceptance": [
+        "Before any code: a preview with options for where the choice lives (Look, beside the other Pro looks, is the first idea), the colors offered (your belt, the unlocked accents, any color), and how a color that would hide text is handled, and LaBroi picks",
+        "murmur Pro can set the fog color for Test and for the ask-first box, from the picked options; without Pro they stay clear and gold",
+        "Text on a colored fog keeps a 4.5 to 1 contrast at least, whatever color is picked (a black belt's near-black is lifted, not left to vanish)",
+        "Amber stays for live states and red for record, errors and the deleting button, so neither is offered",
+        "Live check on LaBroi's Mac with 2 colors"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-09 at LaBroi's request. Not started; design preview first."
     }
   ]
 }

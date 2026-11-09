@@ -113,6 +113,10 @@ export function Row(props: {
   /** Stacks the control under the text at full width: lists, wide
    *  fields, and rows with more controls than fit beside a label. */
   block?: boolean
+  /** With block: sets the control in under the label on a thin line,
+   *  so a row with several controls reads as 1 setting (the Key rows,
+   *  US-157). */
+  indent?: boolean
   /** Extra words the settings search should match (synonyms a user
    *  might type that the label and description never say). */
   keywords?: string
@@ -120,7 +124,7 @@ export function Row(props: {
 }): React.JSX.Element {
   return (
     <div
-      className={`row ${props.block ? 'row-block' : ''}`}
+      className={`row ${props.block ? 'row-block' : ''} ${props.block && props.indent ? 'row-indent' : ''}`}
       id={props.anchor ?? rowId(props.label)}
       data-keywords={props.keywords}
     >

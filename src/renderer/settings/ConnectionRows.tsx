@@ -92,6 +92,25 @@ export function testVerdict(result: ProviderTestResult, provider: string): { mes
   return { message: `${provider} answered`, tone: 'ok' }
 }
 
+/** A connection test's answer, under the Key row's buttons (US-157):
+ *  testing while it runs, then the verdict, fading in. Always mounted,
+ *  so a screen reader hears each answer. */
+export function TestVerdict(props: {
+  testing: boolean
+  verdict: { message: string; tone: VerdictTone } | null
+}): React.JSX.Element {
+  const shown = props.testing || props.verdict !== null
+  return (
+    <div className={shown ? 'test-verdict' : 'test-verdict visually-hidden'} role="status">
+      {props.testing ? (
+        <span className="status-dim">testing…</span>
+      ) : (
+        props.verdict && <span className={VERDICT_CLASS[props.verdict.tone]}>{props.verdict.message}</span>
+      )}
+    </div>
+  )
+}
+
 export function ConnectionRows(props: {
   value: ConnectionValue
   catalog: ProviderCatalog | null
@@ -167,6 +186,7 @@ export function ConnectionRows(props: {
     }
   }
   const run = async (): Promise<void> => {
+    if (testing) return
     setTesting(true)
     try {
       setTest(await props.api.test())
@@ -272,6 +292,7 @@ export function ConnectionRows(props: {
               label={labels.key}
               anchor={sub('key')}
               block
+              indent
               desc={
                 props.keyStatus.present
                   ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
@@ -280,10 +301,10 @@ export function ConnectionRows(props: {
                     : labels.keyDesc
               }
             >
-              <div className="inline">
+              <div className="key-line">
                 <input
                   type="password"
-                  className="field"
+                  className="field key-field"
                   placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
                   aria-label={aria(labels.key)}
                   value={draft}
@@ -292,35 +313,34 @@ export function ConnectionRows(props: {
                     if (e.key === 'Enter') void save()
                   }}
                 />
-                <button className="btn btn-primary" onClick={() => void save()} disabled={draft.trim() === ''}>
-                  Save
-                </button>
-                {props.keyStatus.present && (
-                  <button
-                    className="btn btn-remove"
-                    aria-label={`Remove ${aria(labels.key)}`}
-                    onClick={() => {
-                      void props.api.clearKey().then(props.onKeyStatus)
-                      setTest(null)
-                    }}
-                  >
-                    Remove
+                <span className="key-btns">
+                  <button className="btn btn-primary" onClick={() => void save()} disabled={draft.trim() === ''}>
+                    Save
                   </button>
-                )}
-                <button
-                  className="btn"
-                  aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
-                  onClick={() => void run()}
-                  disabled={!props.keyStatus.present || testing}
-                >
-                  Test
-                </button>
-                {testing ? (
-                  <span className="status-dim">testing…</span>
-                ) : (
-                  test && verdict && <span className={VERDICT_CLASS[verdict.tone]}>{verdict.message}</span>
-                )}
+                  {props.keyStatus.present && (
+                    <button
+                      className="btn btn-remove"
+                      aria-label={`Remove ${aria(labels.key)}`}
+                      onClick={() => {
+                        void props.api.clearKey().then(props.onKeyStatus)
+                        setTest(null)
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-test"
+                    aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
+                    aria-busy={testing}
+                    onClick={() => void run()}
+                    disabled={!props.keyStatus.present}
+                  >
+                    Test
+                  </button>
+                </span>
               </div>
+              <TestVerdict testing={testing} verdict={test ? verdict : null} />
             </Row>
           )}
         </>

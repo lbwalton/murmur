@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (105/156 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (105/159 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -168,3 +168,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-151** Look settings for Pro
 - [ ] **US-155** Every Settings section grouped, with rows in a well
 - [ ] **US-156** The look on every page
+- [ ] **US-157** Key rows, Test, asking first, and renaming profiles
+- [ ] **US-158** Every model the provider offers, in the Model list
+- [ ] **US-159** Pro: color the fog

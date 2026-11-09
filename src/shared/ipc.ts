@@ -36,6 +36,7 @@ export const IpcChannels = {
   profilesApply: 'profiles:apply',
   profilesResave: 'profiles:resave',
   profilesDelete: 'profiles:delete',
+  profilesRename: 'profiles:rename',
   licenseStatus: 'license:status',
   licenseSet: 'license:set',
   licenseBuy: 'license:buy',

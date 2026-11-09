@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS, type Settings, mergeSettings } from '../../shared/set
 import { CleanupShares } from './CleanupShares'
 import { ConnectionRows, VERDICT_CLASS, presetConnection, testVerdict } from './ConnectionRows'
 import { Row } from './controls'
-import { ProfileCards, RunningStrip } from './ProfileCards'
+import { ProfileCards, RunningStrip, cardClick } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
 
 const catalog = validateCatalog(catalogJson) as ProviderCatalog
@@ -43,7 +43,7 @@ describe('the profile cards', () => {
     expect(html).toContain('Cleanup: <b>same as speech · openai/gpt-oss-120b</b>')
     expect(html).toContain('Cleanup: <b>OpenRouter · openai/gpt-6-luna</b>')
     expect(html.match(/aria-current="true"/g)).toHaveLength(1)
-    expect(html).toMatch(/profile-card-on" aria-current="true">.*Groq speech, Luna cleanup/)
+    expect(html).toMatch(/profile-card-on" aria-current="true"[^>]*>.*Groq speech, Luna cleanup/)
     expect(html).toContain('+ Save this setup as a profile')
   })
 
@@ -52,6 +52,21 @@ describe('the profile cards', () => {
     expect(html.match(/>Delete<\/button>/g)).toHaveLength(2)
     expect(html).toContain('aria-label="Delete profile Groq for everything"')
     expect(html).toContain('aria-label="Delete profile Groq speech, Luna cleanup"')
+  })
+
+  it('put Rename beside Delete on every card, and say a double-click renames (US-157)', () => {
+    const html = cards(withProfiles(luna, 'bbbb2222'))
+    expect(html.match(/>Rename<\/button>/g)).toHaveLength(2)
+    expect(html).toContain('aria-label="Rename profile Groq for everything"')
+    expect(html).toMatch(/aria-label="Rename profile Groq for everything"[^]*?aria-label="Delete profile Groq for everything"/)
+    expect(html.match(/aria-description="Double-click to rename"/g)).toHaveLength(2)
+  })
+
+  it('switch at once from the keyboard, wait out a first click, and leave the second to the rename (US-157)', () => {
+    expect(cardClick(0)).toBe('now')
+    expect(cardClick(1)).toBe('wait')
+    expect(cardClick(2)).toBe('ignore')
+    expect(cardClick(3)).toBe('ignore')
   })
 
   it('show the unsaved bar only once the setup moves away from the active profile', () => {
@@ -123,6 +138,17 @@ describe('the cleanup group', () => {
         }
       />
     )
+
+  it('sets the Key row in under its label, buttons on the right, Test last in fog (US-157)', () => {
+    const own = rows(luna)
+    expect(own).toMatch(/class="row row-block row-indent" id="row-cleanup-connection-key"/)
+    const key = own.slice(own.indexOf('id="row-cleanup-connection-key"'))
+    expect(key).toMatch(/class="field key-field"[^]*class="key-btns"[^]*>Save<[^]*>Remove<[^]*class="btn btn-test"[^]*>Test</)
+    expect(key).toContain('aria-busy="false"')
+    // The answer's place is always there for a screen reader, hidden
+    // until a test runs.
+    expect(key).toContain('class="test-verdict visually-hidden" role="status"')
+  })
 
   it('replaces the separate rows with 1 Model row while it runs on speech', () => {
     const same = rows(DEFAULT_SETTINGS)

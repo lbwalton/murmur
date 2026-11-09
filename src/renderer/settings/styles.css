@@ -518,7 +518,10 @@ body {
 
 /* Asking before a delete (US-096, US-099): the count in words, keep
    them first and focused, and the deleting button in red, the one use
-   of red beside recording and errors (LaBroi, 2026-10-08). */
+   of red beside recording and errors (LaBroi, 2026-10-08). Since US-157
+   (LaBroi's pick, 2026-11-09) the box is gold fog glass that glows once
+   as it opens and then keeps a faint steady glow, and the rest of its
+   section dims while it is open, so the eye knows where to look. */
 .ask-first {
   display: flex;
   flex-wrap: wrap;
@@ -526,11 +529,24 @@ body {
   justify-content: space-between;
   gap: 8px 16px;
   margin: 10px 0 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--panel-edge);
-  border-radius: 8px;
-  background: var(--ink);
-  animation: confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  padding: 12px 14px;
+  border: 1px solid var(--brand-edge);
+  border-radius: 10px;
+  background: var(--fog-ask);
+  box-shadow:
+    inset 0 1px 0 var(--fog-highlight),
+    0 0 16px 0 var(--fog-ask-glow);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation:
+    confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both,
+    ask-glow 1500ms ease-out both;
+}
+
+/* Everything else in the box's section while it asks; AskFirst sets it. */
+[data-ask-dim] {
+  opacity: 0.4;
+  transition: opacity 220ms ease;
 }
 
 .ask-first p {
@@ -577,9 +593,29 @@ body {
   }
 }
 
+@keyframes ask-glow {
+  0% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 0 0 transparent;
+  }
+  35% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 30px 3px var(--fog-ask-glow-peak);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 16px 0 var(--fog-ask-glow);
+  }
+}
+
+/* Reduced motion: no slide and no glow; the box fades in already
+   wearing its steady glow. */
 @media (prefers-reduced-motion: reduce) {
   .ask-first {
-    animation-name: confirm-fade;
+    animation: confirm-fade 160ms ease-out both;
   }
 }
 
@@ -3100,9 +3136,91 @@ textarea.well-multiline {
   color: var(--text-dim);
 }
 
-.key-test {
+/* The Key rows (US-157, LaBroi's pick 2026-11-09): the controls set in
+   under the label on a thin line, the key field growing, the buttons on
+   the right edge, and the test's answer under them. */
+.sec .row-block.row-indent .row-control {
+  width: auto;
+  margin-left: 4px;
+  padding: 2px 0 2px 16px;
+  border-left: 1px solid var(--cream-22);
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
+}
+
+.key-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.key-line-end {
+  justify-content: flex-end;
+}
+
+.key-line .key-field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.key-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Test, the optional action (US-157): fog glass at 30% so it stands
+   apart from the other buttons (LaBroi, 2026-11-09), set a little
+   further off, with a sheen only while a test runs. */
+.btn.btn-test {
+  margin-left: 8px;
+  background: var(--fog-test);
+  border-color: var(--cream-22);
+  box-shadow: inset 0 1px 0 var(--fog-highlight);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.btn.btn-test:hover:not(:disabled) {
+  background: var(--fog-test-hover);
+  border-color: var(--cream-35);
+}
+
+.btn.btn-test[aria-busy='true'] {
+  background-image: linear-gradient(100deg, transparent 20%, var(--fog-test-sheen) 50%, transparent 80%);
+  background-size: 220% 100%;
+  animation: test-sheen 1.1s linear infinite;
+  cursor: progress;
+}
+
+.test-verdict > span {
+  animation: verdict-in 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes test-sheen {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@keyframes verdict-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.btn-test[aria-busy='true'],
+  .test-verdict > span {
+    animation: none;
+  }
 }
 
 /* What runs now (US-152): always true, whatever a profile says. */
@@ -3302,10 +3420,50 @@ textarea.well-multiline {
   flex: 1;
 }
 
-.profile-delete {
-  align-self: flex-end;
+/* Rename and Delete under each card, on the right (US-157). */
+.profile-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
   margin-right: 4px;
   font-size: 12px;
+}
+
+/* A card being renamed: the name becomes a field, Save and Cancel below. */
+.profile-editing {
+  cursor: default;
+  gap: 6px;
+}
+
+.profile-editing:hover {
+  background: var(--panel);
+}
+
+.profile-card-on.profile-editing:hover {
+  background: var(--panel-lift);
+}
+
+.profile-rename-field {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  border-color: var(--brand-edge);
+}
+
+.profile-rename-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-rename-hint {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--text-dim);
 }
 
 .profiles-offer .row {

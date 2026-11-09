@@ -37,6 +37,18 @@
   --brand-glow: rgba(217, 164, 65, 0.8);
   --brand-glow-fade: rgba(217, 164, 65, 0.5);
 
+  /* fog glass (US-157, LaBroi's picks 2026-11-09). Test, the optional
+     action, is a clear cream fog at 30% so it stands apart from the
+     other buttons; the ask-first box is a faint gold fog that glows once
+     as it opens, then keeps a faint steady glow. */
+  --fog-highlight: rgba(255, 255, 255, 0.1);
+  --fog-test: rgba(236, 233, 228, 0.3);
+  --fog-test-hover: rgba(236, 233, 228, 0.38);
+  --fog-test-sheen: rgba(236, 233, 228, 0.4);
+  --fog-ask: rgba(217, 164, 65, 0.11);
+  --fog-ask-glow: rgba(217, 164, 65, 0.16);
+  --fog-ask-glow-peak: rgba(217, 164, 65, 0.42);
+
   /* paint (US-073, the brushwork art direction, LaBroi 2026-10-01).
      Brush marks only, never interface chrome. Smoke is background
      brushwork, rice paper is chalky strokes and paper grounds, ember is

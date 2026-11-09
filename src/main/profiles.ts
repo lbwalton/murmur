@@ -39,7 +39,7 @@ function keyFile(profileId: string): string {
 const validName = (name: unknown): name is string =>
   typeof name === 'string' && name.trim().length > 0 && name.length <= MAX_NAME_CHARS
 
-// The 4 actions, past the Pro gate. The handlers gate them; the smoke
+// The 5 actions, past the Pro gate. The handlers gate them; the smoke
 // round trip calls them directly, since the real signing key never
 // exists in smoke and no test key may ever unlock Pro.
 function saveProfile(name: string): ProfileResult {
@@ -73,6 +73,23 @@ function applyProfile(id: unknown): ProfileResult {
   foldLegacyKey(profile.id, profile.baseUrl)
   return { ok: true, settings: updateSettings(profilePatch(profile)) }
 }
+
+// A new name only (US-157): the setup it holds, its keys, and whether it
+// is the active one all stay as they are.
+function renameProfile(id: unknown, name: string): ProfileResult {
+  const current = getSettings()
+  const found = current.provider.profiles.find((p) => p.id === id)
+  if (!found || !PROFILE_ID.test(found.id)) return { ok: false, reason: 'not-found' }
+  const settings = updateSettings({
+    provider: {
+      profiles: current.provider.profiles.map((p) => (p.id === found.id ? { ...p, name: name.trim().slice(0, 40) } : p))
+    }
+  })
+  return { ok: true, settings }
+}
+
+const renameAction = ({ id, name }: { id: unknown; name: unknown }): ProfileResult =>
+  validName(name) ? renameProfile(id, name) : { ok: false, reason: 'bad-name' }
 
 function deleteProfile(id: unknown): ProfileResult {
   const provider = getSettings().provider
@@ -125,6 +142,13 @@ export function initProfiles(): void {
   ipc.handle('profiles:resave', gated(resaveProfile))
   ipc.handle('profiles:apply', gated(applyProfile))
   ipc.handle('profiles:delete', gated(deleteProfile))
+  ipc.handle(
+    'profiles:rename',
+    gated((arg: unknown) => {
+      const { id, name } = (typeof arg === 'object' && arg !== null ? arg : {}) as { id?: unknown; name?: unknown }
+      return renameAction({ id, name })
+    })
+  )
 
   registerSmokeCheck('profilesGate', () => {
     // Without a license the gate holds: the smoke profile has no Pro
@@ -134,7 +158,8 @@ export function initProfiles(): void {
       gated((name: unknown) => (validName(name) ? saveProfile(name) : { ok: false, reason: 'bad-name' }))(null, 'x'),
       gated(applyProfile)(null, 'abcd1234'),
       gated(resaveProfile)(null, 'abcd1234'),
-      gated(deleteProfile)(null, 'abcd1234')
+      gated(deleteProfile)(null, 'abcd1234'),
+      gated(renameAction)(null, { id: 'abcd1234', name: 'x' })
     ].every((r) => !r.ok && r.reason === 'pro')
     const held = readLicenseStatus().pro === false && getSettings().provider.profiles.length === before.provider.profiles.length
     return refused && held && fullRoundTrip()
@@ -189,9 +214,20 @@ function fullRoundTrip(): boolean {
       oldApplied.settings.provider.activeProfile === old.id
     const resaved = resaveProfile(old.id)
     const whole = resaved.ok && resaved.settings.provider.profiles.some((p) => p.id === old.id && isFullProfile(p))
+    // A rename changes the name and nothing else (US-157).
+    const before = getSettings().provider.profiles.find((p) => p.id === old.id)
+    const renamed = renameAction({ id: old.id, name: '  smoke renamed  ' })
+    const after = renamed.ok ? renamed.settings.provider.profiles.find((p) => p.id === old.id) : undefined
+    const nameOnly =
+      before !== undefined &&
+      after?.name === 'smoke renamed' &&
+      JSON.stringify({ ...after, name: before.name }) === JSON.stringify(before) &&
+      renamed.ok &&
+      renamed.settings.provider.activeProfile === old.id &&
+      [renameAction({ id: old.id, name: '   ' }), renameAction({ id: 'ffff9999', name: 'x' })].every((r) => !r.ok)
     const removed = [deleteProfile(profile.id), deleteProfile(old.id)].every((r) => r.ok)
     const gone = getSettings().provider.profiles.length === start.provider.profiles.length && getSettings().provider.activeProfile === ''
-    return changed && back && speechOnly && whole && removed && gone
+    return changed && back && speechOnly && whole && nameOnly && removed && gone
   } finally {
     ringClearKey('https://smoke-cleanup.example/v1')
     restore()

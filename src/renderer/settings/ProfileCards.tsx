@@ -5,6 +5,8 @@
 // setup moves away from the active profile, a bar offers Save, Save as
 // new, and Undo, and the card says it changed. Profiles are murmur Pro;
 // without Pro the area offers them and the setup below is 1 unnamed one.
+// Rename sits beside Delete, and a double-click on a card renames it too
+// (US-157, LaBroi's pick 2026-11-09).
 import { useEffect, useRef, useState } from 'react'
 import type { SettingsApi } from '../../preload/settings'
 import type { ProfileResult } from '../../main/profiles'
@@ -41,6 +43,18 @@ export function RunningStrip(props: {
   )
 }
 
+/** How long a single click on a card waits to see whether it is the
+ *  start of a double-click, so renaming never switches the setup. */
+export const DOUBLE_CLICK_WAIT_MS = 280
+
+/** What a click on another card does, by its click count: the keyboard
+ *  (0) switches now, a first mouse click waits to see if a second
+ *  follows, and the second belongs to the double-click that renames. */
+export function cardClick(detail: number): 'now' | 'wait' | 'ignore' {
+  if (detail === 0) return 'now'
+  return detail === 1 ? 'wait' : 'ignore'
+}
+
 const REFUSED: Record<'pro' | 'not-found' | 'bad-name', string> = {
   pro: 'Profiles need murmur Pro.',
   'not-found': 'That profile is gone. It may have been deleted in another window.',
@@ -67,11 +81,25 @@ export function ProfileCards(props: {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [switching, setSwitching] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  // The profile being renamed in place, and the name being typed.
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
+  const renameRef = useRef<HTMLInputElement>(null)
+  const clickTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (naming) nameRef.current?.focus()
   }, [naming])
+  useEffect(() => {
+    if (renaming) renameRef.current?.select()
+  }, [renaming])
+  useEffect(
+    () => () => {
+      if (clickTimer.current !== null) window.clearTimeout(clickTimer.current)
+    },
+    []
+  )
 
   if (props.pro === null) return null
   if (!props.pro) {
@@ -120,6 +148,35 @@ export function ProfileCards(props: {
     if (changed) setSwitching(id)
     else void bridge().applyProviderProfile(id).then(handle)
   }
+  const startRename = (id: string): void => {
+    if (clickTimer.current !== null) window.clearTimeout(clickTimer.current)
+    clickTimer.current = null
+    setNewName(profiles.find((p) => p.id === id)?.name ?? '')
+    setRenaming(id)
+  }
+  const endRename = (id: string): void => {
+    setRenaming(null)
+    focusLater(`profile-card-${id}`)
+  }
+  const saveRename = (id: string): void => {
+    const trimmed = newName.trim()
+    if (trimmed === '') return
+    void bridge().renameProviderProfile(id, trimmed).then(handle)
+    endRename(id)
+  }
+  // A mouse click waits a moment, so a double-click renames without
+  // switching first; Enter or Space on a focused card (detail 0) switches
+  // at once.
+  const clickCard = (id: string, detail: number): void => {
+    const plan = cardClick(detail)
+    if (plan === 'now') pick(id)
+    if (plan !== 'wait') return
+    if (clickTimer.current !== null) window.clearTimeout(clickTimer.current)
+    clickTimer.current = window.setTimeout(() => {
+      clickTimer.current = null
+      pick(id)
+    }, DOUBLE_CLICK_WAIT_MS)
+  }
   const saveNamed = (): void => {
     const trimmed = name.trim()
     if (trimmed === '') return
@@ -145,15 +202,59 @@ export function ProfileCards(props: {
           {profiles.map((p) => {
             const on = p.id === active?.id
             const lines = describeProfile(p, catalog)
+            if (renaming === p.id) {
+              return (
+                <div className="profile-slot" key={p.id}>
+                  <div className={on ? 'profile-card profile-card-on profile-editing' : 'profile-card profile-editing'}>
+                    <input
+                      ref={renameRef}
+                      className="field profile-rename-field"
+                      aria-label={`New name for ${p.name}`}
+                      maxLength={40}
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRename(p.id)
+                        if (e.key === 'Escape') {
+                          e.stopPropagation()
+                          endRename(p.id)
+                        }
+                      }}
+                    />
+                    <span className="profile-line">
+                      Speech: <b>{lines.speech}</b>
+                    </span>
+                    <span className="profile-line">
+                      Cleanup: <b>{lines.cleanup ?? 'not saved yet'}</b>
+                    </span>
+                    <div className="profile-rename-actions">
+                      <span className="profile-rename-hint">Enter saves, Escape cancels</span>
+                      <button className="btn" onClick={() => endRename(p.id)}>
+                        Cancel
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        disabled={newName.trim() === ''}
+                        onClick={() => saveRename(p.id)}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
             return (
               <div className="profile-slot" key={p.id}>
                 <button
                   id={`profile-card-${p.id}`}
                   className={on ? 'profile-card profile-card-on' : 'profile-card'}
                   aria-current={on ? 'true' : undefined}
-                  onClick={() => {
-                    if (!on) pick(p.id)
+                  aria-description="Double-click to rename"
+                  onClick={(e) => {
+                    if (!on) clickCard(p.id, e.detail)
                   }}
+                  onDoubleClick={() => startRename(p.id)}
                 >
                   <span className="profile-name">
                     {on && (
@@ -183,16 +284,26 @@ export function ProfileCards(props: {
                     </span>
                   )}
                 </button>
-                <button
-                  id={`profile-delete-${p.id}`}
-                  className="link-btn profile-delete"
-                  aria-label={`Delete profile ${p.name}`}
-                  aria-expanded={deleting === p.id}
-                  aria-controls={deleting === p.id ? 'profile-delete-confirm' : undefined}
-                  onClick={() => setDeleting(deleting === p.id ? null : p.id)}
-                >
-                  Delete
-                </button>
+                <span className="profile-links">
+                  <button
+                    id={`profile-rename-${p.id}`}
+                    className="link-btn"
+                    aria-label={`Rename profile ${p.name}`}
+                    onClick={() => startRename(p.id)}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    id={`profile-delete-${p.id}`}
+                    className="link-btn profile-delete"
+                    aria-label={`Delete profile ${p.name}`}
+                    aria-expanded={deleting === p.id}
+                    aria-controls={deleting === p.id ? 'profile-delete-confirm' : undefined}
+                    onClick={() => setDeleting(deleting === p.id ? null : p.id)}
+                  >
+                    Delete
+                  </button>
+                </span>
               </div>
             )
           })}

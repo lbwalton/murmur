@@ -564,7 +564,7 @@ export function NotesPanel(props: {
                 onCommit={(next) => setReminderTime(index, next)}
               />
             ))}
-            <button className="btn" onClick={() => void testReminder()}>
+            <button className="btn btn-test" onClick={() => void testReminder()}>
               Test
             </button>
           </div>

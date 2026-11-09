@@ -86,6 +86,10 @@ const api = {
   deleteProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:delete', id)
   },
+  /** A new name for a profile; nothing else about it changes (US-157). */
+  renameProviderProfile: (id: string, name: string): Promise<import('../main/profiles').ProfileResult> => {
+    return ipcRenderer.invoke('profiles:rename', { id, name })
+  },
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   /** The inputs murmur's capture window sees, by name, and the one in use (US-110). */
   listMics: (): Promise<import('../shared/mic').MicReport> => ipcRenderer.invoke('mics:list'),
