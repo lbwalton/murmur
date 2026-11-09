@@ -44,6 +44,8 @@ export const IpcChannels = {
   analyticsHeatmap: 'analytics:heatmap',
   analyticsDays: 'analytics:days',
   providerTest: 'provider:test',
+  providerModels: 'provider:models',
+  providerOpenModelsPage: 'provider:openModelsPage',
   permsStatus: 'perms:status',
   permsOpen: 'perms:open',
   hotkeysStatus: 'hotkeys:status',

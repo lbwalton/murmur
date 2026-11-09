@@ -19,6 +19,7 @@
       ],
       "baseUrl": "https://api.groq.com/openai/v1",
       "keyUrl": "https://console.groq.com/keys",
+      "modelsUrl": "https://console.groq.com/docs/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://console.groq.com/docs/models",
@@ -69,6 +70,7 @@
       ],
       "baseUrl": "https://api.openai.com/v1",
       "keyUrl": "https://platform.openai.com/api-keys",
+      "modelsUrl": "https://developers.openai.com/api/docs/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://developers.openai.com/api/docs/pricing"
@@ -117,6 +119,7 @@
       ],
       "baseUrl": "https://api.mistral.ai/v1",
       "keyUrl": "https://console.mistral.ai",
+      "modelsUrl": "https://docs.mistral.ai/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://mistral.ai/pricing/api/",
@@ -154,6 +157,7 @@
       "free": true,
       "baseUrl": "http://localhost:8000/v1",
       "llmBaseUrl": "http://localhost:11434/v1",
+      "modelsUrl": "https://ollama.com/search",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://github.com/speaches-ai/speaches",
@@ -174,6 +178,7 @@
       ],
       "baseUrl": "https://api.deepseek.com",
       "keyUrl": "https://platform.deepseek.com",
+      "modelsUrl": "https://api-docs.deepseek.com/quick_start/pricing",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://api-docs.deepseek.com/quick_start/pricing"
@@ -199,6 +204,7 @@
       ],
       "baseUrl": "https://api.cerebras.ai/v1",
       "keyUrl": "https://cloud.cerebras.ai",
+      "modelsUrl": "https://inference-docs.cerebras.ai/models/overview",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://www.cerebras.ai"
@@ -217,6 +223,7 @@
       ],
       "baseUrl": "https://openrouter.ai/api/v1",
       "keyUrl": "https://openrouter.ai/keys",
+      "modelsUrl": "https://openrouter.ai/models",
       "verifiedOn": "2026-11-08",
       "sources": [
         "https://openrouter.ai/models",

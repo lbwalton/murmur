@@ -4,6 +4,7 @@ import bundled from '../../shared/provider-catalog.json'
 import {
   type ProviderCatalog,
   catalogRefusal,
+  chatModelIds,
   costPer1kWords,
   modelListed,
   providerForBaseUrl,
@@ -154,6 +155,20 @@ describe('catalogRefusal', () => {
     expect(catalogRefusal(refreshed, shipped, today)).toBeNull()
   })
 
+  it('refuses a models page that is not https or that a refresh moved (US-158)', () => {
+    const openrouter = shipped.providers.findIndex((p) => p.id === 'openrouter')
+    expect(
+      catalogRefusal(
+        edited((c) => (c.providers[openrouter].modelsUrl = 'https://openrouter.ai.evil.example/models')),
+        shipped,
+        today
+      )
+    ).toBe('openrouter models page changed')
+    expect(
+      catalogRefusal(edited((c) => (c.providers[openrouter].modelsUrl = 'http://openrouter.ai/models')), shipped, today)
+    ).toBe('openrouter models page is not https')
+  })
+
   it('refuses a refresh that moves where a shipped preset sends keys', () => {
     const moved = edited((c) => {
       c.providers[0].baseUrl = 'https://api.groq.com.evil.example/openai/v1'
@@ -246,5 +261,60 @@ describe('modelListed (US-154)', () => {
     expect(modelListed('<html>nope</html>', 'a')).toBeNull()
     expect(modelListed(JSON.stringify({ data: [] }), 'a')).toBeNull()
     expect(modelListed(JSON.stringify({ error: 'x' }), 'a')).toBeNull()
+  })
+})
+
+describe('the bundled models pages (US-158)', () => {
+  it('give every chat provider an https models page', () => {
+    const catalog = validateCatalog(bundled) as ProviderCatalog
+    for (const p of catalog.providers.filter((p) => p.kinds.includes('llm'))) {
+      expect(p.modelsUrl, p.id).toMatch(/^https:\/\//)
+    }
+  })
+})
+
+describe('chatModelIds (US-158)', () => {
+  it("keeps OpenRouter's text models, A to Z, and drops what cannot write text", () => {
+    const body = JSON.stringify({
+      data: [
+        { id: 'openai/gpt-6-luna', architecture: { input_modalities: ['text'], output_modalities: ['text'] } },
+        { id: 'anthropic/claude-haiku-5.5', architecture: { input_modalities: ['text', 'image'], output_modalities: ['text'] } },
+        { id: 'google/painter', architecture: { input_modalities: ['text'], output_modalities: ['image'] } },
+        { id: 'x/listener', architecture: { input_modalities: ['audio'], output_modalities: ['text'] } },
+        { id: 'openai/gpt-6-luna', architecture: { input_modalities: ['text'], output_modalities: ['text'] } }
+      ]
+    })
+    expect(chatModelIds(body)).toEqual(['anthropic/claude-haiku-5.5', 'openai/gpt-6-luna'])
+  })
+
+  it("sorts OpenRouter's ~latest aliases beside their models, not ahead of everything", () => {
+    const body = JSON.stringify(['openai/gpt-6-luna', '~openai/gpt-latest', 'anthropic/claude-haiku-5.5', '~anthropic/claude-latest'])
+    expect(chatModelIds(body)).toEqual([
+      'anthropic/claude-haiku-5.5',
+      '~anthropic/claude-latest',
+      'openai/gpt-6-luna',
+      '~openai/gpt-latest'
+    ])
+  })
+
+  it("drops Groq's speech, safety and inactive models", () => {
+    const body = JSON.stringify({
+      object: 'list',
+      data: [
+        { id: 'openai/gpt-oss-120b', active: true },
+        { id: 'whisper-large-v3-turbo', active: true },
+        { id: 'meta-llama/llama-guard-4-12b', active: true },
+        { id: 'playai-tts', active: true },
+        { id: 'retired-model', active: false }
+      ]
+    })
+    expect(chatModelIds(body)).toEqual(['openai/gpt-oss-120b'])
+  })
+
+  it('reads a bare list and a models list, and says null for anything else', () => {
+    expect(chatModelIds(JSON.stringify(['llama3.2:latest', 'nomic-embed-text']))).toEqual(['llama3.2:latest'])
+    expect(chatModelIds(JSON.stringify({ models: [{ name: 'qwen3:8b' }] }))).toEqual(['qwen3:8b'])
+    expect(chatModelIds('<html>not json</html>')).toBeNull()
+    expect(chatModelIds(JSON.stringify({ error: 'nope' }))).toBeNull()
   })
 })

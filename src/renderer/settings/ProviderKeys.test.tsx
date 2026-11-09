@@ -107,7 +107,7 @@ describe('the running now strip (US-152)', () => {
 })
 
 describe('the cleanup group', () => {
-  const rows = (s: Settings): string =>
+  const rows = (s: Settings, api: object = {}): string =>
     renderToStaticMarkup(
       <ConnectionRows
         value={s.polish}
@@ -130,7 +130,7 @@ describe('the cleanup group', () => {
         }}
         sharedWith={[s.provider.baseUrl]}
         anchor="row-cleanup-connection"
-        api={{} as never}
+        api={api as never}
         whenSame={
           <Row label="Model" anchor="row-cleanup-model">
             same model
@@ -148,6 +148,13 @@ describe('the cleanup group', () => {
     // The answer's place is always there for a screen reader, hidden
     // until a test runs.
     expect(key).toContain('class="test-verdict visually-hidden" role="status"')
+  })
+
+  it("makes Model a searchable list of the provider's models when it can read them (US-158)", () => {
+    const listed = rows(luna, { models: async () => ({ ok: true, ids: [] }) })
+    const model = listed.slice(listed.indexOf('id="row-cleanup-connection-model"'))
+    expect(model).toMatch(/^[^]*?role="combobox"[^]*?aria-label="Cleanup model"/)
+    expect(rows(luna)).not.toContain('role="combobox"')
   })
 
   it('replaces the separate rows with 1 Model row while it runs on speech', () => {

@@ -142,7 +142,9 @@ export function TransformPanel(props: {
           setKey: (key) => bridge().setKeyFor(transform.connection.baseUrl, key),
           clearKey: () => bridge().clearKeyFor(transform.connection.baseUrl),
           status: () => bridge().getKeyStatusFor(transform.connection.baseUrl),
-          test: () => bridge().testConnectionFor(transform.connection.baseUrl, transform.connection.llmModel)
+          test: () => bridge().testConnectionFor(transform.connection.baseUrl, transform.connection.llmModel),
+          models: () => bridge().listModels('transform'),
+          openModelsPage: (id) => void bridge().openModelsPage(id)
         }}
       />
     </Section>

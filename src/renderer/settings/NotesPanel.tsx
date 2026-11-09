@@ -535,7 +535,9 @@ export function NotesPanel(props: {
             test: () =>
               notes.connection.protocol === 'decide'
                 ? bridge().testDecisionFor(notes.connection.baseUrl)
-                : bridge().testConnectionFor(notes.connection.baseUrl, notes.connection.llmModel)
+                : bridge().testConnectionFor(notes.connection.baseUrl, notes.connection.llmModel),
+            models: () => bridge().listModels('sort'),
+            openModelsPage: (id) => void bridge().openModelsPage(id)
           }}
         />
       )}

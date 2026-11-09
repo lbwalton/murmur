@@ -86,6 +86,13 @@ const api = {
   deleteProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:delete', id)
   },
+  /** Every text model a connection's provider offers, read by main with
+   *  the saved key and kept for a day (US-158). */
+  listModels: (slot: 'cleanup' | 'sort' | 'transform'): Promise<import('../shared/catalog').ModelListResult> => {
+    return ipcRenderer.invoke('provider:models', slot)
+  },
+  /** Opens a catalog provider's own models page in the browser (US-158). */
+  openModelsPage: (providerId: string): Promise<boolean> => ipcRenderer.invoke('provider:openModelsPage', providerId),
   /** A new name for a profile; nothing else about it changes (US-157). */
   renameProviderProfile: (id: string, name: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:rename', { id, name })

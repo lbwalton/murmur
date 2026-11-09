@@ -6,9 +6,16 @@
 import { PlainHttpNote } from './PlainHttpNote'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
-import { type CatalogKind, type CatalogProvider, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
+import {
+  type CatalogKind,
+  type CatalogProvider,
+  type ModelListResult,
+  type ProviderCatalog,
+  providerForBaseUrl
+} from '../../shared/catalog'
 import { providerName } from '../../shared/profiles'
 import { ModelPicker, Row, Segmented, TextSetting } from './controls'
+import { ModelCombo } from './ModelCombo'
 
 export interface ConnectionValue {
   enabled: boolean
@@ -52,6 +59,10 @@ export interface ConnectionKeyApi {
   clearKey: () => Promise<KeyStatus>
   status: () => Promise<KeyStatus>
   test: () => Promise<ProviderTestResult>
+  /** Every text model the provider offers, for the Model list (US-158). */
+  models?: () => Promise<ModelListResult>
+  /** Opens a catalog provider's models page by its id (US-158). */
+  openModelsPage?: (providerId: string) => void
 }
 
 const strip = (u: string): string => u.replace(/\/$/, '')
@@ -266,7 +277,23 @@ export function ConnectionRows(props: {
           </Row>
           <PlainHttpNote url={value.baseUrl} />
           <Row label={labels.model} anchor={sub('model')} desc="Pick a suggestion or type any model id this provider offers.">
-            {matched && matched.llmModels.length > 0 ? (
+            {kind === 'llm' && props.api.models ? (
+              <ModelCombo
+                label={aria(labels.model)}
+                value={value.llmModel}
+                suggestions={matchedKind && matched ? matched.llmModels.map((m) => m.id) : []}
+                placeholder={placeholders.model}
+                providerName={matchedKind && matched ? matched.name : 'this provider'}
+                source={value.baseUrl}
+                load={props.api.models}
+                onOpenPage={
+                  matchedKind && matched?.modelsUrl && props.api.openModelsPage
+                    ? () => props.api.openModelsPage?.(matched.id)
+                    : undefined
+                }
+                onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
+              />
+            ) : matched && matched.llmModels.length > 0 ? (
               <ModelPicker
                 label={aria(labels.model)}
                 value={value.llmModel}

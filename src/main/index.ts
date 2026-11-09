@@ -337,6 +337,8 @@ app.whenReady().then(async () => {
   initInstallDate()
   const { initProfiles } = await import('./profiles')
   initProfiles()
+  const { initModelList } = await import('./model-list')
+  initModelList()
   initTranscribe()
   initFormatter()
   const openWrapup = (): void => {

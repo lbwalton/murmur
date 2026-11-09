@@ -47,6 +47,18 @@ OpenRouter's suggested cleanup models, with rates checked on [openrouter.ai/mode
 
 OpenRouter's rates can move during a day as it routes between hosts; its models page has the current ones. Any other model id OpenRouter offers works too: type it in the Model field.
 
+## How do I find the right model id?
+
+Click the **Model** field under Cleanup (or under Notes sorting or Transform when they have their own provider). It opens a list you can search:
+
+- **suggested** at the top: the models murmur suggests for that provider.
+- **everything that provider offers** below, A to Z: murmur reads this list from the provider itself the first time you open it, and keeps it for a day, so it is always the provider's current list. Models that cannot write text (speech, image, embedding, and safety models) are left out.
+- A link at the bottom, **Prices and details**, opens the provider's own models page in your browser.
+
+Type to narrow the list, use the arrow keys and Enter to pick, or type any model id and press Enter to save it as it is. Some providers (Groq, OpenAI, Mistral, DeepSeek) only share their list with a saved key, so save the key first; until then the list shows the suggested models. OpenRouter shares its list without one (checked 2026-11-09).
+
+A suggested model the provider stops offering drops out of the list on its own. If the model you use is retired, **Test** says the provider does not list it.
+
 Its own provider only takes over once it is fully set up: a base URL, a model, and a saved key. Until then cleanup keeps running on your speech provider, and the running now strip says so, so a half-finished setup never costs you the cleanup pass. Speech always uses the Speech group. Notes sorting and Transform use the cleanup connection too, unless you give them their own under Notes or Transform; the line under the Cleanup group says which.
 
 ## Can I use one provider for speech and a different one for cleanup?
@@ -62,6 +74,7 @@ With murmur Pro, save each setup as a **profile** and switch with 1 click. Each 
 - **Switching:** click a card. Every setting it holds changes at once, and the card gets a gold edge and a check.
 - **Changing a setting:** the change works right away, the active card says changed, and a bar offers **Save** (into this profile), **Save as new** (a new profile, leaving this one as it was), and **Undo** (back to what the profile saved). Clicking another card while a change is unsaved asks first, since switching would lose it.
 - **Saving the setup you have:** the last card, **+ Save this setup as a profile**, asks for a name.
+- **Renaming:** every card has **Rename** under it, beside Delete, or double-click the card. Type the new name and press Enter (Escape cancels). Renaming changes only the name.
 - **Deleting:** every card has Delete under it, and it asks first. Deleting the active profile keeps its setup running, and your keys always stay.
 - **Profiles saved by murmur 0.1.17 or earlier** held speech only. They still apply their speech settings and leave cleanup as it is, and their card says cleanup is not saved yet until you save them again.
 

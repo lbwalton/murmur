@@ -3469,3 +3469,115 @@ textarea.well-multiline {
 .profiles-offer .row {
   padding: 14px 0;
 }
+
+/* The Model list (US-158): a field you can type in, with our suggestions
+   on top and everything the provider offers below, read from it live. */
+.combo {
+  position: relative;
+  width: 280px;
+  max-width: 100%;
+}
+
+.combo-field {
+  position: relative;
+  display: flex;
+}
+
+.combo-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 30px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.combo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.combo-toggle:hover {
+  color: var(--text);
+}
+
+.combo-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  width: max(100%, 340px);
+  max-width: min(440px, 90vw);
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--panel-lift);
+  border: 1px solid var(--cream-14);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px var(--ink-edge);
+}
+
+.combo-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.combo-group {
+  padding: 8px 8px 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--brand);
+}
+
+.combo-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.combo-option:hover {
+  background: var(--cream-06);
+}
+
+.combo-option-active,
+.combo-option-active:hover {
+  background: var(--cream-14);
+}
+
+.combo-tag {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.combo-note {
+  margin: 6px 8px 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.combo-page {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 6px 8px 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cream-06);
+  font-size: 12px;
+  text-align: left;
+}

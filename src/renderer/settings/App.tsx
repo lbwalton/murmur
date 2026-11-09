@@ -963,7 +963,9 @@ export function App(): React.JSX.Element {
                   setKey: (key) => bridge().setPolishKey(key),
                   clearKey: () => bridge().clearPolishKey(),
                   status: () => bridge().getPolishKeyStatus(),
-                  test: () => bridge().testPolishProvider()
+                  test: () => bridge().testPolishProvider(),
+                  models: () => bridge().listModels('cleanup'),
+                  openModelsPage: (id) => void bridge().openModelsPage(id)
                 }}
                 whenSame={
                   <Row
