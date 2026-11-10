@@ -42,6 +42,8 @@ export interface ProviderProfile {
   transform?: ProfileConnection
 }
 
+export type ProfilesView = 'row' | 'arc'
+
 export interface Settings {
   hotkey: {
     mode: 'hold' | 'toggle'
@@ -68,6 +70,9 @@ export interface Settings {
     /** The profile last applied or saved (US-154), so the window can
      *  say when the setup has changed since. Empty when none is. */
     activeProfile: string
+    /** How Profiles shows them (US-160, US-161): the card in use and a
+     *  row of names, or cards on an arc. Anything else reads as row. */
+    profilesView: ProfilesView
   }
   /** Separate cleanup connection, so speech and cleanup can run on
    *  different providers (Groq speech, DeepSeek cleanup). It joins the
@@ -284,7 +289,8 @@ export const DEFAULT_SETTINGS: Settings = {
     // their documented replacement (console.groq.com/docs/deprecations).
     llmModel: 'openai/gpt-oss-120b',
     profiles: [],
-    activeProfile: ''
+    activeProfile: '',
+    profilesView: 'row'
   },
   polish: {
     enabled: false,

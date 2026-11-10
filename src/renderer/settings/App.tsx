@@ -18,7 +18,7 @@ import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { type OverlayLook, normalizeOverlayLook } from '../../shared/overlay-state'
 import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
 import { AnalyticsView } from './AnalyticsView'
-import { ApiKeys } from './ApiKeys'
+import { ApiKeys, pasteHint } from './ApiKeys'
 import { HomeView } from './HomeView'
 import { PageTitle } from './PageTitle'
 import { JourneyView } from './JourneyView'
@@ -904,7 +904,7 @@ export function App(): React.JSX.Element {
                 <ApiKeys
                   providerName={sttProvider?.name ?? 'Custom'}
                   keyUrl={sttProvider?.keyUrl?.replace('https://', '') ?? null}
-                  placeholder={sttProvider?.id === 'groq' ? 'gsk_…' : `paste a ${sttProvider?.name ?? ''} key`}
+                  placeholder={sttProvider?.id === 'groq' ? 'gsk_…' : sttProvider ? pasteHint(sttProvider.name) : 'paste your key'}
                   active={keyStatus.active}
                   others={[]}
                   legacy={keyStatus.legacy}

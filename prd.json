@@ -2542,9 +2542,9 @@
         "No user-facing text names LaBroi. npm run typecheck, npm run test and npm run smoke are green",
         "Live check on LaBroi's Mac: the Key rows, Test with and without reduced motion, the delete-a-profile question, and renaming by Rename and by double-click"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Picked 2026-11-09 from the round 3 boards (B3-KeyTest, B3-AskRename) on the Provider and keys canvas: indent and a line; fog glass that moves only while testing, clear, at 30% (his change from the board's 7%); fog, 1 glow, the rest dims, gold fog; Rename beside Delete with double-click too. Live check 2026-11-10 on 26ec1e5: steps 1 and 4 to 8 pass; step 2 failed (no sheen). Root cause: .btn.btn-test:hover:not(:disabled) (specificity 0,4,0) used the background shorthand and cleared the busy rule's background-image (0,3,0); the pointer is always over the button when pressed. Fix: hover sets background-color only; one pass is 900 ms and a pressed Test holds its answer for one full pass (afterOnePass, skipped under reduced motion). Guarded by ProviderKeys.test.tsx (Test sheen). Re-check steps 2 and 3 pending."
+      "notes": "Picked 2026-11-09 from the round 3 boards (B3-KeyTest, B3-AskRename) on the Provider and keys canvas: indent and a line; fog glass that moves only while testing, clear, at 30% (his change from the board's 7%); fog, 1 glow, the rest dims, gold fog; Rename beside Delete with double-click too. Live check 2026-11-10 on 26ec1e5: steps 1 and 4 to 8 pass; step 2 failed (no sheen). Root cause: .btn.btn-test:hover:not(:disabled) (specificity 0,4,0) used the background shorthand and cleared the busy rule's background-image (0,3,0); the pointer is always over the button when pressed. Fix: hover sets background-color only; one pass is 900 ms and a pressed Test holds its answer for one full pass (afterOnePass, skipped under reduced motion). Guarded by ProviderKeys.test.tsx (Test sheen). Re-check steps 2 and 3 pending. Re-check 2026-11-10 on the notarized 83e3683 build: LaBroi reports every step passes, so all 8 live steps pass (criterion 12). How each criterion was verified: 1 and 2 by ProviderKeys.test.tsx (the Speech and cleanup groups) and his step 1; 3 and 4 by ProviderKeys.test.tsx (Test sheen: hover sets only the color, the 900 ms pass, the held answer, reduced motion lands at once) and his steps 2 and 3; 5 to 7 by AskFirst.test.ts (dimAround counts boxes, safe answer focused, Escape keeps) and his steps 7 and 8; 8 and 9 by ProviderKeys.test.tsx (the profile cards: Rename, Enter, Escape, 40 characters, double-click renames without switching) and his steps 4 to 6; 10 by the profilesGate smoke check, which refuses renameAction without Pro and leaves the profiles unchanged; 11 by a grep of the user-facing strings for his name, and typecheck, 99 test files (1425 tests) and smoke ok:true on 83e3683."
     },
     {
       "id": "US-158",
@@ -2560,9 +2560,9 @@
         "npm run typecheck, npm run test and npm run smoke are green",
         "Live check on LaBroi's Mac: open the Cleanup Model list on OpenRouter, search it, pick a model, and Test it"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Picked 2026-11-09. Checked 2026-11-09: OpenRouter's https://openrouter.ai/api/v1/models answers without a key, 461 models, 442 with text output, and 11 carry an expiration_date. Groq's and OpenAI's lists need a key, so the weekly check skips them and the in-app filter covers them. Live check 2026-11-10 on 26ec1e5: step 1 passes; step 2 blacked out Settings on Enter. Log: Uncaught TypeError: destroy_ is not a function. Root cause, proven in Electron 44.9.3 (Chrome 152): scrollIntoView() returns a Promise, and the expression-bodied effect handed it to React as a cleanup. Fix: block body; src/renderer/effects.test.ts fails on any expression-bodied effect. Reproduced before and after with the new MURMUR_SETTINGS_KEYS capture step (Down, Down, Return): old build empty window, fixed build keeps the window and saves the pick. Re-check steps 2 to 4 pending."
+      "notes": "Picked 2026-11-09. Checked 2026-11-09: OpenRouter's https://openrouter.ai/api/v1/models answers without a key, 461 models, 442 with text output, and 11 carry an expiration_date. Groq's and OpenAI's lists need a key, so the weekly check skips them and the in-app filter covers them. Live check 2026-11-10 on 26ec1e5: step 1 passes; step 2 blacked out Settings on Enter. Log: Uncaught TypeError: destroy_ is not a function. Root cause, proven in Electron 44.9.3 (Chrome 152): scrollIntoView() returns a Promise, and the expression-bodied effect handed it to React as a cleanup. Fix: block body; src/renderer/effects.test.ts fails on any expression-bodied effect. Reproduced before and after with the new MURMUR_SETTINGS_KEYS capture step (Down, Down, Return): old build empty window, fixed build keeps the window and saves the pick. Re-check steps 2 to 4 pending. Re-check 2026-11-10 on the notarized 83e3683 build: LaBroi reports every step passes (open, search haiku, arrow keys and Enter keep the window, Test names OpenRouter and the model, the Prices link opens openrouter.ai/models), so criterion 8 passes. How each criterion was verified: 1 by ModelCombo.test.tsx (typing narrows, arrows, Enter, Escape, listbox roles, a typed id saves) and effects.test.ts (no expression-bodied effect can hand React a Promise again); 2 by the modelList smoke check and read-capped.test.ts (time limit, byte cap, a failed read keeps the suggestions and retries on the next open); 3 by ModelCombo.test.tsx (comboOptions: suggestions on top, unlisted ones dropped, non-text models out, A to Z); 4 by catalog.test.ts (every chat provider has an https models page, a refresh cannot move it); 5 by scripts/lib/model-watch.test.js and .github/workflows/model-watch.yml (1 issue, updated, an outage exits 3 and never closes it); 6 by docs/providers.md (How do I find the right model id?); 7 by typecheck, tests and smoke ok:true on 83e3683."
     },
     {
       "id": "US-159",
@@ -2578,6 +2578,67 @@
       "passes": false,
       "needs_human": true,
       "notes": "Added 2026-11-09 at LaBroi's request. Not started; design preview first."
+    },
+    {
+      "id": "US-160",
+      "title": "Profiles stay small: the card in use, then 1 row of names",
+      "description": "LaBroi asked on 2026-11-10 how Profiles stays small when there are many, since a card per profile takes over the section. From round 4 of the Provider and keys preview (B4-Profiles) he picked the profile in use as its card, then 1 row of names, judged at 4 profiles. His other asks from the same message ride along: see every card at once and fold back to the one in use, and add a new profile at any point.",
+      "acceptance": [
+        "With Pro, Profiles shows the profile in use as 1 card (its name, an in use tag, what runs speech and cleanup, changed when it differs, and Rename and Delete under it), then 1 row of names: 1 chip per saved profile in saved order, the one in use with a check and a gold edge, and + New at the end",
+        "The section is the same height at 2 profiles or 20: when the names do not fit, the row scrolls sideways and fades at the edge that has more, and only then",
+        "Clicking a chip switches to that profile at once, asking first when the profile in use has unsaved changes, exactly as a card click does today. The card then shows the new profile",
+        "The row is 1 Tab stop that lands on the chip in use; the arrow keys, Home and End move between chips without switching, because switching changes the whole setup, and Enter or Space switches. A screen reader hears each name and which one is in use",
+        "+ New asks for a name in place, the way + Save this setup as a profile does today: Enter saves, Escape cancels, a name stops at 40 characters",
+        "A Show all link at the end of the row opens every profile as a card, with Rename and Delete under each (the US-157 cards, double-click renames too), and Fold away brings back the card in use and the row. Focus stays on the link",
+        "Rename, Delete, the unsaved bar (Save, Save as new, Undo), the ask-first boxes and the old speech-only note all keep working on the card in use",
+        "Reduced motion: nothing slides; the card and the row just change",
+        "Tests cover the row order, the in-use chip, the 1 Tab stop, the switch decision (switch at once, ask first over unsaved changes, nothing for the one in use), the keys moving without switching, the wheel, Show all, and the overflow fade; a driven window (real key presses and clicks on the real component and styles) covers switching from a chip and by Enter, Show all and Fold away, and + New. Profiles stay Pro: the smoke profilesGate check still refuses every action without Pro",
+        "docs/providers.md says how to switch from the row and where Rename and Delete live. No user-facing text names LaBroi. npm run typecheck, npm run test and npm run smoke are green",
+        "Live check on LaBroi's Mac with 4 profiles: switch from the row by mouse and by keyboard, add one with + New, open Show all and fold it away"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Picked 2026-11-10 on the B4-Profiles board (canvas XVas489X2VdqzogXnW9ekX): layout \"The one in use, then 1 row of names\", at 4 profiles. The board marked the row a radio group; built as a toolbar instead (arrows move, Enter switches) so moving through names never switches the whole setup. Found while driving it: + New scrolled out of reach with many names (moved outside the scrolling row) and a vertical wheel could not scroll the row (now it does, and gives the wheel back at the ends); focus after Show all was handed over on a timer and missed (now after the commit). Built 2026-11-10 (with US-160 to US-162 in 1 commit); typecheck, 99 test files (1452 tests), smoke ok:true and the design lint are green. Driven in a real Electron window on the real component and styles (scratchpad us160/drive: key presses, clicks, shots, reduced motion and zoom emulated). Review gate: 11 findings (arc buttons clipped at narrow widths and 300% zoom, the acceptance asking for tests that were not there, arc reopening off the profile in use, focus landing on a dead card or the body in the arc, stuck in Arc at 1 profile, the Tab stop not on the name in use, a rename surviving a switch, dots as Tab stops, a key row naming no provider, missing HANDOFF steps, a stale focus request) plus nits; all fixed and re-driven. Awaiting LaBroi's live check."
+    },
+    {
+      "id": "US-161",
+      "title": "Profiles as cards on an arc, a view you can pick",
+      "description": "LaBroi wants the carousel from his 21st.dev reference as a choice: the same profiles as cards on a curve, the one in front large. He asked on 2026-11-10 whether it should be Pro or unlocked. Profiles are already murmur Pro, so the arc comes with them and needs no unlock of its own; belts stay for looks earned by practice, and a belt lock on part of something bought would ask a paying user to earn it again.",
+      "acceptance": [
+        "A View choice in the Profiles header, Row (the default) or Arc, saved with the settings and kept across restarts. Any stored value other than arc shows the row",
+        "Arc shows every profile as a card on a curve, plus a + card last. The front card is full size; the others tilt back, shrink and dim, about 3 in sight. It opens with the profile in use in front",
+        "Turning never switches the setup: the arrows beside the dots, a click on a side card, a click on a dot, and the left and right arrow keys while the carousel has focus all turn it. A count reads like 02 / 05. Dots are 1 per card, the one in use gold",
+        "The front card shows Rename and Delete under it, and Use this profile when it is not the one in use; Enter on the carousel uses it too, and switching asks first when the profile in use has unsaved changes. The card in use says in use. The + card in front asks for a name in place",
+        "No autoplay. A turn eases into place in about 300 ms with no overshoot; reduced motion moves the cards with no animation",
+        "A screen reader hears a carousel of profiles, the front card's name with its place (2 of 5) when it turns, and each dot's profile name; cards out of front are hidden from it",
+        "It fits the narrowest Settings window: the cards scale down, nothing scrolls the page sideways",
+        "It comes with Pro like the rest of Profiles and has no separate unlock (recommended to LaBroi 2026-11-10; change if he picks otherwise). Without Pro the Profiles offer is unchanged",
+        "Tests cover the View setting (row by default, kept across a restart, a value of the wrong kind dropped, an unknown one read as row), the choice staying while Arc is picked, the turn keys, count and dots, the front card's Use this profile, Rename and Delete, and reduced motion; a driven window covers turning without switching, Enter and Use this profile, the + card, and the fit at 200 and 300 percent zoom",
+        "docs/providers.md answers How do I see my profiles as a carousel? No user-facing text names LaBroi. npm run typecheck, npm run test and npm run smoke are green",
+        "Live check on LaBroi's Mac: pick Arc, turn with the mouse and the keys, use a profile from the front, restart and find Arc still picked, then pick Row again"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Asked 2026-11-10 with his US-160 pick: \"the user should get the option to choose cards on an arc carousel.\" Reference: the 21st.dev Circular Carousel screenshot he shared; built fresh from the B4-Profiles board, no outside code. Found while driving it: the cards beside the front were half see-through, so the card behind showed its words through them (now solid and dimmed). Not from this story: at 300% zoom the Cleanup Base URL field (wide-field) still runs past the window; left for US-155. Built 2026-11-10 (with US-160 to US-162 in 1 commit); typecheck, 99 test files (1452 tests), smoke ok:true and the design lint are green. Driven in a real Electron window on the real component and styles (scratchpad us160/drive: key presses, clicks, shots, reduced motion and zoom emulated). Review gate: 11 findings (arc buttons clipped at narrow widths and 300% zoom, the acceptance asking for tests that were not there, arc reopening off the profile in use, focus landing on a dead card or the body in the arc, stuck in Arc at 1 profile, the Tab stop not on the name in use, a rename surviving a switch, dots as Tab stops, a key row naming no provider, missing HANDOFF steps, a stale focus request) plus nits; all fixed and re-driven. Awaiting LaBroi's live check."
+    },
+    {
+      "id": "US-162",
+      "title": "Every saved key looks like the speech key",
+      "description": "LaBroi asked on 2026-11-10 whether his OpenRouter cleanup key was stored anywhere, because Cleanup showed it only as a line of text while Speech shows the key as a row. It is in the key ring, listed under Saved keys. He picked The same as speech on round 4 of the Provider and keys preview.",
+      "acceptance": [
+        "Once a key is saved, the Key row of Cleanup, and of Notes sorting and Transform when they run on their own provider, shows the row Speech uses: the provider's name, the key's last characters masked, in use, Replace and Remove, with Test under it on the right",
+        "Before a key is saved, the row holds the key field with Save, and a line saying where to get a key (the catalog's key page) and that it stays encrypted and goes only to that provider",
+        "Replace opens the field in place with Save and Cancel: Enter saves, Escape cancels. Remove clears the key and the last test result",
+        "The row's description reads like Speech's, naming the provider: Encrypted on this computer and sent only to OpenRouter. Test checks it, and the model, with OpenRouter",
+        "It is the same saved key Saved keys lists by base URL; replacing or removing it in either place shows in both at once",
+        "The US-157 indent and line, the fog Test with its sheen, and the stale-result guard all stay",
+        "A connection that shares the speech provider still says shared and uses the speech key",
+        "Tests cover the saved row, the empty row, the description naming the provider, a missing base URL, a pasted key that did not land staying in the field, and a or an before the provider; a driven window covers Replace, Escape and Remove. No user-facing text names LaBroi. npm run typecheck, npm run test and npm run smoke are green",
+        "Live check on LaBroi's Mac: Cleanup on OpenRouter shows the OpenRouter key row like Speech's, Test still answers, and Saved keys lists the same key"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Picked 2026-11-10 on the B4-Profiles board: \"The same as speech\". Reuses the ApiKeys well row from Speech. The key row wraps its buttons to their own line in a narrow window or at a high zoom (Speech, Cleanup and Saved keys alike). This replaces US-157 criterion 2's key field with buttons on the right, by LaBroi's pick. Built 2026-11-10 (with US-160 to US-162 in 1 commit); typecheck, 99 test files (1452 tests), smoke ok:true and the design lint are green. Driven in a real Electron window on the real component and styles (scratchpad us160/drive: key presses, clicks, shots, reduced motion and zoom emulated). Review gate: 11 findings (arc buttons clipped at narrow widths and 300% zoom, the acceptance asking for tests that were not there, arc reopening off the profile in use, focus landing on a dead card or the body in the arc, stuck in Arc at 1 profile, the Tab stop not on the name in use, a rename surviving a switch, dots as Tab stops, a key row naming no provider, missing HANDOFF steps, a stale focus request) plus nits; all fixed and re-driven. Awaiting LaBroi's live check."
     }
   ]
 }

@@ -15,7 +15,10 @@ import {
 } from '../../shared/catalog'
 import { providerName } from '../../shared/profiles'
 import { ModelPicker, Row, Segmented, TextSetting } from './controls'
+import { ApiKeys, pasteHint } from './ApiKeys'
 import { ModelCombo } from './ModelCombo'
+
+const NO_LEGACY = { present: false, masked: null }
 
 export interface ConnectionValue {
   enabled: boolean
@@ -141,6 +144,14 @@ export async function afterOnePass<T>(work: Promise<T>, reduced = prefersReduced
   return result
 }
 
+/** Whether a pasted key was stored: it needs a base URL to file under,
+ *  and a stale legacy key can make present read true without this save
+ *  having gone anywhere (re-gate finding), so both must hold. When not,
+ *  the row keeps what was pasted (US-162). */
+export function keyLanded(baseUrl: string, status: KeyStatus): boolean {
+  return baseUrl !== '' && status.present
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
@@ -165,7 +176,6 @@ export function ConnectionRows(props: {
   whenSame?: React.ReactNode
 }): React.JSX.Element {
   const { value, catalog, labels } = props
-  const [draft, setDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
   // Each test carries a number; anything that makes a verdict stale (a
@@ -210,25 +220,21 @@ export function ConnectionRows(props: {
 
   const shared =
     value.baseUrl !== '' && props.sharedWith.some((u) => u !== '' && strip(u) === strip(value.baseUrl))
-  const verdict = test ? testVerdict(test, providerName(catalog, value.baseUrl)) : null
+  const owner = providerName(catalog, value.baseUrl)
+  const verdict = test ? testVerdict(test, owner) : null
   // Each row's id hangs off the slot's anchor, so 2 slots with the same
   // short labels never share an id (Key under Speech and under Cleanup).
   const sub = (part: string): string | undefined => (props.anchor ? `${props.anchor}-${part}` : undefined)
   const aria = (label: string): string => (labels.ariaName ? `${labels.ariaName} ${label.toLowerCase()}` : label)
 
-  const save = async (): Promise<void> => {
-    if (draft.trim().length === 0) return
-    const status = await props.api.setKey(draft.trim())
+  // The key row is Speech's row (US-162). A save that could not land
+  // throws, so the row keeps what was pasted: wiping it would silently
+  // discard it.
+  const saveKey = async (key: string): Promise<void> => {
+    const status = await props.api.setKey(key)
     props.onKeyStatus(status)
-    // Keep the typed key when the save could not land (no base URL
-    // yet): wiping it would silently discard what the user pasted.
-    // The base URL is the landing condition; a stale legacy key can
-    // make present read true without this save having gone anywhere
-    // (re-gate finding).
-    if (value.baseUrl !== '' && status.present) {
-      setDraft('')
-      forget()
-    }
+    if (!keyLanded(value.baseUrl, status)) throw new Error('key not stored')
+    forget()
   }
   const run = async (): Promise<void> => {
     if (testing) return
@@ -357,51 +363,40 @@ export function ConnectionRows(props: {
               block
               indent
               desc={
-                props.keyStatus.present
-                  ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
-                  : value.baseUrl === ''
-                    ? 'Pick a preset or base URL first; the key files under it.'
+                value.baseUrl === ''
+                  ? 'Pick a preset or base URL first; the key files under it.'
+                  : props.keyStatus.present
+                    ? `Encrypted on this computer and sent only to ${owner}. Test checks it, and the model, with ${owner}.`
                     : labels.keyDesc
               }
             >
-              <div className="key-line">
-                <input
-                  type="password"
-                  className="field key-field"
-                  placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
-                  aria-label={aria(labels.key)}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void save()
-                  }}
-                />
-                <span className="key-btns">
-                  <button className="btn btn-primary" onClick={() => void save()} disabled={draft.trim() === ''}>
-                    Save
-                  </button>
-                  {props.keyStatus.present && (
-                    <button
-                      className="btn btn-remove"
-                      aria-label={`Remove ${aria(labels.key)}`}
-                      onClick={() => {
-                        void props.api.clearKey().then(props.onKeyStatus)
-                        forget()
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-test"
-                    aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
-                    aria-busy={testing}
-                    onClick={() => void run()}
-                    disabled={!props.keyStatus.present}
-                  >
-                    Test
-                  </button>
-                </span>
+              <ApiKeys
+                providerName={owner}
+                name={aria(labels.key)}
+                keyUrl={matched?.keyUrl?.replace('https://', '') ?? null}
+                placeholder={matched ? pasteHint(matched.name) : 'key…'}
+                active={props.keyStatus}
+                others={[]}
+                legacy={NO_LEGACY}
+                onSave={saveKey}
+                onRemoveActive={() => {
+                  void props.api.clearKey().then(props.onKeyStatus)
+                  forget()
+                }}
+                onRemoveOther={() => undefined}
+                onAssignLegacy={() => undefined}
+                onRemoveLegacy={() => undefined}
+              />
+              <div className="key-line key-line-end">
+                <button
+                  className="btn btn-test"
+                  aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
+                  aria-busy={testing}
+                  onClick={() => void run()}
+                  disabled={!props.keyStatus.present}
+                >
+                  Test
+                </button>
               </div>
               <TestVerdict testing={testing} verdict={test ? verdict : null} />
             </Row>

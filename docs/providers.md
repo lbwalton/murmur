@@ -33,7 +33,7 @@ Give cleanup its own provider. Groq can transcribe while OpenRouter, DeepSeek, C
 1. Open Settings, **Provider and keys**, and find the **Cleanup** group.
 2. Set **Runs on** to **Its own provider**.
 3. Pick **OpenRouter** as the Provider. It fills in `https://openrouter.ai/api/v1` and its suggested model, `openai/gpt-6-luna`. Picking any provider puts in its own suggested model, or leaves the model empty when it has none, so a model from another provider never stays behind.
-4. Paste your OpenRouter key (from [openrouter.ai/keys](https://openrouter.ai/keys)) in the Key row and press Save.
+4. Paste your OpenRouter key (from [openrouter.ai/keys](https://openrouter.ai/keys)) in the Key row and press Save. The row then shows the key the way Speech shows its own: OpenRouter, the key's last characters, in use, and Replace and Remove. It is the same key Saved keys lists at the bottom.
 5. Press **Test**. It should say "OpenRouter answered and offers openai/gpt-6-luna". If it says OpenRouter does not list the model, check the model id.
 6. The **running now** strip at the top should say Cleanup: OpenRouter · openai/gpt-6-luna.
 
@@ -67,16 +67,25 @@ Yes. See [How do I run cleanup on a different provider?](#how-do-i-run-cleanup-o
 
 ## How do I switch between whole provider setups?
 
-With murmur Pro, save each setup as a **profile** and switch with 1 click. Each profile is a card at the top of Provider and keys that names what it runs, for example "Groq for everything" and "Groq speech, Luna cleanup":
+With murmur Pro, save each setup as a **profile** and switch with 1 click. The profile in use is a card at the top of Provider and keys that names what it runs, for example "Groq speech, Luna cleanup", and every profile's name sits in 1 row under it, so the section stays the same height with 2 profiles or 20:
 
 - **What a profile saves:** the speech provider, base URL, and model; whether cleanup runs on speech or on its own provider, with that provider's base URL and model; and the notes sorting and Transform connections.
 - **What it never saves:** keys. Keys stay under Saved keys, 1 per provider, so switching to a profile uses that provider's saved key without pasting it again.
-- **Switching:** click a card. Every setting it holds changes at once, and the card gets a gold edge and a check.
-- **Changing a setting:** the change works right away, the active card says changed, and a bar offers **Save** (into this profile), **Save as new** (a new profile, leaving this one as it was), and **Undo** (back to what the profile saved). Clicking another card while a change is unsaved asks first, since switching would lose it.
-- **Saving the setup you have:** the last card, **+ Save this setup as a profile**, asks for a name.
-- **Renaming:** every card has **Rename** under it, beside Delete, or double-click the card. Type the new name and press Enter (Escape cancels). Renaming changes only the name.
-- **Deleting:** every card has Delete under it, and it asks first. Deleting the active profile keeps its setup running, and your keys always stay.
+- **Switching:** click a name in the row. Every setting it holds changes at once, and its name gets a gold edge and a check. From the keyboard, Tab to the row, move with the left and right arrow keys (moving never switches), and press Enter or Space. When the names don't fit, the row scrolls sideways and fades at the end with more.
+- **Seeing every card at once:** **Show all** at the end of the row opens every profile as a card, with Rename and Delete under each; **Fold away** brings back the card in use and the row.
+- **Changing a setting:** the change works right away, the card in use says changed, and a bar offers **Save** (into this profile), **Save as new** (a new profile, leaving this one as it was), and **Undo** (back to what the profile saved). Switching to another profile while a change is unsaved asks first, since switching would lose it.
+- **Saving the setup you have:** **+ New** at the end of the row asks for a name.
+- **Renaming:** **Rename** sits under the card, beside Delete, or double-click the card. Type the new name and press Enter (Escape cancels). Renaming changes only the name. To rename another profile without switching to it, open Show all.
+- **Deleting:** Delete under the card asks first. Deleting the profile in use keeps its setup running, and your keys always stay. To delete another profile, open Show all.
 - **Profiles saved by murmur 0.1.17 or earlier** held speech only. They still apply their speech settings and leave cleanup as it is, and their card says cleanup is not saved yet until you save them again.
+
+## How do I see my profiles as a carousel?
+
+With 2 or more profiles, the Profiles label has a choice on its right: **Row** (the default) or **Arc**. Arc shows every profile as a card on a curve, the one in front large and the rest tilting back, with a **+** card last for saving the setup you have. murmur remembers the choice.
+
+- **Turning:** click a card at the side, a dot, or the arrows under the cards, or use the left and right arrow keys once the carousel has focus. Turning never switches your setup. The dot of the profile in use stays gold, and a count shows where you are, like 02 / 05.
+- **Switching:** the front card shows **Use this profile** when it is not the one in use; press it, or Enter. Rename and Delete sit under the front card.
+- **With reduced motion on** (on a Mac, System Settings, Accessibility, Display, Reduce motion; on Windows, Settings, Accessibility, Visual effects, Animation effects off), the cards move without sliding.
 
 Without Pro, the top of Provider and keys offers profiles, and everything below works as 1 setup.
 
