@@ -83,7 +83,12 @@ export function ModelCombo(props: {
     setList(null)
     setLoading(false)
   }, [props.source])
-  useEffect(() => activeRef.current?.scrollIntoView({ block: 'nearest' }), [active])
+  // A block body on purpose: scrollIntoView returns a Promise since
+  // Chrome 152, and an effect that returns one hands React a cleanup it
+  // cannot call, which took the whole window down (effects.test.ts).
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [active])
 
   const options = comboOptions(props.suggestions, list, typed ? query : '')
   const flat = [...options.suggested, ...options.rest]

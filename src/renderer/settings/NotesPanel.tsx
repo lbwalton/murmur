@@ -168,7 +168,9 @@ function EntryTemplateField(props: {
   onCommit: (value: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   const commit = (): void => {
     if (draft.trim().length > 0 && draft !== props.value) props.onCommit(draft)
     else setDraft(props.value)
@@ -212,8 +214,12 @@ export function NotesPanel(props: {
     if (reminderTestTimer.current) clearTimeout(reminderTestTimer.current)
   }, [])
 
-  useEffect(() => setFolderDraft(notes.folder), [notes.folder])
-  useEffect(() => setPathDraft(notes.pathTemplate), [notes.pathTemplate])
+  useEffect(() => {
+    setFolderDraft(notes.folder)
+  }, [notes.folder])
+  useEffect(() => {
+    setPathDraft(notes.pathTemplate)
+  }, [notes.pathTemplate])
   useEffect(() => {
     void bridge().getKeyStatusFor(notes.connection.baseUrl).then(setSortKeyStatus)
   }, [notes.connection.baseUrl])

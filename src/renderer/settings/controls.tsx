@@ -22,7 +22,9 @@ export function TextSetting(props: {
   onCommit: (value: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   const commit = (): void => {
     const next = draft.trim()
     const usable = props.allowEmpty || next.length > 0
@@ -67,7 +69,9 @@ export function NumberSetting(props: {
   onCommit: (value: number) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(String(props.value))
-  useEffect(() => setDraft(String(props.value)), [props.value])
+  useEffect(() => {
+    setDraft(String(props.value))
+  }, [props.value])
   const commit = (): void => {
     const parsed = Number(draft.trim())
     if (draft.trim() === '' || !Number.isFinite(parsed)) {
@@ -409,7 +413,9 @@ export function TimeInput(props: {
   onCommit: (time: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   return (
     <input
       type="time"

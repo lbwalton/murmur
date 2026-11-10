@@ -26,7 +26,7 @@ import { TryBox } from './HideWords'
 import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
-import { ConnectionRows, TestVerdict, testVerdict } from './ConnectionRows'
+import { ConnectionRows, TestVerdict, afterOnePass, testVerdict } from './ConnectionRows'
 import { ProfileCards, RunningStrip } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
 import { type KeysKnown, connectionsNow } from '../../shared/profiles'
@@ -110,7 +110,9 @@ function VolumeSlider(props: {
   onCommit: (volume: number) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(Math.round(props.value * 100))
-  useEffect(() => setDraft(Math.round(props.value * 100)), [props.value])
+  useEffect(() => {
+    setDraft(Math.round(props.value * 100))
+  }, [props.value])
   const commit = (): void => {
     if (draft !== Math.round(props.value * 100)) props.onCommit(draft / 100)
   }
@@ -283,11 +285,14 @@ export function App(): React.JSX.Element {
   // against the provider just switched away from) is dropped instead of
   // vouching for the wrong key.
   const testSeq = useRef(0)
-  const runTest = useCallback(async (): Promise<void> => {
+  // pressed: a press of Test, which shows the sheen's whole pass even
+  // when the provider answers sooner; the checks setup runs by itself
+  // land as soon as they can.
+  const runTest = useCallback(async (pressed = false): Promise<void> => {
     const seq = ++testSeq.current
     setTesting(true)
     try {
-      const result = await bridge().testProvider()
+      const result = await (pressed ? afterOnePass(bridge().testProvider()) : bridge().testProvider())
       if (seq === testSeq.current) setTest(result)
     } finally {
       if (seq === testSeq.current) setTesting(false)
@@ -596,7 +601,7 @@ export function App(): React.JSX.Element {
           : test
             ? test.detail
             : `Checks the key in use against ${providerName}.`,
-      action: keyOk && !testing ? { label: 'Test', onClick: () => void runTest() } : undefined
+      action: keyOk && !testing ? { label: 'Test', onClick: () => void runTest(true) } : undefined
     },
     ...(isMac
       ? [
@@ -915,7 +920,7 @@ export function App(): React.JSX.Element {
                     aria-label="Test speech connection"
                     aria-busy={testing && keyOk}
                     onClick={() => {
-                      if (!testing) void runTest()
+                      if (!testing) void runTest(true)
                     }}
                     disabled={!keyOk}
                   >

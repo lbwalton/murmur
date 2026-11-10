@@ -681,7 +681,9 @@ export function HomeView(props: {
     })
   }, [])
 
-  useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
+  useEffect(() => {
+    return bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents))
+  }, [])
 
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.

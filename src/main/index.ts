@@ -1062,6 +1062,16 @@ app.whenReady().then(async () => {
       )
       await new Promise((resolve) => setTimeout(resolve, 1500))
     }
+    // MURMUR_SETTINGS_KEYS=Down,Down,Return presses those keys, as real
+    // input, in whatever the clicks left focused, each after the last
+    // has painted, so keyboard paths can be shot too (the Model list's
+    // Enter took the window down on 2026-11-10 with no shot to show it).
+    const keys = process.env.MURMUR_SETTINGS_KEYS
+    for (const keyCode of keys ? keys.split(',').map((x) => x.trim()).filter(Boolean) : []) {
+      settingsWindow.webContents.sendInputEvent({ type: 'keyDown', keyCode })
+      settingsWindow.webContents.sendInputEvent({ type: 'keyUp', keyCode })
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
     // MURMUR_SETTINGS_PROBE=expression prints what it evaluates to in the
     // window just before the shot, for checking state a picture hides.
     const probe = process.env.MURMUR_SETTINGS_PROBE

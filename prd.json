@@ -2544,7 +2544,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Picked 2026-11-09 from the round 3 boards (B3-KeyTest, B3-AskRename) on the Provider and keys canvas: indent and a line; fog glass that moves only while testing, clear, at 30% (his change from the board's 7%); fog, 1 glow, the rest dims, gold fog; Rename beside Delete with double-click too."
+      "notes": "Picked 2026-11-09 from the round 3 boards (B3-KeyTest, B3-AskRename) on the Provider and keys canvas: indent and a line; fog glass that moves only while testing, clear, at 30% (his change from the board's 7%); fog, 1 glow, the rest dims, gold fog; Rename beside Delete with double-click too. Live check 2026-11-10 on 26ec1e5: steps 1 and 4 to 8 pass; step 2 failed (no sheen). Root cause: .btn.btn-test:hover:not(:disabled) (specificity 0,4,0) used the background shorthand and cleared the busy rule's background-image (0,3,0); the pointer is always over the button when pressed. Fix: hover sets background-color only; one pass is 900 ms and a pressed Test holds its answer for one full pass (afterOnePass, skipped under reduced motion). Guarded by ProviderKeys.test.tsx (Test sheen). Re-check steps 2 and 3 pending."
     },
     {
       "id": "US-158",
@@ -2562,7 +2562,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Picked 2026-11-09. Checked 2026-11-09: OpenRouter's https://openrouter.ai/api/v1/models answers without a key, 461 models, 442 with text output, and 11 carry an expiration_date. Groq's and OpenAI's lists need a key, so the weekly check skips them and the in-app filter covers them."
+      "notes": "Picked 2026-11-09. Checked 2026-11-09: OpenRouter's https://openrouter.ai/api/v1/models answers without a key, 461 models, 442 with text output, and 11 carry an expiration_date. Groq's and OpenAI's lists need a key, so the weekly check skips them and the in-app filter covers them. Live check 2026-11-10 on 26ec1e5: step 1 passes; step 2 blacked out Settings on Enter. Log: Uncaught TypeError: destroy_ is not a function. Root cause, proven in Electron 44.9.3 (Chrome 152): scrollIntoView() returns a Promise, and the expression-bodied effect handed it to React as a cleanup. Fix: block body; src/renderer/effects.test.ts fails on any expression-bodied effect. Reproduced before and after with the new MURMUR_SETTINGS_KEYS capture step (Down, Down, Return): old build empty window, fixed build keeps the window and saves the pick. Re-check steps 2 to 4 pending."
     },
     {
       "id": "US-159",

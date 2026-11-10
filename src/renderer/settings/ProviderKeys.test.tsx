@@ -8,13 +8,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import catalogJson from '../../../shared/provider-catalog.json'
 import { type ProviderCatalog, validateCatalog } from '../../shared/catalog'
 import { snapshotProfile } from '../../shared/profiles'
 import { DEFAULT_SETTINGS, type Settings, mergeSettings } from '../../shared/settings'
 import { CleanupShares } from './CleanupShares'
-import { ConnectionRows, VERDICT_CLASS, presetConnection, testVerdict } from './ConnectionRows'
+import { ConnectionRows, SHEEN_MS, VERDICT_CLASS, afterOnePass, presetConnection, testVerdict } from './ConnectionRows'
 import { Row } from './controls'
 import { ProfileCards, RunningStrip, cardClick } from './ProfileCards'
 import { SavedKeys } from './SavedKeys'
@@ -293,5 +293,45 @@ describe('the Speech group', () => {
     // as speech, but no control in Speech shows or edits it.
     expect(speech).not.toMatch(/value=\{settings\.provider\.llmModel\}|Cleanup model|row-cleanup/)
     expect(app.slice(end)).toContain('anchor="row-cleanup-model"')
+  })
+})
+
+describe('Test sheen (US-157)', () => {
+  it('holds a fast answer for one whole pass, and not with reduced motion', async () => {
+    vi.useFakeTimers()
+    try {
+      let landed = false
+      const held = afterOnePass(Promise.resolve('ok'), false).then((r) => {
+        landed = true
+        return r
+      })
+      await vi.advanceTimersByTimeAsync(SHEEN_MS - 1)
+      expect(landed).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await held).toBe('ok')
+      // An answer that lands in the 2nd pass waits for its end.
+      let late = false
+      const second = afterOnePass(new Promise((resolve) => setTimeout(() => resolve('late'), 1200)), false).then((r) => {
+        late = true
+        return r
+      })
+      await vi.advanceTimersByTimeAsync(2 * SHEEN_MS - 1)
+      expect(late).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await second).toBe('late')
+      const quick = afterOnePass(Promise.resolve('now'), true)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(await quick).toBe('now')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('hover only changes the color, so it never wipes the sheen', () => {
+    const css = readFileSync(join(__dirname, 'styles.css'), 'utf8')
+    const hover = css.match(/\.btn\.btn-test:hover:not\(:disabled\)\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(hover).toContain('background-color')
+    expect(hover).not.toMatch(/background\s*:/)
+    expect(css).toMatch(new RegExp(`animation: test-sheen ${SHEEN_MS}ms`))
   })
 })

@@ -157,7 +157,9 @@ export function LoopLevelSlider(props: {
   onCommit: (level: number) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   const commit = (): void => {
     if (draft !== props.value) props.onCommit(draft)
   }

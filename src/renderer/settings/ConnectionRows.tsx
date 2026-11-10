@@ -122,6 +122,29 @@ export function TestVerdict(props: {
   )
 }
 
+/** One pass of Test's sheen (test-sheen in styles.css). */
+export const SHEEN_MS = 900
+
+/**
+ * A pressed test's answer, held to the end of the sheen pass it lands
+ * in: at least 1 whole pass, so a provider that answers in 200 ms never
+ * cuts the shine off mid-flash, and one that answers in 1.2 s finishes
+ * its second pass. With reduced motion there is no sheen, so no wait.
+ */
+export async function afterOnePass<T>(work: Promise<T>, reduced = prefersReducedMotion()): Promise<T> {
+  const start = Date.now()
+  const result = await work
+  if (reduced) return result
+  const spent = Date.now() - start
+  const end = Math.max(1, Math.ceil(spent / SHEEN_MS)) * SHEEN_MS
+  await new Promise((resolve) => setTimeout(resolve, end - spent))
+  return result
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+}
+
 export function ConnectionRows(props: {
   value: ConnectionValue
   catalog: ProviderCatalog | null
@@ -145,6 +168,15 @@ export function ConnectionRows(props: {
   const [draft, setDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
+  // Each test carries a number; anything that makes a verdict stale (a
+  // new base URL, model or key) bumps it, so a test still running then,
+  // held a whole sheen pass or not, never lands to vouch for the change.
+  const testSeq = useRef(0)
+  const forget = (): void => {
+    testSeq.current++
+    setTest(null)
+    setTesting(false)
+  }
   // The presets a slot may pick from follow what it speaks: chat models
   // for a chat protocol, decision models for a decision protocol.
   const kind: CatalogKind = props.protocol?.value === 'decide' ? 'decide' : 'llm'
@@ -166,13 +198,15 @@ export function ConnectionRows(props: {
   useEffect(() => {
     const current = value.baseUrl
     if (prevUrl.current !== null && current !== prevUrl.current) {
-      setTest(null)
+      forget()
       void props.api.status().then(props.onKeyStatus)
     }
     prevUrl.current = current
   }, [value.baseUrl])
   // A verdict about one model never vouches for another.
-  useEffect(() => setTest(null), [value.llmModel])
+  useEffect(() => {
+    forget()
+  }, [value.llmModel])
 
   const shared =
     value.baseUrl !== '' && props.sharedWith.some((u) => u !== '' && strip(u) === strip(value.baseUrl))
@@ -193,16 +227,18 @@ export function ConnectionRows(props: {
     // (re-gate finding).
     if (value.baseUrl !== '' && status.present) {
       setDraft('')
-      setTest(null)
+      forget()
     }
   }
   const run = async (): Promise<void> => {
     if (testing) return
+    const seq = ++testSeq.current
     setTesting(true)
     try {
-      setTest(await props.api.test())
+      const result = await afterOnePass(props.api.test())
+      if (seq === testSeq.current) setTest(result)
     } finally {
-      setTesting(false)
+      if (seq === testSeq.current) setTesting(false)
     }
   }
 
@@ -350,7 +386,7 @@ export function ConnectionRows(props: {
                       aria-label={`Remove ${aria(labels.key)}`}
                       onClick={() => {
                         void props.api.clearKey().then(props.onKeyStatus)
-                        setTest(null)
+                        forget()
                       }}
                     >
                       Remove
