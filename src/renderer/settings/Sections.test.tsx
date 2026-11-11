@@ -192,6 +192,24 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     expect(app).not.toContain('under Advanced')
   })
 
+  it('finds all 4 shortcuts when you search shortcut, hotkey or chord (LaBroi, 2026-11-11)', () => {
+    const keywords = (source: string, anchorOrLabel: string): string => {
+      const at = source.indexOf(anchorOrLabel)
+      return /keywords="([^"]+)"/.exec(source.slice(at))?.[1] ?? ''
+    }
+    const rows = [
+      keywords(app, 'anchor="row-hotkey"'),
+      keywords(app, 'label="Paste last dictation"'),
+      keywords(notes, 'anchor="row-note-chord"'),
+      keywords(transform, 'anchor="row-transform-chord"')
+    ]
+    for (const words of rows) {
+      // Hotkey's own label carries the word hotkey.
+      for (const word of ['shortcut', 'chord']) expect(words.split(' '), words).toContain(word)
+    }
+    for (const words of rows.slice(1)) expect(words.split(' ')).toContain('hotkey')
+  })
+
   it('steps the type 28, 20, 15, 14 and keeps row labels a dimmer cream from the tokens', () => {
     expect(css).toMatch(/\.settings-content \.page-title h1 \{\s+font-size: 28px;\s+font-weight: 700;/)
     expect(css).toMatch(/\.sec-title \{\s+font-size: 20px;\s+font-weight: 700;/)

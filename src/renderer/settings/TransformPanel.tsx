@@ -63,7 +63,7 @@ export function TransformPanel(props: {
         <Row
           label="Transform chord"
           anchor="row-transform-chord"
-          keywords="rewrite edit selection chord hotkey"
+          keywords="rewrite edit selection chord hotkey shortcut keyboard"
           desc={
             captureNote ??
             (disarmed

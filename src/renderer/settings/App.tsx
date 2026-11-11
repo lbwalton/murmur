@@ -1116,7 +1116,7 @@ export function App(): React.JSX.Element {
               <Row
                 label="Hotkey"
                 anchor="row-hotkey"
-                keywords="shortcut keyboard combo push to talk"
+                keywords="shortcut keyboard combo chord push to talk"
                 desc={captureNote ?? 'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'}
               >
                 <div className="inline">
@@ -1256,7 +1256,7 @@ export function App(): React.JSX.Element {
 
               <Row
                 label="Paste last dictation"
-                keywords="repeat again chord"
+                keywords="repeat again chord shortcut hotkey keyboard"
                 desc={
                   pasteCaptureNote ??
                   (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid

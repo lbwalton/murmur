@@ -387,7 +387,7 @@ export function NotesPanel(props: {
         <Row
           label="Note chord"
           anchor="row-note-chord"
-          keywords="brain dump chord hotkey inbox"
+          keywords="brain dump chord hotkey shortcut keyboard inbox"
           desc={
             captureNote ??
             (disarmed
