@@ -2693,9 +2693,9 @@
         "The line uses the same style as the also under links in Shortcuts; no new colors.",
         "docs/settings.md says the link runs both ways."
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-11-11 without a preview board: it mirrors the also under link he already approved on board 13 option C, in the other direction. Row gains an also line (outside row-desc, so search text is unchanged); AlsoInShortcuts in controls.tsx jumps to row-shortcut-<slug>. Tests: Shortcuts.test.tsx (the 4 rows carry the link, the slugs match the rows Shortcuts draws, markup and aria-label). Automated criteria verified 2026-11-11: typecheck clean, 102 test files (1482 tests) pass, design lint clean, and a sample-profile capture shows the line under the Hotkey description. Review gate: no blockers; fixed from it: the links (here and in Shortcuts) get the settings focus ring, the tests read each row's own opening tag and hold that search never reads the line, and these notes. Left as is: if the Shortcuts section is showing its problem note, the link does nothing. Live check owed: the scroll, glow and focus move."
+      "notes": "Built 2026-11-11 without a preview board: it mirrors the also under link he already approved on board 13 option C, in the other direction. Row gains an also line (outside row-desc, so search text is unchanged); AlsoInShortcuts in controls.tsx jumps to row-shortcut-<slug>. Tests: Shortcuts.test.tsx (the 4 rows carry the link, the slugs match the rows Shortcuts draws, markup and aria-label). Automated criteria verified 2026-11-11: typecheck clean, 102 test files (1482 tests) pass, design lint clean, and a sample-profile capture shows the line under the Hotkey description. Review gate: no blockers; fixed from it: the links (here and in Shortcuts) get the settings focus ring, the tests read each row's own opening tag and hold that search never reads the line, and these notes. Left as is: if the Shortcuts section is showing its problem note, the link does nothing. Live check owed: the scroll, glow and focus move. Live check 2026-11-11: LaBroi ran all 4 steps on the notarized 73caaa1 test build and reported that everything passes."
     }
   ]
 }
