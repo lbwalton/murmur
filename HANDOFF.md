@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-163 a problem in 1 part of Settings never blacks out the window (on the next test build). (1) Open the murmur window and visit Home, Analytics, Wrap-up and Journey: each opens normally, with no note saying a page hit a problem. (2) Open Settings and scroll through every section: none says This section hit a problem. (3) Dictate a sentence: it lands as usual.
+- [x] US-163 a problem in 1 part of Settings never blacks out the window (passed live 2026-11-11 on the 9df267f test build). (1) Open the murmur window and visit Home, Analytics, Wrap-up and Journey: each opens normally, with no note saying a page hit a problem. (2) Open Settings and scroll through every section: none says This section hit a problem. (3) Dictate a sentence: it lands as usual.
 - [x] US-160 profiles stay small, the card in use and 1 row of names: passed 2026-11-10 on the c2fffdd test build (LaBroi: everything passes).
 - [x] US-161 profiles on an arc: passed 2026-11-10 on the c2fffdd test build.
 - [x] US-162 the cleanup key looks like the speech key: passed 2026-11-10 on the c2fffdd test build.
