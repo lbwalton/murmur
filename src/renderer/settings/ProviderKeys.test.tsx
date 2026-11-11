@@ -21,6 +21,7 @@ import {
   VERDICT_CLASS,
   afterOnePass,
   keyLanded,
+  keyMark,
   presetConnection,
   testVerdict
 } from './ConnectionRows'
@@ -417,6 +418,15 @@ describe('the cleanup group', () => {
     expect(keyLanded(OPENROUTER, { present: true, masked: 'sk-o…1234' })).toBe(true)
     expect(keyLanded('', { present: true, masked: 'sk-o…1234' })).toBe(false)
     expect(keyLanded(OPENROUTER, { present: false, masked: null })).toBe(false)
+  })
+
+  it('drops a Test verdict once its key is replaced or removed, here or in Saved keys (US-162)', () => {
+    const saved = keyMark({ present: true, masked: 'sk-o…07d5' })
+    expect(keyMark({ present: true, masked: 'sk-o…07d5' })).toBe(saved)
+    expect(keyMark({ present: true, masked: 'sk-o…99zz' })).not.toBe(saved)
+    expect(keyMark({ present: false, masked: null })).not.toBe(saved)
+    const source = readFileSync(join(__dirname, 'ConnectionRows.tsx'), 'utf8')
+    expect(source).toMatch(/if \(mark !== prevMark\.current\) forget\(\)/)
   })
 
   it('says a or an before the provider in the key hint', () => {

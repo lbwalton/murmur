@@ -152,6 +152,12 @@ export function keyLanded(baseUrl: string, status: KeyStatus): boolean {
   return baseUrl !== '' && status.present
 }
 
+/** Which key the row holds, so a Test verdict is dropped once that key is
+ *  replaced or removed, here or in Saved keys (US-162 review). */
+export function keyMark(status: KeyStatus): string {
+  return status.present ? `key ${status.masked ?? ''}` : 'none'
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 }
@@ -217,6 +223,14 @@ export function ConnectionRows(props: {
   useEffect(() => {
     forget()
   }, [value.llmModel])
+  // Nor one about a key that was since replaced or removed, here or in
+  // Saved keys.
+  const mark = keyMark(props.keyStatus)
+  const prevMark = useRef(mark)
+  useEffect(() => {
+    if (mark !== prevMark.current) forget()
+    prevMark.current = mark
+  }, [mark])
 
   const shared =
     value.baseUrl !== '' && props.sharedWith.some((u) => u !== '' && strip(u) === strip(value.baseUrl))

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (107/162 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (110/162 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -111,6 +111,9 @@
 - [x] **US-154** Provider and keys, rebuilt around profiles
 - [x] **US-157** Key rows, Test, asking first, and renaming profiles
 - [x] **US-158** Every model the provider offers, in the Model list
+- [x] **US-160** Profiles stay small: the card in use, then 1 row of names
+- [x] **US-161** Profiles as cards on an arc, a view you can pick
+- [x] **US-162** Every saved key looks like the speech key
 
 ## Built, awaiting live verification
 
@@ -171,6 +174,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-155** Every Settings section grouped, with rows in a well
 - [ ] **US-156** The look on every page
 - [ ] **US-159** Pro: color the fog
-- [ ] **US-160** Profiles stay small: the card in use, then 1 row of names
-- [ ] **US-161** Profiles as cards on an arc, a view you can pick
-- [ ] **US-162** Every saved key looks like the speech key

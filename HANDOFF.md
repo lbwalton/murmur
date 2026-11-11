@@ -4,9 +4,9 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-160 profiles stay small: the card in use, then 1 row of names. (1) Open Settings, Provider and keys. Under Profiles, the profile in use is 1 card with IN USE in gold, Rename and Delete under it; under the card is 1 row of names, yours checked with a gold edge, then + New and Show all. (2) Click another name: the setup switches at once and the card shows that profile. (3) Press Tab until a name in the row has a light outline. Press the right arrow: the outline moves and nothing switches. Press Enter: now it switches. (4) Click + New, type a name, press Enter: it is saved and in use. Do this until you have 4 profiles. (5) Click Show all: every profile shows as a card with Rename and Delete under each. Click Fold away: back to the card and the row.
-- [ ] US-161 profiles on an arc. (1) With 2 or more profiles, click Arc at the right of the Profiles label: the cards sit on a curve, the one in use in front, with dots and a count like 02 / 04 under them. (2) Click a card at the side, then press the left and right arrow keys: it turns, and the profile in use does not change (its dot stays gold). (3) Turn to a profile you are not using and press Use this profile: it switches. (4) Quit murmur from the tray and open Settings again: Arc is still picked. Click Row to go back, or keep Arc.
-- [ ] US-162 the cleanup key looks like the speech key. (1) In the Cleanup group, the Key row shows OpenRouter, the end of your key, in use, Replace and Remove, the same way Speech shows Groq, with Test under it on the right. (2) Press Test: OpenRouter answers. Saved keys at the bottom lists the same OpenRouter key. (3) Press Replace: a key field opens; press Escape: it closes and your key stays. Do not press Remove, which deletes the key.
+- [x] US-160 profiles stay small, the card in use and 1 row of names: passed 2026-11-10 on the c2fffdd test build (LaBroi: everything passes).
+- [x] US-161 profiles on an arc: passed 2026-11-10 on the c2fffdd test build.
+- [x] US-162 the cleanup key looks like the speech key: passed 2026-11-10 on the c2fffdd test build.
 - [x] US-157 Key rows, Test, asking first, renaming profiles: passed 2026-11-10 on the 83e3683 test build (LaBroi: all the re-checks pass).
 - [x] US-158 every model in the Model list: passed 2026-11-10 on the 83e3683 test build.
 
