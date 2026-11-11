@@ -709,8 +709,8 @@ app.whenReady().then(async () => {
       }
     })()`)) as { items: number; sections: number; finish: boolean; first: string | null } | null
     if (!probe) return false
-    // 10 sections since History joined the app group (US-148).
-    return probe.items === 10 && probe.sections === 10 && probe.finish && probe.first === 'Hotkey'
+    // 11 sections since Shortcuts joined the essentials (US-164).
+    return probe.items === 11 && probe.sections === 11 && probe.finish && probe.first === 'Hotkey'
   })
 
   registerSmokeCheck('settingsUnbroken', async () => {

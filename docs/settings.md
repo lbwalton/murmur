@@ -12,13 +12,23 @@ The window opens on your transcription log: every dictation, grouped by day, new
 
 ## How is the settings tab organized, and how do I find a setting?
 
-A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Dictionary. Features: Notes, Transform, Time back and recap. App: History, Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
+A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Shortcuts, Dictionary. Features: Notes, Transform, Time back and recap. App: History, Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
 
 Inside a section, settings that belong together sit in a group: a small heading, then the rows inset in a darker well (regrouped November 2026). Dictation has Hotkey, Microphone, Formatting, Where words land, and Try it. System has General, macOS permissions, and Help. Notes has Capture, Sorting, Alerts, and File layout once a notes folder is set; until then it shows only the note chord and the notes folder. The short sections (Transform, Time back and recap, History, Look, murmur Pro) are 1 well with no group headings. The formatting choice (Off, Light, Full) is the Level row in the Formatting group, and Smart lists and Apply corrections under it dim and say needs Full formatting until Level is Full.
 
 The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening the File layout fold if the setting lives inside it. Esc clears the search.
 
 Settings most people never touch sit in a group that folds from its heading and says what it holds while closed: File layout under Notes. The speech base URL sits in the Speech group, and price refresh and the Groq defaults sit in Cost and defaults, both under Provider and keys. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
+
+## Where are all of murmur's keyboard shortcuts?
+
+Under Settings, Shortcuts (added November 2026). It lists every key combo murmur listens for in 1 place, in 2 groups.
+
+**Yours to set** has the 4 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, and Transform. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform), so a change in either place shows in both, and the also under link on each row jumps to it there. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
+
+**Built in** lists the keys you cannot change: tapping the dictation or note shortcut twice for hands-free (when Double-tap for hands-free is on), Esc to cancel a hands-free take, and the zoom keys (Cmd +, Cmd −, Cmd 0 on a Mac; Ctrl on Windows).
+
+Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
 
 ## How long is my history kept, and where?
 

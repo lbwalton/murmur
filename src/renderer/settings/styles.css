@@ -3088,6 +3088,21 @@ textarea.well-multiline {
   opacity: 0.45;
 }
 
+/* Where else a mirrored setting lives (Shortcuts, US-164). */
+.row-also {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.row-also .link-btn {
+  color: var(--brand);
+}
+
+.row-also .link-btn:hover {
+  color: var(--text);
+}
+
 .row-waits-note {
   margin-top: 4px;
   font-family: var(--font-mono);

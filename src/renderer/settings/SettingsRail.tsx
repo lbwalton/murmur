@@ -32,7 +32,7 @@ function findSettings(query: string): Match[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (words.length === 0) return []
   const whole = words.map((w) => new RegExp(`\\b${escapeRegExp(w)}\\b`))
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('.settings-content .row[id]'))
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.settings-content .row[id]:not([data-mirror])'))
   const scored: Array<Match & { score: number }> = []
   for (const row of rows) {
     const label = row.querySelector('.row-label')?.textContent ?? ''

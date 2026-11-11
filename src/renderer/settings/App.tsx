@@ -34,6 +34,7 @@ import { CleanupShares } from './CleanupShares'
 import { PlainHttpNote } from './PlainHttpNote'
 import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
+import { ShortcutsSection } from './Shortcuts'
 import { NotesPanel } from './NotesPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
@@ -668,6 +669,7 @@ export function App(): React.JSX.Element {
   const railSections: RailSection[] = [
     { id: 'provider', title: 'Provider and keys', group: 'essentials', alert: failing('key', 'conn') },
     { id: 'dictation', title: 'Dictation', group: 'essentials', alert: failing('hotkey') },
+    { id: 'shortcuts', title: 'Shortcuts', group: 'essentials' },
     { id: 'dictionary', title: 'Dictionary', group: 'essentials' },
     { id: 'notes', title: 'Notes', group: 'features' },
     { id: 'transform', title: 'Transform', group: 'features' },
@@ -1300,6 +1302,10 @@ export function App(): React.JSX.Element {
               <TryBox settings={settings} className="field trybox" rows={2} label="Test dictation" />
             </GroupRow>
           </Section>
+
+          <SectionGuard id="shortcuts" title="Shortcuts">
+            <ShortcutsSection settings={settings} hotkeys={hotkeys} onUpdate={update} onRefresh={refresh} />
+          </SectionGuard>
 
           <Section id="dictionary" title="Dictionary" sub="Words murmur should spell your way, and phrases that expand.">
             <GroupRow
