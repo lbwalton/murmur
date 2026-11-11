@@ -3878,3 +3878,44 @@ textarea.well-multiline {
   font-size: 12px;
   text-align: left;
 }
+
+/* A part of the window that hit a problem (US-163): a plain note with a
+   way back. No paint, no red: errors never splatter, and the note says
+   what still works. */
+.crash-note,
+.sec .panel.crash-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px;
+}
+/* The note is 1 thing, not rows: no hairlines between its lines. */
+.sec .panel.crash-note > * + * {
+  border-top: 0;
+}
+.crash-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.crash-line {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.crash-window {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--ink);
+}
+.crash-window .crash-note {
+  width: min(440px, 100%);
+}

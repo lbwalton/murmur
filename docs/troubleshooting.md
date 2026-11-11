@@ -6,6 +6,12 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## What if Settings says "This section hit a problem"?
+
+Press **Try again**. If the note comes back, press **Reload window**. Dictation keeps working the whole time: the note only means 1 part of the window could not draw itself, and every other section, the rail, search and the other pages still work. The same note on Home, Analytics, Wrap-up or Journey says "This page hit a problem"; going to another page and back tries it again. If the whole window is affected, it says "This window hit a problem" with **Reload window**, instead of going black (added November 2026).
+
+Each note writes 1 line to the log (Settings, System, Diagnostics, **Open log folder**, then murmur.log): which part broke, the kind of error and the start of its message, cut before anything the message quotes. murmur puts no settings or keys in it, and the log stays on your computer until you save a report and send it. If it keeps happening, **Save report** and send it with the issue.
+
 ## How do I tell you a take came out wrong?
 
 Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. What you said, what it typed, and what it should have been can all be edited here, and the rest in your mail app, so take out anything private.

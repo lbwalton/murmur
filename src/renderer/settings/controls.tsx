@@ -5,6 +5,7 @@
 // to a row.
 import { useEffect, useState } from 'react'
 import { parseRecapTime } from '../../shared/recap'
+import { Boundary } from './Boundary'
 
 /** Text field that commits on blur or Enter, with optional suggestions. */
 export function TextSetting(props: {
@@ -158,6 +159,8 @@ export function Section(props: {
   /** The rows-in-a-well layout (US-154, US-155): the section's children
    *  are Groups, each its own panel, instead of rows on 1 panel. */
   grouped?: boolean
+  /** In place of the rows: the note a SectionGuard shows (US-163). */
+  note?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   return (
@@ -174,8 +177,33 @@ export function Section(props: {
         {props.mark}
       </h2>
       {props.sub && <p className="sec-sub">{props.sub}</p>}
-      {props.grouped ? <div className="sec-groups">{props.children}</div> : <div className="panel">{props.children}</div>}
+      {/* A problem drawing this section shows a note here; the title,
+          the rail and every other section keep working (US-163). */}
+      {props.note ?? (
+        <Boundary kind="section" where={`section ${props.id}`}>
+          {props.grouped ? <div className="sec-groups">{props.children}</div> : <div className="panel">{props.children}</div>}
+        </Boundary>
+      )}
     </section>
+  )
+}
+
+/** For a section drawn by its own component (Notes, Transform), whose
+ *  hooks run above its Section: a problem there still shows the
+ *  section's note under its title, not the whole-window note (US-163). */
+export function SectionGuard(props: { id: string; title: string; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <Boundary
+      kind="section"
+      where={`section ${props.id}`}
+      wrapNote={(note) => (
+        <Section id={props.id} title={props.title} note={note}>
+          {null}
+        </Section>
+      )}
+    >
+      {props.children}
+    </Boundary>
   )
 }
 

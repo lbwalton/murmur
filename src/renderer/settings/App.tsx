@@ -51,12 +51,14 @@ import {
   NumberSetting,
   Row,
   Section,
+  SectionGuard,
   Segmented,
   Switch,
   TextSetting,
   TimeInput,
   jumpToRow
 } from './controls'
+import { Boundary } from './Boundary'
 
 declare global {
   interface Window {
@@ -751,31 +753,40 @@ export function App(): React.JSX.Element {
         </nav>
       </header>
 
-      {page !== 'setup' && (
-        <div className="page">
-          {page === 'home' && (
-            <HomeView
-              settings={settings}
-              onUpdateSettings={update}
-              license={license}
-              onUpdatePro={updatePro}
-              pasteArmed={hotkeys?.pasteBindingValid !== false}
-              onSeePro={() => {
-                setPage('setup')
-                // The settings column is hidden until the page switch paints.
-                requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-license-key', { focus: true })))
-              }}
-              onOpenHistory={() => {
-                setPage('setup')
-                requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-keep-history', { focusControl: true })))
-              }}
-            />
-          )}
-          {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
-          {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} hideWords={settings.history.hideWords} />}
-          {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} accent={guiAccent} />}
-        </div>
-      )}
+      {/* Stays mounted across page switches: a page's cleanup that throws
+          as it closes is logged here, never shown over the next page or
+          the window (review gate). */}
+      <Boundary kind="page" where="a page as it closed" logOnly>
+        {page !== 'setup' && (
+          <div className="page">
+            {/* Keyed by page: leaving a page that hit a problem and coming
+                back tries it again (US-163). */}
+            <Boundary key={page} kind="page" where={`page ${page}`}>
+              {page === 'home' && (
+                <HomeView
+                  settings={settings}
+                  onUpdateSettings={update}
+                  license={license}
+                  onUpdatePro={updatePro}
+                  pasteArmed={hotkeys?.pasteBindingValid !== false}
+                  onSeePro={() => {
+                    setPage('setup')
+                    // The settings column is hidden until the page switch paints.
+                    requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-license-key', { focus: true })))
+                  }}
+                  onOpenHistory={() => {
+                    setPage('setup')
+                    requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-keep-history', { focusControl: true })))
+                  }}
+                />
+              )}
+              {page === 'analytics' && <AnalyticsView hotkey={settings.hotkey.binding} />}
+              {page === 'wrapup' && <WrapUpView typingWpm={settings.timeBack.typingWpm} hotkey={settings.hotkey.binding} hideWords={settings.history.hideWords} />}
+              {page === 'journey' && <JourneyView hotkey={settings.hotkey.binding} accent={guiAccent} />}
+            </Boundary>
+          </div>
+        )}
+      </Boundary>
 
       {/* Settings stay mounted while hidden, so half-typed drafts and
           capture notes survive a trip to another tab. */}
@@ -1339,23 +1350,27 @@ export function App(): React.JSX.Element {
             </Row>
           </Section>
 
-          <NotesPanel
-            settings={settings}
-            catalog={catalog}
-            hotkeys={hotkeys}
-            onUpdate={update}
-            onRefresh={refresh}
-            onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
-          />
+          <SectionGuard id="notes" title="Notes">
+            <NotesPanel
+              settings={settings}
+              catalog={catalog}
+              hotkeys={hotkeys}
+              onUpdate={update}
+              onRefresh={refresh}
+              onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
+            />
+          </SectionGuard>
 
-          <TransformPanel
-            settings={settings}
-            catalog={catalog}
-            hotkeys={hotkeys}
-            onUpdate={update}
-            onRefresh={refresh}
-            onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
-          />
+          <SectionGuard id="transform" title="Transform">
+            <TransformPanel
+              settings={settings}
+              catalog={catalog}
+              hotkeys={hotkeys}
+              onUpdate={update}
+              onRefresh={refresh}
+              onKeysChanged={() => void bridge().getApiKeyStatus().then(setKeyStatus)}
+            />
+          </SectionGuard>
 
           <Section id="timeback" title="Time back and recap" sub="Your daily numbers and how time saved is counted.">
             <Row

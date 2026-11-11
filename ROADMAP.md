@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (110/162 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (110/163 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -174,3 +174,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-155** Every Settings section grouped, with rows in a well
 - [ ] **US-156** The look on every page
 - [ ] **US-159** Pro: color the fog
+- [ ] **US-163** A problem in 1 part of Settings never blacks out the window

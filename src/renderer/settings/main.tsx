@@ -2,12 +2,15 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { Boundary, ROOT_OPTIONS } from './Boundary'
 import './styles.css'
 
 const container = document.getElementById('root')
 if (!container) throw new Error('missing #root')
-createRoot(container).render(
+createRoot(container, ROOT_OPTIONS).render(
   <React.StrictMode>
-    <App />
+    <Boundary kind="window" where="the window">
+      <App />
+    </Boundary>
   </React.StrictMode>
 )

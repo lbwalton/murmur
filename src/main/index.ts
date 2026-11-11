@@ -713,6 +713,40 @@ app.whenReady().then(async () => {
     return probe.items === 10 && probe.sections === 10 && probe.finish && probe.first === 'Hotkey'
   })
 
+  registerSmokeCheck('settingsUnbroken', async () => {
+    // A note in place of a broken part keeps the window alive (US-163),
+    // so it must never hide a startup problem from smoke: once the
+    // settings tab is open (settingsRail, just before, skips the wizard
+    // a fresh profile gets), no section, page or window note may show.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    let drawn = false
+    for (let i = 0; i < 30 && !drawn; i++) {
+      drawn = await win.webContents.executeJavaScript('document.querySelector(".settings-content .sec") !== null')
+      if (!drawn) await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (!drawn) return false
+    // A moment for effects that throw after the first paint.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const notes = await win.webContents.executeJavaScript('document.querySelectorAll("[data-crashed]").length')
+    if (notes !== 0) return false
+    // Then every page, 1 at a time, ending back on the settings tab the
+    // checks after this one expect.
+    const pages = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const counts = {}
+      for (const label of ['home', 'analytics', 'wrap-up', 'journey', 'settings']) {
+        const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === label)
+        if (!nav) return null
+        nav.click()
+        await wait(400)
+        counts[label] = document.querySelectorAll('[data-crashed]').length
+      }
+      return counts
+    })()`)) as Record<string, number> | null
+    return pages !== null && Object.values(pages).every((n) => n === 0)
+  })
+
   registerSmokeCheck('settingsZoomSharp', async () => {
     // At the top step, 300 percent, every brush canvas on screen paints
     // at the full pixel ratio, not a capped one, so paint stays sharp
