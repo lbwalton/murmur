@@ -7,7 +7,7 @@ import type { HotkeysStatus, KeyStatus, SettingsApi } from '../../preload/settin
 import type { ProviderCatalog } from '../../shared/catalog'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Group, Row, Section, Switch } from './controls'
+import { AlsoInShortcuts, Group, Row, Section, Switch } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -63,6 +63,7 @@ export function TransformPanel(props: {
         <Row
           label="Transform chord"
           anchor="row-transform-chord"
+          also={<AlsoInShortcuts slug="transform" label="Transform" />}
           keywords="rewrite edit selection chord hotkey shortcut keyboard"
           desc={
             captureNote ??

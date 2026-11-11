@@ -2646,7 +2646,7 @@ html {
   cursor: default;
 }
 
-.settings-layout :is(.btn, .switch, .seg button, .rail-item, .health, .capture, summary):focus-visible,
+.settings-layout :is(.btn, .switch, .seg button, .rail-item, .health, .capture, .row-also .link-btn, summary):focus-visible,
 .wizard-panel .btn:focus-visible {
   outline: 2px solid var(--amber-soft);
   outline-offset: 2px;
@@ -3088,7 +3088,8 @@ textarea.well-multiline {
   opacity: 0.45;
 }
 
-/* Where else a mirrored setting lives (Shortcuts, US-164). */
+/* Where else a setting shows: a Shortcuts row names its own section
+   (US-164), and that row names Shortcuts (US-165). */
 .row-also {
   margin-top: 4px;
   font-size: 12px;

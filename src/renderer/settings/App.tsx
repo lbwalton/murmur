@@ -46,6 +46,7 @@ import { HISTORY_CLEARED } from './HomeView'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
   GroupRow,
+  AlsoInShortcuts,
   Group,
   ModelPicker,
   NumberSetting,
@@ -1118,6 +1119,7 @@ export function App(): React.JSX.Element {
               <Row
                 label="Hotkey"
                 anchor="row-hotkey"
+                also={<AlsoInShortcuts slug="dictation" label="Dictation" />}
                 keywords="shortcut keyboard combo chord push to talk"
                 desc={captureNote ?? 'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'}
               >
@@ -1258,6 +1260,7 @@ export function App(): React.JSX.Element {
 
               <Row
                 label="Paste last dictation"
+                also={<AlsoInShortcuts slug="paste-last" label="Paste last dictation" />}
                 keywords="repeat again chord shortcut hotkey keyboard"
                 desc={
                   pasteCaptureNote ??

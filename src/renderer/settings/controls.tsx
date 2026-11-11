@@ -129,6 +129,9 @@ export function Row(props: {
    *  needs, the way Loop once it settles waits for Double-tap (US-155).
    *  The caller disables the control. */
   waits?: string
+  /** A small line under the description: where else this setting shows
+   *  (the way back to Shortcuts, US-165). Search does not read it. */
+  also?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   return (
@@ -145,6 +148,7 @@ export function Row(props: {
           {props.mark}
         </div>
         {props.desc && <div className="row-desc">{props.desc}</div>}
+        {props.also && <div className="row-also">{props.also}</div>}
         {props.waits && (
           <div className="row-waits-note" id={`${props.anchor ?? rowId(props.label)}-waits`}>
             {props.waits}
@@ -405,6 +409,24 @@ export function jumpToRow(
       el.querySelector<HTMLElement>('.row-control button:not(:disabled):not([tabindex="-1"])')
     control?.focus({ preventScroll: true })
   }
+}
+
+/** The way from a shortcut's own row to the Shortcuts section, where
+ *  all of them sit together (US-165). It lands on the same shortcut. */
+export function AlsoInShortcuts(props: { slug: string; label: string }): React.JSX.Element {
+  return (
+    <>
+      also under{' '}
+      <button
+        className="link-btn"
+        aria-label={`${props.label}, under Shortcuts`}
+        onClick={() => jumpToRow(`row-shortcut-${props.slug}`, { tone: 'glow', focusControl: true })}
+      >
+        Shortcuts
+      </button>
+      , with every other shortcut
+    </>
+  )
 }
 
 export function ModelPicker(props: {

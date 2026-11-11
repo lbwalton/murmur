@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import { AlsoInShortcuts, Row } from './controls'
 import { ShortcutsSection, captureProblem, clearedShortcut, shortcutsOf } from './Shortcuts'
 
 const read = (name: string): string => readFileSync(join(__dirname, name), 'utf8')
@@ -18,6 +19,43 @@ const draw = (settings: Settings, hotkeys = allGood): string =>
   renderToStaticMarkup(
     <ShortcutsSection settings={settings} hotkeys={hotkeys} onUpdate={async () => undefined} onRefresh={async () => undefined} />
   )
+
+describe('the way back to Shortcuts (US-165)', () => {
+  it('links each shortcut\'s own row to its row under Shortcuts', () => {
+    const homes: Array<[string, string, string]> = [
+      ['App.tsx', 'anchor="row-hotkey"', '<AlsoInShortcuts slug="dictation" label="Dictation" />'],
+      ['App.tsx', 'label="Paste last dictation"', '<AlsoInShortcuts slug="paste-last" label="Paste last dictation" />'],
+      ['NotesPanel.tsx', 'anchor="row-note-chord"', '<AlsoInShortcuts slug="note" label="Note" />'],
+      ['TransformPanel.tsx', 'anchor="row-transform-chord"', '<AlsoInShortcuts slug="transform" label="Transform" />']
+    ]
+    for (const [file, row, link] of homes) {
+      const source = read(file)
+      const at = source.indexOf(row)
+      expect(at).toBeGreaterThan(-1)
+      // The link sits in that row's own opening tag.
+      const open = source.lastIndexOf('<Row', at)
+      expect(source.slice(open, source.indexOf('<div className="inline">', at))).toContain(link)
+      expect(source.slice(open + 1, at)).not.toContain('<Row')
+    }
+    // Search reads the label and the description, never this line.
+    expect(read('SettingsRail.tsx')).not.toContain('row-also')
+    // Every slug a link names is a row the Shortcuts section draws.
+    const slugs = shortcutsOf(DEFAULT_SETTINGS, null).map((s) => s.slug)
+    expect(slugs).toEqual(['dictation', 'paste-last', 'note', 'transform'])
+  })
+
+  it('draws the link as its own line after the description', () => {
+    const html = renderToStaticMarkup(
+      <Row label="Note chord" desc="Hold it and speak." also={<AlsoInShortcuts slug="note" label="Note" />}>
+        <span />
+      </Row>
+    )
+    expect(html).toContain('<div class="row-desc">Hold it and speak.</div><div class="row-also">also under')
+    expect(html).toContain('aria-label="Note, under Shortcuts"')
+    expect(html).toContain('>Shortcuts</button>, with every other shortcut')
+    expect(read('controls.tsx')).toContain("jumpToRow(`row-shortcut-${props.slug}`, { tone: 'glow', focusControl: true })")
+  })
+})
 
 describe('Shortcuts: every key combo in 1 place (US-164)', () => {
   it('lists the 4 shortcuts with their combos, each pointing at its own section', () => {

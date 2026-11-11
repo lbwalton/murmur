@@ -2677,9 +2677,25 @@
         "docs/settings.md documents the section",
         "Live check on LaBroi's Mac"
       ],
+      "passes": true,
+      "needs_human": true,
+      "notes": "Added 2026-11-11 from LaBroi's pick of option C on board 13 (canvas 26BYsPBHHfeZM4FqXs56Y4). The board drew a clash naming the other shortcut (clashes with Note); murmur refuses a clashing combo when it is captured and the main process does not say which one it clashed with, so the row says it clashes with the dictation hotkey or another shortcut here. Naming the exact one needs a main-process change and is left out. Built 2026-11-11: Shortcuts.tsx (the section, shortcutsOf, captureProblem, clearedShortcut), a rail entry after Dictation inside a SectionGuard, search skips the 4 mirrored rows (data-mirror), the smoke count is 11, and docs/settings.md has the answer. Viewed in a real window on a copy of the sample profile (the section, and a search for shortcut: the 4 first, each once). Review gate: no blockers; the Hands-free line now names the note shortcut too (it locks on a double-tap as well), the also under links carry full names and take keyboard focus along, and the paste row id is kebab-case. Left as is: each view keeps its own turned-down sentence until its next action. Typecheck, smoke ok:true, design lint clean; 102 test files (1480 tests) pass (1 site test timed out in 2 earlier runs while the Mac was under heavy load, and passed alone and in the final run). Live check owed. Live check 2026-11-11: LaBroi ran all 6 steps on the notarized 7a5c01f test build and reported that everything passes."
+    },
+    {
+      "id": "US-165",
+      "title": "Shortcuts: a way back from each shortcut's own row",
+      "description": "After passing US-164, LaBroi asked on 2026-11-11 whether the Hotkey row in Dictation should link to the Shortcuts section, so people learn there are other shortcuts and can see them all in 1 place.",
+      "acceptance": [
+        "The Hotkey and Paste last dictation rows in Dictation, the Note chord row in Notes and the Transform chord row in Transform each show a small line under the description: also under Shortcuts, with every other shortcut.",
+        "Clicking Shortcuts in that line scrolls to the same shortcut's row in the Shortcuts section with a glow, and moves keyboard focus to its combo button.",
+        "The link has a full name for screen readers (for example: Note, under Shortcuts).",
+        "Settings search results are unchanged: the line is not part of what search reads.",
+        "The line uses the same style as the also under links in Shortcuts; no new colors.",
+        "docs/settings.md says the link runs both ways."
+      ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-11 from LaBroi's pick of option C on board 13 (canvas 26BYsPBHHfeZM4FqXs56Y4). The board drew a clash naming the other shortcut (clashes with Note); murmur refuses a clashing combo when it is captured and the main process does not say which one it clashed with, so the row says it clashes with the dictation hotkey or another shortcut here. Naming the exact one needs a main-process change and is left out. Built 2026-11-11: Shortcuts.tsx (the section, shortcutsOf, captureProblem, clearedShortcut), a rail entry after Dictation inside a SectionGuard, search skips the 4 mirrored rows (data-mirror), the smoke count is 11, and docs/settings.md has the answer. Viewed in a real window on a copy of the sample profile (the section, and a search for shortcut: the 4 first, each once). Review gate: no blockers; the Hands-free line now names the note shortcut too (it locks on a double-tap as well), the also under links carry full names and take keyboard focus along, and the paste row id is kebab-case. Left as is: each view keeps its own turned-down sentence until its next action. Typecheck, smoke ok:true, design lint clean; 102 test files (1480 tests) pass (1 site test timed out in 2 earlier runs while the Mac was under heavy load, and passed alone and in the final run). Live check owed."
+      "notes": "Built 2026-11-11 without a preview board: it mirrors the also under link he already approved on board 13 option C, in the other direction. Row gains an also line (outside row-desc, so search text is unchanged); AlsoInShortcuts in controls.tsx jumps to row-shortcut-<slug>. Tests: Shortcuts.test.tsx (the 4 rows carry the link, the slugs match the rows Shortcuts draws, markup and aria-label). Automated criteria verified 2026-11-11: typecheck clean, 102 test files (1482 tests) pass, design lint clean, and a sample-profile capture shows the line under the Hotkey description. Review gate: no blockers; fixed from it: the links (here and in Shortcuts) get the settings focus ring, the tests read each row's own opening tag and hold that search never reads the line, and these notes. Left as is: if the Shortcuts section is showing its problem note, the link does nothing. Live check owed: the scroll, glow and focus move."
     }
   ]
 }

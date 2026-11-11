@@ -18,7 +18,7 @@ import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared
 import { openTasksLine } from '../../shared/todo'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Group, Row, Section, Switch, TextSetting, TimeInput } from './controls'
+import { AlsoInShortcuts, Group, Row, Section, Switch, TextSetting, TimeInput } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -387,6 +387,7 @@ export function NotesPanel(props: {
         <Row
           label="Note chord"
           anchor="row-note-chord"
+          also={<AlsoInShortcuts slug="note" label="Note" />}
           keywords="brain dump chord hotkey shortcut keyboard inbox"
           desc={
             captureNote ??
