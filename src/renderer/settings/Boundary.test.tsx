@@ -75,7 +75,7 @@ describe('a part that hit a problem (US-163)', () => {
         <p>row</p>
       </Section>
     )
-    expect(html).toContain('<div class="panel"><p>row</p></div>')
+    expect(html).toContain('<div class="sec-groups"><p>row</p></div>')
     const controls = readFileSync(join(__dirname, 'controls.tsx'), 'utf8')
     expect(controls).toMatch(/<Boundary kind="section" where=\{`section \$\{props\.id\}`\}>/)
   })
@@ -110,7 +110,7 @@ describe('a part that hit a problem (US-163)', () => {
     expect(guarded).toContain('id="sec-notes"')
     expect(guarded).toContain('Notes</h2>')
     expect(guarded).toContain('data-crashed="section"')
-    expect(guarded).not.toContain('class="panel"><div')
+    expect(guarded).not.toContain('class="sec-groups"')
   })
 
   it('names no one and keeps murmur lowercase', () => {

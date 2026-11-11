@@ -2365,15 +2365,23 @@ html {
   outline: none;
 }
 
+/* Type steps in Settings (US-155): page title 28, section title 20,
+   group title 15, row label 14, descriptions 12.5. */
+.settings-content .page-title h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
 .sec-title {
-  font-size: 17px;
-  font-weight: 650;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .sec-sub {
-  margin: 4px 0 12px;
-  font-size: 12.5px;
+  margin: 4px 0 14px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
@@ -2383,8 +2391,7 @@ html {
   padding: 2px 20px;
 }
 
-.sec .panel > * + *,
-.adv-body > * + * {
+.sec .panel > * + * {
   border-top: 1px solid var(--panel-edge);
 }
 
@@ -2440,49 +2447,6 @@ html {
 
 .row-block .trybox {
   width: 100%;
-}
-
-/* The Advanced fold: closed, it says what it holds. */
-.adv > summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.adv > summary::-webkit-details-marker {
-  display: none;
-}
-
-.adv > summary::after {
-  content: '';
-  width: 7px;
-  height: 7px;
-  margin-left: auto;
-  margin-right: 4px;
-  border-right: 1.5px solid var(--text-dim);
-  border-bottom: 1.5px solid var(--text-dim);
-  transform: rotate(-45deg);
-  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.adv[open] > summary::after {
-  transform: rotate(45deg);
-}
-
-.adv-hint {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-dim);
-}
-
-.adv-body {
-  border-top: 1px solid var(--panel-edge);
 }
 
 /* One button: 32px tall, 84px minimum, three looks. Standard is the
@@ -2916,7 +2880,7 @@ textarea.well-multiline {
   .health-arrive,
   .switch,
   .switch-knob,
-  .adv > summary::after,
+  .group-tag::after,
   .settings-layout .btn {
     animation: none;
     transition: none;
@@ -3048,45 +3012,38 @@ textarea.well-multiline {
 }
 
 /* Rows in a well (US-154, LaBroi's pick 2026-11-08; US-155 brings it to
-   every section). The section title is the page's biggest line, each
-   group is a panel with its own title a step down, and the group's rows
-   sit inset in a well a step darker than the panel. Type steps: 28,
-   20, 14, 12.5. */
-.sec-grouped .sec-title {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-
-.sec-grouped .sec-sub {
-  font-size: 13px;
-  margin-bottom: 16px;
-}
-
+   every section). Each group is a panel with its own title a step below
+   the section's, and the group's rows sit inset in a well a step darker
+   than the panel. A section with 4 rows or fewer is 1 group with no
+   title. */
 .sec-groups {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .group {
   background: var(--panel);
   border: 1px solid var(--panel-edge);
   border-radius: 14px;
-  padding: 18px 20px 16px;
+  padding: 16px 20px;
 }
 
 .group-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .group-sub {
-  margin: 3px 0 12px;
-  font-size: 13px;
+  display: block;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: var(--text-dim);
+  max-width: 64ch;
+  text-wrap: pretty;
 }
 
 .group-rows {
@@ -3094,6 +3051,11 @@ textarea.well-multiline {
   border: 1px solid var(--cream-06);
   border-radius: 10px;
   padding: 2px 16px;
+}
+
+.group-title + .group-rows,
+.group-sub + .group-rows {
+  margin-top: 10px;
 }
 
 .group-rows > * + * {
@@ -3104,11 +3066,139 @@ textarea.well-multiline {
   padding: 12px 0;
 }
 
-/* A row label inside a well is a setting, not a heading: lighter than
-   the group title so the 2 never read alike (LaBroi, 2026-11-08). */
+/* A row label inside a well is a setting, not a heading: regular weight
+   in a slightly dimmer cream, so it never reads like the group title
+   (LaBroi, 2026-11-08). Mixed from the theme's own text and ground. */
 .group-rows .row-label {
   font-size: 14px;
-  font-weight: 450;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--text) 90%, var(--ink));
+}
+
+/* A row with nothing to press (the cost estimate) is its text alone. */
+.row-control:empty {
+  display: none;
+}
+
+/* A row waiting on another setting: its text dims (the disabled control
+   dims itself), with what it needs in the micro-label face (Smart lists
+   until Formatting is Full). */
+.row-waits .row-label,
+.row-waits .row-desc {
+  opacity: 0.45;
+}
+
+.row-waits-note {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--brand);
+}
+
+/* A group whose heading folds its rows away (File layout). Closed, the
+   tag says what is inside. */
+.group-summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 12px;
+  cursor: pointer;
+}
+
+.group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.group-summary .group-sub {
+  grid-column: 1 / -1;
+}
+
+.group-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.group-tag::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--text-dim);
+  border-bottom: 1.5px solid var(--text-dim);
+  transform: rotate(-45deg);
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.group-fold[open] .group-tag::after {
+  transform: rotate(45deg);
+}
+
+.group-fold > .group-rows {
+  margin-top: 10px;
+}
+
+/* A setting that is 1 box (a list, the practice box): its name is the
+   group heading, and the well is the box itself, so no box sits inside
+   a box (LaBroi's pick, 2026-11-11). Still a .row to search and jumps. */
+.group-row,
+.sec .group-row {
+  display: block;
+  padding: 16px 20px;
+}
+
+.group-row > .row-text {
+  margin-bottom: 10px;
+}
+
+.group-row .row-label {
+  margin-bottom: 0;
+}
+
+.sec .group-row > .row-control {
+  max-width: none;
+}
+
+.sec .group-row .row-desc {
+  max-width: 64ch;
+}
+
+.sec .group-row.row-flash,
+.sec .group-row.row-glow {
+  margin-inline: 0;
+  padding-inline: 20px;
+}
+
+.group-row > .group-rows {
+  padding: 0;
+}
+
+.group-row > .group-rows > .well {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.group-row > .group-rows > .trybox {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+
+/* The box lost its own border, so the well shows the keyboard where it
+   is, in the field's focus color. */
+.group-row > .group-rows:has(> .trybox:focus) {
+  border-color: var(--amber-soft);
+}
+
+.group-row > .group-rows > .row-note {
+  padding: 12px 16px;
 }
 
 .group-note {

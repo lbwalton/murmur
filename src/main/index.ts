@@ -1020,7 +1020,7 @@ app.whenReady().then(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600))
     }
     // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
-    // row to the top, and unfolds any disclosure in its panel, so any
+    // row to the top, and unfolds the group it sits in, so any
     // row can be shot, not just the home tab.
     const anchor = process.env.MURMUR_SETTINGS_ANCHOR
     // MURMUR_SETTINGS_SEARCH=words types into the settings search, so a
@@ -1053,8 +1053,9 @@ app.whenReady().then(async () => {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
           const row = document.getElementById(${JSON.stringify(anchor)})
-          const panel = row ? row.closest('.panel') : null
-          for (const d of panel ? panel.querySelectorAll('details') : []) d.setAttribute('open', '')
+          // A fold is a group now (US-155): open the one the row sits in.
+          const fold = row ? row.closest('details') : null
+          if (fold) fold.setAttribute('open', '')
           if (row) row.scrollIntoView({ block: 'start' })
           return true
         })()`

@@ -32,7 +32,6 @@ import { SavedKeys } from './SavedKeys'
 import { type KeysKnown, connectionsNow } from '../../shared/profiles'
 import { CleanupShares } from './CleanupShares'
 import { PlainHttpNote } from './PlainHttpNote'
-import { plainHttpHost } from '../../shared/plain-http'
 import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
 import { NotesPanel } from './NotesPanel'
@@ -45,7 +44,7 @@ import { HeaderProMark, ProMark } from './ProMark'
 import { HISTORY_CLEARED } from './HomeView'
 import { FinishSetup, type SetupCheck, setupStatus } from './SetupStatus'
 import {
-  Advanced,
+  GroupRow,
   Group,
   ModelPicker,
   NumberSetting,
@@ -195,7 +194,7 @@ function PairAdd(props: {
   )
 }
 
-/** One macOS permission on its own line of the permissions list. */
+/** One macOS permission, a row in the macOS permissions group. */
 function PermissionLine(props: {
   anchor: string
   name: string
@@ -204,22 +203,27 @@ function PermissionLine(props: {
   badText: string
   onOpen: () => void
 }): React.JSX.Element {
+  // A row, so search finds each permission by name (US-155).
   return (
-    <div className="well-item" id={props.anchor}>
-      <span className="well-name">{props.name}</span>
-      {props.ok === null ? (
-        <span className="well-meta">…</span>
-      ) : props.ok ? (
-        <span className="badge-ok">{props.okText}</span>
-      ) : (
-        <span className="well-meta well-meta-bad">{props.badText}</span>
-      )}
-      <div className="well-actions">
-        {props.ok === false && (
-          <button className="btn" aria-label={`Open ${props.name} settings`} onClick={props.onOpen}>
-            Open settings
-          </button>
-        )}
+    <div className="row" id={props.anchor} data-keywords="macos permission privacy security allow">
+      <div className="row-text">
+        <div className="row-label">{props.name}</div>
+      </div>
+      <div className="row-control">
+        <div className="inline">
+          {props.ok === null ? (
+            <span className="well-meta">…</span>
+          ) : props.ok ? (
+            <span className="badge-ok">{props.okText}</span>
+          ) : (
+            <span className="well-meta well-meta-bad">{props.badText}</span>
+          )}
+          {props.ok === false && (
+            <button className="btn" aria-label={`Open ${props.name} settings`} onClick={props.onOpen}>
+              Open settings
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -703,6 +707,9 @@ export function App(): React.JSX.Element {
     if (normalizeUrl(baseUrl) === normalizeUrl(settings.provider.baseUrl)) await recheckKey()
     else setKeyStatus(await bridge().getApiKeyStatus())
   }
+  // Smart lists and Apply corrections only act at Full: until then
+  // their rows wait and say so (US-155).
+  const needsFull = settings.formatting.level === 'full' ? undefined : 'needs Full formatting'
   const providerDiffers =
     settings.provider.baseUrl !== DEFAULT_SETTINGS.provider.baseUrl ||
     settings.provider.sttModel !== DEFAULT_SETTINGS.provider.sttModel ||
@@ -807,7 +814,6 @@ export function App(): React.JSX.Element {
             id="provider"
             title="Provider and keys"
             sub="Where your voice is transcribed and cleaned up, and the keys murmur uses to get there."
-            grouped
           >
             <RunningStrip settings={settings} catalog={catalog} keys={keysKnown} />
             <ProfileCards
@@ -835,7 +841,7 @@ export function App(): React.JSX.Element {
                 keywords="groq openai mistral endpoint service preset custom speech transcription"
                 desc={
                   customPreset || !sttProvider
-                    ? 'Custom: set the address yourself. The base URL is under Advanced below.'
+                    ? 'Custom: set the address yourself, in Base URL below.'
                     : 'A preset fills in the address and its models.'
                 }
               >
@@ -903,6 +909,22 @@ export function App(): React.JSX.Element {
                   />
                 )}
               </Row>
+
+              <Row
+                label="Base URL"
+                anchor="row-base-url"
+                keywords="endpoint address proxy local server speech"
+                desc="Where speech goes: any OpenAI-compatible endpoint, such as OpenAI, a proxy, or a local server. Test the key after changing it."
+              >
+                <TextSetting
+                  wide
+                  label="Speech base URL"
+                  value={settings.provider.baseUrl}
+                  placeholder="https://api.groq.com/openai/v1"
+                  onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
+                />
+              </Row>
+              <PlainHttpNote url={settings.provider.baseUrl} />
 
               <Row
                 label="Key"
@@ -1029,10 +1051,16 @@ export function App(): React.JSX.Element {
               />
             </Group>
 
-            <div className="panel">
+            <Group id="cost" title="Cost and defaults">
               {catalog && (
-                <p className="row-note">
-                  {sttProvider?.free
+                <Row
+                  label="Estimated cost"
+                  anchor="row-estimated-cost"
+                  block
+                  keywords="price rates billing spend money"
+                  desc={
+                    <>
+                      {sttProvider?.free
                     ? 'Free: this preset runs on your machine, nothing is billed.'
                     : costParts
                       ? `Estimated ${formatCostParts(costParts)} per 1,000 words at ${
@@ -1043,239 +1071,239 @@ export function App(): React.JSX.Element {
                     .flatMap((p) => p.nuances)
                     .join(' ')}
                   {sttProvider ? ` Rates verified ${sttProvider.verifiedOn}; estimates only, your provider bills you directly.` : ''}
-                </p>
+                    </>
+                  }
+                >
+                  {null}
+                </Row>
               )}
 
-              <Advanced
-                hint="speech base URL, price refresh, defaults"
-                open={plainHttpHost(settings.provider.baseUrl) !== null}
+              <Row
+                label="Price refresh"
+                keywords="rates cost catalog"
+                desc="At launch, fetch the newest provider rate sheet from the murmur repo, with nothing about you attached. Off uses the rates this version shipped with."
               >
-                <Row
-                  label="Base URL"
-                  anchor="row-base-url"
-                  keywords="endpoint address proxy local server speech"
-                  desc="Where speech goes: any OpenAI-compatible endpoint, such as OpenAI, a proxy, or a local server. Test the key after changing it."
-                >
-                  <TextSetting
-                    wide
-                    label="Speech base URL"
-                    value={settings.provider.baseUrl}
-                    placeholder="https://api.groq.com/openai/v1"
-                    onCommit={(baseUrl) => void update({ provider: { baseUrl } as Settings['provider'] })}
-                  />
-                </Row>
-                <PlainHttpNote url={settings.provider.baseUrl} />
-
-                <Row
+                <Switch
+                  checked={settings.catalogRefresh}
                   label="Price refresh"
-                  keywords="rates cost catalog"
-                  desc="At launch, fetch the newest provider rate sheet from the murmur repo, with nothing about you attached. Off uses the rates this version shipped with."
-                >
-                  <Switch
-                    checked={settings.catalogRefresh}
-                    label="Price refresh"
-                    onChange={(catalogRefresh) => void update({ catalogRefresh })}
-                  />
-                </Row>
+                  onChange={(catalogRefresh) => void update({ catalogRefresh })}
+                />
+              </Row>
 
-                {providerDiffers && (
-                  <Row label="Groq defaults" desc="Put the speech provider, base URL, and models back to the Groq preset. Profiles and keys stay.">
-                    <button
-                      className="btn"
-                      onClick={() =>
-                        void update({
-                          provider: {
-                            baseUrl: DEFAULT_SETTINGS.provider.baseUrl,
-                            sttModel: DEFAULT_SETTINGS.provider.sttModel,
-                            llmModel: DEFAULT_SETTINGS.provider.llmModel
-                          } as Settings['provider']
-                        })
-                      }
-                    >
-                      Reset
-                    </button>
-                  </Row>
-                )}
-              </Advanced>
-            </div>
-          </Section>
-
-          <Section id="dictation" title="Dictation" sub="How you start talking and where the words land.">
-            <Row
-              label="Hotkey"
-              anchor="row-hotkey"
-              keywords="shortcut keyboard combo push to talk"
-              desc={captureNote ?? 'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'}
-            >
-              <div className="inline">
-                <button
-                  className={`field capture ${capturing ? 'capture-live' : ''}`}
-                  aria-label={`Dictation hotkey, ${settings.hotkey.binding}. Click to change.`}
-                  onClick={() => void startCapture()}
-                >
-                  {capturing ? 'press keys…' : settings.hotkey.binding}
-                </button>
-                {settings.hotkey.binding !== DEFAULT_SETTINGS.hotkey.binding && (
+              {providerDiffers && (
+                <Row label="Groq defaults" desc="Put the speech provider, base URL, and models back to the Groq preset. Profiles and keys stay.">
                   <button
                     className="btn"
-                    onClick={() => {
-                      setCaptureNote(null)
+                    onClick={() =>
                       void update({
-                        hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey']
+                        provider: {
+                          baseUrl: DEFAULT_SETTINGS.provider.baseUrl,
+                          sttModel: DEFAULT_SETTINGS.provider.sttModel,
+                          llmModel: DEFAULT_SETTINGS.provider.llmModel
+                        } as Settings['provider']
                       })
-                    }}
+                    }
                   >
                     Reset
                   </button>
-                )}
-              </div>
-            </Row>
+                </Row>
+              )}
+            </Group>
+          </Section>
 
-            <Row label="Trigger" keywords="hold toggle mode" desc="Hold while you speak, or tap to start and tap again to stop.">
-              <Segmented
-                label="Trigger"
-                value={settings.hotkey.mode}
-                options={[
-                  { value: 'hold', label: 'Hold to talk' },
-                  { value: 'toggle', label: 'Tap to start, tap to stop' }
-                ]}
-                onChange={(mode) => void update({ hotkey: { mode } as Settings['hotkey'] })}
-              />
-            </Row>
-
-            {settings.hotkey.mode === 'hold' && (
+          <Section id="dictation" title="Dictation" sub="How you start talking and where the words land.">
+            <Group id="hotkey" title="Hotkey">
               <Row
-                label="Double-tap for hands-free"
-                keywords="hands free double tap lock long"
-                desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to cancel; the take waits on Home to retry."
+                label="Hotkey"
+                anchor="row-hotkey"
+                keywords="shortcut keyboard combo push to talk"
+                desc={captureNote ?? 'Click, then press the combo. Modifiers alone work too (press and release Ctrl+Alt). Esc cancels.'}
+              >
+                <div className="inline">
+                  <button
+                    className={`field capture ${capturing ? 'capture-live' : ''}`}
+                    aria-label={`Dictation hotkey, ${settings.hotkey.binding}. Click to change.`}
+                    onClick={() => void startCapture()}
+                  >
+                    {capturing ? 'press keys…' : settings.hotkey.binding}
+                  </button>
+                  {settings.hotkey.binding !== DEFAULT_SETTINGS.hotkey.binding && (
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        setCaptureNote(null)
+                        void update({
+                          hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey']
+                        })
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </Row>
+
+              <Row label="Trigger" keywords="hold toggle mode" desc="Hold while you speak, or tap to start and tap again to stop.">
+                <Segmented
+                  label="Trigger"
+                  value={settings.hotkey.mode}
+                  options={[
+                    { value: 'hold', label: 'Hold to talk' },
+                    { value: 'toggle', label: 'Tap to start, tap to stop' }
+                  ]}
+                  onChange={(mode) => void update({ hotkey: { mode } as Settings['hotkey'] })}
+                />
+              </Row>
+
+              {settings.hotkey.mode === 'hold' && (
+                <Row
+                  label="Double-tap for hands-free"
+                  keywords="hands free double tap lock long"
+                  desc="Tap the hotkey twice to keep talking without holding it. Tap once more to stop, or press Escape to cancel; the take waits on Home to retry."
+                >
+                  <Switch
+                    checked={settings.hotkey.doubleTap}
+                    label="Double-tap for hands-free"
+                    onChange={(doubleTap) => void update({ hotkey: { ...settings.hotkey, doubleTap } })}
+                  />
+                </Row>
+              )}
+
+              {settings.hotkey.mode === 'hold' && (
+                <Row
+                  label="Loop once it settles"
+                  keywords="hands free loop ring fade faint strength level double tap"
+                  desc="The loop starts at full each time you double-tap, then fades to this."
+                >
+                  <LoopLevelSlider
+                    value={settings.overlay.loopLevel}
+                    look={settings.overlay.look}
+                    style={settings.overlay.style}
+                    accent={guiAccent}
+                    disabled={!settings.hotkey.doubleTap}
+                    onCommit={(loopLevel) => void update({ overlay: { ...settings.overlay, loopLevel } })}
+                  />
+                </Row>
+              )}
+            </Group>
+
+            <Group id="microphone" title="Microphone">
+              <MicRow settings={settings} onUpdate={update} />
+            </Group>
+
+            <Group id="formatting" title="Formatting">
+              <Row
+                label="Level"
+                anchor="row-formatting"
+                keywords="formatting punctuation cleanup polish fillers"
+                desc={FORMAT_DESC[settings.formatting.level]}
+              >
+                <Segmented
+                  label="Formatting level"
+                  value={settings.formatting.level}
+                  options={[
+                    { value: 'off', label: 'Off' },
+                    { value: 'light', label: 'Light' },
+                    { value: 'full', label: 'Full' }
+                  ]}
+                  onChange={(level) => void update({ formatting: { ...settings.formatting, level } })}
+                />
+              </Row>
+
+              <Row
+                label="Smart lists"
+                waits={needsFull}
+                keywords="bullets numbered"
+                desc="At Full formatting, spoken sequences (first, then, then) become numbered lists, and saying bullet point or next item starts a dash line."
               >
                 <Switch
-                  checked={settings.hotkey.doubleTap}
-                  label="Double-tap for hands-free"
-                  onChange={(doubleTap) => void update({ hotkey: { ...settings.hotkey, doubleTap } })}
+                  checked={settings.formatting.smartLists}
+                  label="Smart lists"
+                  disabled={needsFull !== undefined}
+                  describedBy={needsFull ? 'row-smart-lists-waits' : undefined}
+                  onChange={(smartLists) => void update({ formatting: { ...settings.formatting, smartLists } })}
                 />
               </Row>
-            )}
 
-            {settings.hotkey.mode === 'hold' && (
               <Row
-                label="Loop once it settles"
-                keywords="hands free loop ring fade faint strength level double tap"
-                desc="The loop starts at full each time you double-tap, then fades to this."
+                label="Apply corrections"
+                waits={needsFull}
+                keywords="self-correction slip-up verbatim actually wait i mean"
+                desc="At Full formatting, when you correct yourself (Tuesday, oh wait, I mean Wednesday), only the fix is typed. Off keeps the slip-up in."
               >
-                <LoopLevelSlider
-                  value={settings.overlay.loopLevel}
-                  look={settings.overlay.look}
-                  style={settings.overlay.style}
-                  accent={guiAccent}
-                  disabled={!settings.hotkey.doubleTap}
-                  onCommit={(loopLevel) => void update({ overlay: { ...settings.overlay, loopLevel } })}
+                <Switch
+                  checked={settings.formatting.corrections}
+                  label="Apply corrections"
+                  disabled={needsFull !== undefined}
+                  describedBy={needsFull ? 'row-apply-corrections-waits' : undefined}
+                  onChange={(corrections) => void update({ formatting: { ...settings.formatting, corrections } })}
                 />
               </Row>
-            )}
+            </Group>
 
-            <MicRow settings={settings} onUpdate={update} />
+            <Group id="landing" title="Where words land">
+              <Row label="Insert by" keywords="paste clipboard copy" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
+                <Segmented
+                  label="Insert by"
+                  value={settings.insertion.mode}
+                  options={[
+                    { value: 'paste', label: 'Paste at cursor' },
+                    { value: 'copy', label: 'Copy only' }
+                  ]}
+                  onChange={(mode) => void update({ insertion: { mode } as Settings['insertion'] })}
+                />
+              </Row>
 
-            <Row label="Insert by" keywords="paste clipboard copy" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
-              <Segmented
-                label="Insert by"
-                value={settings.insertion.mode}
-                options={[
-                  { value: 'paste', label: 'Paste at cursor' },
-                  { value: 'copy', label: 'Copy only' }
-                ]}
-                onChange={(mode) => void update({ insertion: { mode } as Settings['insertion'] })}
-              />
-            </Row>
-
-            <Row label="Formatting" keywords="punctuation cleanup polish fillers" desc={FORMAT_DESC[settings.formatting.level]}>
-              <Segmented
-                label="Formatting"
-                value={settings.formatting.level}
-                options={[
-                  { value: 'off', label: 'Off' },
-                  { value: 'light', label: 'Light' },
-                  { value: 'full', label: 'Full' }
-                ]}
-                onChange={(level) => void update({ formatting: { ...settings.formatting, level } })}
-              />
-            </Row>
-
-            <Row
-              label="Smart lists"
-              keywords="bullets numbered"
-              desc="At Full formatting, spoken sequences (first, then, then) become numbered lists, and saying bullet point or next item starts a dash line."
-            >
-              <Switch
-                checked={settings.formatting.smartLists}
-                label="Smart lists"
-                onChange={(smartLists) => void update({ formatting: { ...settings.formatting, smartLists } })}
-              />
-            </Row>
-
-            <Row
-              label="Apply corrections"
-              keywords="self-correction slip-up verbatim actually wait i mean"
-              desc="At Full formatting, when you correct yourself (Tuesday, oh wait, I mean Wednesday), only the fix is typed. Off keeps the slip-up in."
-            >
-              <Switch
-                checked={settings.formatting.corrections}
-                label="Apply corrections"
-                onChange={(corrections) => void update({ formatting: { ...settings.formatting, corrections } })}
-              />
-            </Row>
-
-            <Row
-              label="Paste last dictation"
-              keywords="repeat again chord"
-              desc={
-                pasteCaptureNote ??
-                (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
-                  ? 'This chord is disarmed: it clashes with your dictation hotkey or the note chord, or no longer parses. Capture a new one.'
-                  : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one; a modifier plus an F-key is safest.')
-              }
-            >
-              <div className="inline">
-                <button
-                  className={`field capture ${pasteCapturing ? 'capture-live' : ''}`}
-                  aria-label="Paste last dictation chord. Click to change."
-                  onClick={() => void startPasteCapture()}
-                >
-                  {pasteCapturing
-                    ? 'press keys…'
-                    : settings.hotkey.pasteLastBinding === ''
-                      ? 'not set'
-                      : settings.hotkey.pasteLastBinding}
-                </button>
-                {settings.hotkey.pasteLastBinding !== '' && (
+              <Row
+                label="Paste last dictation"
+                keywords="repeat again chord"
+                desc={
+                  pasteCaptureNote ??
+                  (settings.hotkey.pasteLastBinding !== '' && hotkeys && !hotkeys.pasteBindingValid
+                    ? 'This chord is disarmed: it clashes with your dictation hotkey or the note chord, or no longer parses. Capture a new one.'
+                    : 'A chord that pastes your newest dictation again, wherever your cursor is. Off until you set one; a modifier plus an F-key is safest.')
+                }
+              >
+                <div className="inline">
                   <button
-                    className="btn btn-remove"
-                    onClick={() => {
-                      setPasteCaptureNote(null)
-                      void update({ hotkey: { pasteLastBinding: '' } as Settings['hotkey'] })
-                    }}
+                    className={`field capture ${pasteCapturing ? 'capture-live' : ''}`}
+                    aria-label="Paste last dictation chord. Click to change."
+                    onClick={() => void startPasteCapture()}
                   >
-                    Clear
+                    {pasteCapturing
+                      ? 'press keys…'
+                      : settings.hotkey.pasteLastBinding === ''
+                        ? 'not set'
+                        : settings.hotkey.pasteLastBinding}
                   </button>
-                )}
-              </div>
-            </Row>
+                  {settings.hotkey.pasteLastBinding !== '' && (
+                    <button
+                      className="btn btn-remove"
+                      onClick={() => {
+                        setPasteCaptureNote(null)
+                        void update({ hotkey: { pasteLastBinding: '' } as Settings['hotkey'] })
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </Row>
+            </Group>
 
-            <Row
+            <GroupRow
               label="Try it"
               anchor="row-try-it"
-              block
               keywords="test dictation practice"
               desc={settings.history.hideWords ? undefined : `Click into the box, hold ${settings.hotkey.binding}, say something, release.`}
             >
               <TryBox settings={settings} className="field trybox" rows={2} label="Test dictation" />
-            </Row>
+            </GroupRow>
           </Section>
 
           <Section id="dictionary" title="Dictionary" sub="Words murmur should spell your way, and phrases that expand.">
-            <Row
+            <GroupRow
               label="Custom words"
-              block
               keywords="vocabulary spelling names replacements"
               desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
             >
@@ -1306,11 +1334,10 @@ export function App(): React.JSX.Element {
                   onAdd={(from, to) => void update({ dictionary: [...settings.dictionary, { from, to }] })}
                 />
               </div>
-            </Row>
+            </GroupRow>
 
-            <Row
+            <GroupRow
               label="Expansions"
-              block
               keywords="snippets shortcuts text replacement"
               desc="Say a trigger phrase, get a snippet: an email address, a sign-off, an intro. Inserted exactly as written; Enter starts a new line in the snippet box."
             >
@@ -1347,7 +1374,7 @@ export function App(): React.JSX.Element {
                   onAdd={(trigger, text) => void update({ expansions: [...settings.expansions, { trigger, text }] })}
                 />
               </div>
-            </Row>
+            </GroupRow>
           </Section>
 
           <SectionGuard id="notes" title="Notes">
@@ -1373,250 +1400,260 @@ export function App(): React.JSX.Element {
           </SectionGuard>
 
           <Section id="timeback" title="Time back and recap" sub="Your daily numbers and how time saved is counted.">
-            <Row
-              label="Daily recap"
-              keywords="notification summary evening"
-              desc="A notification with your day's numbers; click it to open the wrap-up. Test sends a real one now."
+            <Group
+              id="timeback"
+              note={
+                isMac
+                  ? 'Nothing appearing? In System Settings, Notifications, allow murmur and pick the Banners style.'
+                  : undefined
+              }
             >
-              <div className="inline">
-                <Switch
-                  checked={settings.recap.enabled}
-                  label="Daily recap"
-                  onChange={(enabled) => void update({ recap: { ...settings.recap, enabled } })}
+              <Row
+                label="Typing speed"
+                keywords="wpm words per minute"
+                desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average."
+              >
+                <NumberSetting
+                  value={settings.timeBack.typingWpm}
+                  min={MIN_TYPING_WPM}
+                  max={MAX_TYPING_WPM}
+                  suffix="wpm"
+                  onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
                 />
-                <TimeInput
-                  label="Recap time"
-                  value={settings.recap.time}
-                  disabled={!settings.recap.enabled}
-                  onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
-                />
-                <button className="btn btn-test" onClick={() => void bridge().testRecap()}>
-                  Test
-                </button>
-              </div>
-            </Row>
-            <Row
-              label="Typing speed"
-              keywords="wpm words per minute"
-              desc="Time back is typing at this speed minus the time you spent speaking. 40 wpm is a fair working average."
-            >
-              <NumberSetting
-                value={settings.timeBack.typingWpm}
-                min={MIN_TYPING_WPM}
-                max={MAX_TYPING_WPM}
-                suffix="wpm"
-                onCommit={(typingWpm) => void update({ timeBack: { ...settings.timeBack, typingWpm } })}
-              />
-            </Row>
-            <Row
-              label="Milestone alerts"
-              keywords="notification"
-              desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
-            >
-              <Switch
-                checked={settings.timeBack.milestones}
+              </Row>
+              <Row
+                label="Daily recap"
+                keywords="notification summary evening"
+                desc="A notification with your day's numbers; click it to open the wrap-up. Test sends a real one now."
+              >
+                <div className="inline">
+                  <Switch
+                    checked={settings.recap.enabled}
+                    label="Daily recap"
+                    onChange={(enabled) => void update({ recap: { ...settings.recap, enabled } })}
+                  />
+                  <TimeInput
+                    label="Recap time"
+                    value={settings.recap.time}
+                    disabled={!settings.recap.enabled}
+                    onCommit={(time) => void update({ recap: { ...settings.recap, time } })}
+                  />
+                  <button className="btn btn-test" onClick={() => void bridge().testRecap()}>
+                    Test
+                  </button>
+                </div>
+              </Row>
+              <Row
                 label="Milestone alerts"
-                onChange={(milestones) => void update({ timeBack: { ...settings.timeBack, milestones } })}
-              />
-            </Row>
-            <p className="row-note">
-              Nothing appearing on a Mac? In System Settings, Notifications, allow murmur and pick the Banners style.
-            </p>
+                keywords="notification"
+                desc="A notification each time today's time back crosses a 30-minute mark. Once per mark per day."
+              >
+                <Switch
+                  checked={settings.timeBack.milestones}
+                  label="Milestone alerts"
+                  onChange={(milestones) => void update({ timeBack: { ...settings.timeBack, milestones } })}
+                />
+              </Row>
+            </Group>
           </Section>
 
           <Section id="history" title="History" sub="What murmur keeps on this computer, for how long, and who can read it.">
-            <HistorySettings settings={settings} onUpdateSettings={update} />
+            <Group id="history">
+              <HistorySettings settings={settings} onUpdateSettings={update} />
+            </Group>
           </Section>
 
           <Section id="look" title="Look" sub="The waveform pill and the window around it.">
-            <Row
-              label="Waveform"
-              keywords="overlay style visualizer ink dabs flecks rings ribbon bars speckle pulse"
-              desc="How the pill draws your voice. Each tile is the real pill, moving to a made-up voice; locked styles show the belt that earns them."
-              block
-            >
-              <WaveTiles
-                styles={cosmetics?.overlayStyles ?? []}
-                value={settings.overlay.style}
-                accent={guiAccent}
-                onPick={(style) => void update({ overlay: { ...settings.overlay, style } })}
-              />
-            </Row>
-
-            <Row
-              label="Overlay look"
-              keywords="pill compact bare size preview"
-              desc="Pill is the classic; compact is the same pill at two thirds; bare drops the box and keeps the waveform. Hints and errors always use the pill."
-            >
-              <div className="inline">
-                <Segmented<OverlayLook>
-                  label="Overlay look"
-                  value={settings.overlay.look}
-                  options={[
-                    { value: 'pill', label: 'Pill' },
-                    { value: 'compact', label: 'Compact' },
-                    { value: 'bare', label: 'Bare' }
-                  ]}
-                  onChange={(look) =>
-                    void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(look) } })
-                  }
+            <Group id="look">
+              <Row
+                label="Waveform"
+                keywords="overlay style visualizer ink dabs flecks rings ribbon bars speckle pulse"
+                desc="How the pill draws your voice. Each tile is the real pill, moving to a made-up voice; locked styles show the belt that earns them."
+                block
+              >
+                <WaveTiles
+                  styles={cosmetics?.overlayStyles ?? []}
+                  value={settings.overlay.style}
+                  accent={guiAccent}
+                  onPick={(style) => void update({ overlay: { ...settings.overlay, style } })}
                 />
-                <button className="btn" onClick={() => void bridge().previewOverlay()}>
-                  Preview
-                </button>
-              </div>
-            </Row>
+              </Row>
 
-            <Row
-              label="Accent"
-              keywords="color colour"
-              desc="Colors the waveform and progress fills. The activity wall keeps its own picker; the fourteen-day chart paints today in gold. Earned, never bought."
-            >
-              <div className="inline">
-                {(() => {
-                  const chosen = cosmetics?.accents.find((a) => a.id === settings.cosmetics.accent)
-                  const color = chosen ? (chosen.color ?? cosmetics?.beltColor) : null
-                  return color ? <span className="swatch" style={{ background: color }} title={chosen?.name} /> : null
-                })()}
-                <select
-                  className="field"
-                  aria-label="Accent"
-                  value={settings.cosmetics.accent}
-                  onChange={(e) =>
-                    void update({
-                      cosmetics: { ...settings.cosmetics, accent: e.target.value }
-                    })
-                  }
-                >
-                  {(cosmetics?.accents ?? []).map((item) => (
-                    <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                      {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </Row>
+              <Row
+                label="Overlay look"
+                keywords="pill compact bare size preview"
+                desc="Pill is the classic; compact is the same pill at two thirds; bare drops the box and keeps the waveform. Hints and errors always use the pill."
+              >
+                <div className="inline">
+                  <Segmented<OverlayLook>
+                    label="Overlay look"
+                    value={settings.overlay.look}
+                    options={[
+                      { value: 'pill', label: 'Pill' },
+                      { value: 'compact', label: 'Compact' },
+                      { value: 'bare', label: 'Bare' }
+                    ]}
+                    onChange={(look) =>
+                      void update({ overlay: { ...settings.overlay, look: normalizeOverlayLook(look) } })
+                    }
+                  />
+                  <button className="btn" onClick={() => void bridge().previewOverlay()}>
+                    Preview
+                  </button>
+                </div>
+              </Row>
 
-            <Row label="Theme" keywords="dark colors window" desc="The window itself. More arrive with rank.">
-              <div className="inline">
-                {(() => {
-                  const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
-                  const p = chosen?.preview
-                  return p && p.length >= 2 ? (
-                    <span
-                      className="swatch"
-                      style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
-                      title={chosen?.name}
-                    />
-                  ) : null
-                })()}
-                <select
-                  className="field"
-                  aria-label="Theme"
-                  value={settings.cosmetics.uiTheme}
-                  onChange={(e) =>
-                    void update({
-                      cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
-                    })
-                  }
-                >
-                  {(cosmetics?.uiThemes ?? []).map((item) => (
-                    <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                      {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </Row>
+              <Row
+                label="Accent"
+                keywords="color colour"
+                desc="Colors the waveform and progress fills. The activity wall keeps its own picker; the fourteen-day chart paints today in gold. Earned, never bought."
+              >
+                <div className="inline">
+                  {(() => {
+                    const chosen = cosmetics?.accents.find((a) => a.id === settings.cosmetics.accent)
+                    const color = chosen ? (chosen.color ?? cosmetics?.beltColor) : null
+                    return color ? <span className="swatch" style={{ background: color }} title={chosen?.name} /> : null
+                  })()}
+                  <select
+                    className="field"
+                    aria-label="Accent"
+                    value={settings.cosmetics.accent}
+                    onChange={(e) =>
+                      void update({
+                        cosmetics: { ...settings.cosmetics, accent: e.target.value }
+                      })
+                    }
+                  >
+                    {(cosmetics?.accents ?? []).map((item) => (
+                      <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                        {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </Row>
+
+              <Row label="Theme" keywords="dark colors window" desc="The window itself. More arrive with rank.">
+                <div className="inline">
+                  {(() => {
+                    const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
+                    const p = chosen?.preview
+                    return p && p.length >= 2 ? (
+                      <span
+                        className="swatch"
+                        style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
+                        title={chosen?.name}
+                      />
+                    ) : null
+                  })()}
+                  <select
+                    className="field"
+                    aria-label="Theme"
+                    value={settings.cosmetics.uiTheme}
+                    onChange={(e) =>
+                      void update({
+                        cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
+                      })
+                    }
+                  >
+                    {(cosmetics?.uiThemes ?? []).map((item) => (
+                      <option key={item.id} value={item.id} disabled={!item.unlocked}>
+                        {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </Row>
+            </Group>
           </Section>
 
           <Section id="system" title="System" sub="Sounds, startup, permissions, and diagnostics.">
-            <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
-              <div className="inline">
-                <VolumeSlider
-                  value={settings.sounds.volume}
-                  disabled={!settings.sounds.enabled}
-                  onCommit={(volume) => void update({ sounds: { ...settings.sounds, volume } })}
-                />
-                <Switch
-                  checked={settings.sounds.enabled}
-                  label="Sounds"
-                  onChange={(enabled) => void update({ sounds: { ...settings.sounds, enabled } })}
-                />
-              </div>
-            </Row>
-
-            <Row
-              label="Start at login"
-              keywords="autostart startup launch boot"
-              desc="Opens murmur in the tray when you log in. Applies to installed builds."
-            >
-              <Switch
-                checked={settings.autostart}
-                label="Start at login"
-                onChange={(autostart) => void update({ autostart })}
-              />
-            </Row>
-
-            <UpdatesRow settings={settings} onChange={(updates) => void update({ updates })} />
-
-            {isMac && (
-              <Row
-                label="macOS permissions"
-                anchor="row-perms"
-                block
-                keywords="microphone accessibility input monitoring privacy security"
-                desc="The microphone is asked for on your first dictation. After allowing Input monitoring, quit and reopen murmur."
-              >
-                <div className="well">
-                  <PermissionLine
-                    anchor="row-mic"
-                    name="Microphone"
-                    ok={perms === null ? null : micOk}
-                    okText="granted"
-                    badText={perms?.microphone ?? '…'}
-                    onOpen={openPane('microphone')}
+            <Group id="general" title="General">
+              <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
+                <div className="inline">
+                  <VolumeSlider
+                    value={settings.sounds.volume}
+                    disabled={!settings.sounds.enabled}
+                    onCommit={(volume) => void update({ sounds: { ...settings.sounds, volume } })}
                   />
-                  <PermissionLine
-                    anchor="row-axs"
-                    name="Accessibility"
-                    ok={perms === null ? null : perms.accessibility}
-                    okText="granted"
-                    badText="not granted"
-                    onOpen={openPane('accessibility')}
-                  />
-                  <PermissionLine
-                    anchor="row-input"
-                    name="Input monitoring"
-                    ok={perms === null ? null : perms.inputMonitoring}
-                    okText="active"
-                    badText="not active"
-                    onOpen={openPane('input')}
+                  <Switch
+                    checked={settings.sounds.enabled}
+                    label="Sounds"
+                    onChange={(enabled) => void update({ sounds: { ...settings.sounds, enabled } })}
                   />
                 </div>
               </Row>
+
+              <Row
+                label="Start at login"
+                keywords="autostart startup launch boot"
+                desc="Opens murmur in the tray when you log in. Applies to installed builds."
+              >
+                <Switch
+                  checked={settings.autostart}
+                  label="Start at login"
+                  onChange={(autostart) => void update({ autostart })}
+                />
+              </Row>
+
+              <UpdatesRow settings={settings} onChange={(updates) => void update({ updates })} />
+            </Group>
+
+            {isMac && (
+              <Group
+                id="perms"
+                title="macOS permissions"
+                sub="The microphone is asked for on your first dictation. After allowing Input monitoring, quit and reopen murmur."
+              >
+                <PermissionLine
+                  anchor="row-perm-mic"
+                  name="Microphone"
+                  ok={perms === null ? null : micOk}
+                  okText="granted"
+                  badText={perms?.microphone ?? '…'}
+                  onOpen={openPane('microphone')}
+                />
+                <PermissionLine
+                  anchor="row-axs"
+                  name="Accessibility"
+                  ok={perms === null ? null : perms.accessibility}
+                  okText="granted"
+                  badText="not granted"
+                  onOpen={openPane('accessibility')}
+                />
+                <PermissionLine
+                  anchor="row-input"
+                  name="Input monitoring"
+                  ok={perms === null ? null : perms.inputMonitoring}
+                  okText="active"
+                  badText="not active"
+                  onOpen={openPane('input')}
+                />
+              </Group>
             )}
 
-            <Row
-              label="Diagnostics"
-              keywords="log logs bug report support troubleshoot"
-              desc="A local log of each dictation with no transcript text or keys, ever. Save report writes one file you can read before sharing; nothing sends on its own."
-            >
-              <div className="inline">
-                <button className="btn" onClick={() => void bridge().saveDiagnostics()}>
-                  Save report…
-                </button>
-                <button className="btn" onClick={() => void bridge().openLogFolder()}>
-                  Open log folder
-                </button>
-              </div>
-            </Row>
+            <Group id="help" title="Help">
+              <Row
+                label="Diagnostics"
+                keywords="log logs bug report support troubleshoot"
+                desc="A local log of each dictation with no transcript text or keys, ever. Save report writes one file you can read before sharing; nothing sends on its own."
+              >
+                <div className="inline">
+                  <button className="btn" onClick={() => void bridge().saveDiagnostics()}>
+                    Save report…
+                  </button>
+                  <button className="btn" onClick={() => void bridge().openLogFolder()}>
+                    Open log folder
+                  </button>
+                </div>
+              </Row>
 
-            <Row label="Setup wizard" keywords="onboarding guide" desc="Walk the guided setup again anytime.">
-              <button className="btn" onClick={() => setWizardOpen(true)}>
-                Run wizard
-              </button>
-            </Row>
+              <Row label="Setup wizard" keywords="onboarding guide" desc="Walk the guided setup again anytime.">
+                <button className="btn" onClick={() => setWizardOpen(true)}>
+                  Run wizard
+                </button>
+              </Row>
+            </Group>
           </Section>
 
           <Section
@@ -1662,7 +1699,7 @@ function ProSection(props: {
   if (!status) return <div />
   if (status.pro) {
     return (
-      <>
+      <Group id="pro">
         <Row
           label={status.founder ? 'Founding member' : 'Pro is active'}
           keywords="license key deactivate"
@@ -1689,36 +1726,38 @@ function ProSection(props: {
             onChange={(next) => void props.onUpdatePro({ dailyPaint: next })}
           />
         </Row>
-      </>
+      </Group>
     )
   }
 
   if (status.retained) {
     return (
-      <Row
-        label="License key"
-        keywords="pro reactivate"
-        desc="Pro is deactivated, but your key is still saved on this machine. Forget key deletes it; you would need the original key to activate again."
-      >
-        <div className="inline">
-          <button
-            className="btn btn-primary"
-            onClick={() =>
-              void bridge()
-                .reactivateLicense()
-                .then((next) => {
-                  setStatus(next)
-                  if (next.pro) props.onActivated()
-                })
-            }
-          >
-            Reactivate
-          </button>
-          <button className="btn btn-remove" onClick={() => void bridge().removeLicense().then(setStatus)}>
-            Forget key
-          </button>
-        </div>
-      </Row>
+      <Group id="pro">
+        <Row
+          label="License key"
+          keywords="pro reactivate"
+          desc="Pro is deactivated, but your key is still saved on this machine. Forget key deletes it; you would need the original key to activate again."
+        >
+          <div className="inline">
+            <button
+              className="btn btn-primary"
+              onClick={() =>
+                void bridge()
+                  .reactivateLicense()
+                  .then((next) => {
+                    setStatus(next)
+                    if (next.pro) props.onActivated()
+                  })
+              }
+            >
+              Reactivate
+            </button>
+            <button className="btn btn-remove" onClick={() => void bridge().removeLicense().then(setStatus)}>
+              Forget key
+            </button>
+          </div>
+        </Row>
+      </Group>
     )
   }
 
@@ -1733,64 +1772,66 @@ function ProSection(props: {
   // pick from the canvas): why Pro exists, what it adds, the price, and
   // the key field at the foot. Still a row, so search finds it.
   return (
-    <div className="row pro-offer" id="row-license-key" data-keywords="pro buy activate purchase license key support">
-      <p className="micro-label pro-offer-kicker">murmur pro</p>
-      <div className="row-label pro-offer-head">Keep murmur free for everyone.</div>
-      <p className="row-desc">The free app is complete and stays complete. Pro funds it, with a few extras for you.</p>
-      <ul className="pro-extras">
-        <li>
-          <span className="pro-plus" aria-hidden="true">
-            +
-          </span>
-          <span>
-            Provider profiles <span className="dim">save a setup, switch in one click</span>
-          </span>
-        </li>
-        <li>
-          <span className="pro-plus" aria-hidden="true">
-            +
-          </span>
-          <span>
-            Early access <span className="dim">new conveniences first, then for everyone</span>
-          </span>
-        </li>
-        <li>
-          <span className="pro-plus" aria-hidden="true">
-            +
-          </span>
-          <span>
-            Priority support <span className="dim">and your name in SUPPORTERS.md</span>
-          </span>
-        </li>
-      </ul>
-      {proConfig.buyUrl && (
-        <button className="btn btn-primary pro-buy" onClick={() => void bridge().openBuyPage()}>
-          Get Pro, ${proConfig.price} once
-        </button>
-      )}
-      <div className="pro-keyrow">
-        <input
-          className="field"
-          placeholder="MURMUR-…"
-          aria-label="License key"
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value)
-            setRejected(false)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && draft.trim().length > 0) void activate()
-          }}
-        />
-        <button className="btn" onClick={() => void activate()} disabled={draft.trim().length === 0}>
-          Activate
-        </button>
+    <div className="panel">
+      <div className="row pro-offer" id="row-license-key" data-keywords="pro buy activate purchase license key support">
+        <p className="micro-label pro-offer-kicker">murmur pro</p>
+        <div className="row-label pro-offer-head">Keep murmur free for everyone.</div>
+        <p className="row-desc">The free app is complete and stays complete. Pro funds it, with a few extras for you.</p>
+        <ul className="pro-extras">
+          <li>
+            <span className="pro-plus" aria-hidden="true">
+              +
+            </span>
+            <span>
+              Provider profiles <span className="dim">save a setup, switch in one click</span>
+            </span>
+          </li>
+          <li>
+            <span className="pro-plus" aria-hidden="true">
+              +
+            </span>
+            <span>
+              Early access <span className="dim">new conveniences first, then for everyone</span>
+            </span>
+          </li>
+          <li>
+            <span className="pro-plus" aria-hidden="true">
+              +
+            </span>
+            <span>
+              Priority support <span className="dim">and your name in SUPPORTERS.md</span>
+            </span>
+          </li>
+        </ul>
+        {proConfig.buyUrl && (
+          <button className="btn btn-primary pro-buy" onClick={() => void bridge().openBuyPage()}>
+            Get Pro, ${proConfig.price} once
+          </button>
+        )}
+        <div className="pro-keyrow">
+          <input
+            className="field"
+            placeholder="MURMUR-…"
+            aria-label="License key"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              setRejected(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && draft.trim().length > 0) void activate()
+            }}
+          />
+          <button className="btn" onClick={() => void activate()} disabled={draft.trim().length === 0}>
+            Activate
+          </button>
+        </div>
+        {rejected && (
+          <p className="row-desc pro-rejected" role="alert">
+            That key did not verify. Check for missing characters and try again.
+          </p>
+        )}
       </div>
-      {rejected && (
-        <p className="row-desc pro-rejected" role="alert">
-          That key did not verify. Check for missing characters and try again.
-        </p>
-      )}
     </div>
   )
 }

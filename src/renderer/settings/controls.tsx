@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings building blocks shared by the page and its panels: the
-// section and its rows, the Advanced fold, the switch and segmented
+// section, its groups and rows, the switch and segmented
 // choice, the commit-on-blur fields, and the jump that walks the eye
 // to a row.
 import { useEffect, useState } from 'react'
@@ -125,11 +125,17 @@ export function Row(props: {
   /** Extra words the settings search should match (synonyms a user
    *  might type that the label and description never say). */
   keywords?: string
+  /** The row is waiting on another setting: it dims and says what it
+   *  needs, the way Loop once it settles waits for Double-tap (US-155).
+   *  The caller disables the control. */
+  waits?: string
   children: React.ReactNode
 }): React.JSX.Element {
   return (
     <div
-      className={`row ${props.block ? 'row-block' : ''} ${props.block && props.indent ? 'row-indent' : ''}`}
+      className={['row', props.block && 'row-block', props.block && props.indent && 'row-indent', props.waits && 'row-waits']
+        .filter(Boolean)
+        .join(' ')}
       id={props.anchor ?? rowId(props.label)}
       data-keywords={props.keywords}
     >
@@ -139,6 +145,11 @@ export function Row(props: {
           {props.mark}
         </div>
         {props.desc && <div className="row-desc">{props.desc}</div>}
+        {props.waits && (
+          <div className="row-waits-note" id={`${props.anchor ?? rowId(props.label)}-waits`}>
+            {props.waits}
+          </div>
+        )}
       </div>
       <div className="row-control">{props.children}</div>
     </div>
@@ -146,8 +157,9 @@ export function Row(props: {
 }
 
 /**
- * One settings section: a heading in the column and its rows on a
- * panel. The id is what the rail scrolls to and tracks.
+ * One settings section: a heading in the column, then its Groups, each
+ * a panel with its rows in a well (US-155). The id is what the rail
+ * scrolls to and tracks.
  */
 export function Section(props: {
   id: string
@@ -156,16 +168,13 @@ export function Section(props: {
    *  results still name the section by its title alone. */
   mark?: React.ReactNode
   sub?: string
-  /** The rows-in-a-well layout (US-154, US-155): the section's children
-   *  are Groups, each its own panel, instead of rows on 1 panel. */
-  grouped?: boolean
   /** In place of the rows: the note a SectionGuard shows (US-163). */
   note?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   return (
     <section
-      className={props.grouped ? 'sec sec-grouped' : 'sec'}
+      className="sec"
       id={`sec-${props.id}`}
       data-sec={props.id}
       aria-labelledby={`sec-${props.id}-title`}
@@ -181,7 +190,7 @@ export function Section(props: {
           the rail and every other section keep working (US-163). */}
       {props.note ?? (
         <Boundary kind="section" where={`section ${props.id}`}>
-          {props.grouped ? <div className="sec-groups">{props.children}</div> : <div className="panel">{props.children}</div>}
+          <div className="sec-groups">{props.children}</div>
         </Boundary>
       )}
     </section>
@@ -208,24 +217,49 @@ export function SectionGuard(props: { id: string; title: string; children: React
 }
 
 /**
- * A group of rows inside a grouped Section (US-154): a heading a step
- * below the section's, a line on what the group does, and its rows
- * inset in a well a step darker than the panel, so what belongs
- * together reads as 1 thing (LaBroi's pick, rows in a well, 2026-11-08).
+ * A group of rows inside a Section (US-154, US-155): a heading a step
+ * below the section's, a line on what the group does when that adds a
+ * fact, and its rows inset in a well a step darker than the panel, so
+ * what belongs together reads as 1 thing (LaBroi's pick, rows in a
+ * well, 2026-11-08). A section with 4 rows or fewer is 1 Group with no
+ * title (his pick, 2026-11-11).
  */
 export function Group(props: {
   id: string
-  title: string
+  title?: string
   sub?: string
   /** A line under the well: what else rides on this group, and links. */
   note?: React.ReactNode
+  /** The heading folds the rows away, for settings most people never
+   *  touch (File layout). The tag says what is inside while closed. A
+   *  native details element, so it is keyboard reachable for free and a
+   *  jump opens it by walking up from the row it lands on. */
+  fold?: { tag: string; open?: boolean }
   children: React.ReactNode
 }): React.JSX.Element {
+  const titleId = `group-${props.id}-title`
+  if (props.fold) {
+    return (
+      <details className="group group-fold" id={`group-${props.id}`} open={props.fold.open}>
+        <summary className="group-summary">
+          <h3 className="group-title" id={titleId}>
+            {props.title}
+          </h3>
+          <span className="group-tag">{props.fold.tag}</span>
+          {props.sub && <span className="group-sub">{props.sub}</span>}
+        </summary>
+        <div className="group-rows">{props.children}</div>
+        {props.note && <p className="group-note">{props.note}</p>}
+      </details>
+    )
+  }
   return (
-    <section className="group" id={`group-${props.id}`} aria-labelledby={`group-${props.id}-title`}>
-      <h3 className="group-title" id={`group-${props.id}-title`}>
-        {props.title}
-      </h3>
+    <section className="group" id={`group-${props.id}`} aria-labelledby={props.title ? titleId : undefined}>
+      {props.title && (
+        <h3 className="group-title" id={titleId}>
+          {props.title}
+        </h3>
+      )}
       {props.sub && <p className="group-sub">{props.sub}</p>}
       <div className="group-rows">{props.children}</div>
       {props.note && <p className="group-note">{props.note}</p>}
@@ -234,26 +268,30 @@ export function Group(props: {
 }
 
 /**
- * The fold for settings most people never touch. A native details
- * element, so it is keyboard reachable for free and a jump can open it
- * by walking up from the row it lands on.
+ * A setting that is 1 big box (a list, the practice box): the setting's
+ * name is the group heading, its description the group line, and the
+ * well holds the box itself, so nothing sits in a box inside a box
+ * (LaBroi's pick, 2026-11-11). It is still a row to search and to
+ * jumps: same id, label, description and keywords.
  */
-export function Advanced(props: {
-  label?: string
-  /** What is inside, so the fold says what it holds while closed. */
-  hint: string
-  /** Opens the fold when something inside needs attention. */
-  open?: boolean
+export function GroupRow(props: {
+  label: string
+  desc?: React.ReactNode
+  anchor?: string
+  keywords?: string
   children: React.ReactNode
 }): React.JSX.Element {
+  const id = props.anchor ?? rowId(props.label)
   return (
-    <details className="adv" open={props.open}>
-      <summary className="adv-summary">
-        <span>{props.label ?? 'Advanced'}</span>
-        <span className="adv-hint">{props.hint}</span>
-      </summary>
-      <div className="adv-body">{props.children}</div>
-    </details>
+    <section className="group group-row row" id={id} data-keywords={props.keywords} aria-labelledby={`${id}-title`}>
+      <div className="row-text">
+        <h3 className="group-title row-label" id={`${id}-title`}>
+          {props.label}
+        </h3>
+        {props.desc && <p className="group-sub row-desc">{props.desc}</p>}
+      </div>
+      <div className="group-rows row-control">{props.children}</div>
+    </section>
   )
 }
 
@@ -263,6 +301,8 @@ export function Switch(props: {
   checked: boolean
   label: string
   disabled?: boolean
+  /** The id of a line that says why the switch is off limits. */
+  describedBy?: string
   onChange: (next: boolean) => void
 }): React.JSX.Element {
   return (
@@ -272,6 +312,7 @@ export function Switch(props: {
       className="switch"
       aria-checked={props.checked}
       aria-label={props.label}
+      aria-describedby={props.describedBy}
       disabled={props.disabled}
       onClick={() => props.onChange(!props.checked)}
     >

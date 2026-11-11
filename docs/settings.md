@@ -14,9 +14,11 @@ The window opens on your transcription log: every dictation, grouped by day, new
 
 A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Dictionary. Features: Notes, Transform, Time back and recap. App: History, Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
 
-The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening an Advanced fold if the setting lives inside one. Esc clears the search.
+Inside a section, settings that belong together sit in a group: a small heading, then the rows inset in a darker well (regrouped November 2026). Dictation has Hotkey, Microphone, Formatting, Where words land, and Try it. System has General, macOS permissions, and Help. Notes has Capture, Sorting, Alerts, and File layout once a notes folder is set; until then it shows only the note chord and the notes folder. The short sections (Transform, Time back and recap, History, Look, murmur Pro) are 1 well with no group headings. The formatting choice (Off, Light, Full) is the Level row in the Formatting group, and Smart lists and Apply corrections under it dim and say needs Full formatting until Level is Full.
 
-Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (the speech base URL, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
+The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening the File layout fold if the setting lives inside it. Esc clears the search.
+
+Settings most people never touch sit in a group that folds from its heading and says what it holds while closed: File layout under Notes. The speech base URL sits in the Speech group, and price refresh and the Groq defaults sit in Cost and defaults, both under Provider and keys. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
 
 ## How long is my history kept, and where?
 
@@ -275,7 +277,7 @@ Two rules keep the number truthful. A take where you held the key while thinking
 | Accessibility | Pressing Cmd+V for you, so text lands at your cursor |
 | Input monitoring | Hearing the hotkey while other apps are focused. After granting, quit and reopen murmur |
 
-The macOS permissions list under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
+The macOS permissions group under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
 
 ## What do the sound cues mean?
 
@@ -329,11 +331,11 @@ The home tab keeps a quiet what's new line; a small amber dot appears when the r
 
 ## What is the Price refresh setting?
 
-murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Advanced. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
+murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Cost and defaults. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
 
 ## How is Provider and keys laid out?
 
-From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 3 groups, each with its settings inset in a darker well: **Speech** (provider, model, key), **Cleanup** (Runs on, then its model, or its own provider, model, and key), and **Saved keys** (every key by provider, with what it is used for now). The cost estimate and Advanced (the speech base URL, price refresh, and the Groq defaults) come last.
+From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 4 groups, each with its settings inset in a darker well: **Speech** (provider, model, base URL, key), **Cleanup** (Runs on, then its model, or its own provider, model, and key), **Saved keys** (every key by provider, with what it is used for now), and **Cost and defaults** (the cost estimate, price refresh, and the Groq defaults).
 
 ## What is the cleanup connection?
 

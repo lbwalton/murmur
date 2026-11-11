@@ -41,7 +41,9 @@ function findSettings(query: string): Match[] {
     // Inside a group (US-154) the group names the row too: Model under
     // Speech and Model under Cleanup are different settings.
     const secTitle = row.closest('.sec')?.querySelector('.sec-title')?.textContent ?? ''
-    const group = row.closest('.group')?.querySelector('.group-title')?.textContent ?? ''
+    // A row that is its own group (a list, the practice box) is named
+    // once, by its label.
+    const group = row.matches('.group') ? '' : (row.closest('.group')?.querySelector('.group-title')?.textContent ?? '')
     const section = group === '' ? secTitle : `${secTitle}, ${group}`
     const hay = `${label} ${desc} ${keywords} ${section}`.toLowerCase()
     if (!words.every((w) => hay.includes(w))) continue

@@ -18,7 +18,7 @@ import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared
 import { openTasksLine } from '../../shared/todo'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
-import { Advanced, Row, Section, Switch, TextSetting, TimeInput } from './controls'
+import { Group, Row, Section, Switch, TextSetting, TimeInput } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
@@ -364,357 +364,380 @@ export function NotesPanel(props: {
   const folderMissing = status !== null && status.configured && !status.folderExists
   const lastSave = status?.lastSave ?? null
 
+  // Until a notes folder is set, Notes is 1 step: the chord and the
+  // folder. Everything else shows once the folder is picked (LaBroi's
+  // pick, 2026-11-11, with its cost: search cannot find those rows
+  // until then). 1 tree for both states, so the 2 rows keep their
+  // place and the keyboard keeps its focus when the folder is picked.
+  const folderSet = notes.folder !== ''
+
   return (
     <Section id="notes" title="Notes" sub="Speak a note into a folder instead of at your cursor.">
+      {folderSet && notes.sort && status && status.heldLines.length > 0 && (
+        <Group id="held" title="Held for a look" sub="Lines the sort was unsure of. Each stays in your inbox as you said it.">
+          <HeldLines status={status} settings={props.settings} acting={acting} onAct={(id, action) => void heldAction(id, action)} />
+        </Group>
+      )}
 
-      <Row
-        label="Note chord"
-        anchor="row-note-chord"
-        keywords="brain dump chord hotkey inbox"
-        desc={
-          captureNote ??
-          (disarmed
-            ? 'This chord is disarmed: it clashes with your dictation hotkey or the paste chord, or no longer parses. Capture a new one.'
-            : 'Hold it and speak: the words go to a file in your notes folder instead of your cursor. Off until you set one; a modifier plus an F-key is safest.')
-        }
+      <Group
+        id="capture"
+        title={folderSet ? 'Capture' : undefined}
+        note={folderSet ? undefined : 'Sorting, alerts and file layout show here once you pick a notes folder.'}
       >
-        <div className="inline">
-          <button
-            className={`field capture ${capturing ? 'capture-live' : ''}`}
-            aria-label="Note chord. Click to change."
-            onClick={() => void startCapture()}
-          >
-            {capturing ? 'press keys…' : notes.binding === '' ? 'not set' : notes.binding}
-          </button>
-          {notes.binding !== '' && (
-            <button
-              className="btn btn-remove"
-              onClick={() => {
-                setCaptureNote(null)
-                void update({ binding: '' })
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </Row>
-
-      <Row
-        label="Notes folder"
-        anchor="row-notes-folder"
-        block
-        keywords="obsidian logseq vault directory"
-        desc={
-          folderMissing
-            ? "That folder is not there right now. Notes go to murmur's own data folder until it is back, and nothing is lost."
-            : 'Any folder: an Obsidian vault, a Logseq graph, a synced drive. Notes append as markdown files. Empty keeps note mode off.'
-        }
-      >
-        <div className="inline">
-          <input
-            className="field mono-field grow-field"
-            value={folderDraft}
-            placeholder="no folder set"
-            aria-label="Notes folder"
-            spellCheck={false}
-            onChange={(e) => setFolderDraft(e.target.value)}
-            onBlur={commitFolder}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-            }}
-          />
-          <button className="btn" onClick={() => void chooseFolder()}>
-            Choose…
-          </button>
-          {notes.folder !== '' && (
-            <button className="btn btn-remove" onClick={() => void update({ folder: '' })}>
-              Clear
-            </button>
-          )}
-        </div>
-      </Row>
-
-      {notes.folder !== '' && (
         <Row
-          label="Last note"
+          label="Note chord"
+          anchor="row-note-chord"
+          keywords="brain dump chord hotkey inbox"
           desc={
-            lastSave
-              ? `${timeOf(lastSave.at)}, ${
-                  lastSave.location === 'folder'
-                    ? 'saved to your notes folder'
-                    : "saved to murmur's data folder because the notes folder was unreachable"
-                }: ${lastSave.relative}${
-                  notes.sort && status?.lastSort ? `. Then ${sortSummary(status.lastSort)}.` : ''
-                }`
-              : 'No note since launch. Hold the chord and speak.'
+            captureNote ??
+            (disarmed
+              ? 'This chord is disarmed: it clashes with your dictation hotkey or the paste chord, or no longer parses. Capture a new one.'
+              : 'Hold it and speak: the words go to a file in your notes folder instead of your cursor. Off until you set one; a modifier plus an F-key is safest.')
           }
         >
           <div className="inline">
-            {opened && (
-              <span className="dim mono-inline">
-                {opened === 'file'
-                  ? 'opened'
-                  : opened === 'folder'
-                    ? 'no note yet today, opened the folder'
-                    : 'nothing to open yet'}
-              </span>
-            )}
-            {notes.sort && status?.canSortAgain && (
-              <button className="btn" onClick={() => void sortAgain()} disabled={sorting}>
-                {sorting ? 'Sorting…' : 'Sort again'}
+            <button
+              className={`field capture ${capturing ? 'capture-live' : ''}`}
+              aria-label="Note chord. Click to change."
+              onClick={() => void startCapture()}
+            >
+              {capturing ? 'press keys…' : notes.binding === '' ? 'not set' : notes.binding}
+            </button>
+            {notes.binding !== '' && (
+              <button
+                className="btn btn-remove"
+                onClick={() => {
+                  setCaptureNote(null)
+                  void update({ binding: '' })
+                }}
+              >
+                Clear
               </button>
             )}
-            <button className="btn" onClick={() => void openToday()}>
-              Open today&apos;s inbox
-            </button>
           </div>
         </Row>
-      )}
 
-      <Row
-        label="Note receipts"
-        anchor="row-note-receipts"
-        keywords="notification receipt open link finder explorer"
-        desc={`A notification after each note names where it landed; click it to open the note. Off or on, Open last note under the ${
-          navigator.platform.toLowerCase().includes('mac') ? 'menu bar' : 'tray'
-        } icon and the last note on Home still take you there.`}
-      >
-        <Switch checked={notes.receipts} label="Note receipts" onChange={(receipts) => void update({ receipts })} />
-      </Row>
-
-      {notes.sort && status && status.heldLines.length > 0 && (
-        <HeldLines status={status} settings={props.settings} acting={acting} onAct={(id, action) => void heldAction(id, action)} />
-      )}
-
-      <Row
-        label="Sort into tasks and ideas"
-        anchor="row-notes-sort"
-        keywords="todo tasks ideas classify file"
-        desc="After a note lands, a model labels each sentence a task, an idea, or a note, and murmur copies tasks to todo.md and ideas to ideas.md with links back. Nothing is reworded. Off writes the inbox only."
-      >
-        <Switch checked={notes.sort} label="Sort into tasks and ideas" onChange={(sort) => void update({ sort })} />
-      </Row>
-
-      {notes.sort && (
-        <ConnectionRows
-          value={notes.connection}
-          catalog={props.catalog}
-          keyStatus={sortKeyStatus}
-          onKeyStatus={(status) => {
-            setSortKeyStatus(status)
-            props.onKeysChanged()
-          }}
-          onChange={(connection) => update({ connection: { ...notes.connection, ...connection } })}
-          labels={{
-            connection: 'Sort runs on',
-            connectionDesc:
-              'Same uses your cleanup connection. Separate lets sorting run elsewhere with its own key.',
-            sameOption: 'Same as cleanup',
-            provider: 'Sort provider',
-            baseUrl: 'Sort base URL',
-            model: 'Sort model id',
-            key: 'Sort key',
-            keyDesc:
-              'This connection has its own key, stored encrypted like the others. Until one is saved, sorting keeps riding your cleanup connection.',
-            sharedDesc:
-              'Shares a key with your speech or cleanup connection: one provider, one key. It is in the API keys list under Provider and keys.'
-          }}
-          sharedWith={[
-            props.settings.provider.baseUrl,
-            props.settings.polish.enabled ? props.settings.polish.baseUrl : ''
-          ]}
-          anchor="row-sort-connection"
-          protocol={{
-            value: notes.connection.protocol,
-            onChange: (protocol) => update({ connection: { ...notes.connection, protocol } }),
-            label: 'Sort protocol',
-            desc:
-              notes.connection.protocol === 'decide'
-                ? 'A decision model answers typed questions with probabilities and cannot write text: labels it cannot invent, about a tenth of a second, a fraction of a cent per note. It cannot name notes, so Name each note renders the date alone on this connection.'
-                : 'A chat model returns JSON that murmur checks strictly. A decision model (TypeSafe) answers typed questions instead and can only ever return one of the three labels.'
-          }}
-          api={{
-            setKey: (key) => bridge().setKeyFor(notes.connection.baseUrl, key),
-            clearKey: () => bridge().clearKeyFor(notes.connection.baseUrl),
-            status: () => bridge().getKeyStatusFor(notes.connection.baseUrl),
-            test: () =>
-              notes.connection.protocol === 'decide'
-                ? bridge().testDecisionFor(notes.connection.baseUrl)
-                : bridge().testConnectionFor(notes.connection.baseUrl, notes.connection.llmModel),
-            models: () => bridge().listModels('sort'),
-            openModelsPage: (id) => void bridge().openModelsPage(id)
-          }}
-        />
-      )}
-
-      {(notes.folder !== '' || reminders.enabled) && (
         <Row
-          label="Task reminders"
-          anchor="row-notes-reminders"
+          label="Notes folder"
+          anchor="row-notes-folder"
           block
-          keywords="notification todo nudge"
-          desc={reminderDesc(reminderTest, props.settings)}
-        >
-          <div className="inline">
-            <Switch
-              checked={reminders.enabled}
-              label="Task reminders"
-              onChange={(enabled) => void update({ reminders: { ...reminders, enabled } })}
-            />
-            {reminders.times.map((time, index) => (
-              <TimeInput
-                key={index}
-                label={`Reminder time ${index + 1}`}
-                value={time}
-                disabled={!reminders.enabled}
-                allowEmpty
-                onCommit={(next) => setReminderTime(index, next)}
-              />
-            ))}
-            <button className="btn btn-test" onClick={() => void testReminder()}>
-              Test
-            </button>
-          </div>
-        </Row>
-      )}
-
-      {notes.sort && notes.connection.enabled && notes.connection.protocol === 'decide' && (
-        <Row
-          label="Confidence threshold"
-          anchor="row-sort-threshold"
-          desc="A decision model says how sure it is of each label. A line below this stays in the inbox as unsure instead of filing, and Sort again sends just those lines back. Balanced keeps a line the model is at least half sure of; a chat model reports no confidence, so this never applies there."
-        >
-          <select
-            className="field"
-            aria-label="Confidence threshold"
-            value={String(notes.connection.threshold)}
-            onChange={(e) =>
-              void update({ connection: { ...notes.connection, threshold: Number(e.target.value) } })
-            }
-          >
-            <option value="0">File everything (0)</option>
-            <option value="0.3">Lenient (0.3)</option>
-            <option value="0.5">Balanced (0.5), the default</option>
-            <option value="0.7">Strict (0.7)</option>
-            <option value="0.9">Very strict (0.9)</option>
-          </select>
-        </Row>
-      )}
-
-      <Advanced
-        label="File layout"
-        hint={customized ? 'customized' : 'inbox, tasks, and ideas files, headings, entries'}
-      >
-
-        <Row
-          label="Inbox file"
-          anchor="row-inbox-file"
-          desc={`Where notes land, relative to your notes folder. Tokens: {date} {time} {datetime} {year} {month} {day}, and any folders in the path are created for you. ${
-            preview.ok
-              ? `Today: ${preview.relative}`
-              : `Falls back to the default because ${PROBLEM_TEXT[preview.reason]}.`
-          }`}
-        >
-          <input
-            className="field mono-field wide-field"
-            value={pathDraft}
-            spellCheck={false}
-            onChange={(e) => setPathDraft(e.target.value)}
-            onBlur={commitPath}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-            }}
-          />
-        </Row>
-
-        {notes.sort && (
-          <>
-            <Row label="Tasks file" desc={filePreview(tasksPreview, 'tasks')}>
-              <TextSetting
-                value={notes.tasksTemplate}
-                wide
-                onCommit={(value) => void update({ tasksTemplate: value })}
-              />
-            </Row>
-            <Row label="Ideas file" desc={filePreview(ideasPreview, 'ideas')}>
-              <TextSetting
-                value={notes.ideasTemplate}
-                wide
-                onCommit={(value) => void update({ ideasTemplate: value })}
-              />
-            </Row>
-            <Row
-              label="Group under"
-              desc={
-                headingPreview === ''
-                  ? 'No heading: filed lines make one flat list. Type a heading to group them again.'
-                  : `Tasks and ideas from a note gather under this heading, written once per file. Tokens: {date} {time} {topic}. Today: ${headingPreview}`
-              }
-            >
-              <TextSetting
-                value={notes.filedHeadingTemplate}
-                wide
-                allowEmpty
-                placeholder="no heading"
-                onCommit={(value) => void update({ filedHeadingTemplate: value })}
-              />
-            </Row>
-            <Row
-              label="Name each note"
-              desc={
-                !headingCarriesTopic
-                  ? 'Put {topic} in the heading above to use this, and the sort model will name each note there.'
-                  : notes.connection.enabled && notes.connection.protocol === 'decide'
-                    ? 'Your sort connection is a decision model, which cannot write text, so the heading carries the date alone while it is in use. Switch the sort protocol to a chat model to name notes.'
-                    : notes.topicHeadings
-                    ? "The sort model names what each note is about in at most five words, so a heading says travel plans rather than a date alone. The name goes in the heading only; your words are never changed. A name it cannot give safely leaves the rest of the heading standing."
-                    : 'Off means headings carry the date alone. On asks the sort model for a short name for each note, so you can see what a group is about at a glance.'
-              }
-            >
-              <Switch
-                checked={notes.topicHeadings}
-                label="Name each note"
-                disabled={!headingCarriesTopic}
-                onChange={(topicHeadings) => void update({ topicHeadings })}
-              />
-            </Row>
-          </>
-        )}
-
-        <Row
-          label="Entry"
+          keywords="obsidian logseq vault directory"
           desc={
-            entryLosesText
-              ? 'This template has no {text}, so it would drop your words. murmur writes the default entry instead until {text} is back.'
-              : 'How each note is written into the file. {text} is what you said; the time tokens work here too. End with a blank line to space entries apart, or a single line break to keep them tight.'
+            folderMissing
+              ? "That folder is not there right now. Notes go to murmur's own data folder until it is back, and nothing is lost."
+              : 'Any folder: an Obsidian vault, a Logseq graph, a synced drive. Notes append as markdown files. Empty keeps note mode off.'
           }
         >
-          <EntryTemplateField
-            value={notes.entryTemplate}
-            onCommit={(value) => void update({ entryTemplate: value })}
-          />
+          <div className="inline">
+            <input
+              className="field mono-field grow-field"
+              value={folderDraft}
+              placeholder="no folder set"
+              aria-label="Notes folder"
+              spellCheck={false}
+              onChange={(e) => setFolderDraft(e.target.value)}
+              onBlur={commitFolder}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              }}
+            />
+            <button className="btn" onClick={() => void chooseFolder()}>
+              Choose…
+            </button>
+            {notes.folder !== '' && (
+              <button className="btn btn-remove" onClick={() => void update({ folder: '' })}>
+                Clear
+              </button>
+            )}
+          </div>
         </Row>
 
-        {customized && (
-          <Row label="Defaults" desc="Back to the murmur inbox layout: a time heading per note, todo.md and ideas.md beside it.">
-            <button
-              className="btn"
-              onClick={() =>
-                void update({
-                  pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
-                  entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
-                  tasksTemplate: DEFAULT_TASKS_TEMPLATE,
-                  ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
-                  filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE
-                })
-              }
-            >
-              Reset
-            </button>
+        {folderSet && (
+          <Row
+            label="Last note"
+            desc={
+              lastSave
+                ? `${timeOf(lastSave.at)}, ${
+                    lastSave.location === 'folder'
+                      ? 'saved to your notes folder'
+                      : "saved to murmur's data folder because the notes folder was unreachable"
+                  }: ${lastSave.relative}${
+                    notes.sort && status?.lastSort ? `. Then ${sortSummary(status.lastSort)}.` : ''
+                  }`
+                : 'No note since launch. Hold the chord and speak.'
+            }
+          >
+            <div className="inline">
+              {opened && (
+                <span className="dim mono-inline">
+                  {opened === 'file'
+                    ? 'opened'
+                    : opened === 'folder'
+                      ? 'no note yet today, opened the folder'
+                      : 'nothing to open yet'}
+                </span>
+              )}
+              {notes.sort && status?.canSortAgain && (
+                <button className="btn" onClick={() => void sortAgain()} disabled={sorting}>
+                  {sorting ? 'Sorting…' : 'Sort again'}
+                </button>
+              )}
+              <button className="btn" onClick={() => void openToday()}>
+                Open today&apos;s inbox
+              </button>
+            </div>
           </Row>
         )}
-      </Advanced>
+      </Group>
+
+      {folderSet && (
+        <>
+          <Group id="sorting" title="Sorting">
+            <Row
+              label="Sort into tasks and ideas"
+              anchor="row-notes-sort"
+              keywords="todo tasks ideas classify file"
+              desc="After a note lands, a model labels each sentence a task, an idea, or a note, and murmur copies tasks to todo.md and ideas to ideas.md with links back. Nothing is reworded. Off writes the inbox only."
+            >
+              <Switch checked={notes.sort} label="Sort into tasks and ideas" onChange={(sort) => void update({ sort })} />
+            </Row>
+
+            {notes.sort && (
+              <ConnectionRows
+                value={notes.connection}
+                catalog={props.catalog}
+                keyStatus={sortKeyStatus}
+                onKeyStatus={(status) => {
+                  setSortKeyStatus(status)
+                  props.onKeysChanged()
+                }}
+                onChange={(connection) => update({ connection: { ...notes.connection, ...connection } })}
+                labels={{
+                  connection: 'Runs on',
+                  connectionDesc:
+                    'Same uses your cleanup connection. Its own provider lets sorting run elsewhere with its own key.',
+                  sameOption: 'Same as cleanup',
+                  separateOption: 'Its own provider',
+                  ariaName: 'Sort',
+                  provider: 'Provider',
+                  baseUrl: 'Base URL',
+                  model: 'Model',
+                  key: 'Key',
+                  keyDesc:
+                    'This connection has its own key, stored encrypted like the others. Until one is saved, sorting keeps riding your cleanup connection.',
+                  sharedDesc:
+                    'Shares a key with your speech or cleanup connection: one provider, one key. It is under Saved keys in Provider and keys.'
+                }}
+                sharedWith={[
+                  props.settings.provider.baseUrl,
+                  props.settings.polish.enabled ? props.settings.polish.baseUrl : ''
+                ]}
+                anchor="row-sort-connection"
+                protocol={{
+                  value: notes.connection.protocol,
+                  onChange: (protocol) => update({ connection: { ...notes.connection, protocol } }),
+                  label: 'Protocol',
+                  desc:
+                    notes.connection.protocol === 'decide'
+                      ? 'A decision model answers typed questions with probabilities and cannot write text: labels it cannot invent, about a tenth of a second, a fraction of a cent per note. It cannot name notes, so Name each note renders the date alone on this connection.'
+                      : 'A chat model returns JSON that murmur checks strictly. A decision model (TypeSafe) answers typed questions instead and can only ever return one of the three labels.'
+                }}
+                api={{
+                  setKey: (key) => bridge().setKeyFor(notes.connection.baseUrl, key),
+                  clearKey: () => bridge().clearKeyFor(notes.connection.baseUrl),
+                  status: () => bridge().getKeyStatusFor(notes.connection.baseUrl),
+                  test: () =>
+                    notes.connection.protocol === 'decide'
+                      ? bridge().testDecisionFor(notes.connection.baseUrl)
+                      : bridge().testConnectionFor(notes.connection.baseUrl, notes.connection.llmModel),
+                  models: () => bridge().listModels('sort'),
+                  openModelsPage: (id) => void bridge().openModelsPage(id)
+                }}
+              />
+            )}
+
+            {notes.sort && notes.connection.enabled && notes.connection.protocol === 'decide' && (
+              <Row
+                label="Confidence threshold"
+                anchor="row-sort-threshold"
+                desc="A decision model says how sure it is of each label. A line below this stays in the inbox as unsure instead of filing, and Sort again sends just those lines back. Balanced keeps a line the model is at least half sure of; a chat model reports no confidence, so this never applies there."
+              >
+                <select
+                  className="field"
+                  aria-label="Confidence threshold"
+                  value={String(notes.connection.threshold)}
+                  onChange={(e) =>
+                    void update({ connection: { ...notes.connection, threshold: Number(e.target.value) } })
+                  }
+                >
+                  <option value="0">File everything (0)</option>
+                  <option value="0.3">Lenient (0.3)</option>
+                  <option value="0.5">Balanced (0.5), the default</option>
+                  <option value="0.7">Strict (0.7)</option>
+                  <option value="0.9">Very strict (0.9)</option>
+                </select>
+              </Row>
+            )}
+          </Group>
+
+          <Group id="note-alerts" title="Alerts">
+            <Row
+              label="Note receipts"
+              anchor="row-note-receipts"
+              keywords="notification receipt open link finder explorer"
+              desc={`A notification after each note names where it landed; click it to open the note. Off or on, Open last note under the ${
+                navigator.platform.toLowerCase().includes('mac') ? 'menu bar' : 'tray'
+              } icon and the last note on Home still take you there.`}
+            >
+              <Switch checked={notes.receipts} label="Note receipts" onChange={(receipts) => void update({ receipts })} />
+            </Row>
+
+            <Row
+              label="Task reminders"
+              anchor="row-notes-reminders"
+              block
+              keywords="notification todo nudge"
+              desc={reminderDesc(reminderTest, props.settings)}
+            >
+              <div className="inline">
+                <Switch
+                  checked={reminders.enabled}
+                  label="Task reminders"
+                  onChange={(enabled) => void update({ reminders: { ...reminders, enabled } })}
+                />
+                {reminders.times.map((time, index) => (
+                  <TimeInput
+                    key={index}
+                    label={`Reminder time ${index + 1}`}
+                    value={time}
+                    disabled={!reminders.enabled}
+                    allowEmpty
+                    onCommit={(next) => setReminderTime(index, next)}
+                  />
+                ))}
+                <button className="btn btn-test" onClick={() => void testReminder()}>
+                  Test
+                </button>
+              </div>
+            </Row>
+          </Group>
+
+          <Group
+            id="file-layout"
+            title="File layout"
+            sub="Inbox, tasks and ideas files, headings and entries."
+            fold={{ tag: customized ? 'customized' : notes.sort ? '6 settings' : '2 settings' }}
+          >
+            <Row
+              label="Inbox file"
+              anchor="row-inbox-file"
+              desc={`Where notes land, relative to your notes folder. Tokens: {date} {time} {datetime} {year} {month} {day}, and any folders in the path are created for you. ${
+                preview.ok
+                  ? `Today: ${preview.relative}`
+                  : `Falls back to the default because ${PROBLEM_TEXT[preview.reason]}.`
+              }`}
+            >
+              <input
+                className="field mono-field wide-field"
+                value={pathDraft}
+                spellCheck={false}
+                onChange={(e) => setPathDraft(e.target.value)}
+                onBlur={commitPath}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                }}
+              />
+            </Row>
+
+            {notes.sort && (
+              <>
+                <Row label="Tasks file" desc={filePreview(tasksPreview, 'tasks')}>
+                  <TextSetting
+                    value={notes.tasksTemplate}
+                    wide
+                    onCommit={(value) => void update({ tasksTemplate: value })}
+                  />
+                </Row>
+                <Row label="Ideas file" desc={filePreview(ideasPreview, 'ideas')}>
+                  <TextSetting
+                    value={notes.ideasTemplate}
+                    wide
+                    onCommit={(value) => void update({ ideasTemplate: value })}
+                  />
+                </Row>
+                <Row
+                  label="Group under"
+                  desc={
+                    headingPreview === ''
+                      ? 'No heading: filed lines make one flat list. Type a heading to group them again.'
+                      : `Tasks and ideas from a note gather under this heading, written once per file. Tokens: {date} {time} {topic}. Today: ${headingPreview}`
+                  }
+                >
+                  <TextSetting
+                    value={notes.filedHeadingTemplate}
+                    wide
+                    allowEmpty
+                    placeholder="no heading"
+                    onCommit={(value) => void update({ filedHeadingTemplate: value })}
+                  />
+                </Row>
+                <Row
+                  label="Name each note"
+                  desc={
+                    !headingCarriesTopic
+                      ? 'Put {topic} in the heading above to use this, and the sort model will name each note there.'
+                      : notes.connection.enabled && notes.connection.protocol === 'decide'
+                        ? 'Your sort connection is a decision model, which cannot write text, so the heading carries the date alone while it is in use. Switch the sort protocol to a chat model to name notes.'
+                        : notes.topicHeadings
+                        ? "The sort model names what each note is about in at most five words, so a heading says travel plans rather than a date alone. The name goes in the heading only; your words are never changed. A name it cannot give safely leaves the rest of the heading standing."
+                        : 'Off means headings carry the date alone. On asks the sort model for a short name for each note, so you can see what a group is about at a glance.'
+                  }
+                >
+                  <Switch
+                    checked={notes.topicHeadings}
+                    label="Name each note"
+                    disabled={!headingCarriesTopic}
+                    onChange={(topicHeadings) => void update({ topicHeadings })}
+                  />
+                </Row>
+              </>
+            )}
+
+            <Row
+              label="Entry"
+              desc={
+                entryLosesText
+                  ? 'This template has no {text}, so it would drop your words. murmur writes the default entry instead until {text} is back.'
+                  : 'How each note is written into the file. {text} is what you said; the time tokens work here too. End with a blank line to space entries apart, or a single line break to keep them tight.'
+              }
+            >
+              <EntryTemplateField
+                value={notes.entryTemplate}
+                onCommit={(value) => void update({ entryTemplate: value })}
+              />
+            </Row>
+
+            {customized && (
+              <Row label="Defaults" desc="Back to the murmur inbox layout: a time heading per note, todo.md and ideas.md beside it.">
+                <button
+                  className="btn"
+                  onClick={() =>
+                    void update({
+                      pathTemplate: DEFAULT_NOTE_PATH_TEMPLATE,
+                      entryTemplate: DEFAULT_NOTE_ENTRY_TEMPLATE,
+                      tasksTemplate: DEFAULT_TASKS_TEMPLATE,
+                      ideasTemplate: DEFAULT_IDEAS_TEMPLATE,
+                      filedHeadingTemplate: DEFAULT_FILED_HEADING_TEMPLATE
+                    })
+                  }
+                >
+                  Reset
+                </button>
+              </Row>
+            )}
+          </Group>
+        </>
+      )}
     </Section>
   )
 }

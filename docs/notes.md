@@ -46,7 +46,7 @@ The date and time are your local time, so a note at 11 pm lands in today's file,
 
 ## Can I change the file name, the folder layout, or how each note looks?
 
-Yes. Under Settings, Notes, File layout (the fold at the bottom of the section), two templates control everything, and a preview line shows today's resolved path as you type.
+Yes. Under Settings, Notes, File layout (the last group in the section once a notes folder is set; click its heading to open it), two templates control everything, and a preview line shows today's resolved path as you type.
 
 **File path** is relative to your notes folder. The default is `murmur/inbox/{date}.md`. To append to an Obsidian daily note you already keep, set it to your daily note's path, for example `Daily/{date}.md`. To keep one file per month, `murmur/{year}-{month}.md`.
 
@@ -88,7 +88,7 @@ Yes. A note is a dictation: it appears on the home tab with a small "note" mark,
 
 ## Can murmur sort my notes into tasks and ideas?
 
-Yes, when you turn it on. Under Settings, Notes, turn on Sort into tasks and ideas. From then on, after a note lands in the inbox and the pill has said noted, murmur runs a background pass that labels each sentence of the note as a task, an idea, or a note, and copies the tasks and ideas into two more files in your notes folder:
+Yes, when you turn it on. Under Settings, Notes, turn on Sort into tasks and ideas (it shows in the Sorting group once a notes folder is set). From then on, after a note lands in the inbox and the pill has said noted, murmur runs a background pass that labels each sentence of the note as a task, an idea, or a note, and copies the tasks and ideas into two more files in your notes folder:
 
 - `murmur/todo.md` gets each task as a checkbox line: `- [ ] Call the dentist about Thursday. ([10:32](inbox/2026-09-20.md))`
 - `murmur/ideas.md` gets each idea as a dash line: `- The wizard could ask for the vault on first run. ([10:32](inbox/2026-09-20.md))`
@@ -174,11 +174,11 @@ Nothing is written until the whole labeling has passed, and both files are opene
 
 ## Which model does the sorting, and can I change it?
 
-By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Choose Separate under Sort runs on to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
+By default the sort connection is Same as cleanup: it uses whatever your cleanup pass uses, which is your speech provider unless you set a separate cleanup connection. Under Settings, Notes, Sorting, set Runs on to Its own provider to run the sort elsewhere, with its own base URL, model id, and key. The key is stored encrypted under that base URL like every other key, and a base URL you already use for speech or cleanup shares that connection's key automatically. Provider setup, model ids, and pricing are on the [providers page](./providers.md). Sorting adds one small model call per note, which the cost estimate on the analytics tab does not include.
 
 ## Can I sort with a decision model instead of a chat model?
 
-Yes. Under Sort runs on choose Separate and set Sort protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state (with the list of items already filed beside them, when there are any), one typed question per sentence over the three labels, one yes/no question per cut, two word-number questions per sentence of 3 to 60 words for where the part worth filing begins and ends, and, when there are filed items, a relation question and an item-number question per sentence, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
+Yes. Under Settings, Notes, Sorting, set Runs on to Its own provider and set Protocol to Decision model; the TypeSafe preset fills in the rest. A decision model does not write text at all. murmur sends the note's numbered sentences as state (with the list of items already filed beside them, when there are any), one typed question per sentence over the three labels, one yes/no question per cut, two word-number questions per sentence of 3 to 60 words for where the part worth filing begins and ends, and, when there are filed items, a relation question and an item-number question per sentence, and gets back typed answers with probabilities in one round trip. Three things follow. A label outside task, idea, and note cannot occur, so the strict reply checks the chat path needs never fire. It answers in about a tenth of a second. And it bills input tokens only, at a fraction of a cent per note (see the [providers page](./providers.md) for the verified rate and the waitlist).
 
 The one thing it gives up is naming: Name each note needs a model that can write, so on a decision connection the heading carries the date alone, and the panel says so. If the decision model does not answer, whether a rate limit, a network fault, or a missing answer, murmur falls back to your cleanup connection's chat model for that note and logs `[sort] decision failed reason=...; falling back to the chat sorter`. The filed log line names which protocol answered.
 
