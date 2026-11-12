@@ -49,6 +49,7 @@ import { attachSettingsZoom, stepSettingsZoom } from './zoom'
 import {
   MAC_VIBRANCY,
   SOLID_BACKGROUND,
+  THEME_SOURCE,
   WIN_MATERIAL,
   type WindowLook,
   asLook,
@@ -178,6 +179,10 @@ function currentLook(): WindowLook {
     })
   )
 }
+
+// murmur is always dark: the title bar, the menus, and the glass behind
+// the settings window (US-150).
+nativeTheme.themeSource = THEME_SOURCE
 
 /** The look the window has, which the page asks for and is told about. */
 let shownLook: WindowLook = 'solid'
@@ -813,7 +818,7 @@ app.whenReady().then(async () => {
 
   registerSmokeCheck('lookDefaults', async () => {
     // The window's look (US-150): the one the rules pick for this system
-    // (the under-window material on a Mac; solid on Windows until its
+    // (the hud material on a Mac; solid on Windows until its
     // glass is proven, on Linux, and under Reduce transparency), the page
     // wearing the same one, the ground behind the page matching it, and a
     // live switch to the other look and back reaching the page.
@@ -828,7 +833,8 @@ app.whenReady().then(async () => {
     const rules =
       windowLook({ ...facts, reducedTransparency: true }) === 'solid' &&
       windowLook({ ...facts, platform: 'linux' }) === 'solid' &&
-      windowOptions('glass', 'darwin').vibrancy === 'under-window' &&
+      windowOptions('glass', 'darwin').vibrancy === 'hud' &&
+      nativeTheme.themeSource === 'dark' &&
       windowOptions('glass', 'win32').backgroundMaterial === 'acrylic' &&
       windowLook({ ...facts, platform: 'win32', systemVersion: '10.0.22631' }) === 'solid' &&
       pageBackground('solid', process.platform) === SOLID_BACKGROUND

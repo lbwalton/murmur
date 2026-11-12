@@ -226,7 +226,11 @@ describe('the rail', () => {
     expect(home).toContain("window.addEventListener('keydown', onKey)")
     expect(home).toContain(`document.querySelector('[role="dialog"], dialog[open]')`)
     expect(home).toContain('aria-label="Show sidebar"')
-    expect(home).toMatch(/\{hidden && \(\s*<div className="home-head-hide" id="home-hide-words">/)
+    expect(home).toMatch(/\{hidden && \(\s*<div className=\{landing \? 'home-head-hide home-head-hide-landing' : 'home-head-hide'\} id="home-hide-words">/)
+    // Hidden by hand, the switch gets 1 brush loop where it landed, for a moment.
+    expect(home).toContain('{landing > 0 && <LandRing key={landing} />}')
+    expect(home).toMatch(/const setHidden = \(next: boolean\): void => \{\s*setLanding\(next \? Date\.now\(\) : 0\)/)
+    expect(home).toContain('window.setTimeout(() => setLanding(0), LAND_RING_MS)')
     // Hide words drops what was typed.
     expect(home).toMatch(/useEffect\(\(\) => \{\s*if \(hide\) setQuery\(''\)\s*\}, \[hide\]\)/)
   })

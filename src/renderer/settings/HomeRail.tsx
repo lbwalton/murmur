@@ -7,6 +7,7 @@ import type { Settings } from '../../shared/settings'
 import { Switch } from './controls'
 import { HIDE_WORDS_LINE } from './HideWords'
 import { type RailDay, SEARCH_OFF } from './homeDays'
+import { onPageScroll, oncePageScrollEnds } from './scroller'
 
 /** The sidebar glyph on the hide and show buttons. */
 export function SidebarIcon(): React.JSX.Element {
@@ -79,10 +80,10 @@ export function HomeRail(props: {
       if (!frame) frame = window.requestAnimationFrame(measure)
     }
     measure()
-    window.addEventListener('scroll', onScroll, { passive: true })
+    const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
     return () => {
-      window.removeEventListener('scroll', onScroll)
+      stop()
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
       window.clearTimeout(lockTimer.current)
@@ -93,14 +94,15 @@ export function HomeRail(props: {
     locked.current = true
     picked.current = target
     setPlace(target)
+    let stop = (): void => undefined
     const release = (): void => {
       locked.current = false
       window.clearTimeout(lockTimer.current)
-      window.removeEventListener('scrollend', release)
+      stop()
     }
     // An earlier click's timer must not unlock this one early.
     window.clearTimeout(lockTimer.current)
-    window.addEventListener('scrollend', release)
+    stop = oncePageScrollEnds(release)
     lockTimer.current = window.setTimeout(release, 1500)
     props.onGo(target)
   }

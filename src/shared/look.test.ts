@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type Rgba, contrast, over, parseColor, stack } from './contrast'
-import { CLEAR_BACKGROUND, SOLID_BACKGROUND, asLook, pageBackground, startsWithoutMaterial, windowLook, windowOptions, windowsBuild } from './look'
+import { CLEAR_BACKGROUND, SOLID_BACKGROUND, THEME_SOURCE, asLook, pageBackground, startsWithoutMaterial, windowLook, windowOptions, windowsBuild } from './look'
 
 const src = (path: string): string => readFileSync(join(__dirname, '..', path), 'utf8')
 
@@ -45,14 +45,14 @@ describe('which look the window gets (US-150)', () => {
     expect(windowsBuild('')).toBe(0)
   })
 
-  it('uses the under-window material on a Mac and acrylic on Windows, over a clear background', () => {
-    expect(windowOptions('glass', 'darwin')).toEqual({ backgroundColor: CLEAR_BACKGROUND, vibrancy: 'under-window', visualEffectState: 'active' })
+  it('uses the floating-panel material on a Mac and acrylic on Windows, over a clear background', () => {
+    expect(windowOptions('glass', 'darwin')).toEqual({ backgroundColor: CLEAR_BACKGROUND, vibrancy: 'hud', visualEffectState: 'active' })
     expect(windowOptions('glass', 'win32')).toEqual({ backgroundColor: CLEAR_BACKGROUND, backgroundMaterial: 'acrylic' })
   })
 
   it('makes a solid Mac window with the material too, then takes it off, so glass later stays active', () => {
     // visualEffectState can only be set as the window is made.
-    expect(windowOptions('solid', 'darwin')).toEqual({ backgroundColor: SOLID_BACKGROUND, vibrancy: 'under-window', visualEffectState: 'active' })
+    expect(windowOptions('solid', 'darwin')).toEqual({ backgroundColor: SOLID_BACKGROUND, vibrancy: 'hud', visualEffectState: 'active' })
     expect(startsWithoutMaterial('solid', 'darwin')).toBe(true)
     expect(startsWithoutMaterial('glass', 'darwin')).toBe(false)
     expect(startsWithoutMaterial('solid', 'win32')).toBe(false)
@@ -69,6 +69,11 @@ describe('which look the window gets (US-150)', () => {
     expect(pageBackground('glass', 'win32')).toBe(CLEAR_BACKGROUND)
     expect(pageBackground('glass', 'linux')).toBe(SOLID_BACKGROUND)
     for (const platform of ['darwin', 'win32', 'linux']) expect(pageBackground('solid', platform)).toBe(SOLID_BACKGROUND)
+  })
+
+  it('is always dark to the system, so a Mac in its light look never hands it the light material', () => {
+    expect(THEME_SOURCE).toBe('dark')
+    expect(src('main/index.ts')).toContain('nativeTheme.themeSource = THEME_SOURCE')
   })
 
   it('trusts only the 2 real looks from an address or an environment variable', () => {
@@ -119,34 +124,38 @@ function tokens(theme?: string): Record<string, Rgba> {
 }
 
 const FLOOR = 4.5
-const white = parseColor('#ffffff')
 const black = parseColor('#000000')
+/** What the Mac's dark floating-panel material (hud) shows of a white
+ *  page behind the window: measured from a screenshot of the real
+ *  window over a white browser page on macOS 26.6.2, 2026-11-12 (the
+ *  window read 100, 101, 103 under the 50% sheet). The brightest ground
+ *  the glass can have. */
+const MATERIAL_OVER_WHITE = parseColor('#b9bcbd')
 
 /** Every surface of the look over a ground, and the text that sits on
  *  each, as styles.css lays them. */
 function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'solid' = 'glass'): Array<[string, Rgba, Rgba]> {
-  // The top bar is solid ink under the wash, whatever is behind the window.
-  const bar = stack(t.ink, t['tint-frame'])
-  // Over the glow the sidebar gets a darker pane.
-  const rail = stack(windowGround, ...(look === 'solid' ? [t['glass-bar']] : []), t['tint-frame'])
-  const card = stack(windowGround, t['glass-card'])
-  const cardOnRail = stack(rail, t['glass-card'])
+  // 1 glass: the top bar, the sidebar and every card are the same pane
+  // (--panel, which the solid look sets to its own 85%).
+  const card = stack(windowGround, look === 'solid' ? t['glass-card-solid'] : t['glass-card'])
   const well = stack(card, t['glass-well'])
-  const reading = stack(card, t['tint-frame'])
   const strongFrom = stack(card, t['tint-strong-from'])
   const strongTo = stack(card, t['tint-strong-to'])
+  const threadFrom = stack(card, t['tint-thread-from'])
+  const threadTo = stack(card, t['tint-thread-to'])
   // Under a look, red is the glass red (styles.css sets --red to it).
   const red = t['red-glass']
   return [
     ['bright text on the window', t.text, windowGround],
-    ['grey text on the window', t['text-dim-window'], windowGround],
-    ['a gold label on the window', t.brand, windowGround],
-    ['a sidebar name', t['text-dim-window'], rail],
-    ['a gold sidebar label', t.brand, rail],
-    ['the sidebar name you are on', t.brand, cardOnRail],
-    ['a tab in the top bar', t['text-dim-window'], bar],
-    ['the tab you are on', t.brand, bar],
-    ['the red mark in the top bar', red, bar],
+    ['helper text on the window', t['text-dim-window'], windowGround],
+    ['a sidebar name', t.text, card],
+    ['a gold sidebar label', t.brand, card],
+    ['a count in the sidebar', t['text-dim-surface'], card],
+    ['the sidebar line you are on, its strong corner', t.text, strongFrom],
+    ['the sidebar line you are on, its faint corner', t.text, strongTo],
+    ['a tab in the top bar', t.text, card],
+    ['the tab you are on', t.brand, card],
+    ['the red mark in the top bar', red, card],
     ['bright text on a card', t.text, card],
     ['grey text on a card', t['text-dim-surface'], card],
     ['a gold label on a card', t.brand, card],
@@ -155,11 +164,10 @@ function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'sol
     ['bright text in a well', t.text, well],
     ['grey text in a well', t['text-dim-surface'], well],
     ['red text in a well', red, well],
-    ['grey text on a reading card', t['text-dim-surface'], reading],
-    ['a gold label on a reading card', t.brand, reading],
-    ['bright text on time back, its strong corner', t.text, strongFrom],
-    ['soft text on time back, its strong corner', t['text-on-tint'], strongFrom],
-    ['soft text on time back, its faint corner', t['text-on-tint'], strongTo],
+    ['text on time back, its strong corner', t.text, strongFrom],
+    ['text on time back, its faint corner', t.text, strongTo],
+    ['today\'s header, its strong end', t.text, threadFrom],
+    ['today\'s header, its faint end', t.text, threadTo],
     ['the to fix badge, on its solid chip', red, stack(t.ink, t['red-wash'])],
     ['the all set badge, on its solid chip', t.ok, t.ink]
   ]
@@ -169,11 +177,9 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   const t = tokens()
 
   it('finds the tokens it needs', () => {
-    for (const name of ['ink', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'text-on-tint', 'glass-window', 'glass-card', 'glass-well', 'glass-bar', 'tint-frame', 'tint-strong-from', 'tint-strong-to', 'glow-top', 'glow-mid']) {
+    for (const name of ['ink', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'glow-top', 'glow-mid']) {
       expect(t[name], name).toBeDefined()
     }
-    // The surface grey is the grey the flat look has always used.
-    expect(t['text-dim-surface']).toEqual(t['text-dim'])
   })
 
   // The glow is strongest at the very top of the window, so that is the
@@ -185,18 +191,21 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
       const rgb = (c: Rgba): number[] => [c.r, c.g, c.b]
       expect(rgb(th['glass-window'])).toEqual(rgb(th.ink))
       expect(rgb(th['glass-card'])).toEqual(rgb(th.panel))
+      expect(rgb(th['glass-card-solid'])).toEqual(rgb(th.panel))
       expect(rgb(th['ink-clear'])).toEqual(rgb(th.ink))
-      expect(rgb(th['glass-bar'])).toEqual(rgb(th.ink))
-      expect(th['text-dim-surface']).toEqual(th['text-dim'])
-      // Never more desktop than night studio's cap.
-      expect(th['glass-window'].a).toBeGreaterThanOrEqual(0.82)
+      // Helper text on the window is the theme's own cream.
+      expect(th['text-dim-window']).toEqual(th.text)
+      // Clear (LaBroi's pick, 2026-11-12): half sheet, cards at 62%.
+      expect(th['glass-window'].a).toBe(0.5)
+      expect(th['glass-card'].a).toBe(0.62)
+      expect(th['glass-card-solid'].a).toBe(0.85)
     })
 
-    it.each(pairs(th, stack(white, th['glass-window'])))('glass over a pure white wallpaper: %s keeps 4.5 to 1', (_pair, text, ground) => {
+    it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
       expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
     })
 
-    it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black wallpaper: %s keeps 4.5 to 1', (_pair, text, ground) => {
+    it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black desktop: %s keeps 4.5 to 1', (_pair, text, ground) => {
       expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
     })
 
@@ -205,17 +214,18 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
     })
   })
 
-  it('shows 18% of the desktop, and that is the cap: 1 point more and a gold sidebar label fails', () => {
-    expect(t['glass-window'].a).toBe(0.82)
-    const railAt = (show: number): Rgba => stack(white, { ...t['glass-window'], a: 1 - show }, t['tint-frame'])
-    expect(contrast(t.brand, railAt(0.18))).toBeGreaterThanOrEqual(FLOOR)
-    expect(contrast(t.brand, railAt(0.19))).toBeLessThan(FLOOR)
-    // The round 3 pick, 21%, with the flat look's grey: the reason for the fix.
-    expect(contrast(t['text-dim'], railAt(0.21))).toBeLessThan(3.5)
+  it('knows why the window carries no grey and no gold: over a white page neither keeps 4.5 to 1 on bare glass', () => {
+    const ground = stack(MATERIAL_OVER_WHITE, t['glass-window'])
+    expect(contrast(t['text-dim'], ground)).toBeLessThan(FLOOR)
+    expect(contrast(t.brand, ground)).toBeLessThan(FLOOR)
+    // So gold and grey always sit on a card, where both pass.
+    const card = stack(ground, t['glass-card'])
+    expect(contrast(t.brand, card)).toBeGreaterThanOrEqual(FLOOR)
+    expect(contrast(t['text-dim-surface'], card)).toBeGreaterThanOrEqual(FLOOR)
   })
 
-  it('needs the glass red: the plain red falls short on a glass card over white', () => {
-    const card = stack(white, t['glass-window'], t['glass-card'])
+  it('needs the glass red: the plain red falls short on a glass card over a white page', () => {
+    const card = stack(MATERIAL_OVER_WHITE, t['glass-window'], t['glass-card'])
     expect(contrast(t.red, card)).toBeLessThan(FLOOR)
     expect(contrast(t['red-glass'], card)).toBeGreaterThanOrEqual(FLOOR)
   })
@@ -237,16 +247,47 @@ describe('where the look is applied', () => {
     for (const selector of selectors) expect(selector.startsWith('html[data-look')).toBe(true)
   })
 
-  it('brightens grey on the window and puts the usual grey back on every surface', () => {
+  it('makes helper text on the window cream and puts grey back on every surface', () => {
     // Named twice, to outrank a theme's own tokens on the same element.
     expect(look).toMatch(/html\[data-look\]\[data-look\] \{\s*--panel: var\(--glass-card\);\s*--text-dim: var\(--text-dim-window\);\s*--red: var\(--red-glass\);/)
+    expect(look).toMatch(/html\[data-look='solid'\]\[data-look='solid'\] \{\s*--panel: var\(--glass-card-solid\);/)
+    // The bar and the sidebar are surfaces too.
+    expect(look).toMatch(/:is\(\s*\.masthead,\s*\.rail,\s*\.panel,/)
     expect(src('renderer/tokens.css')).toContain(":root[data-theme='mist'] {")
     expect(look).toMatch(/\.loop-tile-wrap\s*\) \{\s*--text-dim: var\(--text-dim-surface\);/)
     expect(look).toContain("html[data-look='glass'] body::before {\n  background: var(--glass-window);")
   })
 
-  it('gives the solid look\'s sidebar a darker pane', () => {
-    expect(look).toMatch(/html\[data-look='solid'\] \.rail \{\s*background: linear-gradient\(var\(--tint-frame\), var\(--tint-frame\)\), var\(--glass-bar\);/)
+  it('is 1 glass: the top bar, the sidebar and your dictations are the card pane, with no faint gold wash', () => {
+    expect(look).toMatch(/html\[data-look\] \.masthead \{\s*background: var\(--panel\);/)
+    expect(look).toMatch(/html\[data-look\] \.rail \{[^}]*background: var\(--panel\);/)
+    expect(look).toMatch(/html\[data-look\] \.history \{[^}]*background: var\(--panel\);/)
+    // Only the 2 token rules name a pane; every surface takes --panel, so
+    // the solid look's 85% reaches all of them.
+    expect(look.match(/var\(--glass-card(-solid)?\)/g)).toHaveLength(2)
+    expect(css).not.toContain('--tint-frame')
+    expect(src('renderer/tokens.css')).not.toContain('--tint-frame')
+  })
+
+  it('keeps the page out from under the bar: it scrolls in its own box', () => {
+    expect(css).toMatch(/\.page-scroll \{[^}]*overflow-y: auto;/)
+    expect(css).toMatch(/\.masthead \{\s*position: relative;/)
+    expect(css).not.toMatch(/\.masthead \{[^}]*position: sticky/)
+    const app = src('renderer/settings/App.tsx')
+    expect(app.match(/className="page-scroll" tabIndex=\{-1\}/g)).toHaveLength(2)
+    // The box takes the keyboard on each page, so the scroll keys work.
+    expect(app).toMatch(/pageScroller\(\)\?\.scrollTo\(0, 0\)\s*markScrollbars\(\)\s*focusPageScroller\(\)/)
+    // A narrow window insets the page and the bar, never the shell.
+    expect(css).not.toMatch(/\.shell \{\s*padding/)
+  })
+
+  it('puts gold where it says something: time back, the sidebar line you are on, today\'s header', () => {
+    expect(look).toMatch(/html\[data-look\] \.home-timeback \{[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\), var\(--panel\);/)
+    expect(look).toMatch(/:is\(\.rail-item-on, \.rail-item-on:hover\) \{[^}]*color: var\(--text\);[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\);/)
+    expect(look).toMatch(/html\[data-look\] \.day-head-today \{[^}]*var\(--tint-thread-from\), var\(--tint-thread-to\)\);/)
+    // Names are cream until picked; the tab you are on is gold.
+    expect(look).toMatch(/html\[data-look\] :is\(\.nav-btn, \.rail-item\) \{\s*color: var\(--text\);/)
+    expect(look).toMatch(/html\[data-look\] \.nav-btn\[aria-current='page'\] \{\s*color: var\(--brand\);/)
   })
 
   it('makes a well darker glass, not solid ink', () => {
@@ -260,13 +301,14 @@ describe('where the look is applied', () => {
     const before = css.slice(0, css.indexOf('/* Glass over your desktop (US-150'))
     const blurred = [...before.matchAll(/^([^\s@/}][^{]*)\{[^}]*?\bbackdrop-filter:\s*blur/gm)].map((m) => m[1].trim())
     expect(blurred.sort()).toEqual(['.ask-first', '.btn.btn-test'])
-    expect(look).toMatch(/\.masthead::before \{[^}]*background: linear-gradient\(var\(--tint-frame\), var\(--tint-frame\)\), var\(--ink\);/)
   })
 
-  it('leaves the edges that say something: a waiting take, Finish setup, the profile in use', () => {
-    expect(look).toContain('html[data-look] :is(.panel:not(.waiting-strip), .group, .running-strip, .history) {')
+  it('leaves the edges that say something (Finish setup, the profile in use), and a waiting take is a card with a red dot', () => {
+    expect(look).toContain('html[data-look] :is(.panel, .group, .running-strip, .history) {')
     expect(look).not.toMatch(/:is\([^)]*\.(finish|profile-card)[^)]*\) \{\s*border-color/)
     expect(look).toMatch(/html\[data-look\] \.health-bad \{\s*background: linear-gradient\(var\(--red-wash\), var\(--red-wash\)\), var\(--ink\);/)
+    expect(css).not.toMatch(/\.waiting-strip \{[^}]*border-color/)
+    expect(src('renderer/settings/HomeView.tsx')).toMatch(/waiting to retry\s*<span className="rail-dot" aria-hidden="true" \/>/)
   })
 
   it('is made in main from the rules, switches live, and leaves the overlay pill alone', () => {

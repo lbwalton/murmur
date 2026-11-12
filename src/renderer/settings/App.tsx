@@ -21,6 +21,7 @@ import { AnalyticsView } from './AnalyticsView'
 import { ApiKeys, pasteHint } from './ApiKeys'
 import { HomeView } from './HomeView'
 import { PageTitle } from './PageTitle'
+import { focusPageScroller, markScrollbars, pageScroller } from './scroller'
 import { JourneyView } from './JourneyView'
 import { TryBox } from './HideWords'
 import { HistorySettings } from './HistorySettings'
@@ -455,9 +456,15 @@ export function App(): React.JSX.Element {
   }, [testedModels, runTest])
 
   // A new tab starts at its top, where the Finish setup card lives.
+  // The page's box takes the keyboard unless something in it has it, so
+  // the scroll keys work right after a tab click; the wizard and the
+  // first paint after settings load count as a new page too.
+  const drawn = settings !== null
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [page])
+    pageScroller()?.scrollTo(0, 0)
+    markScrollbars()
+    focusPageScroller()
+  }, [page, drawn, wizardOpen])
 
   // Resolves once the key is stored, so the field clears at once; the
   // connection test runs on behind it.
@@ -547,6 +554,7 @@ export function App(): React.JSX.Element {
         <header className="masthead" ref={watchMasthead}>
           <p className="micro-label wordmark">murmur</p>
         </header>
+        <div className="page-scroll" tabIndex={-1}>
         <div className="page">
           <WizardView
             settings={settings}
@@ -569,6 +577,7 @@ export function App(): React.JSX.Element {
                 .finally(() => setWizardOpen(false))
             }}
           />
+        </div>
         </div>
       </main>
     )
@@ -763,6 +772,8 @@ export function App(): React.JSX.Element {
         </nav>
       </header>
 
+      {/* The page scrolls in its own box under the bar (US-150, round 2). */}
+      <div className="page-scroll" tabIndex={-1}>
       {/* Stays mounted across page switches: a page's cleanup that throws
           as it closes is logged here, never shown over the next page or
           the window (review gate). */}
@@ -1689,6 +1700,7 @@ export function App(): React.JSX.Element {
         </button>{' '}
         · copyright Eze Media LLC
       </footer>
+      </div>
     </main>
   )
 }

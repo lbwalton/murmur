@@ -33,6 +33,7 @@ import { AskFirst } from './AskFirst'
 import { Switch } from './controls'
 import { TakeWords } from './HideWords'
 import { HomeRail, OVERVIEW, SidebarIcon, WAITING } from './HomeRail'
+import { LAND_RING_MS, LandRing } from './LandRing'
 import {
   HOME_TAKES,
   dayCount,
@@ -562,7 +563,10 @@ function WaitingTakes(props: {
   return (
     <section className="panel waiting waiting-strip" id="home-waiting" data-place={WAITING} tabIndex={-1} aria-label="Waiting to retry">
       <div className="waiting-head">
-        <p className="micro-label">waiting to retry</p>
+        <p className="micro-label">
+          waiting to retry
+          <span className="rail-dot" aria-hidden="true" />
+        </p>
         {takes.length > 1 && (
           <span className="waiting-actions">
             <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
@@ -694,7 +698,7 @@ export function HomeHistory(props: {
           <section className="day" key={group.day} id={`day-${group.day}`} data-place={group.day}>
             <h3 className="day-h">
               <button
-                className="day-head"
+                className={group.day === dayKey(now) ? 'day-head day-head-today' : 'day-head'}
                 aria-expanded={open}
                 aria-controls={open ? `day-rows-${group.day}` : undefined}
                 // A search holds its days open, so there is nothing to fold.
@@ -916,7 +920,16 @@ export function HomeView(props: {
   const showRef = useRef<HTMLButtonElement>(null)
   // Where focus goes once the rail has been drawn or taken away.
   const focusNext = useRef<'search' | 'show' | null>(null)
+  // Hiding the sidebar by hand moves Hide words beside the title; a
+  // brush loop is drawn around it there for a moment, so the eye finds it.
+  const [landing, setLanding] = useState(0)
+  useEffect(() => {
+    if (!landing) return undefined
+    const timer = window.setTimeout(() => setLanding(0), LAND_RING_MS)
+    return () => window.clearTimeout(timer)
+  }, [landing])
   const setHidden = (next: boolean): void => {
+    setLanding(next ? Date.now() : 0)
     if (narrow) setNarrowOpen(!next)
     else {
       setRemembered(next)
@@ -1035,7 +1048,8 @@ export function HomeView(props: {
           {/* The rail holds Hide words; with the rail hidden the switch
               moves here, so it is always 1 click away on Home. */}
           {hidden && (
-            <div className="home-head-hide" id="home-hide-words">
+            <div className={landing ? 'home-head-hide home-head-hide-landing' : 'home-head-hide'} id="home-hide-words">
+              {landing > 0 && <LandRing key={landing} />}
               <span>Hide words</span>
               <Switch
                 checked={hide}

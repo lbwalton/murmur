@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { Boundary, ROOT_OPTIONS } from './Boundary'
 import { asLook } from '../../shared/look'
+import { markScrollbars } from './scroller'
 import './styles.css'
 
 // The window's look (US-150) rides in the address, so the first paint
@@ -21,10 +22,8 @@ window.murmur?.onLookChanged?.(wear)
 // the page a gutter that paints as its own solid strip beside the glass.
 // Only then does the look draw the scroll bar itself; trackpad overlay
 // bars are left as they are.
-const markScrollbars = (): void => {
-  const root = document.documentElement
-  if (window.innerWidth - root.clientWidth > 0) root.dataset.scrollbars = 'classic'
-}
+// The page's box is drawn once settings arrive, so App marks them again
+// then (scroller.ts).
 window.addEventListener('load', markScrollbars)
 window.addEventListener('focus', markScrollbars)
 

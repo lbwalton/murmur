@@ -6,6 +6,7 @@
 // index to keep in step.
 import { useEffect, useRef, useState } from 'react'
 import { jumpToRow } from './controls'
+import { onPageScroll, oncePageScrollEnds, pageScroller } from './scroller'
 import type { SetupCheck, SetupStatusValue } from './SetupStatus'
 
 export interface RailSection {
@@ -119,8 +120,8 @@ export function SettingsRail(props: {
       for (const s of secs) {
         if (s.getBoundingClientRect().top <= header + 84) next = s.dataset.sec ?? next
       }
-      const doc = document.documentElement
-      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4) {
+      const box = pageScroller()
+      if (box && box.clientHeight + box.scrollTop >= box.scrollHeight - 4) {
         next = secs[secs.length - 1].dataset.sec ?? next
       }
       setCurrent(next)
@@ -129,10 +130,10 @@ export function SettingsRail(props: {
       if (!frame) frame = window.requestAnimationFrame(measure)
     }
     measure()
-    window.addEventListener('scroll', onScroll, { passive: true })
+    const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
     return () => {
-      window.removeEventListener('scroll', onScroll)
+      stop()
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
     }
@@ -146,11 +147,12 @@ export function SettingsRail(props: {
   const holdHighlight = (id: string): void => {
     locked.current = true
     setCurrent(id)
+    let stop = (): void => undefined
     const release = (): void => {
       locked.current = false
-      window.removeEventListener('scrollend', release)
+      stop()
     }
-    window.addEventListener('scrollend', release)
+    stop = oncePageScrollEnds(release)
     window.setTimeout(release, 1500)
   }
 

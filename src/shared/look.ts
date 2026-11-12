@@ -6,9 +6,16 @@
 
 export type WindowLook = 'glass' | 'solid'
 
-/** macOS: the material behind a window's content. Checked against the
- *  Electron 44 typings (BrowserWindow `vibrancy`), 2026-11-12. */
-export const MAC_VIBRANCY = 'under-window' as const
+/** macOS: the material behind a window's content: the one the system
+ *  uses for its own floating panels, which lets shapes and color
+ *  through (under-window, the first pick, frosts them away). Checked
+ *  against the Electron 44 typings (BrowserWindow `vibrancy`), 2026-11-12. */
+export const MAC_VIBRANCY = 'hud' as const
+/** murmur is always dark, whatever the system is set to. Without this a
+ *  Mac in its light look hands the window the light material, and night
+ *  studio over a white frost is flat grey with a white title bar
+ *  (LaBroi's Mac, 2026-11-12). Electron's `nativeTheme.themeSource`. */
+export const THEME_SOURCE = 'dark' as const
 /** Windows 11: the acrylic background material (BrowserWindow
  *  `backgroundMaterial`), which Electron supports from 22H2 up. */
 export const WIN_MATERIAL = 'acrylic' as const
