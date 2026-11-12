@@ -747,6 +747,44 @@ app.whenReady().then(async () => {
     return pages !== null && Object.values(pages).every((n) => n === 0)
   })
 
+  registerSmokeCheck('homeRail', async () => {
+    // Home has its rail (US-147): the search, the Overview line and Hide
+    // words are there, the rail hides and comes back with its buttons,
+    // and the choice is put back, ending on the settings tab the checks
+    // after this one expect.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const probe = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const tab = (label) => {
+        const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === label)
+        if (nav) nav.click()
+        return Boolean(nav)
+      }
+      if (!tab('home')) return null
+      await wait(300)
+      const rail = document.querySelector('.home-layout .home-rail')
+      // A window too narrow for 2 columns tucks the rail away; smoke's is not.
+      if (!rail) return { rail: false }
+      const parts =
+        rail.querySelector('.rail-search') !== null &&
+        [...rail.querySelectorAll('.rail-item')].some((b) => b.textContent === 'Overview') &&
+        rail.querySelector('#home-hide-words [role=switch]') !== null
+      rail.querySelector('[aria-label="Hide sidebar"]').click()
+      await wait(200)
+      const show = document.querySelector('.home [aria-label="Show sidebar"]')
+      const hidden = document.querySelector('.home-rail') === null && show !== null
+      if (show) show.click()
+      await wait(200)
+      const back = document.querySelector('.home-rail') !== null && document.querySelector('.home [aria-label="Show sidebar"]') === null
+      const title = document.querySelector('.home h1')?.textContent
+      tab('settings')
+      await wait(200)
+      return { rail: true, parts, hidden, back, title }
+    })()`)) as { rail: boolean; parts?: boolean; hidden?: boolean; back?: boolean; title?: string } | null
+    return probe !== null && probe.rail && probe.parts === true && probe.hidden === true && probe.back === true && probe.title === 'Home'
+  })
+
   registerSmokeCheck('settingsZoomSharp', async () => {
     // At the top step, 300 percent, every brush canvas on screen paints
     // at the full pixel ratio, not a capped one, so paint stays sharp
@@ -1096,6 +1134,13 @@ app.whenReady().then(async () => {
         })()`
       )
       await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
+    // MURMUR_SETTINGS_TYPE=words types them, as real input, into whatever
+    // the clicks left focused, so a search can be shot with its results.
+    const typed = process.env.MURMUR_SETTINGS_TYPE
+    if (typed) {
+      for (const keyCode of typed) settingsWindow.webContents.sendInputEvent({ type: 'char', keyCode })
+      await new Promise((resolve) => setTimeout(resolve, 500))
     }
     // MURMUR_SETTINGS_KEYS=Down,Down,Return presses those keys, as real
     // input, in whatever the clicks left focused, each after the last

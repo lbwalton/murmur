@@ -768,7 +768,7 @@ export function App(): React.JSX.Element {
           the window (review gate). */}
       <Boundary kind="page" where="a page as it closed" logOnly>
         {page !== 'setup' && (
-          <div className="page">
+          <div className={page === 'home' ? 'page page-wide' : 'page'}>
             {/* Keyed by page: leaving a page that hit a problem and coming
                 back tries it again (US-163). */}
             <Boundary key={page} kind="page" where={`page ${page}`}>

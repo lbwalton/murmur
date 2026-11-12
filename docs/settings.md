@@ -8,7 +8,18 @@ The bar at the top of the window (the murmur wordmark with your belt, then home,
 
 ## What is the home view?
 
-The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. Under your dictations, 1 line says how long they are kept, with a link to Settings, History. A red ✗ next to the settings tab means setup needs attention.
+The window opens on Home. A sidebar on the left has a search box, the parts of the page, each day of your history with its count, and Hide words. Beside it, top to bottom: the title with a what's new line, any takes waiting to retry in a strip with a red edge, your time back for today beside your last note, then **Your dictations**, a day at a time, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. Beside the Your dictations heading, 1 line says how many are showing and how long they are kept, with a link to Settings, History. A red ✗ next to the settings tab means setup needs attention.
+
+## How do I find an old dictation?
+
+On Home, use the sidebar (added November 2026).
+
+- **Search.** Type in **Search dictations** at the top of the sidebar, or press Cmd+F (Ctrl+F on Windows). Every day is filtered as you type, the days with a match open, and a line says how many dictations match. A take matches when it holds every word you typed, in what landed or in what was heard. Escape clears the search.
+- **Jump to a day.** The sidebar lists Today, Yesterday, and the 5 days before them, each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at.
+- **Fold a day.** Each day has a header with its number of dictations and words. Click it (or press Enter or Space on it) to fold or open that day. Today and Yesterday start open, and older days start folded.
+- **Hide the sidebar.** Click the button beside the search box, or press Cmd+\\ (Ctrl+\\ on Windows). murmur remembers the choice. A **Show sidebar** button sits beside the Home title while it is hidden. In a narrow window the sidebar tucks itself away, and the same button brings it back.
+
+Search is off while Hide words is on, so a search can never show hidden words; the sidebar says so. Home shows your newest 500 dictations, so a search covers those. A take whose words are not kept (under Don't keep, after a quit) has nothing to match.
 
 ## How is the settings tab organized, and how do I find a setting?
 
@@ -32,7 +43,7 @@ Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. **Keep history for**, in Settings, under History, sets how long. Home says the current rule in 1 line under your dictations, with a link there:
+History lives only on your machine, in murmur's local data folder. **Keep history for**, in Settings, under History, sets how long. Home says the current rule in 1 line beside the Your dictations heading, with a link there:
 
 - **30 days, 90 days, a year, or forever.** Entries older than that are removed.
 - **24 hours.** The words of a take go after 24 hours, checked every 15 minutes while murmur runs. The numbers stay, so your stats, belts, and paintings keep counting.
@@ -55,7 +66,7 @@ Yes, by default. The words in your history are encrypted on disk with a key your
 
 ## How do I hide my words while I share my screen or film?
 
-Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: on the home tab just above your history, in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: at the bottom of the sidebar on the home tab, in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
 
 - **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
 - **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.
@@ -337,7 +348,7 @@ The provider list has its own switch, because it is a separate request to GitHub
 
 ## Where do I see what changed in an update?
 
-The home tab keeps a quiet what's new line; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.
+The home tab keeps a quiet what's new line beside its title; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.
 
 ## What is the Price refresh setting?
 

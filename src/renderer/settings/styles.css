@@ -2089,21 +2089,6 @@ details[open] > .ladder-summary::after {
   padding: 3px 8px;
 }
 
-/* What's new: one quiet line until asked; the amber dot is the only
-   thing that changes when a new version lands. */
-.whats-new-head {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
 .whats-new-dot {
   display: inline-block;
   width: 6px;
@@ -3005,10 +2990,298 @@ textarea.well-multiline {
   text-align: right;
 }
 
-/* Home's 1-line Keep history rule, under the dictations (US-148). */
-.home-keep-line {
-  margin: 4px 4px 0;
+/* Home with a rail (US-147, LaBroi's pick B, 2026-11-08). The rail is
+   the Settings rail's parts; the page beside it reads as zones: the
+   title line, takes waiting, time back beside the last note, then your
+   dictations under their own heading, a day at a time. */
+.page.page-wide {
+  max-width: 856px;
+}
+
+.home-layout {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.home-layout.home-rail-off {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-rail-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-rail-top {
+  gap: 4px;
+}
+
+.home-rail-top .rail-search {
+  flex: 1;
+  height: 32px;
+  padding: 7px 8px;
   font-size: 12.5px;
+}
+
+.home-rail-top .icon-btn {
+  width: 28px;
+}
+
+.rail-search:disabled {
+  opacity: 0.55;
+}
+
+/* A square button that is only a glyph (hide and show the sidebar). */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  border-color: var(--cream-14);
+}
+
+.icon-btn-edge {
+  color: var(--text);
+  border-color: var(--cream-14);
+}
+
+.rail-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.home-rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px 0;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.home-rail-hide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.home-rail-line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.home-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  scroll-margin-top: 8px;
+}
+
+.home-head .page-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-head h1:focus {
+  outline: none;
+}
+
+/* What's new: 1 line beside the title; the dot is the only thing that
+   changes when a new version lands. */
+.whats-new-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.whats-new-line:hover {
+  color: var(--text);
+}
+
+.whats-new-line .whats-new-dot {
+  margin-left: 0;
+  vertical-align: 0;
+}
+
+.home-head .whats-new-body {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+}
+
+/* A take waiting to retry is the 1 strip with a red edge. */
+.waiting-strip {
+  border-color: var(--red-edge);
+  scroll-margin-top: 8px;
+}
+
+.home-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.home-pair:empty {
+  display: none;
+}
+
+.home-pair > .panel {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.home-pair > .home-timeback {
+  flex: 3 1 260px;
+}
+
+.home-pair > .last-note {
+  flex: 2 1 200px;
+}
+
+.home-pair .last-note-row {
+  flex-wrap: wrap;
+}
+
+.home-pair .last-note-text {
+  flex-basis: 100%;
+}
+
+.history {
+  margin-top: 14px;
+}
+
+.history-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+}
+
+.history-head h2 {
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.history-kept,
+.history-found {
+  font-size: 13px;
+}
+
+.history-found {
+  padding: 0 4px 10px;
+}
+
+.day {
+  scroll-margin-top: 8px;
+}
+
+.day-h {
+  font: inherit;
+}
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 4px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--cream-14);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.day-head:disabled {
+  cursor: default;
+}
+
+.day-name {
+  font-weight: 650;
+}
+
+.day-count {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.day-chevron {
+  flex: none;
+  color: var(--text-dim);
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.day-chevron-open {
+  color: var(--brand);
+  transform: rotate(90deg);
+}
+
+.day .log-list {
+  padding-left: 26px;
+}
+
+.day .log-entry:first-child {
+  border-top: 1px solid var(--panel-edge);
+}
+
+.home-layout :is(.btn, .switch, .rail-item, .icon-btn, .day-head, .whats-new-line, .link-btn):focus-visible {
+  outline: 2px solid var(--amber-soft);
+  outline-offset: 2px;
+}
+
+/* These fill a column that would clip an outside ring. */
+.home-layout :is(.rail-item, .day-head):focus-visible {
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-chevron {
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .day .log-list {
+    padding-left: 8px;
+  }
 }
 
 /* Rows in a well (US-154, LaBroi's pick 2026-11-08; US-155 brings it to
