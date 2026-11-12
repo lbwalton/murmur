@@ -14,10 +14,10 @@ The window opens on Home. A sidebar on the left has a search box, the parts of t
 
 On Home, use the sidebar (added November 2026).
 
-- **Search.** Type in **Search dictations** at the top of the sidebar, or press Cmd+F (Ctrl+F on Windows). Every day is filtered as you type, the days with a match open, and a line says how many dictations match. A take matches when it holds every word you typed, in what landed or in what was heard. Escape clears the search.
-- **Jump to a day.** The sidebar lists Today, Yesterday, and the 5 days before them, each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at.
+- **Search.** Type in **Search dictations** at the top of the sidebar, or press Cmd+F (Ctrl+F on Windows). Every day is filtered as you type, the days with a match open, and a line says how many dictations match. A take matches when it holds every word you typed, in what landed or in what was heard. To clear it, click **Clear search** beside the count, or press Escape while you are in the search box.
+- **Jump to a day.** The sidebar lists your 7 newest days that have dictations (today and yesterday by name), each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at.
 - **Fold a day.** Each day has a header with its number of dictations and words. Click it (or press Enter or Space on it) to fold or open that day. Today and Yesterday start open, and older days start folded.
-- **Hide the sidebar.** Click the button beside the search box, or press Cmd+\\ (Ctrl+\\ on Windows). murmur remembers the choice. A **Show sidebar** button sits beside the Home title while it is hidden. In a narrow window the sidebar tucks itself away, and the same button brings it back.
+- **Hide the sidebar.** Click the button beside the search box, or press Cmd+\\ (Ctrl+\\ on Windows). murmur remembers the choice. A **Show sidebar** button sits beside the Home title while it is hidden. In a narrow window the sidebar tucks itself away, and the same button brings it back. While the sidebar is hidden, the Hide words switch sits beside the Home title, and a search you left on stays on until you clear it.
 
 Search is off while Hide words is on, so a search can never show hidden words; the sidebar says so. Home shows your newest 500 dictations, so a search covers those. A take whose words are not kept (under Don't keep, after a quit) has nothing to match.
 
@@ -66,7 +66,7 @@ Yes, by default. The words in your history are encrypted on disk with a key your
 
 ## How do I hide my words while I share my screen or film?
 
-Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: at the bottom of the sidebar on the home tab, in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: on the home tab (at the bottom of the sidebar, or beside the Home title while the sidebar is hidden), in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
 
 - **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
 - **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.

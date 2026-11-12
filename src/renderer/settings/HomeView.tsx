@@ -30,6 +30,7 @@ import { useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
+import { Switch } from './controls'
 import { TakeWords } from './HideWords'
 import { HomeRail, OVERVIEW, SidebarIcon, WAITING } from './HomeRail'
 import {
@@ -40,6 +41,7 @@ import {
   railDays,
   railHidden,
   railIsHidden,
+  railKey,
   rememberRailHidden,
   searchDays,
   searchLine,
@@ -558,7 +560,7 @@ function WaitingTakes(props: {
   const platform = navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32'
 
   return (
-    <section className="panel waiting waiting-strip" id="home-waiting" data-place={WAITING}>
+    <section className="panel waiting waiting-strip" id="home-waiting" data-place={WAITING} tabIndex={-1} aria-label="Waiting to retry">
       <div className="waiting-head">
         <p className="micro-label">waiting to retry</p>
         {takes.length > 1 && (
@@ -632,6 +634,148 @@ function WaitingTakes(props: {
   )
 }
 
+/** Your dictations (US-147): the heading with what is kept, then a day
+ *  at a time. A folded day draws no rows; a search keeps the days with a
+ *  match, opens them, and says how many matched. While Hide words is on
+ *  the search is off, whatever was typed. */
+export function HomeHistory(props: {
+  grouped: ReadonlyArray<{ day: string; events: SessionEvent[] }>
+  /** How many takes Home holds, for the heading. */
+  shown: number
+  query: string
+  picks: Readonly<Record<string, boolean>>
+  now: number
+  settings: Settings
+  onPick: (day: string, open: boolean) => void
+  onClearSearch: () => void
+  onOpenHistory: () => void
+}): React.JSX.Element {
+  const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const [openSaid, setOpenSaid] = useState<number | null>(null)
+  const [openReport, setOpenReport] = useState<number | null>(null)
+  const { grouped, now } = props
+  const hide = props.settings.history.hideWords
+  const found = searchDays(grouped, props.query, hide)
+
+  const copy = async (event: SessionEvent): Promise<void> => {
+    await bridge().copyText(event.finalText)
+    setCopiedAt(event.at)
+    setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
+  }
+
+  return (
+    <section className="history" aria-labelledby="home-history-title">
+      <div className="history-head">
+        <h2 id="home-history-title">Your dictations</h2>
+        {/* Keep history, Encrypt saved words, and Clear all live in
+            Settings, History (US-148); Home says the rule and links there. */}
+        <p className="dim history-kept">
+          {showingLine(props.shown)} {keptLine(props.settings.history.retentionDays)}{' '}
+          <button className="link-btn" onClick={props.onOpenHistory}>
+            History settings
+          </button>
+        </p>
+      </div>
+      {/* Always mounted, so screen readers hear the count change. The
+          way out of a search is here too: the rail, and its search box,
+          may be hidden while a search is still on. */}
+      <div className={found.searching ? 'history-found' : 'visually-hidden'}>
+        <p role="status">{found.searching ? searchLine(found.matches) : ''}</p>
+        {found.searching && (
+          <button className="link-btn" onClick={props.onClearSearch}>
+            Clear search
+          </button>
+        )}
+      </div>
+      {found.groups.map((group) => {
+        const open = found.searching || isOpen(group.day, props.picks, now)
+        const total = grouped.find((g) => g.day === group.day)?.events.length ?? group.events.length
+        return (
+          <section className="day" key={group.day} id={`day-${group.day}`} data-place={group.day}>
+            <h3 className="day-h">
+              <button
+                className="day-head"
+                aria-expanded={open}
+                aria-controls={open ? `day-rows-${group.day}` : undefined}
+                // A search holds its days open, so there is nothing to fold.
+                disabled={found.searching}
+                onClick={() => props.onPick(group.day, !open)}
+              >
+                <svg className={`day-chevron ${open ? 'day-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.5 3l3 3-3 3" />
+                </svg>
+                <span className="day-name">{dayTitle(group.day, now)}</span>
+                <span className="day-count">
+                  {found.searching ? `${group.events.length.toLocaleString()} of ${total.toLocaleString()} match` : dayCount(group.events)}
+                </span>
+              </button>
+            </h3>
+            {/* A folded day draws no rows, so a long history stays fast. */}
+            {open && (
+              <div className="log-list" id={`day-rows-${group.day}`}>
+                {group.events.map((event) => (
+                  <div className="log-entry" key={event.at}>
+                    <div className="log-meta">
+                      <span className="mono-inline dim">{timeOf(event.at)}</span>
+                      {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
+                      {event.kind === 'transform' && (
+                        <span className="mono-inline note-tag">{event.unsent ? 'transform · not sent' : 'transform'}</span>
+                      )}
+                      {event.kind !== 'transform' && (
+                        <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
+                      )}
+                      {event.retried && <span className="mono-inline dim">retried</span>}
+                      {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
+                        <span className="mono-inline dim">until you quit</span>
+                      )}
+                      {offersWhatYouSaid(event) && (
+                        <button
+                          className="btn quiet-btn log-said-toggle"
+                          aria-expanded={openSaid === event.at}
+                          aria-controls={`said-${event.at}`}
+                          onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
+                        >
+                          what you said
+                        </button>
+                      )}
+                      {event.kind !== 'transform' && hasText(event) && (
+                        <button
+                          className="btn quiet-btn log-said-toggle"
+                          aria-expanded={openReport === event.at}
+                          aria-controls={`report-${event.at}`}
+                          onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
+                        >
+                          report
+                        </button>
+                      )}
+                      {hasText(event) && (
+                        <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
+                          {copiedAt === event.at ? 'copied' : 'copy'}
+                        </button>
+                      )}
+                    </div>
+                    {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
+                    {openReport === event.at && (
+                      <ReportTake
+                        id={`report-${event.at}`}
+                        event={event}
+                        settings={props.settings}
+                        hide={hide}
+                        onClose={() => setOpenReport(null)}
+                      />
+                    )}
+                    <LogWords event={event} hide={hide} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )
+      })}
+    </section>
+  )
+}
+
 const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac')
 const MOD = IS_MAC ? 'Cmd' : 'Ctrl'
 
@@ -643,9 +787,16 @@ function storage(): Storage | null {
   }
 }
 
+/** Focus for the rail as it appears: its search, or while Hide words has
+ *  the search off, the button beside it, so the keyboard is never dropped. */
+function focusRail(search: HTMLInputElement | null): void {
+  if (search && !search.disabled) search.focus()
+  else document.querySelector<HTMLElement>('.home-rail [aria-label="Hide sidebar"]')?.focus()
+}
+
 /** True while the window is too narrow for the rail beside the page. */
 function useNarrow(): boolean {
-  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches)
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
   useEffect(() => {
     const query = window.matchMedia(NARROW)
     const onChange = (): void => setNarrow(query.matches)
@@ -690,9 +841,6 @@ export function HomeView(props: {
   // The empty state waits for the list, so a full history never flashes
   // the first-run invitation while it loads.
   const [loaded, setLoaded] = useState(false)
-  const [copiedAt, setCopiedAt] = useState<number | null>(null)
-  const [openSaid, setOpenSaid] = useState<number | null>(null)
-  const [openReport, setOpenReport] = useState<number | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const typingWpm = props.settings.timeBack.typingWpm
   const today = useToday()
@@ -747,12 +895,6 @@ export function HomeView(props: {
     // back today and the typical day never belong to yesterday.
   }, [typingWpm, today])
 
-  const copy = async (event: SessionEvent): Promise<void> => {
-    await bridge().copyText(event.finalText)
-    setCopiedAt(event.at)
-    setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
-  }
-
   const hide = props.settings.history.hideWords
   const now = Date.now()
   const grouped = groupByDay(events)
@@ -786,28 +928,26 @@ export function HomeView(props: {
   const setHiddenRef = useRef(setHidden)
   setHiddenRef.current = setHidden
   useEffect(() => {
-    if (focusNext.current === 'search' && !hidden) searchRef.current?.focus()
+    if (focusNext.current === 'search' && !hidden) focusRail(searchRef.current)
     if (focusNext.current === 'show' && hidden) showRef.current?.focus()
     focusNext.current = null
   }, [hidden])
 
-  // Cmd+\ hides and shows the rail, and Cmd+F goes to its search
-  // (Ctrl on Windows).
+  // Cmd+\ hides and shows the rail, and Cmd+F goes to its search (Ctrl
+  // on Windows). A dialog over the page keeps the keyboard to itself.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
-      if (!mod || e.altKey || e.shiftKey) return
-      if (e.key === '\\') {
-        e.preventDefault()
-        focusNext.current = hiddenRef.current ? null : 'show'
+      const asked = railKey(e, IS_MAC)
+      if (!asked || document.querySelector('[role="dialog"], dialog[open]')) return
+      e.preventDefault()
+      if (asked === 'toggle') {
+        // Focus follows: to the rail as it appears, to Show sidebar as it goes.
+        focusNext.current = hiddenRef.current ? 'search' : 'show'
         setHiddenRef.current(!hiddenRef.current)
-      } else if (e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        if (hiddenRef.current) {
-          focusNext.current = 'search'
-          setHiddenRef.current(false)
-        } else searchRef.current?.focus()
-      }
+      } else if (hiddenRef.current) {
+        focusNext.current = 'search'
+        setHiddenRef.current(false)
+      } else focusRail(searchRef.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -816,8 +956,12 @@ export function HomeView(props: {
   // Search and folding. A day the person opened or folded stays that
   // way; a search opens every day it keeps.
   const [query, setQuery] = useState('')
+  // Hide words drops what was typed, so turning it off again never
+  // brings back a search nobody can see.
+  useEffect(() => {
+    if (hide) setQuery('')
+  }, [hide])
   const [picks, setPicks] = useState<Record<string, boolean>>({})
-  const found = searchDays(grouped, query, hide)
   const rail = railDays(grouped, now)
   const waiting = useWaitingCount()
   const [goal, setGoal] = useState<{ place: string } | null>(null)
@@ -845,8 +989,6 @@ export function HomeView(props: {
     }
     setGoal({ place })
   }
-
-  const kept = keptLine(props.settings.history.retentionDays)
 
   return (
     <div className={`home-layout ${hidden ? 'home-rail-off' : ''}`}>
@@ -890,6 +1032,18 @@ export function HomeView(props: {
             <p className="dim">{today}</p>
           </header>
           <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
+          {/* The rail holds Hide words; with the rail hidden the switch
+              moves here, so it is always 1 click away on Home. */}
+          {hidden && (
+            <div className="home-head-hide" id="home-hide-words">
+              <span>Hide words</span>
+              <Switch
+                checked={hide}
+                label="Hide words"
+                onChange={(next) => void props.onUpdateSettings({ history: { hideWords: next } } as Partial<Settings>)}
+              />
+            </div>
+          )}
         </div>
         {showHowTo && (
           <section className="panel howto">
@@ -958,108 +1112,17 @@ export function HomeView(props: {
         )}
 
         {grouped.length > 0 && (
-          <section className="history" aria-labelledby="home-history-title">
-            <div className="history-head">
-              <h2 id="home-history-title">Your dictations</h2>
-              {/* Keep history, Encrypt saved words, and Clear all live in
-                  Settings, History (US-148); Home says the rule and links there. */}
-              <p className="dim history-kept">
-                {showingLine(events.length)} {kept}{' '}
-                <button className="link-btn" onClick={props.onOpenHistory}>
-                  History settings
-                </button>
-              </p>
-            </div>
-            {/* Always mounted, so screen readers hear the count change. */}
-            <p className={found.searching ? 'history-found' : 'visually-hidden'} role="status">
-              {found.searching ? searchLine(found.matches) : ''}
-            </p>
-            {found.groups.map((group) => {
-              const open = found.searching || isOpen(group.day, picks, now)
-              const total = grouped.find((g) => g.day === group.day)?.events.length ?? group.events.length
-              return (
-                <section className="day" key={group.day} id={`day-${group.day}`} data-place={group.day}>
-                  <h3 className="day-h">
-                    <button
-                      className="day-head"
-                      aria-expanded={open}
-                      aria-controls={open ? `day-rows-${group.day}` : undefined}
-                      // A search holds its days open, so there is nothing to fold.
-                      disabled={found.searching}
-                      onClick={() => setPicks((prev) => ({ ...prev, [group.day]: !open }))}
-                    >
-                      <svg className={`day-chevron ${open ? 'day-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4.5 3l3 3-3 3" />
-                      </svg>
-                      <span className="day-name">{dayTitle(group.day, now)}</span>
-                      <span className="day-count">
-                        {found.searching ? `${group.events.length.toLocaleString()} of ${total.toLocaleString()} match` : dayCount(group.events)}
-                      </span>
-                    </button>
-                  </h3>
-                  {/* A folded day draws no rows, so a long history stays fast. */}
-                  {open && (
-                    <div className="log-list" id={`day-rows-${group.day}`}>
-                      {group.events.map((event) => (
-                        <div className="log-entry" key={event.at}>
-                          <div className="log-meta">
-                            <span className="mono-inline dim">{timeOf(event.at)}</span>
-                            {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
-                            {event.kind === 'transform' && (
-                              <span className="mono-inline note-tag">{event.unsent ? 'transform · not sent' : 'transform'}</span>
-                            )}
-                            {event.kind !== 'transform' && (
-                              <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
-                            )}
-                            {event.retried && <span className="mono-inline dim">retried</span>}
-                            {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
-                              <span className="mono-inline dim">until you quit</span>
-                            )}
-                            {offersWhatYouSaid(event) && (
-                              <button
-                                className="btn quiet-btn log-said-toggle"
-                                aria-expanded={openSaid === event.at}
-                                aria-controls={`said-${event.at}`}
-                                onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
-                              >
-                                what you said
-                              </button>
-                            )}
-                            {event.kind !== 'transform' && hasText(event) && (
-                              <button
-                                className="btn quiet-btn log-said-toggle"
-                                aria-expanded={openReport === event.at}
-                                aria-controls={`report-${event.at}`}
-                                onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
-                              >
-                                report
-                              </button>
-                            )}
-                            {hasText(event) && (
-                              <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
-                                {copiedAt === event.at ? 'copied' : 'copy'}
-                              </button>
-                            )}
-                          </div>
-                          {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
-                          {openReport === event.at && (
-                            <ReportTake
-                              id={`report-${event.at}`}
-                              event={event}
-                              settings={props.settings}
-                              hide={hide}
-                              onClose={() => setOpenReport(null)}
-                            />
-                          )}
-                          <LogWords event={event} hide={hide} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )
-            })}
-          </section>
+          <HomeHistory
+            grouped={grouped}
+            shown={events.length}
+            query={query}
+            picks={picks}
+            now={now}
+            settings={props.settings}
+            onPick={(day, open) => setPicks((prev) => ({ ...prev, [day]: open }))}
+            onClearSearch={() => setQuery('')}
+            onOpenHistory={props.onOpenHistory}
+          />
         )}
       </div>
     </div>

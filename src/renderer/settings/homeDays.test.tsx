@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { type SessionEvent, dayKey, groupByDay, withoutText } from '../../shared/history'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { HomeRail, OLDER, OVERVIEW, WAITING, railMark } from './HomeRail'
+import { HomeHistory } from './HomeView'
 import {
   HOME_TAKES,
   RAIL_DAYS,
@@ -17,6 +18,7 @@ import {
   railDays,
   railHidden,
   railIsHidden,
+  railKey,
   rememberRailHidden,
   searchDays,
   searchLine,
@@ -86,7 +88,6 @@ describe('your dictations, a day at a time', () => {
     expect(HOME_TAKES).toBe(500)
     expect(home).toContain('setEvents(list.slice(-HOME_TAKES))')
     expect(home).toContain('[...prev, event].slice(-HOME_TAKES)')
-    expect(home).toMatch(/\{open && \(\s*<div className="log-list"/)
     expect(read('../../main/history/index.ts')).toContain('readAll().slice(-500)')
   })
 })
@@ -189,12 +190,45 @@ describe('the rail', () => {
     expect(railIsHidden(true, true, true)).toBe(false)
   })
 
+  const key = (over: Partial<KeyboardEvent>): Parameters<typeof railKey>[0] => ({
+    key: '',
+    code: '',
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...over
+  })
+
   it('hides with Cmd+\\ and searches with Cmd+F, Ctrl on Windows', () => {
+    expect(railKey(key({ code: 'Backslash', key: '\\', metaKey: true }), true)).toBe('toggle')
+    expect(railKey(key({ code: 'KeyF', key: 'f', metaKey: true }), true)).toBe('search')
+    expect(railKey(key({ code: 'Backslash', key: '\\', ctrlKey: true }), false)).toBe('toggle')
+    expect(railKey(key({ code: 'KeyF', key: 'F', ctrlKey: true }), false)).toBe('search')
+    // The other platform's key, no key, or a bigger combo is not ours.
+    expect(railKey(key({ code: 'KeyF', key: 'f', ctrlKey: true }), true)).toBeNull()
+    expect(railKey(key({ code: 'KeyF', key: 'f', metaKey: true }), false)).toBeNull()
+    expect(railKey(key({ code: 'KeyF', key: 'f' }), true)).toBeNull()
+    expect(railKey(key({ code: 'KeyF', key: 'f', metaKey: true, shiftKey: true }), true)).toBeNull()
+    expect(railKey(key({ code: 'KeyF', key: 'f', metaKey: true, ctrlKey: true }), true)).toBeNull()
+  })
+
+  it('reads the backslash by its place, so a layout that needs Option for it still works', () => {
+    expect(railKey(key({ code: 'Backslash', key: '#', metaKey: true }), true)).toBe('toggle')
+    expect(railKey(key({ code: 'Backslash', key: '«', metaKey: true, altKey: true }), true)).toBe('toggle')
+    // Option with F types another letter; that is not a search.
+    expect(railKey(key({ code: 'KeyF', key: 'ƒ', metaKey: true, altKey: true }), true)).toBeNull()
+  })
+
+  it('is wired to the window on Home, stays out of a dialog, and keeps Hide words on the page when hidden', () => {
     const home = read('HomeView.tsx')
-    expect(home).toContain("if (e.key === '\\\\') {")
-    expect(home).toContain("e.key.toLowerCase() === 'f'")
-    expect(home).toContain('IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey')
+    expect(home).toContain('const asked = railKey(e, IS_MAC)')
+    expect(home).toContain("window.addEventListener('keydown', onKey)")
+    expect(home).toContain(`document.querySelector('[role="dialog"], dialog[open]')`)
     expect(home).toContain('aria-label="Show sidebar"')
+    expect(home).toMatch(/\{hidden && \(\s*<div className="home-head-hide" id="home-hide-words">/)
+    // Hide words drops what was typed.
+    expect(home).toMatch(/useEffect\(\(\) => \{\s*if \(hide\) setQuery\(''\)\s*\}, \[hide\]\)/)
   })
 })
 
@@ -235,8 +269,94 @@ describe('searching what you said', () => {
     expect(searchDays(groups, 'zebra', true)).toEqual(hidden)
   })
 
+  it('names the year for a day from another year', () => {
+    const lastYear = dayKey(new Date(2025, 10, 5, 12).getTime())
+    expect(dayTitle(lastYear, NOW)).toMatch(/2025/)
+    expect(dayShort(lastYear, NOW)).toMatch(/2025/)
+    expect(dayTitle(dayKey(NOW - 6 * DAY), NOW)).not.toMatch(/2026/)
+  })
+
   it('never matches a take whose words are not kept', () => {
     const wordless = groupByDay([withoutText(take(0, 'A secret plan'))])
     expect(searchDays(wordless, 'secret', false).matches).toBe(0)
+  })
+})
+
+describe('your dictations on the page', () => {
+  const hiding: Settings = { ...DEFAULT_SETTINGS, history: { ...DEFAULT_SETTINGS.history, hideWords: true } }
+  const draw = (over: Partial<Parameters<typeof HomeHistory>[0]> = {}): string =>
+    renderToStaticMarkup(
+      <HomeHistory
+        grouped={groups}
+        shown={log.length}
+        query=""
+        picks={{}}
+        now={NOW}
+        settings={DEFAULT_SETTINGS}
+        onPick={() => undefined}
+        onClearSearch={() => undefined}
+        onOpenHistory={() => undefined}
+        {...over}
+      />
+    )
+  const dayOf = (html: string, day: string): string => html.slice(html.indexOf(`id="day-${day}"`)).split('</section>')[0]
+
+  it('has its heading, how many are showing, and how long they are kept', () => {
+    const html = draw()
+    expect(html).toContain('<h2 id="home-history-title">Your dictations</h2>')
+    expect(html).toContain('5 dictations. Kept 90 days on this computer.')
+    expect(html).toContain('History settings</button>')
+  })
+
+  it('opens Today and Yesterday, folds older days, and draws no rows for a folded day', () => {
+    const html = draw()
+    const today = dayOf(html, groups[0].day)
+    const old = dayOf(html, groups[2].day)
+    expect(today).toContain('aria-expanded="true"')
+    expect(today).toContain(`aria-controls="day-rows-${groups[0].day}"`)
+    expect(today).toContain('Move the design review to Thursday.')
+    expect(today).toContain('2 dictations · 10 words')
+    expect(old).toContain('aria-expanded="false"')
+    expect(old).not.toContain('aria-controls')
+    expect(old).not.toContain('log-entry')
+    expect(html).not.toContain('Send the invoice on Friday.')
+  })
+
+  it('follows the person\'s own folding', () => {
+    const html = draw({ picks: { [groups[0].day]: false, [groups[2].day]: true } })
+    expect(dayOf(html, groups[0].day)).toContain('aria-expanded="false"')
+    expect(html).not.toContain('Move the design review to Thursday.')
+    expect(dayOf(html, groups[2].day)).toContain('Send the invoice on Friday.')
+  })
+
+  it('searching keeps the days with a match, opens them, counts, and offers a way out', () => {
+    const html = draw({ query: 'domain' })
+    expect(html).toContain('<p role="status">2 dictations match.</p>')
+    expect(html).toContain('Clear search</button>')
+    expect(html).not.toContain(`id="day-${groups[0].day}"`)
+    const old = dayOf(html, groups[2].day)
+    expect(old).toContain('aria-expanded="true"')
+    expect(old).toContain('1 of 2 match')
+    expect(old).toContain('Check the domain renewal date.')
+    expect(old).not.toContain('Send the invoice on Friday.')
+    expect(draw({ query: 'zebra' })).toContain('Nothing you said matches that. Try fewer words.')
+  })
+
+  it('shows no search while nothing is typed', () => {
+    const html = draw()
+    expect(html).toContain('<p role="status"></p>')
+    expect(html).not.toContain('Clear search')
+  })
+
+  it('never searches while Hide words is on: every day, no words, no count', () => {
+    const html = draw({ query: 'domain', settings: hiding })
+    expect(html).not.toContain('match')
+    expect(html).not.toContain('Clear search')
+    expect(html).toContain(`id="day-${groups[0].day}"`)
+    expect(html).not.toContain('domain')
+    expect(html).not.toContain('Thursday.')
+    expect(html).toContain('Words hidden')
+    // The same page whatever was typed.
+    expect(draw({ query: 'zebra', settings: hiding })).toBe(html)
   })
 })

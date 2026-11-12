@@ -50,6 +50,11 @@ export function HomeRail(props: {
   const [place, setPlace] = useState<string>(OVERVIEW)
   // A click's smooth scroll passes other days; the mark waits on the pick.
   const locked = useRef(false)
+  const lockTimer = useRef(0)
+  // The place last clicked. A day near the page's end cannot scroll up to
+  // the line that marks a place, so while it is on screen and nothing
+  // after it has reached that line, the mark stays on it.
+  const picked = useRef<string | null>(null)
 
   useEffect(() => {
     let frame = 0
@@ -58,10 +63,17 @@ export function HomeRail(props: {
       if (locked.current) return
       const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--masthead-h')) || 56
       let next = OVERVIEW
+      let pickedShows = false
       for (const el of Array.from(document.querySelectorAll<HTMLElement>('.home [data-place]'))) {
-        if (el.getBoundingClientRect().top <= header + 84) next = el.dataset.place ?? next
+        const top = el.getBoundingClientRect().top
+        if (top <= header + 84) {
+          next = el.dataset.place ?? next
+          // Something at or after the pick reached the line: scrolling leads again.
+          if (pickedShows) picked.current = null
+        } else if (el.dataset.place === picked.current && top < window.innerHeight) pickedShows = true
       }
-      setPlace(next)
+      if (picked.current !== null && !pickedShows && next !== picked.current) picked.current = null
+      setPlace(picked.current ?? next)
     }
     const onScroll = (): void => {
       if (!frame) frame = window.requestAnimationFrame(measure)
@@ -73,18 +85,23 @@ export function HomeRail(props: {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
+      window.clearTimeout(lockTimer.current)
     }
   }, [])
 
   const go = (target: string): void => {
     locked.current = true
+    picked.current = target
     setPlace(target)
     const release = (): void => {
       locked.current = false
+      window.clearTimeout(lockTimer.current)
       window.removeEventListener('scrollend', release)
     }
+    // An earlier click's timer must not unlock this one early.
+    window.clearTimeout(lockTimer.current)
     window.addEventListener('scrollend', release)
-    window.setTimeout(release, 1500)
+    lockTimer.current = window.setTimeout(release, 1500)
     props.onGo(target)
   }
 

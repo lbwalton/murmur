@@ -3199,7 +3199,22 @@ textarea.well-multiline {
 }
 
 .history-found {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   padding: 0 4px 10px;
+}
+
+.home-head-hide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.waiting-strip:focus {
+  outline: none;
 }
 
 .day {

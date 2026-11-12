@@ -25,18 +25,23 @@ const yesterdayKey = (now: number): string => {
   return dayKey(new Date(at.getFullYear(), at.getMonth(), at.getDate() - 1).getTime())
 }
 
+/** Kept forever, a history can pass a year: a day from another year
+ *  says which, so 2 days never read alike. */
+const yearIfOther = (day: string, now: number): { year?: 'numeric' } =>
+  dateOf(day).getFullYear() === new Date(now).getFullYear() ? {} : { year: 'numeric' }
+
 /** A day's name on its header: Today, Yesterday, then the full date. */
 export function dayTitle(day: string, now: number): string {
   if (day === dayKey(now)) return 'Today'
   if (day === yesterdayKey(now)) return 'Yesterday'
-  return dateOf(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+  return dateOf(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', ...yearIfOther(day, now) })
 }
 
 /** The same day, short enough for the rail. */
 export function dayShort(day: string, now: number): string {
   if (day === dayKey(now)) return 'Today'
   if (day === yesterdayKey(now)) return 'Yesterday'
-  return dateOf(day).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  return dateOf(day).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...yearIfOther(day, now) })
 }
 
 /** Today and Yesterday start open; older days start folded. */
@@ -153,4 +158,19 @@ export function rememberRailHidden(store: Store | null, hidden: boolean): void {
  *  asked for, and a wide one follows the remembered choice. */
 export function railIsHidden(narrow: boolean, narrowOpen: boolean, remembered: boolean): boolean {
   return narrow ? !narrowOpen : remembered
+}
+
+/** What a key press asks of Home's rail: Cmd+\ hides or shows it and
+ *  Cmd+F goes to its search (Ctrl on Windows). The backslash is read by
+ *  its place on the keyboard, so layouts that reach it through Option or
+ *  AltGr still work. */
+export function railKey(
+  e: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>,
+  mac: boolean
+): 'toggle' | 'search' | null {
+  const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+  if (!mod || e.shiftKey) return null
+  if (e.code === 'Backslash') return 'toggle'
+  if (!e.altKey && e.key.toLowerCase() === 'f') return 'search'
+  return null
 }
