@@ -328,6 +328,15 @@ The period picker shows lifetime by default (everything since your first dictati
 
 The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: every day sits on a white square and activity paints darker blots on it, so a dark fill never disappears into the background. Earning the black belt also unlocks the invert checkbox, which flips the wall to the white paper look for any fill color you choose (except near-white ones, which would vanish on paper). Cosmetic only; it changes nothing about what is counted.
 
+## Why can I see my desktop through murmur's window?
+
+That is murmur's look since November 2026: the window is dark glass, and a little of your desktop (18%) shows through it, softly blurred by your system. Cards are glass too, and a faint gold tint marks the sidebar, the top bar, your last note, and your dictations; time back, the 1 card that celebrates, gets a stronger gold.
+
+- **Is text still readable over a bright wallpaper?** Yes. The amount of desktop that shows is capped so every piece of text keeps a contrast of at least 4.5 to 1, even over a pure white wallpaper.
+- **How do I turn it off?** Turn on your system's own setting and murmur follows at once, with no restart: on a Mac, System Settings, Accessibility, Display, **Reduce transparency**; on Windows 11, Settings, Personalization, Colors, **Transparency effects** off. The window becomes solid, with a soft gold glow from the top.
+- **Which computers get the glass?** Macs, and Windows 11 version 22H2 and newer. Windows 10 and older versions of Windows 11 get the solid window with the glow.
+- **Does it change the pill?** No. The small pill that shows while you dictate keeps its own look.
+
 ## Can my accent color change the rest of the app?
 
 Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey's painted gates (the words stroke and the tally marks). The default signal amber stays reserved for live recording states, so choosing it leaves the gates in your belt's own color. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.

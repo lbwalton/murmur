@@ -4,7 +4,7 @@ How murmur looks and moves, for anyone building it. The rules here are binding, 
 
 ## Night studio
 
-The ground. Every renderer and website color is a token in `src/renderer/tokens.css`, and the design lint fails raw hex anywhere else in `src/renderer` and `site`. A few colors live outside its reach and mirror tokens by hand, so change them together: the window background in `src/main/index.ts`, the default accent in `src/main/overlay/index.ts`, the belt colors and founder gold in `shared/cosmetics.json`, and the fallback colors passed to `tokenColor`.
+The ground. Every renderer and website color is a token in `src/renderer/tokens.css`, and the design lint fails raw hex anywhere else in `src/renderer` and `site`. A few colors live outside its reach and mirror tokens by hand, so change them together: the window background in `src/shared/look.ts`, the default accent in `src/main/overlay/index.ts`, the belt colors and founder gold in `shared/cosmetics.json`, and the fallback colors passed to `tokenColor`.
 
 | Token | Role |
 | --- | --- |
@@ -21,6 +21,20 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | ember | Splatter and celebration. Never an error. |
 
 Type in the app: the system UI face (Inter where present) and a mono face for equipment-style micro-labels. Bricolage Grotesque, condensed and heavy, appears only on the website, in the film, and on the share cards (the belt card, the painting card, and the week scroll), because a font file is a binary and the repo carries none. On a canvas the condensed width goes on after the font (cardPaint.ts displayFont), since setting the font resets it (US-103).
+
+## Glass over your desktop
+
+LaBroi's direction of 2026-11-08 (round 3 of the Home redesign preview), with his picks of 2026-11-11: night studio moves from flat panels to glass over the desktop, on purpose (US-150).
+
+- **The window** shows the desktop through it. On macOS that is Electron's window vibrancy (the `under-window` material); on Windows 11 22H2 and up, the `acrylic` background material. The page lays 1 sheet of ink over it at 82%, so 18% of the desktop shows. He picked 21%; 18% with the grey 1 step brighter is the fix he chose (option C) so every text keeps 4.5 to 1 over a pure white wallpaper. `src/shared/look.test.ts` computes that floor from the tokens, and 18% is the cap any future slider must keep.
+- **Where it cannot** (Windows 10, older Windows 11, Linux) or when the system's Reduce transparency is on, the window is solid ink with a gold glow from the top at 68%. It switches live when that setting changes.
+- **Cards** are glass: the panel color at 85% with a light along the top edge. The system's material does the blurring, so the app blurs nothing itself.
+- **Wells** are a darker pane of the same glass (black at 28% over the card), never a solid hole. Controls (buttons, fields, choices) stay solid and clean.
+- **Color by role.** Time back is the 1 card that celebrates and gets the strong gold tint (30%); on it, grey text and the gold label turn to cream. The sidebar, the top bar, Last note and Your dictations get the faint wash (6%).
+- **The top bar is solid ink under its wash.** The page scrolls under it, and a see-through bar would show that text behind the tabs.
+- **Grey text** that sits straight on the window uses `--text-dim-window`; every card puts the usual grey back for what is inside it.
+- **Unchanged:** amber for live states, red for errors, the brush paint, and the overlay pill, which keeps its own look and stays unfocusable and click-through.
+- The other pages (Analytics, Wrap-up, Journey) wear the base glass until their roles are designed page by page (US-156). With no look set at all, the styles are the flat night studio, which is what a Flat choice will use (US-151).
 
 ## Brushwork
 

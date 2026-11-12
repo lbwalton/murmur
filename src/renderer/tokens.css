@@ -49,6 +49,39 @@
   --fog-ask-glow: rgba(217, 164, 65, 0.16);
   --fog-ask-glow-peak: rgba(217, 164, 65, 0.42);
 
+  /* glass over your desktop (US-150, LaBroi's round 3 picks 2026-11-08,
+     wells as darker glass and the contrast fix C, 2026-11-11). The window
+     lets 18% of the desktop through: with the grey 1 step brighter, that
+     is the most that keeps every text at 4.5 to 1 over a pure white
+     wallpaper (look.test.ts computes it from these values). Cards are
+     glass at 85% with an edge light; a group's well is a darker pane of
+     the same glass; gold tints mark each part by its job. Where the
+     system cannot show the desktop, the window is solid with a gold glow
+     at 68% (0.42 and 0.23 at full strength). */
+  --glass-window: rgba(15, 14, 17, 0.82);
+  --glass-card: rgba(23, 22, 27, 0.85);
+  --glass-edge: rgba(236, 233, 228, 0.1);
+  --glass-light: rgba(236, 233, 228, 0.12);
+  --glass-well: rgba(0, 0, 0, 0.28);
+  --glass-well-edge: rgba(236, 233, 228, 0.08);
+  /* The sidebar's darker pane over the solid look's glow. */
+  --glass-bar: rgba(15, 14, 17, 0.35);
+  --ink-clear: rgba(15, 14, 17, 0);
+  /* Grey text straight on the window (section lines, rail names, the top
+     bar) is 1 step brighter than on a card, which keeps the usual grey. */
+  --text-dim-window: #b8b4ad;
+  --text-dim-surface: #9a968f;
+  /* Tints: the frame (sidebar, top bar) and the reading cards get the
+     faint wash; time back, the 1 card that celebrates, gets the strong
+     one, 30% across a diagonal. On it, grey text and the gold label
+     would sink into the gold, so they turn to cream. */
+  --tint-frame: rgba(217, 164, 65, 0.06);
+  --tint-strong-from: rgba(217, 164, 65, 0.39);
+  --tint-strong-to: rgba(217, 164, 65, 0.21);
+  --text-on-tint: rgba(236, 233, 228, 0.82);
+  --glow-top: rgba(217, 164, 65, 0.286);
+  --glow-mid: rgba(217, 164, 65, 0.157);
+
   /* paint (US-073, the brushwork art direction, LaBroi 2026-10-01).
      Brush marks only, never interface chrome. Smoke is background
      brushwork, rice paper is chalky strokes and paper grounds, ember is

@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, clipboard } from 'electron'
+import { BrowserWindow, Menu, app, clipboard, nativeTheme } from 'electron'
 import { ipc, setRendererRoot } from './ipc'
 import { MAX_TEXT_CHARS, boundedText } from './ipc-rules'
 import { initAudio } from './audio'
@@ -46,6 +46,7 @@ import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
 import { attachSettingsZoom, stepSettingsZoom } from './zoom'
+import { MAC_VIBRANCY, WIN_MATERIAL, type WindowLook, asLook, windowLook, windowOptions } from '../shared/look'
 
 // The biggest share card a page can hand over, as a data URL.
 const MAX_CARD_CHARS = 64 * 1024 * 1024
@@ -150,12 +151,43 @@ function captureZoom(): number | undefined {
   return Number.isFinite(factor) && factor >= 1 && factor <= 4 ? factor : undefined
 }
 
+/** The look the settings window should have right now (US-150): glass
+ *  where the system can show the desktop through it, solid with a glow
+ *  where it cannot or Reduce transparency is on. MURMUR_LOOK=glass or
+ *  solid picks one for a capture (isolated runs only), so both can be
+ *  shot on 1 machine. */
+function currentLook(): WindowLook {
+  const forced = isolatedRun && !isSmoke ? asLook(process.env.MURMUR_LOOK) : null
+  return (
+    forced ??
+    windowLook({
+      platform: process.platform,
+      systemVersion: process.getSystemVersion(),
+      reducedTransparency: nativeTheme.prefersReducedTransparency
+    })
+  )
+}
+
+/** The look the window has, which the page asks for and is told about. */
+let shownLook: WindowLook = 'solid'
+
+/** Moves a live window to a look and tells its page, so turning Reduce
+ *  transparency on or off takes effect without a restart. */
+function applyLook(win: BrowserWindow, look: WindowLook): void {
+  shownLook = look
+  if (process.platform === 'darwin') win.setVibrancy(look === 'glass' ? MAC_VIBRANCY : null)
+  if (process.platform === 'win32') win.setBackgroundMaterial(look === 'glass' ? WIN_MATERIAL : 'none')
+  win.setBackgroundColor(windowOptions(look, process.platform).backgroundColor)
+  win.webContents.send('look:changed', look)
+}
+
 function createSettingsWindow(): BrowserWindow {
+  shownLook = currentLook()
   const win = new BrowserWindow({
     width: 920,
     height: 640,
     show: !isSmoke,
-    backgroundColor: '#0F0E11',
+    ...windowOptions(shownLook, process.platform),
     title: 'murmur',
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
@@ -188,9 +220,10 @@ function createSettingsWindow(): BrowserWindow {
 
   const devServer = devRendererUrl()
   if (devServer) {
-    void win.loadURL(`${devServer}/settings/index.html`)
+    void win.loadURL(`${devServer}/settings/index.html?look=${shownLook}`)
   } else {
-    void win.loadFile(join(__dirname, '../renderer/settings/index.html'))
+    // The look rides in the address so the first paint already has it.
+    void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query: { look: shownLook } })
   }
   return win
 }
@@ -413,6 +446,13 @@ app.whenReady().then(async () => {
   })
 
   ipc.handle('app:version', () => app.getVersion())
+  ipc.handle('look:get', () => shownLook)
+  // Reduce transparency, switched in the system's settings while murmur
+  // runs, moves the window between glass and solid at once (US-150).
+  nativeTheme.on('updated', () => {
+    const look = currentLook()
+    if (look !== shownLook && settingsWindow && !settingsWindow.isDestroyed()) applyLook(settingsWindow, look)
+  })
   ipc.handle('app:license', async () => {
     const { shell } = await import('electron')
     await shell.openExternal('https://www.gnu.org/licenses/gpl-3.0.html')
@@ -745,6 +785,45 @@ app.whenReady().then(async () => {
       return counts
     })()`)) as Record<string, number> | null
     return pages !== null && Object.values(pages).every((n) => n === 0)
+  })
+
+  registerSmokeCheck('lookDefaults', async () => {
+    // The window's look (US-150): the one the rules pick for this system
+    // (the under-window material on a Mac, acrylic on Windows 11 22H2 and
+    // up, solid anywhere else, in a headless run, and under Reduce
+    // transparency), the page wearing the same one, and a live switch to
+    // solid and back reaching the page.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const facts = {
+      platform: process.platform,
+      systemVersion: process.getSystemVersion(),
+      reducedTransparency: nativeTheme.prefersReducedTransparency
+    }
+    const expected = windowLook(facts)
+    const rules =
+      windowLook({ ...facts, reducedTransparency: true }) === 'solid' &&
+      windowLook({ ...facts, platform: 'linux' }) === 'solid' &&
+      windowOptions('glass', 'darwin').vibrancy === 'under-window' &&
+      windowOptions('glass', 'win32').backgroundMaterial === 'acrylic' &&
+      windowOptions('solid', process.platform).backgroundColor === '#0F0E11'
+    const worn = (): Promise<string | undefined> => win.webContents.executeJavaScript('document.documentElement.dataset.look')
+    const until = async (want: string): Promise<boolean> => {
+      for (let i = 0; i < 30; i++) {
+        if ((await worn()) === want) return true
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return false
+    }
+    const first = shownLook === expected && (await until(expected))
+    const other: WindowLook = expected === 'glass' ? 'solid' : 'glass'
+    applyLook(win, other)
+    const switched = await until(other)
+    applyLook(win, expected)
+    const back = await until(expected)
+    const opaque = win.getBackgroundColor().toUpperCase()
+    const ground = expected === 'solid' ? opaque.endsWith('0F0E11') : true
+    return rules && first && switched && back && ground
   })
 
   registerSmokeCheck('homeRail', async () => {

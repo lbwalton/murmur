@@ -242,6 +242,13 @@ const api = {
     ipcRenderer.on('settings:pushed', handler)
     return () => ipcRenderer.removeListener('settings:pushed', handler)
   },
+  /** The window's look (US-150): glass over the desktop, or solid. */
+  getLook: (): Promise<'glass' | 'solid'> => ipcRenderer.invoke('look:get'),
+  onLookChanged: (cb: (look: 'glass' | 'solid') => void): (() => void) => {
+    const handler = (_e: unknown, look: 'glass' | 'solid'): void => cb(look)
+    ipcRenderer.on('look:changed', handler)
+    return () => ipcRenderer.removeListener('look:changed', handler)
+  },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
     ipcRenderer.on('nav:goto', handler)

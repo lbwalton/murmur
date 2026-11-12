@@ -4313,3 +4313,163 @@ textarea.well-multiline {
 .crash-window .crash-note {
   width: min(440px, 100%);
 }
+
+/* Glass over your desktop (US-150; LaBroi's round 3 picks 2026-11-08,
+   wells as darker glass and the contrast fix C, 2026-11-11). Main picks
+   the look and the page wears it on <html data-look>: glass where the
+   system shows the desktop through the window, solid with a gold glow
+   where it cannot or Reduce transparency is on. With no data-look at
+   all, everything above is today's flat night studio, untouched.
+
+   The system's own material blurs the desktop, so nothing here blurs
+   anything: cards are see-through panes with an edge light, and no
+   backdrop blur is used at all, on a row in a scrolling list or
+   anywhere else.
+
+   Text: grey that sits straight on the window is 1 step brighter, and
+   every surface puts the usual grey back for what is inside it. A
+   surface missing from the list below only gets brighter text. */
+html[data-look] {
+  --panel: var(--glass-card);
+  --text-dim: var(--text-dim-window);
+}
+
+html[data-look]
+  :is(
+    .panel,
+    .group,
+    .finish,
+    .running-strip,
+    .profile-card,
+    .profile-chip,
+    .share-dialog,
+    .rail-checks,
+    .wave-tile,
+    .whats-new-body,
+    .history,
+    .btn,
+    .field,
+    .seg,
+    .well,
+    .kbd,
+    .crash-window,
+    .loop-tile-wrap
+  ) {
+  --text-dim: var(--text-dim-surface);
+}
+
+/* The window. Glass: nothing is painted behind the page but 1 see-through
+   sheet of ink, so 18% of the desktop comes through everywhere. */
+html[data-look='glass'],
+html[data-look='glass'] body {
+  background: transparent;
+}
+
+html[data-look] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-look='glass'] body::before {
+  background: var(--glass-window);
+}
+
+/* Solid: ink with a gold glow from the top, fading out by the bottom. */
+html[data-look='solid'] body::before {
+  background:
+    radial-gradient(135% 90% at 50% 108%, var(--ink) 46%, var(--ink-clear) 82%),
+    linear-gradient(180deg, var(--glow-top) 0%, var(--glow-mid) 38%, var(--ink) 92%), var(--ink);
+}
+
+/* The top bar is part of the frame: the faint gold wash, edge to edge.
+   It stays solid ink under the wash, because the page scrolls under it
+   and a see-through bar would show that text behind the tabs. (A blur
+   there paints black on a see-through window, so it is not an option.) */
+html[data-look] .shell {
+  overflow-x: clip;
+}
+
+html[data-look] .masthead {
+  background: none;
+}
+
+html[data-look] .masthead::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: linear-gradient(var(--tint-frame), var(--tint-frame)), var(--ink);
+  pointer-events: none;
+}
+
+/* The sidebar is the frame too: the same wash, as 1 pane. */
+html[data-look] .rail {
+  padding: 10px 8px 12px;
+  background: var(--tint-frame);
+  border: 1px solid var(--glass-well-edge);
+  border-radius: 14px;
+}
+
+/* Over the glow the wash alone leaves the gold labels a hair under 4.5
+   to 1 at the window's top, so there the sidebar gets a darker pane. */
+html[data-look='solid'] .rail {
+  background: linear-gradient(var(--tint-frame), var(--tint-frame)), var(--glass-bar);
+}
+
+/* Cards: glass with a light along the top edge. */
+html[data-look] :is(.panel, .group, .finish, .running-strip, .profile-card, .history) {
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-light);
+}
+
+/* A group's well is a darker pane of the same glass, never a solid hole
+   (LaBroi's pick, board 12 option 2). Controls stay solid and clean. */
+html[data-look] :is(.well, .group-rows) {
+  background: var(--glass-well);
+  border-color: var(--glass-well-edge);
+}
+
+/* Home, color by role. Time back is the 1 card that celebrates. */
+html[data-look] .home-timeback {
+  --text-dim: var(--text-on-tint);
+  background: linear-gradient(135deg, var(--tint-strong-from), var(--tint-strong-to)), var(--glass-card);
+}
+
+html[data-look] .home-timeback :is(.micro-label, .link-btn) {
+  color: var(--text);
+}
+
+/* Last note and your dictations are for reading: the faint wash. */
+html[data-look] :is(.last-note, .history) {
+  background: linear-gradient(var(--tint-frame), var(--tint-frame)), var(--glass-card);
+}
+
+html[data-look] .history {
+  margin-top: 0;
+  padding: 16px 18px 6px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+}
+
+@media (max-width: 720px) {
+  html[data-look] .rail {
+    padding: 8px;
+  }
+}
+
+/* Always-on scroll bars (main.tsx marks them): a clear track and a quiet
+   thumb, so the gutter is glass like the rest of the window. */
+html[data-look][data-scrollbars='classic']::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+html[data-look][data-scrollbars='classic']::-webkit-scrollbar-thumb {
+  background: var(--cream-22);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 6px;
+}
