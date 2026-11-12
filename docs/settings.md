@@ -330,11 +330,11 @@ The color picker chooses the fill: vibrant orange (the default), your belt color
 
 ## Why can I see my desktop through murmur's window?
 
-That is murmur's look since November 2026: the window is dark glass, and a little of your desktop (18%) shows through it, softly blurred by your system. Cards are glass too, and a faint gold tint marks the sidebar, the top bar, your last note, and your dictations; time back, the 1 card that celebrates, gets a stronger gold.
+That is murmur's look on a Mac since November 2026: the window is dark glass, and a little of your desktop (18%) shows through it, softly blurred by your system. Cards are glass too, and a faint gold tint marks the sidebar, the top bar, your last note, and your dictations; time back, the 1 card that celebrates, gets a stronger gold.
 
 - **Is text still readable over a bright wallpaper?** Yes. The amount of desktop that shows is capped so every piece of text keeps a contrast of at least 4.5 to 1, even over a pure white wallpaper.
-- **How do I turn it off?** Turn on your system's own setting and murmur follows at once, with no restart: on a Mac, System Settings, Accessibility, Display, **Reduce transparency**; on Windows 11, Settings, Personalization, Colors, **Transparency effects** off. The window becomes solid, with a soft gold glow from the top.
-- **Which computers get the glass?** Macs, and Windows 11 version 22H2 and newer. Windows 10 and older versions of Windows 11 get the solid window with the glow.
+- **How do I turn it off?** On a Mac, turn on System Settings, Accessibility, Display, **Reduce transparency**, and murmur follows at once, with no restart. The window becomes solid, with a soft gold glow from the top.
+- **Which computers get the glass?** Macs, for now. On Windows and Linux the window is solid with the gold glow. Glass on Windows 11 is built but switched off until it has been checked on real PCs.
 - **Does it change the pill?** No. The small pill that shows while you dictate keeps its own look.
 
 ## Can my accent color change the rest of the app?

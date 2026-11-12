@@ -79,6 +79,9 @@
   --tint-strong-from: rgba(217, 164, 65, 0.39);
   --tint-strong-to: rgba(217, 164, 65, 0.21);
   --text-on-tint: rgba(236, 233, 228, 0.82);
+  /* Red text on glass: a hair brighter than --red, which over a white
+     wallpaper reads 4.36 to 1 on a glass card. Still the 1 clean red. */
+  --red-glass: #e95458;
   --glow-top: rgba(217, 164, 65, 0.286);
   --glow-mid: rgba(217, 164, 65, 0.157);
 
@@ -134,4 +137,15 @@
   --panel-edge: rgba(226, 233, 240, 0.08);
   --text: #e6ebf0;
   --text-dim: #93a0ac;
+  /* The glass look (US-150) in mist: the same panes from mist's own
+     ground, and mist's grey 1 step brighter on the window. */
+  /* Mist's ground is lighter, so it shows a little less desktop (15%)
+     and its red text is a hair brighter still, to hold 4.5 to 1. */
+  --glass-window: rgba(16, 19, 26, 0.85);
+  --glass-card: rgba(25, 29, 38, 0.85);
+  --red-glass: #ec5d61;
+  --glass-bar: rgba(16, 19, 26, 0.35);
+  --ink-clear: rgba(16, 19, 26, 0);
+  --text-dim-window: #b4bec8;
+  --text-dim-surface: #93a0ac;
 }

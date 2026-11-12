@@ -46,7 +46,17 @@ import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
 import { attachSettingsZoom, stepSettingsZoom } from './zoom'
-import { MAC_VIBRANCY, WIN_MATERIAL, type WindowLook, asLook, windowLook, windowOptions } from '../shared/look'
+import {
+  MAC_VIBRANCY,
+  SOLID_BACKGROUND,
+  WIN_MATERIAL,
+  type WindowLook,
+  asLook,
+  pageBackground,
+  startsWithoutMaterial,
+  windowLook,
+  windowOptions
+} from '../shared/look'
 
 // The biggest share card a page can hand over, as a data URL.
 const MAX_CARD_CHARS = 64 * 1024 * 1024
@@ -163,7 +173,8 @@ function currentLook(): WindowLook {
     windowLook({
       platform: process.platform,
       systemVersion: process.getSystemVersion(),
-      reducedTransparency: nativeTheme.prefersReducedTransparency
+      reducedTransparency: nativeTheme.prefersReducedTransparency,
+      windowsGlass: process.env.MURMUR_WINDOWS_GLASS === '1'
     })
   )
 }
@@ -177,7 +188,7 @@ function applyLook(win: BrowserWindow, look: WindowLook): void {
   shownLook = look
   if (process.platform === 'darwin') win.setVibrancy(look === 'glass' ? MAC_VIBRANCY : null)
   if (process.platform === 'win32') win.setBackgroundMaterial(look === 'glass' ? WIN_MATERIAL : 'none')
-  win.setBackgroundColor(windowOptions(look, process.platform).backgroundColor)
+  win.setBackgroundColor(pageBackground(look, process.platform))
   win.webContents.send('look:changed', look)
 }
 
@@ -188,6 +199,9 @@ function createSettingsWindow(): BrowserWindow {
     height: 640,
     show: !isSmoke,
     ...windowOptions(shownLook, process.platform),
+    // Ink until the page has drawn itself: a glass window with nothing
+    // behind an unstyled page would flash the bare material.
+    backgroundColor: SOLID_BACKGROUND,
     title: 'murmur',
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
@@ -195,6 +209,16 @@ function createSettingsWindow(): BrowserWindow {
       nodeIntegration: false,
       sandbox: true
     }
+  })
+
+  if (startsWithoutMaterial(shownLook, process.platform)) win.setVibrancy(null)
+  // The page's ground goes clear only once the page is drawn, and back to
+  // ink for as long as a reload takes (a revive, Reload window).
+  win.webContents.on('did-start-loading', () => {
+    if (!win.isDestroyed()) win.setBackgroundColor(SOLID_BACKGROUND)
+  })
+  win.webContents.on('did-finish-load', () => {
+    if (!win.isDestroyed()) win.setBackgroundColor(pageBackground(shownLook, process.platform))
   })
 
   watchWindow(win, 'settings')
@@ -789,10 +813,10 @@ app.whenReady().then(async () => {
 
   registerSmokeCheck('lookDefaults', async () => {
     // The window's look (US-150): the one the rules pick for this system
-    // (the under-window material on a Mac, acrylic on Windows 11 22H2 and
-    // up, solid anywhere else, in a headless run, and under Reduce
-    // transparency), the page wearing the same one, and a live switch to
-    // solid and back reaching the page.
+    // (the under-window material on a Mac; solid on Windows until its
+    // glass is proven, on Linux, and under Reduce transparency), the page
+    // wearing the same one, the ground behind the page matching it, and a
+    // live switch to the other look and back reaching the page.
     const win = settingsWindow
     if (!win || win.isDestroyed()) return false
     const facts = {
@@ -806,7 +830,8 @@ app.whenReady().then(async () => {
       windowLook({ ...facts, platform: 'linux' }) === 'solid' &&
       windowOptions('glass', 'darwin').vibrancy === 'under-window' &&
       windowOptions('glass', 'win32').backgroundMaterial === 'acrylic' &&
-      windowOptions('solid', process.platform).backgroundColor === '#0F0E11'
+      windowLook({ ...facts, platform: 'win32', systemVersion: '10.0.22631' }) === 'solid' &&
+      pageBackground('solid', process.platform) === SOLID_BACKGROUND
     const worn = (): Promise<string | undefined> => win.webContents.executeJavaScript('document.documentElement.dataset.look')
     const until = async (want: string): Promise<boolean> => {
       for (let i = 0; i < 30; i++) {
@@ -821,8 +846,8 @@ app.whenReady().then(async () => {
     const switched = await until(other)
     applyLook(win, expected)
     const back = await until(expected)
-    const opaque = win.getBackgroundColor().toUpperCase()
-    const ground = expected === 'solid' ? opaque.endsWith('0F0E11') : true
+    // Ink behind a solid page, nothing behind a glass one.
+    const ground = win.getBackgroundColor().toUpperCase().endsWith('0F0E11') === (expected === 'solid')
     return rules && first && switched && back && ground
   })
 

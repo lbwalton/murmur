@@ -4321,17 +4321,24 @@ textarea.well-multiline {
    where it cannot or Reduce transparency is on. With no data-look at
    all, everything above is today's flat night studio, untouched.
 
-   The system's own material blurs the desktop, so nothing here blurs
-   anything: cards are see-through panes with an edge light, and no
-   backdrop blur is used at all, on a row in a scrolling list or
-   anywhere else.
+   The system's own material blurs the desktop, so nothing blurs
+   anything under a look: cards are see-through panes with an edge
+   light, no backdrop blur is added, and the 2 the flat look has (the
+   fog on Test and on the ask-first box) are switched off.
 
    Text: grey that sits straight on the window is 1 step brighter, and
    every surface puts the usual grey back for what is inside it. A
    surface missing from the list below only gets brighter text. */
-html[data-look] {
+/* The attribute is named twice on purpose: it must outrank a theme's own
+   tokens on the same element (:root[data-theme='mist']), which set
+   --panel and --text-dim too. Red is a hair brighter here, so red text
+   on a glass card keeps 4.5 to 1. */
+html[data-look][data-look] {
   --panel: var(--glass-card);
   --text-dim: var(--text-dim-window);
+  --red: var(--red-glass);
+  /* No rubber band past the page's ends: it would bare the material. */
+  overscroll-behavior: none;
 }
 
 html[data-look]
@@ -4420,9 +4427,30 @@ html[data-look='solid'] .rail {
 }
 
 /* Cards: glass with a light along the top edge. */
-html[data-look] :is(.panel, .group, .finish, .running-strip, .profile-card, .history) {
+/* Not the cards whose edge says something: a waiting take's red, Finish
+   setup's red, and the profile cards (gold ring for the one in use, a
+   lifted shadow on the arc) keep their own. */
+html[data-look] :is(.panel:not(.waiting-strip), .group, .running-strip, .history) {
   border-color: var(--glass-edge);
   box-shadow: inset 0 1px 0 var(--glass-light);
+}
+
+/* The setup badge sits on the sidebar's wash, where red and green would
+   fall under 4.5 to 1 over a bright wallpaper: it gets a solid chip. */
+html[data-look] .health {
+  background: var(--ink);
+}
+
+html[data-look] .health-bad {
+  background: linear-gradient(var(--red-wash), var(--red-wash)), var(--ink);
+}
+
+/* The fog on Test and on the ask-first box (US-157) blurred what was
+   behind it. On glass a blur paints black, and there is nothing behind
+   a card to blur, so the fog stays and the blur goes. */
+html[data-look] :is(.ask-first, .btn.btn-test) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* A group's well is a darker pane of the same glass, never a solid hole
@@ -4460,11 +4488,17 @@ html[data-look] .history {
   }
 }
 
-/* Always-on scroll bars (main.tsx marks them): a clear track and a quiet
-   thumb, so the gutter is glass like the rest of the window. */
+/* Always-on scroll bars (main.tsx marks them): a track that matches the
+   window and a quiet thumb. */
 html[data-look][data-scrollbars='classic']::-webkit-scrollbar {
   width: 12px;
-  background: transparent;
+  background: var(--ink);
+}
+
+/* The sheet over the desktop does not reach under the gutter, so on
+   glass the track is the same sheet. */
+html[data-look='glass'][data-scrollbars='classic']::-webkit-scrollbar {
+  background: var(--glass-window);
 }
 
 html[data-look][data-scrollbars='classic']::-webkit-scrollbar-thumb {
