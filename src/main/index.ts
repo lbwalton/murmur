@@ -58,6 +58,7 @@ import {
   windowLook,
   windowOptions
 } from '../shared/look'
+import { SETTINGS_MIN } from '../shared/zoom'
 
 // The biggest share card a page can hand over, as a data URL.
 const MAX_CARD_CHARS = 64 * 1024 * 1024
@@ -162,6 +163,14 @@ function captureZoom(): number | undefined {
   return Number.isFinite(factor) && factor >= 1 && factor <= 4 ? factor : undefined
 }
 
+// MURMUR_SETTINGS_SIZE=480x400 (isolated runs only) opens the settings
+// window at that size, so narrow layouts can be shot.
+function captureSize(): { width: number; height: number } | undefined {
+  if (!isolatedRun) return undefined
+  const [width, height] = (process.env.MURMUR_SETTINGS_SIZE ?? '').split('x').map((n) => Math.round(Number(n)))
+  return width > 0 && height > 0 ? { width, height } : undefined
+}
+
 /** The look the settings window should have right now (US-150): glass
  *  where the system can show the desktop through it, solid with a glow
  *  where it cannot or Reduce transparency is on. MURMUR_LOOK=glass or
@@ -202,6 +211,9 @@ function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 920,
     height: 640,
+    minWidth: SETTINGS_MIN.width,
+    minHeight: SETTINGS_MIN.height,
+    ...captureSize(),
     show: !isSmoke,
     ...windowOptions(shownLook, process.platform),
     // Ink until the page has drawn itself: a glass window with nothing

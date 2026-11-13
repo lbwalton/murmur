@@ -48,3 +48,19 @@ export function zoomActionForKey(input: ZoomKeyInput): ZoomAction | null {
   if (input.key === '0') return 'reset'
   return null
 }
+
+/** The smallest the settings window goes at 100 percent (LaBroi,
+ *  2026-11-12: dragged narrower, the tabs stacked and cards ran off the
+ *  edge). At this size the tabs fit on 1 line and buttons stay in
+ *  their cards. */
+export const SETTINGS_MIN = { width: 480, height: 400 }
+
+/** The floor at a zoom: it grows with the zoom, so the page keeps the
+ *  same room, but never past the screen it is on. */
+export function minSizeAt(zoom: number, screen: { width: number; height: number }): { width: number; height: number } {
+  const factor = Number.isFinite(zoom) && zoom > 1 ? zoom : 1
+  return {
+    width: Math.min(Math.round(SETTINGS_MIN.width * factor), screen.width),
+    height: Math.min(Math.round(SETTINGS_MIN.height * factor), screen.height)
+  }
+}

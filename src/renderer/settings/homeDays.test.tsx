@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { type SessionEvent, dayKey, groupByDay, withoutText } from '../../shared/history'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import { HomeRail, OLDER, OVERVIEW, WAITING, holdsPick, railMark } from './HomeRail'
+import { HomeRail, OLDER, OVERVIEW, WAITING, holdsPick, markLine, railMark } from './HomeRail'
 import { HomeHistory } from './HomeView'
 import {
   HOME_TAKES,
@@ -366,16 +366,50 @@ describe('your dictations on the page', () => {
 })
 
 describe('a clicked place keeping the mark', () => {
-  // The line that marks a place sits at 140 here.
-  it('lets go when the place reached the line, so scrolling leads', () => {
-    expect(holdsPick(64, true, 140)).toBe(false)
-    expect(holdsPick(140, true, 140)).toBe(false)
+  // The line rests at 140; near the page's end it has slid to 600.
+  it('holds wherever it landed while the page rests where the click left it', () => {
+    // At the top, with the sliding line already past the next day.
+    expect(holdsPick(64, 140, 390, 0)).toBe(true)
+    // On a page too short to scroll at all.
+    expect(holdsPick(300, 140, 140, 0)).toBe(true)
   })
-  it('holds a day that sits short of the line with the page at its end', () => {
-    expect(holdsPick(420, true, 140)).toBe(true)
+  it('lets go once the page moves, when the place reached the resting line', () => {
+    expect(holdsPick(64, 140, 600, 30)).toBe(false)
+    expect(holdsPick(140, 140, 600, -30)).toBe(false)
   })
-  it('lets go once the page leaves its end, or the place is gone', () => {
-    expect(holdsPick(420, false, 140)).toBe(false)
-    expect(holdsPick(null, true, 140)).toBe(false)
+  it('holds a day short of the resting line while the sliding line is at or below it', () => {
+    expect(holdsPick(420, 140, 600, -30)).toBe(true)
+    expect(holdsPick(600, 140, 600, -30)).toBe(true)
+  })
+  it('lets go once the line has come up past it, mid page, or when the place is gone', () => {
+    expect(holdsPick(420, 140, 300, -200)).toBe(false)
+    expect(holdsPick(420, 140, 140, -200)).toBe(false)
+    expect(holdsPick(null, 140, 600, 0)).toBe(false)
+  })
+})
+
+describe('the line that marks a place', () => {
+  // A box 700 tall under the bar: the line rests at 140, the foot is 700.
+  it('rests under the top bar until the last screen of scrolling', () => {
+    expect(markLine(140, 700, 0, 5000)).toBe(140)
+    expect(markLine(140, 700, 4440, 5000)).toBe(140)
+  })
+  it('slides to the foot of the page over the last screen, so the last days get their turn', () => {
+    expect(markLine(140, 700, 4720, 5000)).toBe(420)
+    expect(markLine(140, 700, 5000, 5000)).toBe(700)
+  })
+  it('never moves back as the page scrolls on', () => {
+    let last = 0
+    for (let top = 0; top <= 5000; top += 50) {
+      const line = markLine(140, 700, top, 5000)
+      expect(line).toBeGreaterThanOrEqual(last)
+      last = line
+    }
+  })
+  it('slides over the whole of a short page, and stays put when nothing scrolls', () => {
+    expect(markLine(140, 700, 0, 200)).toBe(140)
+    expect(markLine(140, 700, 100, 200)).toBe(420)
+    expect(markLine(140, 700, 200, 200)).toBe(700)
+    expect(markLine(140, 700, 0, 0)).toBe(140)
   })
 })

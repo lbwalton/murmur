@@ -10,8 +10,8 @@
 // others at 100 percent (the settingsZoom smoke check proves it). In
 // development every window shares the dev server's host, so there the
 // zoom spreads to the pill too; packaged builds never see that.
-import type { BrowserWindow } from 'electron'
-import { type ZoomAction, nextZoom, zoomActionForKey } from '../shared/zoom'
+import { type BrowserWindow, screen } from 'electron'
+import { type ZoomAction, minSizeAt, nextZoom, zoomActionForKey } from '../shared/zoom'
 import { getSettings, updateSettings } from './settings'
 
 /**
@@ -24,6 +24,8 @@ export function attachSettingsZoom(win: BrowserWindow, captureFactor?: number): 
   wc.on('did-navigate', () => {
     wc.setZoomFactor(captureFactor ?? getSettings().windowZoom)
   })
+  // A capture run sizes its own window.
+  if (!captureFactor) floorSettingsWindow(win, getSettings().windowZoom)
   // macOS owns the shortcut through the View menu (index.ts). Windows
   // and Linux have no menu bar, so the window catches Ctrl itself.
   if (process.platform !== 'darwin') {
@@ -41,6 +43,16 @@ export function stepSettingsZoom(win: BrowserWindow | null, action: ZoomAction):
   if (!win || win.isDestroyed()) return null
   const next = nextZoom(getSettings().windowZoom, action)
   win.webContents.setZoomFactor(next)
+  floorSettingsWindow(win, next)
   updateSettings({ windowZoom: next })
   return next
+}
+
+/** Set the smallest size the window may be dragged to at this zoom, and
+ *  grow a window that is already under it. */
+function floorSettingsWindow(win: BrowserWindow, zoom: number): void {
+  const min = minSizeAt(zoom, screen.getDisplayMatching(win.getBounds()).workAreaSize)
+  win.setMinimumSize(min.width, min.height)
+  const [width, height] = win.getSize()
+  if (width < min.width || height < min.height) win.setSize(Math.max(width, min.width), Math.max(height, min.height))
 }

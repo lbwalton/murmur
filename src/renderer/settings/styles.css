@@ -436,8 +436,6 @@ body {
 
 .log-copy {
   margin-left: auto;
-  padding: 3px 10px;
-  font-size: 11px;
 }
 
 .log-text {
@@ -448,11 +446,6 @@ body {
 
 /* What you said (US-128): removed words are struck through as well as
    dimmed, so the mark never rests on color alone. */
-.log-said-toggle {
-  padding: 3px 10px;
-  font-size: 11px;
-}
-
 .log-said {
   margin-bottom: 8px;
 }
@@ -512,7 +505,7 @@ body {
 .waiting-intro,
 .waiting-message {
   margin: 6px 0 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -526,15 +519,13 @@ body {
   margin-left: auto;
 }
 
-.waiting-head .btn,
-.waiting-actions .btn {
-  padding: 3px 10px;
-  font-size: 11px;
-}
-
+/* The reason sits where a dictation's words would, at their size, and
+   the buttons are the size of every other button on Home (LaBroi,
+   2026-11-12). */
 .waiting-reason {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .waiting-head .waiting-actions {

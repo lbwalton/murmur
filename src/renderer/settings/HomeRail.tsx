@@ -30,11 +30,29 @@ export function railMark(place: string, days: readonly RailDay[]): string {
   return days.some((d) => d.day === place) ? place : OLDER
 }
 
-/** True while a clicked place keeps the mark: it is on the page, and it
- *  sits short of the line that marks a place because the page is at its
- *  end and can scroll no further (a day near the page's end). */
-export function holdsPick(top: number | null, atEnd: boolean, line: number): boolean {
-  return top !== null && top > line && atEnd
+/** True while a clicked place keeps the mark. It keeps it while the
+ *  page rests where the click left it (moved is how far the page has
+ *  scrolled since): the click chose that day, wherever the line is.
+ *  Once the page moves, it keeps it only while it is on the page, short
+ *  of where the line rests (a day near the page's end cannot scroll up
+ *  that far), and the sliding line is still at or below it. Once
+ *  scrolling brings the line up past it, scrolling leads again. */
+export function holdsPick(top: number | null, rest: number, line: number, moved: number): boolean {
+  if (top === null) return false
+  if (Math.abs(moved) <= 2) return true
+  return top > rest && top <= line
+}
+
+/** The line a place must reach to take the mark. Mid page it rests
+ *  just under the top bar. Over the last screen of scrolling it slides
+ *  down to the foot of the page's box, because the last days (folded,
+ *  they are 1 line each) can never be scrolled up to the top: without
+ *  the slide the mark would stall on the last day that could. */
+export function markLine(rest: number, foot: number, scrollTop: number, range: number): number {
+  const slide = Math.min(range, foot - rest)
+  if (slide <= 0) return rest
+  const along = Math.min(1, Math.max(0, (scrollTop - (range - slide)) / slide))
+  return rest + along * (foot - rest)
 }
 
 export function HomeRail(props: {
@@ -60,9 +78,11 @@ export function HomeRail(props: {
   const locked = useRef(false)
   const lockTimer = useRef(0)
   // The place last clicked. A day near the page's end cannot scroll up
-  // to the line that marks a place, so it keeps the mark while the page
-  // rests at its end. Anywhere else, scrolling leads.
+  // to where the line rests, so it keeps the mark until scrolling
+  // brings the sliding line past it. Anywhere else, scrolling leads.
   const picked = useRef<string | null>(null)
+  // Where the page rested when the last click's scroll settled.
+  const pickedAt = useRef(0)
   const remeasure = useRef<() => void>(() => undefined)
 
   useEffect(() => {
@@ -71,7 +91,10 @@ export function HomeRail(props: {
       frame = 0
       if (locked.current) return
       const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--masthead-h')) || 56
-      const line = header + 84
+      const rest = header + 84
+      const box = pageScroller()
+      const range = box ? box.scrollHeight - box.clientHeight : 0
+      const line = box ? markLine(rest, box.getBoundingClientRect().bottom, box.scrollTop, range) : rest
       let next = OVERVIEW
       let pickedTop: number | null = null
       for (const el of Array.from(document.querySelectorAll<HTMLElement>('.home [data-place]'))) {
@@ -79,9 +102,7 @@ export function HomeRail(props: {
         if (top <= line) next = el.dataset.place ?? next
         if (el.dataset.place === picked.current) pickedTop = top
       }
-      const box = pageScroller()
-      const atEnd = box !== null && box.scrollTop + box.clientHeight >= box.scrollHeight - 2
-      if (!holdsPick(pickedTop, atEnd, line)) picked.current = null
+      if (!holdsPick(pickedTop, rest, line, (box?.scrollTop ?? 0) - pickedAt.current)) picked.current = null
       setPlace(picked.current ?? next)
     }
     const onScroll = (): void => {
@@ -91,8 +112,14 @@ export function HomeRail(props: {
     measure()
     const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
+    // The line depends on how tall the page is: a day folding, a search
+    // or a new take changes that without a scroll.
+    const home = document.querySelector('.home')
+    const grown = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onScroll)
+    if (home) grown?.observe(home)
     return () => {
       stop()
+      grown?.disconnect()
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
       window.clearTimeout(lockTimer.current)
@@ -108,6 +135,7 @@ export function HomeRail(props: {
       locked.current = false
       window.clearTimeout(lockTimer.current)
       stop()
+      pickedAt.current = pageScroller()?.scrollTop ?? 0
       remeasure.current()
     }
     // An earlier click's timer must not unlock this one early.
