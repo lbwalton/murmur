@@ -8,7 +8,7 @@ The bar at the top of the window (the murmur wordmark with your belt, then home,
 
 ## What is the home view?
 
-The window opens on Home. A sidebar on the left has a search box, the parts of the page, each day of your history with its count, and Hide words. Beside it, top to bottom: the title with a what's new line, any takes waiting to retry in a card marked with a red dot, your time back for today beside your last note, then **Your dictations**, a day at a time, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. Beside the Your dictations heading, 1 line says how many are showing and how long they are kept, with a link to Settings, History. A red ✗ next to the settings tab means setup needs attention.
+The window opens on Home. A sidebar on the left has a search box, the parts of the page, each day of your history with its count, and Hide words. Beside it, top to bottom: the title with a what's new line, any takes waiting to retry in a card marked with a red dot, your time back for today beside your last note, then **your dictations**, a day at a time, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy icon at its right edge, so a dictation that landed in the wrong window is one click from your clipboard. Once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. Under the your dictations label, 1 line says how many are showing and how long they are kept, with a link to Settings, History. A red ✗ next to the settings tab means setup needs attention.
 
 ## How do I find an old dictation?
 
@@ -43,7 +43,7 @@ Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. **Keep history for**, in Settings, under History, sets how long. Home says the current rule in 1 line beside the Your dictations heading, with a link there:
+History lives only on your machine, in murmur's local data folder. **Keep history for**, in Settings, under History, sets how long. Home says the current rule in 1 line under the your dictations label, with a link there:
 
 - **30 days, 90 days, a year, or forever.** Entries older than that are removed.
 - **24 hours.** The words of a take go after 24 hours, checked every 15 minutes while murmur runs. The numbers stay, so your stats, belts, and paintings keep counting.
@@ -77,9 +77,17 @@ Turn on **Hide words**. Your dictated words stop showing in murmur's windows, an
 
 It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
+## What do the icons on a dictation mean?
+
+Each dictation on the home tab has up to 3 small icons on its top line. Point at one, or Tab to it, and its name shows beside it.
+
+- **Copy** (2 sheets, at the right edge) puts that dictation's words on your clipboard. A gold brushed check shows that it did.
+- **What you said** (a gold speech bubble) shows only when cleanup changed your words. It opens the words as they were heard.
+- **Report** (a flag) opens a short form to tell us what a dictation should have been. Nothing is sent until you send it.
+
 ## How do I see what cleanup changed, and get my words back?
 
-Open the home tab. When cleanup changed any of your words, that take shows **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
+Open the home tab. When cleanup changed any of your words, that take shows a gold speech bubble, **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
 
 These are the words your speech provider heard, so if it misheard you, this shows that too.
 

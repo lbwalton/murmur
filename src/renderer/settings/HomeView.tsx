@@ -34,6 +34,7 @@ import { Switch } from './controls'
 import { TakeWords } from './HideWords'
 import { HomeRail, OVERVIEW, SidebarIcon, WAITING } from './HomeRail'
 import { LAND_RING_MS, LandRing } from './LandRing'
+import { COPIED_MS, CopyCheck, CopyIcon, FlagIcon, SaidIcon } from './RowIcons'
 import {
   HOME_TAKES,
   dayCount,
@@ -661,16 +662,27 @@ export function HomeHistory(props: {
   const hide = props.settings.history.hideWords
   const found = searchDays(grouped, props.query, hide)
 
+  // Counts copies, so a second copy draws its check again, runs its own
+  // full time, and is said again.
+  const [copyRun, setCopyRun] = useState(0)
+  const copyTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(copyTimer.current), [])
+
   const copy = async (event: SessionEvent): Promise<void> => {
     await bridge().copyText(event.finalText)
     setCopiedAt(event.at)
-    setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
+    setCopyRun((n) => n + 1)
+    window.clearTimeout(copyTimer.current)
+    copyTimer.current = window.setTimeout(() => setCopiedAt(null), COPIED_MS)
   }
 
   return (
     <section className="history" aria-labelledby="home-history-title">
       <div className="history-head">
-        <h2 id="home-history-title">Your dictations</h2>
+        {/* A gold label, like every other card on Home (LaBroi, 2026-11-12). */}
+        <h2 id="home-history-title" className="micro-label">
+          your dictations
+        </h2>
         {/* Keep history, Encrypt saved words, and Clear all live in
             Settings, History (US-148); Home says the rule and links there. */}
         <p className="dim history-kept">
@@ -680,6 +692,12 @@ export function HomeHistory(props: {
           </button>
         </p>
       </div>
+      {/* Copy answers with a check; a screen reader hears it here. The
+          text differs by a space on every other copy, so a second copy
+          is a change and is said too. */}
+      <p className="visually-hidden" role="status">
+        {copiedAt !== null ? (copyRun % 2 === 0 ? 'copied' : 'copied\u00a0') : ''}
+      </p>
       {/* Always mounted, so screen readers hear the count change. The
           way out of a search is here too: the rail, and its search box,
           may be hidden while a search is still on. */}
@@ -732,30 +750,54 @@ export function HomeHistory(props: {
                       {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
                         <span className="mono-inline dim">until you quit</span>
                       )}
-                      {offersWhatYouSaid(event) && (
-                        <button
-                          className="btn quiet-btn log-said-toggle"
-                          aria-expanded={openSaid === event.at}
-                          aria-controls={`said-${event.at}`}
-                          onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
-                        >
-                          what you said
-                        </button>
-                      )}
-                      {event.kind !== 'transform' && hasText(event) && (
-                        <button
-                          className="btn quiet-btn log-said-toggle"
-                          aria-expanded={openReport === event.at}
-                          aria-controls={`report-${event.at}`}
-                          onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
-                        >
-                          report
-                        </button>
+                      {/* Icons with no box (US-166). Each says its name beside
+                          the pair the moment it is pointed at or focused.
+                          The name takes room the row has left over, and is
+                          cut short before it would push anything. */}
+                      {(offersWhatYouSaid(event) || (event.kind !== 'transform' && hasText(event))) && (
+                        <>
+                          <span className="row-acts">
+                            {offersWhatYouSaid(event) && (
+                              <button
+                                className="row-icon row-icon-said log-said-toggle"
+                                aria-label="what you said"
+                                aria-expanded={openSaid === event.at}
+                                aria-controls={`said-${event.at}`}
+                                onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
+                              >
+                                <SaidIcon />
+                              </button>
+                            )}
+                            {event.kind !== 'transform' && hasText(event) && (
+                              <button
+                                className="row-icon row-icon-report log-said-toggle"
+                                aria-label="report"
+                                aria-expanded={openReport === event.at}
+                                aria-controls={`report-${event.at}`}
+                                onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
+                              >
+                                <FlagIcon />
+                              </button>
+                            )}
+                          </span>
+                          <span className="row-name" aria-hidden="true">
+                            <span className="row-says row-says-said">what you said</span>
+                            <span className="row-says row-says-report">report</span>
+                          </span>
+                        </>
                       )}
                       {hasText(event) && (
-                        <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
-                          {copiedAt === event.at ? 'copied' : 'copy'}
-                        </button>
+                        <span className="row-acts row-acts-end">
+                          <span
+                            className={`row-says row-says-copy ${copiedAt === event.at ? 'row-says-on' : ''}`}
+                            aria-hidden="true"
+                          >
+                            {copiedAt === event.at ? 'copied' : 'copy'}
+                          </span>
+                          <button className="row-icon row-icon-copy log-copy" aria-label="copy" onClick={() => void copy(event)}>
+                            {copiedAt === event.at ? <CopyCheck key={copyRun} /> : <CopyIcon />}
+                          </button>
+                        </span>
                       )}
                     </div>
                     {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}

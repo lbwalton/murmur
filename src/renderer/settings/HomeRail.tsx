@@ -30,29 +30,25 @@ export function railMark(place: string, days: readonly RailDay[]): string {
   return days.some((d) => d.day === place) ? place : OLDER
 }
 
-/** True while a clicked place keeps the mark. It keeps it while the
+/** How far under the top of the page's box a place must come to take
+ *  the mark. A clicked day lands 16 px under the top (the box's 8 px
+ *  of scroll padding and the day's own 8), and a folded day is about
+ *  50 px tall, so the line sits between the day at the top and
+ *  the next one: the gold is always on the day at the top (LaBroi,
+ *  2026-11-12: at 84 px it ran a day or 2 ahead of folded days). */
+export const MARK_LINE = 28
+
+/** True while a clicked place keeps the mark. top is where the place
+ *  sits, or null when it is not in view. It keeps it while the
  *  page rests where the click left it (moved is how far the page has
- *  scrolled since): the click chose that day, wherever the line is.
- *  Once the page moves, it keeps it only while it is on the page, short
- *  of where the line rests (a day near the page's end cannot scroll up
- *  that far), and the sliding line is still at or below it. Once
- *  scrolling brings the line up past it, scrolling leads again. */
-export function holdsPick(top: number | null, rest: number, line: number, moved: number): boolean {
+ *  scrolled since): the click chose that day. Once the page moves, it
+ *  keeps it only while the page is at its end and the place sits short
+ *  of the line (a day near the page's end cannot scroll up that far).
+ *  Anywhere else, the day at the top leads. */
+export function holdsPick(top: number | null, line: number, atEnd: boolean, moved: number): boolean {
   if (top === null) return false
   if (Math.abs(moved) <= 2) return true
-  return top > rest && top <= line
-}
-
-/** The line a place must reach to take the mark. Mid page it rests
- *  just under the top bar. Over the last screen of scrolling it slides
- *  down to the foot of the page's box, because the last days (folded,
- *  they are 1 line each) can never be scrolled up to the top: without
- *  the slide the mark would stall on the last day that could. */
-export function markLine(rest: number, foot: number, scrollTop: number, range: number): number {
-  const slide = Math.min(range, foot - rest)
-  if (slide <= 0) return rest
-  const along = Math.min(1, Math.max(0, (scrollTop - (range - slide)) / slide))
-  return rest + along * (foot - rest)
+  return top > line && atEnd
 }
 
 export function HomeRail(props: {
@@ -77,9 +73,9 @@ export function HomeRail(props: {
   // A click's smooth scroll passes other days; the mark waits on the pick.
   const locked = useRef(false)
   const lockTimer = useRef(0)
-  // The place last clicked. A day near the page's end cannot scroll up
-  // to where the line rests, so it keeps the mark until scrolling
-  // brings the sliding line past it. Anywhere else, scrolling leads.
+  // The place last clicked. It keeps the mark while the page rests
+  // where the click left it, and at the page's end, where a day cannot
+  // scroll up to the line. Anywhere else, scrolling leads.
   const picked = useRef<string | null>(null)
   // Where the page rested when the last click's scroll settled.
   const pickedAt = useRef(0)
@@ -90,19 +86,22 @@ export function HomeRail(props: {
     const measure = (): void => {
       frame = 0
       if (locked.current) return
-      const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--masthead-h')) || 56
-      const rest = header + 84
       const box = pageScroller()
-      const range = box ? box.scrollHeight - box.clientHeight : 0
-      const line = box ? markLine(rest, box.getBoundingClientRect().bottom, box.scrollTop, range) : rest
+      // Measured from the box itself, so nothing above it can move the line.
+      const boxTop = box ? box.getBoundingClientRect().top : 0
+      const boxFoot = box ? box.getBoundingClientRect().bottom : window.innerHeight
+      const line = boxTop + MARK_LINE
       let next = OVERVIEW
       let pickedTop: number | null = null
       for (const el of Array.from(document.querySelectorAll<HTMLElement>('.home [data-place]'))) {
         const top = el.getBoundingClientRect().top
         if (top <= line) next = el.dataset.place ?? next
-        if (el.dataset.place === picked.current) pickedTop = top
+        // Only a pick still in view can hold the mark.
+        if (el.dataset.place === picked.current && top >= boxTop - 4 && top < boxFoot) pickedTop = top
       }
-      if (!holdsPick(pickedTop, rest, line, (box?.scrollTop ?? 0) - pickedAt.current)) picked.current = null
+      const atEnd = box !== null && box.scrollTop + box.clientHeight >= box.scrollHeight - 2
+      const moved = (box?.scrollTop ?? 0) - pickedAt.current
+      if (!holdsPick(pickedTop, line, atEnd, moved)) picked.current = null
       setPlace(picked.current ?? next)
     }
     const onScroll = (): void => {
@@ -112,8 +111,8 @@ export function HomeRail(props: {
     measure()
     const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
-    // The line depends on how tall the page is: a day folding, a search
-    // or a new take changes that without a scroll.
+    // A day folding, a search or a new take moves the days without a
+    // scroll.
     const home = document.querySelector('.home')
     const grown = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onScroll)
     if (home) grown?.observe(home)

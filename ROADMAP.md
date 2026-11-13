@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (114/165 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (114/166 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -177,3 +177,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-151** Look settings for Pro
 - [ ] **US-156** The look on every page
 - [ ] **US-159** Pro: color the fog
+- [ ] **US-166** Icons on a dictation's row, and a gold label for your dictations

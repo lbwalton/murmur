@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { type SessionEvent, dayKey, groupByDay, withoutText } from '../../shared/history'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import { HomeRail, OLDER, OVERVIEW, WAITING, holdsPick, markLine, railMark } from './HomeRail'
+import { HomeRail, OLDER, OVERVIEW, WAITING, MARK_LINE, holdsPick, railMark } from './HomeRail'
 import { HomeHistory } from './HomeView'
 import {
   HOME_TAKES,
@@ -307,9 +307,48 @@ describe('your dictations on the page', () => {
 
   it('has its heading, how many are showing, and how long they are kept', () => {
     const html = draw()
-    expect(html).toContain('<h2 id="home-history-title">Your dictations</h2>')
+    expect(html).toContain('<h2 id="home-history-title" class="micro-label">your dictations</h2>')
     expect(html).toContain('5 dictations. Kept 90 days on this computer.')
     expect(html).toContain('History settings</button>')
+  })
+
+  it('gives a row icons that carry their names, with no boxed word buttons (US-166)', () => {
+    const today = dayOf(draw(), groups[0].day)
+    // Each icon is a button named for a screen reader, and the name it
+    // shows beside it is hidden from one, so it is never read twice.
+    expect(today).toContain('class="row-icon row-icon-report log-said-toggle" aria-label="report"')
+    expect(today).toContain('class="row-icon row-icon-copy log-copy" aria-label="copy"')
+    expect(today).toContain('<span class="row-name" aria-hidden="true"><span class="row-says row-says-said">what you said</span><span class="row-says row-says-report">report</span></span>')
+    expect(today).toMatch(/<span class="row-says row-says-copy " aria-hidden="true">copy<\/span>/)
+    expect(today).not.toContain('btn quiet-btn log-')
+    // Copy's answer is said once, in 1 place.
+    expect(draw()).toContain('<p class="visually-hidden" role="status"></p>')
+  })
+
+  it('draws its own icons, shows a name without moving the row, and keeps a still check for reduced motion', () => {
+    const icons = read('RowIcons.tsx')
+    // Nothing from an icon set: the only imports are murmur's own.
+    expect([...icons.matchAll(/from '([^']+)'/g)].map((m) => m[1])).toEqual(['../brush', './PaintCanvas'])
+    expect(icons).toContain("tokenColor('--brand'")
+    expect(icons).toContain('paintInMs={CHECK_DRAW_MS}')
+    const css = read('styles.css')
+    // No box: no border and no fill at rest.
+    expect(css).toMatch(/\.row-icon \{[^}]*background: none;\s*border: 0;/)
+    // A name is hidden until asked for, gives way before anything else
+    // on the row (shrink 100), and copy is held at the right edge.
+    expect(css).toMatch(/\.row-says \{\s*display: none;[^}]*user-select: none;/)
+    expect(css).toMatch(/\.row-name \{\s*flex: 0 100 auto;\s*min-width: 0;\s*overflow: hidden;/)
+    expect(css).toMatch(/\.row-acts-end \{\s*margin-left: auto;/)
+    // The gold bubble is full gold: dimmed, it fell under 4.5 to 1 on a glass card.
+    expect(css).not.toMatch(/\.row-icon-said[^{]*\{[^}]*opacity/)
+    // The waiting card's buttons share 1 width; nothing else is widened.
+    expect(css).toMatch(/\.waiting-strip \.waiting-actions \.btn \{\s*min-width: 96px;/)
+    // A second copy draws its check again and is said again.
+    const home = read('HomeView.tsx')
+    expect(home).toContain('<CopyCheck key={copyRun} />')
+    expect(home).toContain("copyRun % 2 === 0 ? 'copied' : 'copied\\u00a0'")
+    // Keyboard focus shows a ring, like every control on Home.
+    expect(css).toMatch(/\.home-layout :is\([^)]*\.row-icon[^)]*\):focus-visible/)
   })
 
   it('opens Today and Yesterday, folds older days, and draws no rows for a folded day', () => {
@@ -366,50 +405,45 @@ describe('your dictations on the page', () => {
 })
 
 describe('a clicked place keeping the mark', () => {
-  // The line rests at 140; near the page's end it has slid to 600.
+  // The line sits at 90: 28 px under a box that starts at 62.
   it('holds wherever it landed while the page rests where the click left it', () => {
-    // At the top, with the sliding line already past the next day.
-    expect(holdsPick(64, 140, 390, 0)).toBe(true)
+    expect(holdsPick(70, 90, false, 0)).toBe(true)
     // On a page too short to scroll at all.
-    expect(holdsPick(300, 140, 140, 0)).toBe(true)
+    expect(holdsPick(300, 90, true, 0)).toBe(true)
   })
-  it('lets go once the page moves, when the place reached the resting line', () => {
-    expect(holdsPick(64, 140, 600, 30)).toBe(false)
-    expect(holdsPick(140, 140, 600, -30)).toBe(false)
+  it('lets go once the page moves, so the day at the top leads', () => {
+    expect(holdsPick(70, 90, false, 30)).toBe(false)
+    expect(holdsPick(120, 90, false, -30)).toBe(false)
   })
-  it('holds a day short of the resting line while the sliding line is at or below it', () => {
-    expect(holdsPick(420, 140, 600, -30)).toBe(true)
-    expect(holdsPick(600, 140, 600, -30)).toBe(true)
+  it('holds a day short of the line while the page is at its end', () => {
+    expect(holdsPick(420, 90, true, 40)).toBe(true)
   })
-  it('lets go once the line has come up past it, mid page, or when the place is gone', () => {
-    expect(holdsPick(420, 140, 300, -200)).toBe(false)
-    expect(holdsPick(420, 140, 140, -200)).toBe(false)
-    expect(holdsPick(null, 140, 600, 0)).toBe(false)
+  it('lets go at the end once the place reached the line, or when the place is gone', () => {
+    expect(holdsPick(90, 90, true, 40)).toBe(false)
+    expect(holdsPick(null, 90, true, 0)).toBe(false)
   })
 })
 
 describe('the line that marks a place', () => {
-  // A box 700 tall under the bar: the line rests at 140, the foot is 700.
-  it('rests under the top bar until the last screen of scrolling', () => {
-    expect(markLine(140, 700, 0, 5000)).toBe(140)
-    expect(markLine(140, 700, 4440, 5000)).toBe(140)
+  it('sits between a clicked day and the next folded day, so the gold is on the day at the top', () => {
+    // A clicked day lands 16 px under the box's top; a folded day is about 50 px tall.
+    expect(MARK_LINE).toBeGreaterThan(16 + 4)
+    expect(MARK_LINE).toBeLessThan(16 + 44)
   })
-  it('slides to the foot of the page over the last screen, so the last days get their turn', () => {
-    expect(markLine(140, 700, 4720, 5000)).toBe(420)
-    expect(markLine(140, 700, 5000, 5000)).toBe(700)
+  it('is measured from the page box, not from the top bar above it', () => {
+    const rail = read('HomeRail.tsx')
+    expect(rail).toContain('const boxTop = box ? box.getBoundingClientRect().top : 0')
+    expect(rail).toContain('const line = boxTop + MARK_LINE')
+    // A pick scrolled out of view cannot hold the mark.
+    expect(rail).toContain('top >= boxTop - 4 && top < boxFoot')
+    expect(rail).not.toContain('--masthead-h')
   })
-  it('never moves back as the page scrolls on', () => {
-    let last = 0
-    for (let top = 0; top <= 5000; top += 50) {
-      const line = markLine(140, 700, top, 5000)
-      expect(line).toBeGreaterThanOrEqual(last)
-      last = line
-    }
-  })
-  it('slides over the whole of a short page, and stays put when nothing scrolls', () => {
-    expect(markLine(140, 700, 0, 200)).toBe(140)
-    expect(markLine(140, 700, 100, 200)).toBe(420)
-    expect(markLine(140, 700, 200, 200)).toBe(700)
-    expect(markLine(140, 700, 0, 0)).toBe(140)
+})
+
+describe('the window itself never scrolls', () => {
+  it('pins the shell, so a jump to a day cannot push the top bar out of the window', () => {
+    // A line hidden for screen readers inside the page box sits outside
+    // its scroll (LaBroi's screenshot, 2026-11-12: the tabs were gone).
+    expect(read('styles.css')).toMatch(/\.shell \{\s*position: fixed;\s*inset: 0;/)
   })
 })
