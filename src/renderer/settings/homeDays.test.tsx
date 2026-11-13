@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { type SessionEvent, dayKey, groupByDay, withoutText } from '../../shared/history'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import { HomeRail, OLDER, OVERVIEW, WAITING, railMark } from './HomeRail'
+import { HomeRail, OLDER, OVERVIEW, WAITING, holdsPick, railMark } from './HomeRail'
 import { HomeHistory } from './HomeView'
 import {
   HOME_TAKES,
@@ -362,5 +362,20 @@ describe('your dictations on the page', () => {
     expect(html).toContain('Words hidden')
     // The same page whatever was typed.
     expect(draw({ query: 'zebra', settings: hiding })).toBe(html)
+  })
+})
+
+describe('a clicked place keeping the mark', () => {
+  // The line that marks a place sits at 140 here.
+  it('lets go when the place reached the line, so scrolling leads', () => {
+    expect(holdsPick(64, true, 140)).toBe(false)
+    expect(holdsPick(140, true, 140)).toBe(false)
+  })
+  it('holds a day that sits short of the line with the page at its end', () => {
+    expect(holdsPick(420, true, 140)).toBe(true)
+  })
+  it('lets go once the page leaves its end, or the place is gone', () => {
+    expect(holdsPick(420, false, 140)).toBe(false)
+    expect(holdsPick(null, true, 140)).toBe(false)
   })
 })

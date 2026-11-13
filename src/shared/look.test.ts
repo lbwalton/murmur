@@ -319,7 +319,11 @@ describe('where the look is applied', () => {
     expect(main).toMatch(/'did-finish-load', \(\) => \{\s*if \(!win\.isDestroyed\(\)\) win\.setBackgroundColor\(pageBackground\(shownLook, process\.platform\)\)/)
     expect(main).toMatch(/'did-start-loading', \(\) => \{\s*if \(!win\.isDestroyed\(\)\) win\.setBackgroundColor\(SOLID_BACKGROUND\)/)
     expect(main).toContain('reducedTransparency: nativeTheme.prefersReducedTransparency')
-    expect(main).toMatch(/nativeTheme\.on\('updated', \(\) => \{\s*const look = currentLook\(\)/)
+    // Live: the theme's event, and on a Mac the system's own notice too,
+    // since the window did not follow the switch through the theme alone.
+    expect(main).toMatch(/const followLook = \(heard: string\): void => \{\s*const look = currentLook\(\)/)
+    expect(main).toContain("nativeTheme.on('updated', () => followLook('theme'))")
+    expect(main).toContain("subscribeWorkspaceNotification('NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification'")
     const overlay = src('main/overlay/index.ts')
     expect(overlay).toContain('focusable: false')
     expect(overlay).not.toMatch(/vibrancy|backgroundMaterial|shared\/look/)

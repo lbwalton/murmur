@@ -7,7 +7,7 @@ import type { Settings } from '../../shared/settings'
 import { Switch } from './controls'
 import { HIDE_WORDS_LINE } from './HideWords'
 import { type RailDay, SEARCH_OFF } from './homeDays'
-import { onPageScroll, oncePageScrollEnds } from './scroller'
+import { onPageScroll, oncePageScrollEnds, pageScroller } from './scroller'
 
 /** The sidebar glyph on the hide and show buttons. */
 export function SidebarIcon(): React.JSX.Element {
@@ -28,6 +28,13 @@ export const OLDER = 'older'
 export function railMark(place: string, days: readonly RailDay[]): string {
   if (place === OVERVIEW || place === WAITING) return place
   return days.some((d) => d.day === place) ? place : OLDER
+}
+
+/** True while a clicked place keeps the mark: it is on the page, and it
+ *  sits short of the line that marks a place because the page is at its
+ *  end and can scroll no further (a day near the page's end). */
+export function holdsPick(top: number | null, atEnd: boolean, line: number): boolean {
+  return top !== null && top > line && atEnd
 }
 
 export function HomeRail(props: {
@@ -52,10 +59,11 @@ export function HomeRail(props: {
   // A click's smooth scroll passes other days; the mark waits on the pick.
   const locked = useRef(false)
   const lockTimer = useRef(0)
-  // The place last clicked. A day near the page's end cannot scroll up to
-  // the line that marks a place, so while it is on screen and nothing
-  // after it has reached that line, the mark stays on it.
+  // The place last clicked. A day near the page's end cannot scroll up
+  // to the line that marks a place, so it keeps the mark while the page
+  // rests at its end. Anywhere else, scrolling leads.
   const picked = useRef<string | null>(null)
+  const remeasure = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     let frame = 0
@@ -63,22 +71,23 @@ export function HomeRail(props: {
       frame = 0
       if (locked.current) return
       const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--masthead-h')) || 56
+      const line = header + 84
       let next = OVERVIEW
-      let pickedShows = false
+      let pickedTop: number | null = null
       for (const el of Array.from(document.querySelectorAll<HTMLElement>('.home [data-place]'))) {
         const top = el.getBoundingClientRect().top
-        if (top <= header + 84) {
-          next = el.dataset.place ?? next
-          // Something at or after the pick reached the line: scrolling leads again.
-          if (pickedShows) picked.current = null
-        } else if (el.dataset.place === picked.current && top < window.innerHeight) pickedShows = true
+        if (top <= line) next = el.dataset.place ?? next
+        if (el.dataset.place === picked.current) pickedTop = top
       }
-      if (picked.current !== null && !pickedShows && next !== picked.current) picked.current = null
+      const box = pageScroller()
+      const atEnd = box !== null && box.scrollTop + box.clientHeight >= box.scrollHeight - 2
+      if (!holdsPick(pickedTop, atEnd, line)) picked.current = null
       setPlace(picked.current ?? next)
     }
     const onScroll = (): void => {
       if (!frame) frame = window.requestAnimationFrame(measure)
     }
+    remeasure.current = measure
     measure()
     const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
@@ -99,6 +108,7 @@ export function HomeRail(props: {
       locked.current = false
       window.clearTimeout(lockTimer.current)
       stop()
+      remeasure.current()
     }
     // An earlier click's timer must not unlock this one early.
     window.clearTimeout(lockTimer.current)
@@ -193,7 +203,7 @@ export function HomeRail(props: {
           <Switch
             checked={hideWords}
             label="Hide words"
-            describedBy="home-hide-words-line"
+            describedBy={hideWords ? 'home-hide-words-line home-search-off' : 'home-hide-words-line'}
             onChange={(next) => void props.onUpdate({ history: { hideWords: next } } as Partial<Settings>)}
           />
         </div>

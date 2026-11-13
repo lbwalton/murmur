@@ -3177,6 +3177,35 @@ textarea.well-multiline {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+/* In a narrow window the buttons drop under their line, inside the card. */
+.waiting-strip .waiting-head,
+.waiting-strip .log-meta {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+/* Cmd+F while Hide words is on: the line that says why search is off
+   lights for a moment (US-147). */
+.rail-nudge {
+  animation: rail-nudge 1.6s ease-out;
+}
+
+@keyframes rail-nudge {
+  0%,
+  55% {
+    color: var(--text);
+  }
+}
+
+/* A change of color is not motion: with Reduce motion on the line
+   lights and goes out in 1 step, with no fade. */
+@media (prefers-reduced-motion: reduce) {
+  .rail-nudge {
+    animation-timing-function: steps(1, end);
+  }
 }
 
 .home-pair {

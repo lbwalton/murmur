@@ -793,9 +793,19 @@ function storage(): Storage | null {
 
 /** Focus for the rail as it appears: its search, or while Hide words has
  *  the search off, the button beside it, so the keyboard is never dropped. */
-function focusRail(search: HTMLInputElement | null): void {
+function focusRail(search: HTMLInputElement | null, find = false): void {
   if (search && !search.disabled) search.focus()
-  else document.querySelector<HTMLElement>('.home-rail [aria-label="Hide sidebar"]')?.focus()
+  else if (find) {
+    // Search is off while Hide words is on. Asking for it goes to the
+    // switch that turns it back on, and lights the line that says why.
+    document.querySelector<HTMLElement>('#home-hide-words .switch')?.focus()
+    const why = document.getElementById('home-search-off')
+    if (why) {
+      why.classList.remove('rail-nudge')
+      void why.offsetWidth
+      why.classList.add('rail-nudge')
+    }
+  } else document.querySelector<HTMLElement>('.home-rail [aria-label="Hide sidebar"]')?.focus()
 }
 
 /** True while the window is too narrow for the rail beside the page. */
@@ -919,7 +929,7 @@ export function HomeView(props: {
   const searchRef = useRef<HTMLInputElement>(null)
   const showRef = useRef<HTMLButtonElement>(null)
   // Where focus goes once the rail has been drawn or taken away.
-  const focusNext = useRef<'search' | 'show' | null>(null)
+  const focusNext = useRef<'search' | 'find' | 'show' | null>(null)
   // Hiding the sidebar by hand moves Hide words beside the title; a
   // brush loop is drawn around it there for a moment, so the eye finds it.
   const [landing, setLanding] = useState(0)
@@ -942,6 +952,7 @@ export function HomeView(props: {
   setHiddenRef.current = setHidden
   useEffect(() => {
     if (focusNext.current === 'search' && !hidden) focusRail(searchRef.current)
+    if (focusNext.current === 'find' && !hidden) focusRail(searchRef.current, true)
     if (focusNext.current === 'show' && hidden) showRef.current?.focus()
     focusNext.current = null
   }, [hidden])
@@ -958,9 +969,9 @@ export function HomeView(props: {
         focusNext.current = hiddenRef.current ? 'search' : 'show'
         setHiddenRef.current(!hiddenRef.current)
       } else if (hiddenRef.current) {
-        focusNext.current = 'search'
+        focusNext.current = 'find'
         setHiddenRef.current(false)
-      } else focusRail(searchRef.current)
+      } else focusRail(searchRef.current, true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

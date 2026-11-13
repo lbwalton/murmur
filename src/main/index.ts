@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, clipboard, nativeTheme } from 'electron'
+import { BrowserWindow, Menu, app, clipboard, nativeTheme, systemPreferences } from 'electron'
 import { ipc, setRendererRoot } from './ipc'
 import { MAX_TEXT_CHARS, boundedText } from './ipc-rules'
 import { initAudio } from './audio'
@@ -478,10 +478,22 @@ app.whenReady().then(async () => {
   ipc.handle('look:get', () => shownLook)
   // Reduce transparency, switched in the system's settings while murmur
   // runs, moves the window between glass and solid at once (US-150).
-  nativeTheme.on('updated', () => {
+  const followLook = (heard: string): void => {
     const look = currentLook()
+    // 1 line per notice, so the log settles what the system told murmur.
+    crashLog.write(`[look] heard=${heard} reducedTransparency=${nativeTheme.prefersReducedTransparency} look=${look} shown=${shownLook}`)
     if (look !== shownLook && settingsWindow && !settingsWindow.isDestroyed()) applyLook(settingsWindow, look)
-  })
+  }
+  nativeTheme.on('updated', () => followLook('theme'))
+  // On a Mac the window did not follow Reduce transparency through the
+  // theme alone (live check, 2026-11-12), so the system's own notice is
+  // heard too, and once more a moment later in case the answer lags it.
+  if (process.platform === 'darwin') {
+    systemPreferences.subscribeWorkspaceNotification('NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification', () => {
+      followLook('system')
+      setTimeout(() => followLook('system-later'), 400)
+    })
+  }
   ipc.handle('app:license', async () => {
     const { shell } = await import('electron')
     await shell.openExternal('https://www.gnu.org/licenses/gpl-3.0.html')
@@ -1266,7 +1278,7 @@ app.whenReady().then(async () => {
     // window just before the shot, for checking state a picture hides.
     const probe = process.env.MURMUR_SETTINGS_PROBE
     if (probe) {
-      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(() => { try { return JSON.stringify(${probe}) } catch (e) { return String(e) } })()`)
+      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(async () => { try { return JSON.stringify(await (${probe})) } catch (e) { return String(e) } })()`)
       console.log(`[murmur] probe ${String(value)}`)
     }
     const image = await settingsWindow.webContents.capturePage()
