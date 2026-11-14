@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (114/166 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (115/166 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -118,6 +118,7 @@
 - [x] **US-163** A problem in 1 part of Settings never blacks out the window
 - [x] **US-164** Shortcuts: every key combo in 1 place
 - [x] **US-165** Shortcuts: a way back from each shortcut's own row
+- [x] **US-166** Icons on a dictation's row, and a gold label for your dictations
 
 ## Built, awaiting live verification
 
@@ -177,4 +178,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-151** Look settings for Pro
 - [ ] **US-156** The look on every page
 - [ ] **US-159** Pro: color the fog
-- [ ] **US-166** Icons on a dictation's row, and a gold label for your dictations

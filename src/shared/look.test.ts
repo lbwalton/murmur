@@ -166,8 +166,8 @@ function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'sol
     ['red text in a well', red, well],
     ['text on time back, its strong corner', t.text, strongFrom],
     ['text on time back, its faint corner', t.text, strongTo],
-    ['today\'s header, its strong end', t.text, threadFrom],
-    ['today\'s header, its faint end', t.text, threadTo],
+    ['the gold header of the day you are on, its strong end', t.text, threadFrom],
+    ['the gold header of the day you are on, its faint end', t.text, threadTo],
     ['the to fix badge, on its solid chip', red, stack(t.ink, t['red-wash'])],
     ['the all set badge, on its solid chip', t.ok, t.ink]
   ]
@@ -281,10 +281,10 @@ describe('where the look is applied', () => {
     expect(css).not.toMatch(/\.shell \{\s*padding/)
   })
 
-  it('puts gold where it says something: time back, the sidebar line you are on, today\'s header', () => {
+  it('puts gold where it says something: time back, the sidebar line you are on, the header of the day you are on', () => {
     expect(look).toMatch(/html\[data-look\] \.home-timeback \{[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\), var\(--panel\);/)
     expect(look).toMatch(/:is\(\.rail-item-on, \.rail-item-on:hover\) \{[^}]*color: var\(--text\);[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\);/)
-    expect(look).toMatch(/html\[data-look\] \.day-head-today \{[^}]*var\(--tint-thread-from\), var\(--tint-thread-to\)\);/)
+    expect(look).toMatch(/html\[data-look\] \.day-head-on::before \{[^}]*var\(--tint-thread-from\), var\(--tint-thread-to\)\);/)
     // Names are cream until picked; the tab you are on is gold.
     expect(look).toMatch(/html\[data-look\] :is\(\.nav-btn, \.rail-item\) \{\s*color: var\(--text\);/)
     expect(look).toMatch(/html\[data-look\] \.nav-btn\[aria-current='page'\] \{\s*color: var\(--brand\);/)

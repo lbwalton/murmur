@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { type SessionEvent, dayKey, groupByDay, withoutText } from '../../shared/history'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import { HomeRail, OLDER, OVERVIEW, WAITING, MARK_LINE, holdsPick, railMark } from './HomeRail'
+import { HomeRail, railMark } from './HomeRail'
+import { MARK_LINE, OLDER, OVERVIEW, WAITING, goldDay, holdsPick } from './homeMark'
 import { HomeHistory } from './HomeView'
 import {
   HOME_TAKES,
@@ -111,7 +112,7 @@ describe('the rail', () => {
     expect(railMark('2020-01-01', days)).toBe(OLDER)
   })
 
-  const draw = (settings: Settings, waiting = 0): string =>
+  const draw = (settings: Settings, waiting = 0, place: string = OVERVIEW): string =>
     renderToStaticMarkup(
       <HomeRail
         settings={settings}
@@ -122,6 +123,7 @@ describe('the rail', () => {
         waiting={waiting}
         days={railDays(groups, NOW).days}
         older={null}
+        place={place}
         onGo={() => undefined}
         onHide={() => undefined}
         hideKeys="Cmd+\"
@@ -143,6 +145,15 @@ describe('the rail', () => {
     expect(html).toContain('role="switch"')
     // Every item is a real button, so Tab, Enter and Space reach it.
     expect(html.match(/<button[^>]*class="rail-item/g)).toHaveLength(4)
+  })
+
+  it('puts its gold line on the place it is given, and on nothing else', () => {
+    const top = draw(DEFAULT_SETTINGS)
+    expect(top.match(/rail-item-on/g)).toHaveLength(1)
+    expect(top).toMatch(/class="rail-item rail-item-on" aria-current="true"><span class="rail-title">Overview</)
+    const day = draw(DEFAULT_SETTINGS, 0, groups[1].day)
+    expect(day.match(/rail-item-on/g)).toHaveLength(1)
+    expect(day).toMatch(/class="rail-item rail-item-on" aria-current="true"><span class="rail-title">Yesterday</)
   })
 
   it('lists Waiting to retry with its count and a red dot only while takes wait', () => {
@@ -295,6 +306,7 @@ describe('your dictations on the page', () => {
         shown={log.length}
         query=""
         picks={{}}
+        place={OVERVIEW}
         now={NOW}
         settings={DEFAULT_SETTINGS}
         onPick={() => undefined}
@@ -310,6 +322,29 @@ describe('your dictations on the page', () => {
     expect(html).toContain('<h2 id="home-history-title" class="micro-label">your dictations</h2>')
     expect(html).toContain('5 dictations. Kept 90 days on this computer.')
     expect(html).toContain('History settings</button>')
+  })
+
+  it('puts the gold band on the header of the day you are on, and only there', () => {
+    const band = (html: string): string[] =>
+      [...html.matchAll(/<section class="day" id="day-([^"]+)"[^>]*><h3 class="day-h"><button class="day-head day-head-on"/g)].map((m) => m[1])
+    // Above the days it rests on Today.
+    expect(band(draw())).toEqual([groups[0].day])
+    expect(band(draw({ place: WAITING }))).toEqual([groups[0].day])
+    // On a day, that day's header wears it and Today's lets go: open or folded.
+    expect(band(draw({ place: groups[1].day }))).toEqual([groups[1].day])
+    expect(band(draw({ place: groups[2].day }))).toEqual([groups[2].day])
+    expect(band(draw({ place: groups[2].day, picks: { [groups[2].day]: true } }))).toEqual([groups[2].day])
+    // Every other header is a plain one.
+    expect(draw({ place: groups[1].day }).match(/class="day-head"/g)).toHaveLength(groups.length - 1)
+  })
+
+  it('keeps the band on Today when a search has left out the day you were on', () => {
+    const band = (html: string): string[] =>
+      [...html.matchAll(/<section class="day" id="day-([^"]+)"[^>]*><h3 class="day-h"><button class="day-head day-head-on"/g)].map((m) => m[1])
+    // "review" is only in Today's words, so the day you were on is not showing.
+    const found = draw({ query: 'review', place: groups[2].day })
+    expect(found).not.toContain(`id="day-${groups[2].day}"`)
+    expect(band(found)).toEqual([groups[0].day])
   })
 
   it('gives a row icons that carry their names, with no boxed word buttons (US-166)', () => {
@@ -431,12 +466,66 @@ describe('the line that marks a place', () => {
     expect(MARK_LINE).toBeLessThan(16 + 44)
   })
   it('is measured from the page box, not from the top bar above it', () => {
-    const rail = read('HomeRail.tsx')
+    const rail = read('homeMark.ts')
     expect(rail).toContain('const boxTop = box ? box.getBoundingClientRect().top : 0')
     expect(rail).toContain('const line = boxTop + MARK_LINE')
     // A pick scrolled out of view cannot hold the mark.
     expect(rail).toContain('top >= boxTop - 4 && top < boxFoot')
     expect(rail).not.toContain('--masthead-h')
+  })
+})
+
+describe('the day whose header wears the gold band', () => {
+  const shown = ['2026-11-14', '2026-11-12', '2026-11-11']
+  it('is the day you are on', () => {
+    expect(goldDay('2026-11-12', shown, '2026-11-14')).toBe('2026-11-12')
+    expect(goldDay('2026-11-14', shown, '2026-11-14')).toBe('2026-11-14')
+  })
+  it('is Today above the days, and when a search has left your day out', () => {
+    expect(goldDay(OVERVIEW, shown, '2026-11-14')).toBe('2026-11-14')
+    expect(goldDay(WAITING, shown, '2026-11-14')).toBe('2026-11-14')
+    expect(goldDay('2026-11-01', shown, '2026-11-14')).toBe('2026-11-14')
+  })
+  it('is no day when Today is not showing either', () => {
+    expect(goldDay(OVERVIEW, ['2026-11-12'], '2026-11-14')).toBeNull()
+    expect(goldDay(OVERVIEW, [], '2026-11-14')).toBeNull()
+  })
+  it('is followed above the sidebar, so the header keeps following while the sidebar is hidden', () => {
+    const home = read('HomeView.tsx')
+    expect(home).toContain('const mark = useMarkedPlace()')
+    expect(home).toMatch(/<HomeRail[^>]*place=\{mark\.place\}/s)
+    expect(home).toMatch(/<HomeHistory[^>]*place=\{mark\.place\}/s)
+    // A click arms the mark before anything scrolls.
+    expect(home).toMatch(/const go = \(place: string\): void => \{\s*\/\/[^\n]*\n\s*mark\.pick\(place\)/)
+    expect(read('HomeRail.tsx')).not.toContain('useState')
+  })
+  it('goes to a date clicked in the list too, without waiting on a scroll that will not come', () => {
+    const home = read('HomeView.tsx')
+    expect(home).toMatch(/onPick=\{\(day, open\) => \{\s*\/\/[^\n]*\n\s*mark\.pick\(day, false\)/)
+    const mark = read('homeMark.ts')
+    // A pick that scrolls nowhere takes no lock: the page rests where it is.
+    expect(mark).toMatch(/if \(!scrolls\) \{[^}]*locked\.current = false[^}]*pickedAt\.current = pageScroller\(\)\?\.scrollTop \?\? 0\s*return\s*\}/)
+  })
+  it('moves from header to header without moving anything: the band is painted behind the words', () => {
+    const css = read('styles.css')
+    const on = css.match(/html\[data-look\] \.day-head-on \{[^}]*\}/)?.[0] ?? ''
+    const band = css.match(/html\[data-look\] \.day-head-on::before \{[^}]*\}/)?.[0] ?? ''
+    // The gold header keeps the plain header's box: no padding, margin or
+    // width of its own, or the list would jump as the gold moved.
+    expect(on).not.toMatch(/padding|margin|width/)
+    expect(on).toContain('position: relative;')
+    // The band is out of the flow, behind the words, 8 px past the column.
+    expect(band).toContain('position: absolute;')
+    expect(band).toContain('inset: 3px -8px 4px;')
+    expect(band).toContain('z-index: -1;')
+    // Keyboard focus rings the band, so ring and band are 1 shape.
+    expect(css).toMatch(/\.day-head-on:focus-visible::before \{\s*outline: 2px solid var\(--text\);/)
+    // The whole band clicks, its overhang too.
+    expect(band).not.toContain('pointer-events')
+    // On gold the count and an open day's chevron are cream: grey reads
+    // 2.7 to 1 there and gold on gold 3.2 to 1.
+    expect(on).toContain('--text-dim: var(--text);')
+    expect(css).toMatch(/html\[data-look\] \.day-head-on \.day-chevron-open \{\s*color: var\(--text\);/)
   })
 })
 

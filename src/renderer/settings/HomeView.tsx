@@ -32,7 +32,8 @@ import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
 import { Switch } from './controls'
 import { TakeWords } from './HideWords'
-import { HomeRail, OVERVIEW, SidebarIcon, WAITING } from './HomeRail'
+import { HomeRail, SidebarIcon } from './HomeRail'
+import { OVERVIEW, WAITING, goldDay, useMarkedPlace } from './homeMark'
 import { LAND_RING_MS, LandRing } from './LandRing'
 import { COPIED_MS, CopyCheck, CopyIcon, FlagIcon, SaidIcon } from './RowIcons'
 import {
@@ -94,8 +95,11 @@ function WhatsNew(props: {
   )
 }
 
+// Made once: a formatter per row was a third of the cost of drawing a long day.
+const TIME = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' })
+
 function timeOf(at: number): string {
-  return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return TIME.format(new Date(at))
 }
 
 /** Why a take is waiting, in plain words (US-068). */
@@ -649,6 +653,8 @@ export function HomeHistory(props: {
   shown: number
   query: string
   picks: Readonly<Record<string, boolean>>
+  /** The place you are on (homeMark): that day's header wears the gold. */
+  place: string
   now: number
   settings: Settings
   onPick: (day: string, open: boolean) => void
@@ -661,6 +667,13 @@ export function HomeHistory(props: {
   const { grouped, now } = props
   const hide = props.settings.history.hideWords
   const found = searchDays(grouped, props.query, hide)
+  // 1 header wears the gold band: the day you are on, or Today while
+  // you are above the days.
+  const gold = goldDay(
+    props.place,
+    found.groups.map((g) => g.day),
+    dayKey(now)
+  )
 
   // Counts copies, so a second copy draws its check again, runs its own
   // full time, and is said again.
@@ -716,7 +729,7 @@ export function HomeHistory(props: {
           <section className="day" key={group.day} id={`day-${group.day}`} data-place={group.day}>
             <h3 className="day-h">
               <button
-                className={group.day === dayKey(now) ? 'day-head day-head-today' : 'day-head'}
+                className={group.day === gold ? 'day-head day-head-on' : 'day-head'}
                 aria-expanded={open}
                 aria-controls={open ? `day-rows-${group.day}` : undefined}
                 // A search holds its days open, so there is nothing to fold.
@@ -1031,6 +1044,9 @@ export function HomeView(props: {
   const rail = railDays(grouped, now)
   const waiting = useWaitingCount()
   const [goal, setGoal] = useState<{ place: string } | null>(null)
+  // The place you are on. The sidebar's line and a day's header both
+  // wear its gold, so it is followed here, above both.
+  const mark = useMarkedPlace()
 
   // After a rail click has opened its day: scroll there, and take the
   // keyboard along.
@@ -1048,6 +1064,8 @@ export function HomeView(props: {
   }, [goal])
 
   const go = (place: string): void => {
+    // Before anything moves: the mark waits out the scroll this starts.
+    mark.pick(place)
     if (place !== OVERVIEW && place !== WAITING) {
       // A day the search left out is still a day to go to.
       setQuery('')
@@ -1068,6 +1086,7 @@ export function HomeView(props: {
           waiting={waiting}
           days={rail.days}
           older={rail.older}
+          place={mark.place}
           onGo={go}
           onHide={() => {
             focusNext.current = 'show'
@@ -1184,9 +1203,14 @@ export function HomeView(props: {
             shown={events.length}
             query={query}
             picks={picks}
+            place={mark.place}
             now={now}
             settings={props.settings}
-            onPick={(day, open) => setPicks((prev) => ({ ...prev, [day]: open }))}
+            onPick={(day, open) => {
+              // The date you clicked is the date you are on: the gold goes to it.
+              mark.pick(day, false)
+              setPicks((prev) => ({ ...prev, [day]: open }))
+            }}
             onClearSearch={() => setQuery('')}
             onOpenHistory={props.onOpenHistory}
           />

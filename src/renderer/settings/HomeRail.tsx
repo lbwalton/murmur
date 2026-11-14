@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Home's rail (US-147), built from the Settings rail's parts: a search
 // across what you said, the page's zones, each day with its count, and
-// Hide words. It marks the day in view as the page scrolls.
-import { useEffect, useRef, useState } from 'react'
+// Hide words. Its gold line marks the place you are on (homeMark).
 import type { Settings } from '../../shared/settings'
 import { Switch } from './controls'
 import { HIDE_WORDS_LINE } from './HideWords'
 import { type RailDay, SEARCH_OFF } from './homeDays'
-import { onPageScroll, oncePageScrollEnds, pageScroller } from './scroller'
+import { OLDER, OVERVIEW, WAITING } from './homeMark'
 
 /** The sidebar glyph on the hide and show buttons. */
 export function SidebarIcon(): React.JSX.Element {
@@ -19,36 +18,11 @@ export function SidebarIcon(): React.JSX.Element {
   )
 }
 
-export const OVERVIEW = 'overview'
-export const WAITING = 'waiting'
-export const OLDER = 'older'
-
 /** Which rail item a place on the page lights: a named day lights its
  *  own line, any other day lights Older days. */
 export function railMark(place: string, days: readonly RailDay[]): string {
   if (place === OVERVIEW || place === WAITING) return place
   return days.some((d) => d.day === place) ? place : OLDER
-}
-
-/** How far under the top of the page's box a place must come to take
- *  the mark. A clicked day lands 16 px under the top (the box's 8 px
- *  of scroll padding and the day's own 8), and a folded day is about
- *  50 px tall, so the line sits between the day at the top and
- *  the next one: the gold is always on the day at the top (LaBroi,
- *  2026-11-12: at 84 px it ran a day or 2 ahead of folded days). */
-export const MARK_LINE = 28
-
-/** True while a clicked place keeps the mark. top is where the place
- *  sits, or null when it is not in view. It keeps it while the
- *  page rests where the click left it (moved is how far the page has
- *  scrolled since): the click chose that day. Once the page moves, it
- *  keeps it only while the page is at its end and the place sits short
- *  of the line (a day near the page's end cannot scroll up that far).
- *  Anywhere else, the day at the top leads. */
-export function holdsPick(top: number | null, line: number, atEnd: boolean, moved: number): boolean {
-  if (top === null) return false
-  if (Math.abs(moved) <= 2) return true
-  return top > line && atEnd
 }
 
 export function HomeRail(props: {
@@ -61,6 +35,8 @@ export function HomeRail(props: {
   waiting: number
   days: readonly RailDay[]
   older: { day: string; count: number } | null
+  /** The place you are on (homeMark): its line wears the gold. */
+  place: string
   /** Scrolls to a zone of the page, or opens a day and scrolls to it. */
   onGo: (place: string) => void
   onHide: () => void
@@ -69,82 +45,9 @@ export function HomeRail(props: {
   searchKeys: string
 }): React.JSX.Element {
   const hideWords = props.settings.history.hideWords
-  const [place, setPlace] = useState<string>(OVERVIEW)
-  // A click's smooth scroll passes other days; the mark waits on the pick.
-  const locked = useRef(false)
-  const lockTimer = useRef(0)
-  // The place last clicked. It keeps the mark while the page rests
-  // where the click left it, and at the page's end, where a day cannot
-  // scroll up to the line. Anywhere else, scrolling leads.
-  const picked = useRef<string | null>(null)
-  // Where the page rested when the last click's scroll settled.
-  const pickedAt = useRef(0)
-  const remeasure = useRef<() => void>(() => undefined)
+  const go = props.onGo
 
-  useEffect(() => {
-    let frame = 0
-    const measure = (): void => {
-      frame = 0
-      if (locked.current) return
-      const box = pageScroller()
-      // Measured from the box itself, so nothing above it can move the line.
-      const boxTop = box ? box.getBoundingClientRect().top : 0
-      const boxFoot = box ? box.getBoundingClientRect().bottom : window.innerHeight
-      const line = boxTop + MARK_LINE
-      let next = OVERVIEW
-      let pickedTop: number | null = null
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>('.home [data-place]'))) {
-        const top = el.getBoundingClientRect().top
-        if (top <= line) next = el.dataset.place ?? next
-        // Only a pick still in view can hold the mark.
-        if (el.dataset.place === picked.current && top >= boxTop - 4 && top < boxFoot) pickedTop = top
-      }
-      const atEnd = box !== null && box.scrollTop + box.clientHeight >= box.scrollHeight - 2
-      const moved = (box?.scrollTop ?? 0) - pickedAt.current
-      if (!holdsPick(pickedTop, line, atEnd, moved)) picked.current = null
-      setPlace(picked.current ?? next)
-    }
-    const onScroll = (): void => {
-      if (!frame) frame = window.requestAnimationFrame(measure)
-    }
-    remeasure.current = measure
-    measure()
-    const stop = onPageScroll(onScroll)
-    window.addEventListener('resize', onScroll)
-    // A day folding, a search or a new take moves the days without a
-    // scroll.
-    const home = document.querySelector('.home')
-    const grown = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onScroll)
-    if (home) grown?.observe(home)
-    return () => {
-      stop()
-      grown?.disconnect()
-      window.removeEventListener('resize', onScroll)
-      if (frame) window.cancelAnimationFrame(frame)
-      window.clearTimeout(lockTimer.current)
-    }
-  }, [])
-
-  const go = (target: string): void => {
-    locked.current = true
-    picked.current = target
-    setPlace(target)
-    let stop = (): void => undefined
-    const release = (): void => {
-      locked.current = false
-      window.clearTimeout(lockTimer.current)
-      stop()
-      pickedAt.current = pageScroller()?.scrollTop ?? 0
-      remeasure.current()
-    }
-    // An earlier click's timer must not unlock this one early.
-    window.clearTimeout(lockTimer.current)
-    stop = oncePageScrollEnds(release)
-    lockTimer.current = window.setTimeout(release, 1500)
-    props.onGo(target)
-  }
-
-  const mark = railMark(place, props.days)
+  const mark = railMark(props.place, props.days)
   const item = (id: string, label: string, onClick: () => void, extra?: React.ReactNode): React.JSX.Element => (
     <button
       key={id}

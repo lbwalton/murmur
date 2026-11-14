@@ -4712,17 +4712,44 @@ html[data-look] .history {
   border-radius: 14px;
 }
 
-/* Today's header carries the thread into the list. */
-html[data-look] .day-head-today {
+/* The header of the day you are on carries the thread into the list:
+   the same day the sidebar's gold line is on, and Today while you are
+   above the days (homeMark). The band is painted behind the header's
+   words and changes nothing about its box, so the gold can move from
+   date to date without a single pixel of the list moving (LaBroi,
+   2026-11-14). It sits 4 px inside the header's top and bottom and
+   reaches 8 px past the column on each side, into the card's padding. */
+html[data-look] .day-head-on {
   --text-dim: var(--text);
-  padding: 10px 12px;
-  margin: 4px 0;
-  background: linear-gradient(135deg, var(--tint-thread-from), var(--tint-thread-to));
+  position: relative;
+  /* Its own layer, so the band paints over the card and under the words. */
+  z-index: 0;
   border-top-color: transparent;
-  border-radius: 10px;
 }
 
-html[data-look] .day-head-today .day-chevron-open {
+html[data-look] .day-head-on::before {
+  content: '';
+  position: absolute;
+  /* The header's 1 px top line is outside this box: 3 here is 4 from its top. */
+  inset: 3px -8px 4px;
+  z-index: -1;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--tint-thread-from), var(--tint-thread-to));
+}
+
+/* The focus ring follows the band's shape, not the plain header's, and
+   it is cream: the amber ring every other control wears reads about 2
+   to 1 on the gold band, and cream reads about 6 to 1. */
+html[data-look] .home-layout .day-head-on:focus-visible {
+  outline: none;
+}
+
+html[data-look] .home-layout .day-head-on:focus-visible::before {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+html[data-look] .day-head-on .day-chevron-open {
   color: var(--text);
 }
 

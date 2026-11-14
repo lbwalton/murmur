@@ -77,8 +77,9 @@
   --text-dim-surface: #a3a09a;
   /* Gold by role. Time back, the 1 card that celebrates, gets the
      strong tint, 30% across a diagonal, and so does the sidebar line
-     you are on; today's header in your dictations gets a lighter strip
-     of the same gold. Text on gold is cream, never grey or gold. */
+     you are on; the header of that day in your dictations gets a
+     lighter strip of the same gold (Today's, above the days). Text on
+     gold is cream, never grey or gold. */
   --tint-strong-from: rgba(217, 164, 65, 0.39);
   --tint-strong-to: rgba(217, 164, 65, 0.21);
   --tint-thread-from: rgba(217, 164, 65, 0.3);

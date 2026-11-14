@@ -15,7 +15,7 @@ The window opens on Home. A sidebar on the left has a search box, the parts of t
 On Home, use the sidebar (added November 2026).
 
 - **Search.** Type in **Search dictations** at the top of the sidebar, or press Cmd+F (Ctrl+F on Windows). Every day is filtered as you type, the days with a match open, and a line says how many dictations match. A take matches when it holds every word you typed, in what landed or in what was heard. To clear it, click **Clear search** beside the count, or press Escape while you are in the search box. While **Hide words** is on, search is off: Cmd+F (Ctrl+F on Windows) takes you to the Hide words switch instead, and the line that says why lights up for a moment.
-- **Jump to a day.** The sidebar lists your 7 newest days that have dictations (today and yesterday by name), each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at.
+- **Jump to a day.** The sidebar lists your 7 newest days that have dictations (today and yesterday by name), each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at in gold, and that day's header in the list turns gold with it, so the gold follows you from date to date. Clicking a date's own header in the list moves the gold to it too. At the top of the page the gold header is Today's, once you have dictated today.
 - **Fold a day.** Each day has a header with its number of dictations and words. Click it (or press Enter or Space on it) to fold or open that day. Today and Yesterday start open, and older days start folded.
 - **Hide the sidebar.** Click the button beside the search box, or press Cmd+\\ (Ctrl+\\ on Windows). murmur remembers the choice. A **Show sidebar** button sits beside the Home title while it is hidden. In a narrow window the sidebar tucks itself away, and the same button brings it back. The window stops getting smaller at 480 by 400, the smallest size where every page still fits. Zoomed in, that smallest size grows by the same amount. While the sidebar is hidden, the Hide words switch sits beside the Home title, and a search you left on stays on until you clear it.
 
@@ -338,7 +338,7 @@ The color picker chooses the fill: vibrant orange (the default), your belt color
 
 ## Why can I see my desktop through murmur's window?
 
-That is murmur's look on a Mac since November 2026: the window is dark glass, and your desktop shows through it as blurred light and color. The cards, the sidebar, and the top bar are all the same darker glass. Gold marks what matters now: time back, the sidebar line you are on, and today's header in your dictations.
+That is murmur's look on a Mac since November 2026: the window is dark glass, and your desktop shows through it as blurred light and color. The cards, the sidebar, and the top bar are all the same darker glass. Gold marks what matters now: time back, the sidebar line you are on, and the header of that same day in your dictations.
 
 - **Is text still readable over a bright wallpaper or a white page?** Yes. Every piece of text keeps a contrast of at least 4.5 to 1, even with a white page behind the window. Grey and gold text always sit on a card, never on the bare glass.
 - **My Mac is set to its light look. Why is murmur dark?** murmur is always dark. It tells macOS so, which keeps its title bar and its glass dark whatever your system is set to.
