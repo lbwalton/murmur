@@ -7,7 +7,7 @@ import { app, safeStorage } from 'electron'
 import { ipc } from '../ipc'
 import { MAX_KEY_CHARS, MAX_URL_CHARS, boundedText } from '../ipc-rules'
 import bundledCatalog from '../../../shared/provider-catalog.json'
-import { validateCatalog } from '../../shared/catalog'
+import { modelListed, validateCatalog } from '../../shared/catalog'
 import { IpcChannels } from '../../shared/ipc'
 import type { Settings } from '../../shared/settings'
 import { appFetch } from '../net'
@@ -96,8 +96,12 @@ export function initSettings(): void {
     // profiles handlers; the generic channel must never carry it, or a
     // renderer could inject entries whose ids feed file paths.
     if (partial && typeof partial === 'object') {
-      const p = partial as { provider?: { profiles?: unknown } }
-      if (p.provider && typeof p.provider === 'object') delete p.provider.profiles
+      const p = partial as { provider?: { profiles?: unknown; activeProfile?: unknown } }
+      if (p.provider && typeof p.provider === 'object') {
+        delete p.provider.profiles
+        // Which profile is active is the profiles handlers' word too (US-154).
+        delete p.provider.activeProfile
+      }
     }
     return updateSettings(partial)
   })
@@ -171,11 +175,21 @@ export function initSettings(): void {
 
   // Connection test: a cheap authorized GET against the provider's model
   // list. Proves base URL and key together without spending audio.
-  const probeConnection = async (
-    baseUrl: string,
-    key: string | null
-  ): Promise<{ ok: boolean; detail: string }> => {
-    if (!key) return { ok: false, detail: 'no key saved yet' }
+  // With model ids, the same list says whether the provider offers each
+  // (US-154), so Test can name what answered and catch a typo'd model.
+  // listed and model describe the first; models carries every one asked.
+  type Probe = {
+    ok: boolean
+    detail: string
+    listed: boolean | null
+    model?: string
+    models?: Array<{ id: string; listed: boolean | null }>
+  }
+  const MAX_MODEL_LIST_BYTES = 16_000_000
+  const probeConnection = async (baseUrl: string, key: string | null, wanted: string[] = []): Promise<Probe> => {
+    const asked = wanted.map((m) => m.trim()).filter((m, i, all) => m !== '' && all.indexOf(m) === i)
+    const about = asked.length === 0 ? {} : { model: asked[0] }
+    if (!key) return { ok: false, detail: 'no key saved yet', listed: null, ...about }
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10_000)
     try {
@@ -186,28 +200,45 @@ export function initSettings(): void {
       if (response.status === 401 || response.status === 403) {
         // The real status matters: 403 can mean a blocked network or
         // account state, not a wrong key.
-        return { ok: false, detail: `key rejected (http ${response.status})` }
+        return { ok: false, detail: `key rejected (http ${response.status})`, listed: null, ...about }
       }
-      return response.ok
-        ? { ok: true, detail: 'connected' }
-        : { ok: false, detail: `http ${response.status}` }
+      if (!response.ok) return { ok: false, detail: `http ${response.status}`, listed: null, ...about }
+      if (asked.length === 0) return { ok: true, detail: 'connected', listed: null }
+      // A list too big to read says nothing either way.
+      const size = Number(response.headers.get('content-length') ?? 0)
+      const body = size > MAX_MODEL_LIST_BYTES ? '' : await response.text()
+      const models = asked.map((id) => ({ id, listed: body === '' ? null : modelListed(body, id) }))
+      return { ok: true, detail: 'connected', listed: models[0].listed, model: asked[0], models }
     } catch (error) {
       const aborted = error instanceof Error && error.name === 'AbortError'
-      if (aborted) return { ok: false, detail: 'timed out' }
+      if (aborted) return { ok: false, detail: 'timed out', listed: null, ...about }
       // The network's own reason (net::ERR_CERT_AUTHORITY_INVALID on an
       // inspecting work network) says more than network error alone.
-      return { ok: false, detail: error instanceof Error ? `network error (${error.message})` : 'network error' }
+      return {
+        ok: false,
+        detail: error instanceof Error ? `network error (${error.message})` : 'network error',
+        listed: null,
+        ...about
+      }
     } finally {
       clearTimeout(timer)
     }
   }
+  // The speech test also asks about the cleanup model while cleanup runs
+  // on speech, since that is the only Test that model has (US-154).
   ipc.handle('provider:test', async () => {
-    return probeConnection(settingsStore?.get().provider.baseUrl ?? '', getApiKey())
+    const current = settingsStore?.get()
+    const provider = current?.provider
+    const cleanupHere = current?.polish.enabled !== true
+    return probeConnection(provider?.baseUrl ?? '', getApiKey(), [
+      provider?.sttModel ?? '',
+      cleanupHere ? (provider?.llmModel ?? '') : ''
+    ])
   })
   ipc.handle('provider:testPolish', async () => {
     const polish = settingsStore?.get().polish
-    if (!polish?.baseUrl) return { ok: false, detail: 'no cleanup base URL set' }
-    return probeConnection(polish.baseUrl, getPolishApiKey())
+    if (!polish?.baseUrl) return { ok: false, detail: 'no cleanup base URL set', listed: null }
+    return probeConnection(polish.baseUrl, getPolishApiKey(), [polish.llmModel])
   })
 
   // Generic slot access for connections that are not the speech or
@@ -225,11 +256,11 @@ export function initSettings(): void {
     if (url !== null && url !== '' && !sharedSlotUrl(url)) ring?.clear(url)
     return keyStatusFor(baseUrl)
   })
-  ipc.handle('provider:testFor', async (_event, baseUrl: unknown) => {
+  ipc.handle('provider:testFor', async (_event, baseUrl: unknown, model: unknown) => {
     if (typeof baseUrl !== 'string' || baseUrl === '' || baseUrl.length > MAX_URL_CHARS) {
-      return { ok: false, detail: 'no base URL set' }
+      return { ok: false, detail: 'no base URL set', listed: null }
     }
-    return probeConnection(baseUrl, ring?.get(baseUrl) ?? null)
+    return probeConnection(baseUrl, ring?.get(baseUrl) ?? null, [boundedText(model, MAX_URL_CHARS) ?? ''])
   })
 
   function keyStatusFor(baseUrl: unknown): { present: boolean; masked: string | null } {

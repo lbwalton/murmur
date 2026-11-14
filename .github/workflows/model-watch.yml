@@ -1,0 +1,78 @@
+# Weekly check of the catalog's suggested models (US-158). murmur reads
+# each provider's model list live, so the only list we keep is the few
+# models we suggest. When a provider's public list drops one, or marks it
+# to retire, this opens 1 issue labeled model-watch; later runs update
+# it, and the first clean run closes it. Needs no secrets: lists that
+# need a key are skipped and named in the report.
+#
+# Runs Mondays 14:00 UTC and by hand from the Actions tab.
+name: model-watch
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/model-watch.yml
+      - scripts/model-watch.js
+      - scripts/lib/model-watch.js
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: model-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Check the suggested models
+        id: checks
+        run: |
+          set +e
+          node scripts/model-watch.js "$RUNNER_TEMP/models.md"
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then exit 2; fi
+          # 3: no list could be read (an outage), so leave the issue as it is.
+          echo "unread=$([ "$code" -eq 3 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "failed=$([ "$code" -eq 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Open, update or close the model-watch issue
+        if: github.event_name != 'pull_request' && steps.checks.outputs.unread != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          FAILED: ${{ steps.checks.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          report="$RUNNER_TEMP/models.md"
+          printf '\nRun: %s\n' "$RUN_URL" >> "$report"
+          gh label create model-watch --color FBCA04 \
+            --description "Opened by the weekly suggested-model check" 2>/dev/null || true
+          issue=$(gh issue list --label model-watch --state open --json number --jq '.[0].number // empty')
+          if [ "$FAILED" = "true" ]; then
+            if [ -n "$issue" ]; then
+              gh issue edit "$issue" --body-file "$report"
+              gh issue comment "$issue" --body "Still the case on $(date -u +%Y-%m-%d): $RUN_URL"
+            else
+              gh issue create --title "A suggested model is missing or retiring" --label model-watch \
+                --assignee "$OWNER" --body-file "$report"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Every suggested model is listed again: $RUN_URL"
+          fi

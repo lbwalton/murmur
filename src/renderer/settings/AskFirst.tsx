@@ -3,7 +3,34 @@
 // question names the count, keep them has focus (so Enter, Escape, or a
 // double click never deletes), and the button that deletes is red, the
 // one use of red beside recording and errors (LaBroi, 2026-10-08).
+// While it asks, the rest of its section dims (US-157, LaBroi's pick
+// 2026-11-09), so the eye goes straight to the question.
 import { useEffect, useRef } from 'react'
+
+/** Dims everything in the box's section except the box and the path to
+ *  it, and returns the undo. Dimmed parts stay usable; another open
+ *  question is never dimmed. The mark counts its boxes, so with 2 open,
+ *  closing 1 leaves what the other dimmed dim. */
+export function dimAround(box: HTMLElement): () => void {
+  const scope = box.closest('section') ?? box.parentElement
+  const dimmed: Element[] = []
+  let node: HTMLElement = box
+  while (node !== scope && node.parentElement) {
+    for (const sibling of Array.from(node.parentElement.children)) {
+      if (sibling === node || sibling.classList.contains('ask-first')) continue
+      sibling.setAttribute('data-ask-dim', String(Number(sibling.getAttribute('data-ask-dim') ?? 0) + 1))
+      dimmed.push(sibling)
+    }
+    node = node.parentElement
+  }
+  return () => {
+    for (const el of dimmed) {
+      const left = Number(el.getAttribute('data-ask-dim') ?? 1) - 1
+      if (left > 0) el.setAttribute('data-ask-dim', String(left))
+      else el.removeAttribute('data-ask-dim')
+    }
+  }
+}
 
 export function AskFirst(props: {
   /** The question's id; the button that opened it points here. */
@@ -18,11 +45,14 @@ export function AskFirst(props: {
   onKeep: () => void
 }): React.JSX.Element {
   const keepRef = useRef<HTMLButtonElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     keepRef.current?.focus()
+    return boxRef.current ? dimAround(boxRef.current) : undefined
   }, [])
   return (
     <div
+      ref={boxRef}
       className="ask-first"
       id={props.id}
       role="group"

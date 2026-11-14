@@ -27,6 +27,15 @@ export interface RingStatus {
 export interface ProviderTestResult {
   ok: boolean
   detail: string
+  /** Whether the provider's model list names the model being tested
+   *  (US-154): null when no model was asked about or the list could
+   *  not be read. */
+  listed?: boolean | null
+  /** The model id the test asked the provider about. */
+  model?: string
+  /** Every model the test asked about, in order: the speech test also
+   *  asks about the cleanup model while cleanup runs on speech. */
+  models?: Array<{ id: string; listed: boolean | null }>
 }
 
 export interface PermissionsStatus {
@@ -70,8 +79,23 @@ const api = {
   applyProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:apply', id)
   },
+  /** Save the setup running now over a profile, keeping its name (US-154). */
+  resaveProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
+    return ipcRenderer.invoke('profiles:resave', id)
+  },
   deleteProviderProfile: (id: string): Promise<import('../main/profiles').ProfileResult> => {
     return ipcRenderer.invoke('profiles:delete', id)
+  },
+  /** Every text model a connection's provider offers, read by main with
+   *  the saved key and kept for a day (US-158). */
+  listModels: (slot: 'cleanup' | 'sort' | 'transform'): Promise<import('../shared/catalog').ModelListResult> => {
+    return ipcRenderer.invoke('provider:models', slot)
+  },
+  /** Opens a catalog provider's own models page in the browser (US-158). */
+  openModelsPage: (providerId: string): Promise<boolean> => ipcRenderer.invoke('provider:openModelsPage', providerId),
+  /** A new name for a profile; nothing else about it changes (US-157). */
+  renameProviderProfile: (id: string, name: string): Promise<import('../main/profiles').ProfileResult> => {
+    return ipcRenderer.invoke('profiles:rename', { id, name })
   },
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   /** The inputs murmur's capture window sees, by name, and the one in use (US-110). */
@@ -105,8 +129,8 @@ const api = {
   },
   getKeyStatusFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:statusFor', baseUrl),
   clearKeyFor: (baseUrl: string): Promise<KeyStatus> => ipcRenderer.invoke('apikey:clearFor', baseUrl),
-  testConnectionFor: (baseUrl: string): Promise<ProviderTestResult> => {
-    return ipcRenderer.invoke('provider:testFor', baseUrl)
+  testConnectionFor: (baseUrl: string, model?: string): Promise<ProviderTestResult> => {
+    return ipcRenderer.invoke('provider:testFor', baseUrl, model)
   },
   testDecisionFor: (baseUrl: string): Promise<ProviderTestResult> => {
     return ipcRenderer.invoke('provider:testDecideFor', baseUrl)
@@ -210,6 +234,20 @@ const api = {
   },
   saveShareCard: (pngDataUrl: string, kind: 'belt' | 'day' | 'week' = 'belt', day?: string): Promise<boolean> => {
     return ipcRenderer.invoke('sharecard:save', pngDataUrl, kind, day)
+  },
+  /** Settings changed from outside this window, such as Hide words in the
+   *  tray menu (US-148): the window takes the new settings as they are. */
+  onSettingsPushed: (cb: (settings: Settings) => void): (() => void) => {
+    const handler = (_e: unknown, settings: Settings): void => cb(settings)
+    ipcRenderer.on('settings:pushed', handler)
+    return () => ipcRenderer.removeListener('settings:pushed', handler)
+  },
+  /** The window's look (US-150): glass over the desktop, or solid. */
+  getLook: (): Promise<'glass' | 'solid'> => ipcRenderer.invoke('look:get'),
+  onLookChanged: (cb: (look: 'glass' | 'solid') => void): (() => void) => {
+    const handler = (_e: unknown, look: 'glass' | 'solid'): void => cb(look)
+    ipcRenderer.on('look:changed', handler)
+    return () => ipcRenderer.removeListener('look:changed', handler)
   },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)

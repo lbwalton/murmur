@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The home view: takes waiting to retry, today's time back, then your
-// transcription log, grouped by day, newest first, updating live as
-// dictations land.
+// The home view (US-147): a rail beside the page, then takes waiting to
+// retry, today's time back beside the last note, and your dictations
+// under their own heading, a day at a time, newest first, updating live
+// as dictations land.
 import { useEffect, useRef, useState } from 'react'
 import changelogRaw from '../../../CHANGELOG.md?raw'
 import { type AnalyticsSummary, TYPICAL_MIN_DAYS, typicalShare } from '../../shared/analytics'
@@ -25,12 +26,30 @@ import { type ProFacts, shouldOfferPro, thanksDue } from '../../shared/proMark'
 import type { SettingsApi } from '../../preload/settings'
 import type { WaitingTake } from '../../main/transcribe/recovery'
 import type { Settings } from '../../shared/settings'
-import { PageTitle, useToday } from './PageTitle'
+import { useToday } from './PageTitle'
 import { DayStroke } from './DayStroke'
 import { EmptyState } from './EmptyState'
 import { AskFirst } from './AskFirst'
 import { Switch } from './controls'
-import { HideWordsRow, TakeWords } from './HideWords'
+import { TakeWords } from './HideWords'
+import { HomeRail, SidebarIcon } from './HomeRail'
+import { OVERVIEW, WAITING, goldDay, useMarkedPlace } from './homeMark'
+import { LAND_RING_MS, LandRing } from './LandRing'
+import { COPIED_MS, CopyCheck, CopyIcon, FlagIcon, SaidIcon } from './RowIcons'
+import {
+  HOME_TAKES,
+  dayCount,
+  dayTitle,
+  isOpen,
+  railDays,
+  railHidden,
+  railIsHidden,
+  railKey,
+  rememberRailHidden,
+  searchDays,
+  searchLine,
+  showingLine
+} from './homeDays'
 import { ProMark } from './ProMark'
 import { ReportTake } from './ReportPanel'
 
@@ -51,38 +70,36 @@ function WhatsNew(props: {
   if (!section) return null
   const unseen = props.settings.whatsNewSeenVersion !== version
 
+  // 1 line beside the title; the notes open under it (US-147).
   return (
-    <section className="panel whats-new">
+    <>
       <button
-        className="whats-new-head"
+        className="whats-new-line"
+        aria-expanded={open}
+        aria-controls={open ? 'whats-new-body' : undefined}
         onClick={() => {
           setOpen((o) => !o)
           if (unseen) void props.onUpdateSettings({ whatsNewSeenVersion: version })
         }}
       >
-        <span className="micro-label">
-          what&apos;s new in {version}
-          {unseen && <span className="whats-new-dot" aria-label="unread" />}
-        </span>
-        <span className="dim">{open ? 'hide' : 'show'}</span>
+        {unseen && <span className="whats-new-dot" aria-hidden="true" />}
+        What&apos;s new in {version}
+        {unseen && <span className="visually-hidden">, unread</span>}
       </button>
-      {open && <pre className="whats-new-body">{section}</pre>}
-    </section>
+      {open && (
+        <pre className="whats-new-body" id="whats-new-body">
+          {section}
+        </pre>
+      )}
+    </>
   )
 }
 
-function timeOf(at: number): string {
-  return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
+// Made once: a formatter per row was a third of the cost of drawing a long day.
+const TIME = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' })
 
-function dayLabel(day: string): string {
-  const [y, m, d] = day.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const today = new Date()
-  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
-  if (date.toDateString() === today.toDateString()) return 'today'
-  if (date.toDateString() === yesterday.toDateString()) return 'yesterday'
-  return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+function timeOf(at: number): string {
+  return TIME.format(new Date(at))
 }
 
 /** Why a take is waiting, in plain words (US-068). */
@@ -164,6 +181,16 @@ export function keepLine(retentionDays: number): string {
   }
   if (retentionDays === KEEP_FOREVER) return `Entries stay until you clear them. ${here}`
   return `Older entries are removed automatically, with their numbers. ${here}`
+}
+
+/** Home's 1-line summary of Keep history (US-148), beside the link to
+ *  Settings, History. */
+export function keptLine(retentionDays: number): string {
+  if (retentionDays === KEEP_NO_TEXT) return 'Words are not kept on this computer.'
+  if (retentionDays === KEEP_24_HOURS) return 'Words are kept 24 hours on this computer.'
+  if (retentionDays === KEEP_FOREVER) return 'Kept on this computer until you clear it.'
+  if (retentionDays === 365) return 'Kept a year on this computer.'
+  return `Kept ${retentionDays} days on this computer.`
 }
 
 function whenOf(at: number): string {
@@ -262,7 +289,7 @@ export function clearAllQuestion(count: number): string {
 }
 
 /** Two clicks closer together than this are one double click. */
-const DOUBLE_CLICK_MS = 500
+export const DOUBLE_CLICK_MS = 500
 
 /** What Discard all asks before it deletes (US-096). */
 export function discardAllQuestion(count: number): string {
@@ -539,9 +566,12 @@ function WaitingTakes(props: {
   const platform = navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32'
 
   return (
-    <section className="panel waiting">
+    <section className="panel waiting waiting-strip" id="home-waiting" data-place={WAITING} tabIndex={-1} aria-label="Waiting to retry">
       <div className="waiting-head">
-        <p className="micro-label">waiting to retry</p>
+        <p className="micro-label">
+          waiting to retry
+          <span className="rail-dot" aria-hidden="true" />
+        </p>
         {takes.length > 1 && (
           <span className="waiting-actions">
             <button className="btn quiet-btn" disabled={busy !== null} onClick={() => void retry(takes.map((t) => t.id))}>
@@ -613,6 +643,255 @@ function WaitingTakes(props: {
   )
 }
 
+/** Your dictations (US-147): the heading with what is kept, then a day
+ *  at a time. A folded day draws no rows; a search keeps the days with a
+ *  match, opens them, and says how many matched. While Hide words is on
+ *  the search is off, whatever was typed. */
+export function HomeHistory(props: {
+  grouped: ReadonlyArray<{ day: string; events: SessionEvent[] }>
+  /** How many takes Home holds, for the heading. */
+  shown: number
+  query: string
+  picks: Readonly<Record<string, boolean>>
+  /** The place you are on (homeMark): that day's header wears the gold. */
+  place: string
+  now: number
+  settings: Settings
+  onPick: (day: string, open: boolean) => void
+  onClearSearch: () => void
+  onOpenHistory: () => void
+}): React.JSX.Element {
+  const [copiedAt, setCopiedAt] = useState<number | null>(null)
+  const [openSaid, setOpenSaid] = useState<number | null>(null)
+  const [openReport, setOpenReport] = useState<number | null>(null)
+  const { grouped, now } = props
+  const hide = props.settings.history.hideWords
+  const found = searchDays(grouped, props.query, hide)
+  // 1 header wears the gold band: the day you are on, or Today while
+  // you are above the days.
+  const gold = goldDay(
+    props.place,
+    found.groups.map((g) => g.day),
+    dayKey(now)
+  )
+
+  // Counts copies, so a second copy draws its check again, runs its own
+  // full time, and is said again.
+  const [copyRun, setCopyRun] = useState(0)
+  const copyTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(copyTimer.current), [])
+
+  const copy = async (event: SessionEvent): Promise<void> => {
+    await bridge().copyText(event.finalText)
+    setCopiedAt(event.at)
+    setCopyRun((n) => n + 1)
+    window.clearTimeout(copyTimer.current)
+    copyTimer.current = window.setTimeout(() => setCopiedAt(null), COPIED_MS)
+  }
+
+  return (
+    <section className="history" aria-labelledby="home-history-title">
+      <div className="history-head">
+        {/* A gold label, like every other card on Home (LaBroi, 2026-11-12). */}
+        <h2 id="home-history-title" className="micro-label">
+          your dictations
+        </h2>
+        {/* Keep history, Encrypt saved words, and Clear all live in
+            Settings, History (US-148); Home says the rule and links there. */}
+        <p className="dim history-kept">
+          {showingLine(props.shown)} {keptLine(props.settings.history.retentionDays)}{' '}
+          <button className="link-btn" onClick={props.onOpenHistory}>
+            History settings
+          </button>
+        </p>
+      </div>
+      {/* Copy answers with a check; a screen reader hears it here. The
+          text differs by a space on every other copy, so a second copy
+          is a change and is said too. */}
+      <p className="visually-hidden" role="status">
+        {copiedAt !== null ? (copyRun % 2 === 0 ? 'copied' : 'copied\u00a0') : ''}
+      </p>
+      {/* Always mounted, so screen readers hear the count change. The
+          way out of a search is here too: the rail, and its search box,
+          may be hidden while a search is still on. */}
+      <div className={found.searching ? 'history-found' : 'visually-hidden'}>
+        <p role="status">{found.searching ? searchLine(found.matches) : ''}</p>
+        {found.searching && (
+          <button className="link-btn" onClick={props.onClearSearch}>
+            Clear search
+          </button>
+        )}
+      </div>
+      {found.groups.map((group) => {
+        const open = found.searching || isOpen(group.day, props.picks, now)
+        const total = grouped.find((g) => g.day === group.day)?.events.length ?? group.events.length
+        return (
+          <section className="day" key={group.day} id={`day-${group.day}`} data-place={group.day}>
+            <h3 className="day-h">
+              <button
+                className={group.day === gold ? 'day-head day-head-on' : 'day-head'}
+                aria-expanded={open}
+                aria-controls={open ? `day-rows-${group.day}` : undefined}
+                // A search holds its days open, so there is nothing to fold.
+                disabled={found.searching}
+                onClick={() => props.onPick(group.day, !open)}
+              >
+                <svg className={`day-chevron ${open ? 'day-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.5 3l3 3-3 3" />
+                </svg>
+                <span className="day-name">{dayTitle(group.day, now)}</span>
+                <span className="day-count">
+                  {found.searching ? `${group.events.length.toLocaleString()} of ${total.toLocaleString()} match` : dayCount(group.events)}
+                </span>
+              </button>
+            </h3>
+            {/* A folded day draws no rows, so a long history stays fast. */}
+            {open && (
+              <div className="log-list" id={`day-rows-${group.day}`}>
+                {group.events.map((event) => (
+                  <div className="log-entry" key={event.at}>
+                    <div className="log-meta">
+                      <span className="mono-inline dim">{timeOf(event.at)}</span>
+                      {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
+                      {event.kind === 'transform' && (
+                        <span className="mono-inline note-tag">{event.unsent ? 'transform · not sent' : 'transform'}</span>
+                      )}
+                      {event.kind !== 'transform' && (
+                        <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
+                      )}
+                      {event.retried && <span className="mono-inline dim">retried</span>}
+                      {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
+                        <span className="mono-inline dim">until you quit</span>
+                      )}
+                      {/* Icons with no box (US-166). Each says its name beside
+                          the pair the moment it is pointed at or focused.
+                          The name takes room the row has left over, and is
+                          cut short before it would push anything. */}
+                      {(offersWhatYouSaid(event) || (event.kind !== 'transform' && hasText(event))) && (
+                        <>
+                          <span className="row-acts">
+                            {offersWhatYouSaid(event) && (
+                              <button
+                                className="row-icon row-icon-said log-said-toggle"
+                                aria-label="what you said"
+                                aria-expanded={openSaid === event.at}
+                                aria-controls={`said-${event.at}`}
+                                onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
+                              >
+                                <SaidIcon />
+                              </button>
+                            )}
+                            {event.kind !== 'transform' && hasText(event) && (
+                              <button
+                                className="row-icon row-icon-report log-said-toggle"
+                                aria-label="report"
+                                aria-expanded={openReport === event.at}
+                                aria-controls={`report-${event.at}`}
+                                onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
+                              >
+                                <FlagIcon />
+                              </button>
+                            )}
+                          </span>
+                          <span className="row-name" aria-hidden="true">
+                            <span className="row-says row-says-said">what you said</span>
+                            <span className="row-says row-says-report">report</span>
+                          </span>
+                        </>
+                      )}
+                      {hasText(event) && (
+                        <span className="row-acts row-acts-end">
+                          <span
+                            className={`row-says row-says-copy ${copiedAt === event.at ? 'row-says-on' : ''}`}
+                            aria-hidden="true"
+                          >
+                            {copiedAt === event.at ? 'copied' : 'copy'}
+                          </span>
+                          <button className="row-icon row-icon-copy log-copy" aria-label="copy" onClick={() => void copy(event)}>
+                            {copiedAt === event.at ? <CopyCheck key={copyRun} /> : <CopyIcon />}
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
+                    {openReport === event.at && (
+                      <ReportTake
+                        id={`report-${event.at}`}
+                        event={event}
+                        settings={props.settings}
+                        hide={hide}
+                        onClose={() => setOpenReport(null)}
+                      />
+                    )}
+                    <LogWords event={event} hide={hide} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )
+      })}
+    </section>
+  )
+}
+
+const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac')
+const MOD = IS_MAC ? 'Cmd' : 'Ctrl'
+
+function storage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+/** Focus for the rail as it appears: its search, or while Hide words has
+ *  the search off, the button beside it, so the keyboard is never dropped. */
+function focusRail(search: HTMLInputElement | null, find = false): void {
+  if (search && !search.disabled) search.focus()
+  else if (find) {
+    // Search is off while Hide words is on. Asking for it goes to the
+    // switch that turns it back on, and lights the line that says why.
+    document.querySelector<HTMLElement>('#home-hide-words .switch')?.focus()
+    const why = document.getElementById('home-search-off')
+    if (why) {
+      why.classList.remove('rail-nudge')
+      void why.offsetWidth
+      why.classList.add('rail-nudge')
+    }
+  } else document.querySelector<HTMLElement>('.home-rail [aria-label="Hide sidebar"]')?.focus()
+}
+
+/** True while the window is too narrow for the rail beside the page. */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
+  useEffect(() => {
+    const query = window.matchMedia(NARROW)
+    const onChange = (): void => setNarrow(query.matches)
+    onChange()
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+  return narrow
+}
+const NARROW = '(max-width: 720px)'
+
+/** How many takes wait to retry, for the rail's line. */
+function useWaitingCount(): number {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    const load = (): void => {
+      void bridge()
+        .listWaitingTakes()
+        .then((takes) => setCount(takes.length))
+    }
+    load()
+    return bridge().onWaitingTakesChanged(load)
+  }, [])
+  return count
+}
+
 export function HomeView(props: {
   settings: Settings
   onUpdateSettings: (partial: Partial<Settings>) => Promise<void>
@@ -621,6 +900,8 @@ export function HomeView(props: {
   onUpdatePro: (patch: Partial<Settings['pro']>) => Promise<void>
   /** Opens the Pro section in settings. */
   onSeePro: () => void
+  /** Opens Settings at History, where Keep history and Clear all live. */
+  onOpenHistory: () => void
   /** False when the saved paste-last chord is disarmed (main's hotkey
    *  status), so Home never names a chord that does nothing. */
   pasteArmed: boolean
@@ -629,83 +910,7 @@ export function HomeView(props: {
   // The empty state waits for the list, so a full history never flashes
   // the first-run invitation while it loads.
   const [loaded, setLoaded] = useState(false)
-  const [copiedAt, setCopiedAt] = useState<number | null>(null)
-  const [openSaid, setOpenSaid] = useState<number | null>(null)
-  const [openReport, setOpenReport] = useState<number | null>(null)
-  const [keepAsk, setKeepAsk] = useState<{ value: number; question: string } | null>(null)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
-  // Clear all asks first (US-099): the whole log's count while the
-  // question is open, null while it is closed.
-  const [clearAsk, setClearAsk] = useState<number | null>(null)
-  const [clearing, setClearing] = useState(false)
-  const [cleared, setCleared] = useState<string | null>(null)
-  const clearRef = useRef<HTMLButtonElement>(null)
-  const clearedRef = useRef<HTMLParagraphElement>(null)
-  // While the count is on its way, and when the question opened: a
-  // second click of a double click never closes it again.
-  const counting = useRef(false)
-  const askedAt = useRef(0)
-  useEffect(() => {
-    if (cleared) clearedRef.current?.focus()
-  }, [cleared])
-  const applyKeep = (retentionDays: number): void => {
-    setKeepAsk(null)
-    void props
-      .onUpdateSettings({ history: { retentionDays } } as Partial<Settings>)
-      .then(async () => setEvents(await bridge().listHistory()))
-  }
-  const chooseKeep = async (retentionDays: number): Promise<void> => {
-    setKeepAsk(null)
-    // Asked on every change: going from Don't keep to 30 days is longer
-    // for words, and still removes old entries with their numbers.
-    const { takes, recordings } = await bridge().getKeepImpact(retentionDays)
-    const question = shorterKeepQuestion(retentionDays, takes, recordings)
-    if (question === '') applyKeep(retentionDays)
-    else setKeepAsk({ value: retentionDays, question })
-  }
-  const askClear = (): void => {
-    if (counting.current) return
-    if (clearAsk !== null) {
-      if (performance.now() - askedAt.current >= DOUBLE_CLICK_MS) setClearAsk(null)
-      return
-    }
-    setCleared(null)
-    counting.current = true
-    void bridge()
-      .countHistory()
-      .then(async (count) => {
-        if (count > 0) {
-          askedAt.current = performance.now()
-          setClearAsk(count)
-          return
-        }
-        // Retention already emptied it: show that instead of asking.
-        setEvents(await bridge().listHistory())
-      })
-      .catch((error: unknown) => console.error('[murmur] could not count history:', error))
-      .finally(() => {
-        counting.current = false
-      })
-  }
-  const keepHistory = (): void => {
-    setClearAsk(null)
-    clearRef.current?.focus()
-  }
-  const clearAll = async (): Promise<void> => {
-    setClearing(true)
-    try {
-      const removed = await bridge().clearHistory()
-      setEvents([])
-      window.dispatchEvent(new Event(HISTORY_CLEARED))
-      setCleared(removed === 1 ? 'Cleared 1 entry.' : `Cleared ${removed.toLocaleString()} entries.`)
-    } catch (error) {
-      console.error('[murmur] clear all failed:', error)
-      setCleared('Could not clear your history. Try again in a moment.')
-    } finally {
-      setClearing(false)
-      setClearAsk(null)
-    }
-  }
   const typingWpm = props.settings.timeBack.typingWpm
   const today = useToday()
 
@@ -733,26 +938,19 @@ export function HomeView(props: {
     void bridge()
       .listHistory()
       .then((list) => {
-        setEvents(list)
+        setEvents(list.slice(-HOME_TAKES))
         setLoaded(true)
       })
     // Unsubscribe on unmount, and cap live growth to match the list
     // handler so a long-running hidden window never accumulates state.
     return bridge().onHistoryAppended((event) => {
-      setEvents((prev) => [...prev, event].slice(-500))
-      // Clear all clears what lands while it asks too, so it counts it.
-      setClearAsk((count) => (count === null ? count : count + 1))
-      setCleared(null)
+      setEvents((prev) => [...prev, event].slice(-HOME_TAKES))
     })
   }, [])
 
-  useEffect(() => bridge().onHistoryChanged(() => void bridge().listHistory().then(setEvents)), [])
-
-  const [sealStatus, setSealStatus] = useState<SealStatus | null>(null)
-  const encrypt = props.settings.history.encrypt
   useEffect(() => {
-    void bridge().getHistorySealStatus().then(setSealStatus)
-  }, [encrypt, cleared, props.settings.history.retentionDays])
+    return bridge().onHistoryChanged(() => void bridge().listHistory().then((list) => setEvents(list.slice(-HOME_TAKES))))
+  }, [])
 
   // Time back is computed in main from the whole log at the typing
   // speed in settings, so a speed edit restates the card at once.
@@ -766,13 +964,8 @@ export function HomeView(props: {
     // back today and the typical day never belong to yesterday.
   }, [typingWpm, today])
 
-  const copy = async (event: SessionEvent): Promise<void> => {
-    await bridge().copyText(event.finalText)
-    setCopiedAt(event.at)
-    setTimeout(() => setCopiedAt((c) => (c === event.at ? null : c)), 1500)
-  }
-
   const hide = props.settings.history.hideWords
+  const now = Date.now()
   const grouped = groupByDay(events)
   // The how-to teaches the first few dictations, then gets out of the
   // way for good (US-086): once five exist it is remembered, so a Clear
@@ -782,215 +975,247 @@ export function HomeView(props: {
   if (dictated >= 5) rememberHowToDone()
   const showHowTo = grouped.length > 0 && dictated < 5 && !howToDone()
 
+  // The rail (US-147): hidden by choice and remembered, or tucked away
+  // while the window is too narrow for 2 columns.
+  const narrow = useNarrow()
+  const [remembered, setRemembered] = useState(() => railHidden(storage()))
+  const [narrowOpen, setNarrowOpen] = useState(false)
+  const hidden = railIsHidden(narrow, narrowOpen, remembered)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const showRef = useRef<HTMLButtonElement>(null)
+  // Where focus goes once the rail has been drawn or taken away.
+  const focusNext = useRef<'search' | 'find' | 'show' | null>(null)
+  // Hiding the sidebar by hand moves Hide words beside the title; a
+  // brush loop is drawn around it there for a moment, so the eye finds it.
+  const [landing, setLanding] = useState(0)
+  useEffect(() => {
+    if (!landing) return undefined
+    const timer = window.setTimeout(() => setLanding(0), LAND_RING_MS)
+    return () => window.clearTimeout(timer)
+  }, [landing])
+  const setHidden = (next: boolean): void => {
+    setLanding(next ? Date.now() : 0)
+    if (narrow) setNarrowOpen(!next)
+    else {
+      setRemembered(next)
+      rememberRailHidden(storage(), next)
+    }
+  }
+  const hiddenRef = useRef(hidden)
+  hiddenRef.current = hidden
+  const setHiddenRef = useRef(setHidden)
+  setHiddenRef.current = setHidden
+  useEffect(() => {
+    if (focusNext.current === 'search' && !hidden) focusRail(searchRef.current)
+    if (focusNext.current === 'find' && !hidden) focusRail(searchRef.current, true)
+    if (focusNext.current === 'show' && hidden) showRef.current?.focus()
+    focusNext.current = null
+  }, [hidden])
+
+  // Cmd+\ hides and shows the rail, and Cmd+F goes to its search (Ctrl
+  // on Windows). A dialog over the page keeps the keyboard to itself.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const asked = railKey(e, IS_MAC)
+      if (!asked || document.querySelector('[role="dialog"], dialog[open]')) return
+      e.preventDefault()
+      if (asked === 'toggle') {
+        // Focus follows: to the rail as it appears, to Show sidebar as it goes.
+        focusNext.current = hiddenRef.current ? 'search' : 'show'
+        setHiddenRef.current(!hiddenRef.current)
+      } else if (hiddenRef.current) {
+        focusNext.current = 'find'
+        setHiddenRef.current(false)
+      } else focusRail(searchRef.current, true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Search and folding. A day the person opened or folded stays that
+  // way; a search opens every day it keeps.
+  const [query, setQuery] = useState('')
+  // Hide words drops what was typed, so turning it off again never
+  // brings back a search nobody can see.
+  useEffect(() => {
+    if (hide) setQuery('')
+  }, [hide])
+  const [picks, setPicks] = useState<Record<string, boolean>>({})
+  const rail = railDays(grouped, now)
+  const waiting = useWaitingCount()
+  const [goal, setGoal] = useState<{ place: string } | null>(null)
+  // The place you are on. The sidebar's line and a day's header both
+  // wear its gold, so it is followed here, above both.
+  const mark = useMarkedPlace()
+
+  // After a rail click has opened its day: scroll there, and take the
+  // keyboard along.
+  useEffect(() => {
+    if (!goal) return
+    const id = goal.place === OVERVIEW ? 'home-overview' : goal.place === WAITING ? 'home-waiting' : `day-${goal.place}`
+    const el = document.getElementById(id)
+    if (el) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+      const focus = el.querySelector<HTMLElement>('.day-head, h1') ?? el
+      focus.focus({ preventScroll: true })
+    }
+    setGoal(null)
+  }, [goal])
+
+  const go = (place: string): void => {
+    // Before anything moves: the mark waits out the scroll this starts.
+    mark.pick(place)
+    if (place !== OVERVIEW && place !== WAITING) {
+      // A day the search left out is still a day to go to.
+      setQuery('')
+      setPicks((prev) => ({ ...prev, [place]: true }))
+    }
+    setGoal({ place })
+  }
+
   return (
-    <div className="home">
-      <PageTitle title="Today" sub={today} />
-      {showHowTo && (
-        <section className="panel howto">
-          <p className="dim">
-            Hold <span className="kbd">{props.settings.hotkey.binding}</span>, speak, release. Text lands at your
-            cursor.
-          </p>
-        </section>
+    <div className={`home-layout ${hidden ? 'home-rail-off' : ''}`}>
+      {!hidden && (
+        <HomeRail
+          settings={props.settings}
+          onUpdate={props.onUpdateSettings}
+          query={query}
+          onQuery={setQuery}
+          searchRef={searchRef}
+          waiting={waiting}
+          days={rail.days}
+          older={rail.older}
+          place={mark.place}
+          onGo={go}
+          onHide={() => {
+            focusNext.current = 'show'
+            setHidden(true)
+          }}
+          hideKeys={`${MOD}+\\`}
+          searchKeys={`${MOD}+F`}
+        />
       )}
-      {thanks && (
-        <p className="pro-thanks">
-          <ProMark state="filled" />
-          <span>Thank you for keeping murmur free for everyone. Your Pro extras are on in settings.</span>
-        </p>
-      )}
-      <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
-      <WaitingTakes retentionDays={props.settings.history.retentionDays} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
-      {events.some(countsTowardStats) && summary && (
-        <section className="panel">
-          <p className="micro-label">back today</p>
-          <div
-            className="timeback-value"
-            title={`Typing at ${typingWpm} wpm, minus the time you spent speaking`}
-          >
-            {formatMinutesBack(summary.today.minutesBack)}
-          </div>
-          {summary.typicalBack !== null && (
-            <DayStroke share={typicalShare(summary.today.minutesBack, summary.typicalBack)} day={dayKey(Date.now())} />
+      <div className="home">
+        <div className="home-head" id="home-overview" data-place={OVERVIEW}>
+          {hidden && (
+            <button
+              ref={showRef}
+              className="icon-btn icon-btn-edge"
+              aria-label="Show sidebar"
+              title={`Show sidebar (${MOD}+\\)`}
+              onClick={() => {
+                focusNext.current = 'search'
+                setHidden(false)
+              }}
+            >
+              <SidebarIcon />
+            </button>
           )}
-          <p className="timeback-typical">
-            {summary.typicalBack === null
-              ? `Today is measured against your typical day once you have ${TYPICAL_MIN_DAYS} days of dictation in the last four weeks, not counting today.`
-              : summary.typicalBack > 0
-                ? typicalLine(typicalShare(summary.today.minutesBack, summary.typicalBack), summary.typicalBack)
-                : 'Your typical day has no time back yet, so today stands on its own.'}
-          </p>
-          <p className="timeback-spans">
-            {formatMinutesBack(summary.month.minutesBack)} this month ·{' '}
-            {formatMinutesBack(summary.lifetime.minutesBack)} lifetime
-          </p>
-          {offerPro && (
-            <p className="pro-offer-line">
-              murmur has given you back {formatMinutesBack(summary.lifetime.minutesBack)} so far. Pro is how it stays
-              free for everyone.{' '}
-              <button
-                className="link-btn"
-                onClick={() => {
-                  void props.onUpdatePro({ offerDone: true })
-                  props.onSeePro()
-                }}
-              >
-                See Pro
-              </button>{' '}
-              ·{' '}
-              <button className="link-btn" onClick={() => void props.onUpdatePro({ offerDone: true })}>
-                No thanks
-              </button>
-            </p>
-          )}
-        </section>
-      )}
-      <LastNoteRow hide={hide} />
-      {loaded && (
-        <section className="panel">
-          <HideWordsRow settings={props.settings} anchor="home-hide-words" onUpdate={props.onUpdateSettings} />
-        </section>
-      )}
-      {loaded && grouped.length === 0 && (
-        <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
-      )}
-
-      {grouped.map((group) => (
-        <section className="panel" key={group.day}>
-          <p className="micro-label">{dayLabel(group.day)}</p>
-          <div className="log-list">
-            {group.events.map((event) => (
-              <div className="log-entry" key={event.at}>
-                <div className="log-meta">
-                  <span className="mono-inline dim">{timeOf(event.at)}</span>
-                  {event.kind === 'note' && <span className="mono-inline note-tag">note</span>}
-                  {event.kind === 'transform' && (
-                    <span className="mono-inline note-tag">{event.unsent ? 'transform · not sent' : 'transform'}</span>
-                  )}
-                  {event.kind !== 'transform' && (
-                    <span className="mono-inline dim">{event.words}w · {event.wpm}wpm</span>
-                  )}
-                  {event.retried && <span className="mono-inline dim">retried</span>}
-                  {props.settings.history.retentionDays === KEEP_NO_TEXT && hasText(event) && (
-                    <span className="mono-inline dim">until you quit</span>
-                  )}
-                  {offersWhatYouSaid(event) && (
-                    <button
-                      className="btn quiet-btn log-said-toggle"
-                      aria-expanded={openSaid === event.at}
-                      aria-controls={`said-${event.at}`}
-                      onClick={() => setOpenSaid(openSaid === event.at ? null : event.at)}
-                    >
-                      what you said
-                    </button>
-                  )}
-                  {event.kind !== 'transform' && hasText(event) && (
-                    <button
-                      className="btn quiet-btn log-said-toggle"
-                      aria-expanded={openReport === event.at}
-                      aria-controls={`report-${event.at}`}
-                      onClick={() => setOpenReport(openReport === event.at ? null : event.at)}
-                    >
-                      report
-                    </button>
-                  )}
-                  {hasText(event) && (
-                    <button className="btn quiet-btn log-copy" onClick={() => void copy(event)}>
-                      {copiedAt === event.at ? 'copied' : 'copy'}
-                    </button>
-                  )}
-                </div>
-                {openSaid === event.at && <WhatYouSaid id={`said-${event.at}`} event={event} hide={hide} />}
-                {openReport === event.at && (
-                  <ReportTake
-                    id={`report-${event.at}`}
-                    event={event}
-                    settings={props.settings}
-                    hide={hide}
-                    onClose={() => setOpenReport(null)}
-                  />
-                )}
-                <LogWords event={event} hide={hide} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
-
-      {(events.length > 0 || cleared) && (
-        <section className="panel">
-          <p className="micro-label">retention</p>
-          <div className="row">
-            <div className="row-text">
-              <div className="row-label">Keep history for</div>
-              <div className="row-desc">{keepLine(props.settings.history.retentionDays)}</div>
-            </div>
-            <div className="row-control inline">
-              <select
-                className="field"
-                value={props.settings.history.retentionDays}
-                onChange={(e) => void chooseKeep(Number(e.target.value))}
-              >
-                <option value={KEEP_NO_TEXT}>don't keep</option>
-                <option value={KEEP_24_HOURS}>24 hours</option>
-                <option value={30}>30 days</option>
-                <option value={90}>90 days</option>
-                <option value={365}>a year</option>
-                <option value={0}>forever</option>
-              </select>
-              <button
-                ref={clearRef}
-                className="btn quiet-btn"
-                disabled={clearing || events.length === 0}
-                aria-expanded={clearAsk !== null}
-                aria-controls={clearAsk !== null ? 'clear-all-confirm' : undefined}
-                onClick={askClear}
-              >
-                Clear all
-              </button>
-            </div>
-          </div>
-          <div className="row">
-            <div className="row-text">
-              <div className="row-label">Encrypt saved words</div>
-              <div className="row-desc">{sealStatus ? sealLine(sealStatus) : ''}</div>
-            </div>
-            <div className="row-control inline">
+          <header className="page-title">
+            <h1 tabIndex={-1}>Home</h1>
+            <p className="dim">{today}</p>
+          </header>
+          <WhatsNew settings={props.settings} onUpdateSettings={props.onUpdateSettings} />
+          {/* The rail holds Hide words; with the rail hidden the switch
+              moves here, so it is always 1 click away on Home. */}
+          {hidden && (
+            <div className={landing ? 'home-head-hide home-head-hide-landing' : 'home-head-hide'} id="home-hide-words">
+              {landing > 0 && <LandRing key={landing} />}
+              <span>Hide words</span>
               <Switch
-                checked={encrypt}
-                label="Encrypt saved words"
-                onChange={(next) => void props.onUpdateSettings({ history: { encrypt: next } } as Partial<Settings>)}
+                checked={hide}
+                label="Hide words"
+                onChange={(next) => void props.onUpdateSettings({ history: { hideWords: next } } as Partial<Settings>)}
               />
             </div>
-          </div>
-          {keepAsk !== null && (
-            <AskFirst
-              id="keep-shorter-confirm"
-              question={keepAsk.question}
-              confirm="remove them"
-              keep="keep them"
-              busy={false}
-              onConfirm={() => applyKeep(keepAsk.value)}
-              onKeep={() => setKeepAsk(null)}
-            />
           )}
-          {clearAsk !== null && (
-            <AskFirst
-              id="clear-all-confirm"
-              question={clearAllQuestion(clearAsk)}
-              confirm={clearing ? 'clearing' : `clear ${clearAsk.toLocaleString()}`}
-              keep={clearAsk === 1 ? 'keep it' : undefined}
-              busy={clearing}
-              onConfirm={() => void clearAll()}
-              onKeep={keepHistory}
-            />
-          )}
-          {/* Always mounted, so screen readers hear the result. */}
-          <p className={cleared ? 'waiting-message' : 'visually-hidden'} ref={clearedRef} tabIndex={-1} role="status">
-            {cleared}
+        </div>
+        {showHowTo && (
+          <section className="panel howto">
+            <p className="dim">
+              Hold <span className="kbd">{props.settings.hotkey.binding}</span>, speak, release. Text lands at your
+              cursor.
+            </p>
+          </section>
+        )}
+        {thanks && (
+          <p className="pro-thanks">
+            <ProMark state="filled" />
+            <span>Thank you for keeping murmur free for everyone. Your Pro extras are on in settings.</span>
           </p>
-        </section>
-      )}
+        )}
+        <WaitingTakes retentionDays={props.settings.history.retentionDays} pasteLastBinding={props.settings.hotkey.pasteLastBinding} pasteArmed={props.pasteArmed} />
+        <div className="home-pair">
+          {events.some(countsTowardStats) && summary && (
+            <section className="panel home-timeback">
+              <p className="micro-label">back today</p>
+              <div
+                className="timeback-value"
+                title={`Typing at ${typingWpm} wpm, minus the time you spent speaking`}
+              >
+                {formatMinutesBack(summary.today.minutesBack)}
+              </div>
+              {summary.typicalBack !== null && (
+                <DayStroke share={typicalShare(summary.today.minutesBack, summary.typicalBack)} day={dayKey(Date.now())} />
+              )}
+              <p className="timeback-typical">
+                {summary.typicalBack === null
+                  ? `Today is measured against your typical day once you have ${TYPICAL_MIN_DAYS} days of dictation in the last four weeks, not counting today.`
+                  : summary.typicalBack > 0
+                    ? typicalLine(typicalShare(summary.today.minutesBack, summary.typicalBack), summary.typicalBack)
+                    : 'Your typical day has no time back yet, so today stands on its own.'}
+              </p>
+              <p className="timeback-spans">
+                {formatMinutesBack(summary.month.minutesBack)} this month ·{' '}
+                {formatMinutesBack(summary.lifetime.minutesBack)} lifetime
+              </p>
+              {offerPro && (
+                <p className="pro-offer-line">
+                  murmur has given you back {formatMinutesBack(summary.lifetime.minutesBack)} so far. Pro is how it stays
+                  free for everyone.{' '}
+                  <button
+                    className="link-btn"
+                    onClick={() => {
+                      void props.onUpdatePro({ offerDone: true })
+                      props.onSeePro()
+                    }}
+                  >
+                    See Pro
+                  </button>{' '}
+                  ·{' '}
+                  <button className="link-btn" onClick={() => void props.onUpdatePro({ offerDone: true })}>
+                    No thanks
+                  </button>
+                </p>
+              )}
+            </section>
+          )}
+          <LastNoteRow hide={hide} />
+        </div>
+        {loaded && grouped.length === 0 && (
+          <EmptyState title="Nothing here yet." hotkey={props.settings.hotkey.binding} after="Every dictation lands here." />
+        )}
+
+        {grouped.length > 0 && (
+          <HomeHistory
+            grouped={grouped}
+            shown={events.length}
+            query={query}
+            picks={picks}
+            place={mark.place}
+            now={now}
+            settings={props.settings}
+            onPick={(day, open) => {
+              // The date you clicked is the date you are on: the gold goes to it.
+              mark.pick(day, false)
+              setPicks((prev) => ({ ...prev, [day]: open }))
+            }}
+            onClearSearch={() => setQuery('')}
+            onOpenHistory={props.onOpenHistory}
+          />
+        )}
+      </div>
     </div>
   )
 }

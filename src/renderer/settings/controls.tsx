@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Settings building blocks shared by the page and its panels: the
-// section and its rows, the Advanced fold, the switch and segmented
+// section, its groups and rows, the switch and segmented
 // choice, the commit-on-blur fields, and the jump that walks the eye
 // to a row.
 import { useEffect, useState } from 'react'
 import { parseRecapTime } from '../../shared/recap'
+import { Boundary } from './Boundary'
 
 /** Text field that commits on blur or Enter, with optional suggestions. */
 export function TextSetting(props: {
@@ -17,10 +18,14 @@ export function TextSetting(props: {
    *  turns headings off), so an emptied field commits instead of
    *  snapping back. */
   allowEmpty?: boolean
+  /** The field's accessible name, when the row label alone is ambiguous. */
+  label?: string
   onCommit: (value: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   const commit = (): void => {
     const next = draft.trim()
     const usable = props.allowEmpty || next.length > 0
@@ -31,6 +36,7 @@ export function TextSetting(props: {
     <>
       <input
         className={`field mono-field ${props.wide ? 'wide-field' : ''}`}
+        aria-label={props.label}
         value={draft}
         placeholder={props.placeholder}
         list={props.listId}
@@ -64,7 +70,9 @@ export function NumberSetting(props: {
   onCommit: (value: number) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(String(props.value))
-  useEffect(() => setDraft(String(props.value)), [props.value])
+  useEffect(() => {
+    setDraft(String(props.value))
+  }, [props.value])
   const commit = (): void => {
     const parsed = Number(draft.trim())
     if (draft.trim() === '' || !Number.isFinite(parsed)) {
@@ -110,14 +118,27 @@ export function Row(props: {
   /** Stacks the control under the text at full width: lists, wide
    *  fields, and rows with more controls than fit beside a label. */
   block?: boolean
+  /** With block: sets the control in under the label on a thin line,
+   *  so a row with several controls reads as 1 setting (the Key rows,
+   *  US-157). */
+  indent?: boolean
   /** Extra words the settings search should match (synonyms a user
    *  might type that the label and description never say). */
   keywords?: string
+  /** The row is waiting on another setting: it dims and says what it
+   *  needs, the way Loop once it settles waits for Double-tap (US-155).
+   *  The caller disables the control. */
+  waits?: string
+  /** A small line under the description: where else this setting shows
+   *  (the way back to Shortcuts, US-165). Search does not read it. */
+  also?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   return (
     <div
-      className={`row ${props.block ? 'row-block' : ''}`}
+      className={['row', props.block && 'row-block', props.block && props.indent && 'row-indent', props.waits && 'row-waits']
+        .filter(Boolean)
+        .join(' ')}
       id={props.anchor ?? rowId(props.label)}
       data-keywords={props.keywords}
     >
@@ -127,6 +148,12 @@ export function Row(props: {
           {props.mark}
         </div>
         {props.desc && <div className="row-desc">{props.desc}</div>}
+        {props.also && <div className="row-also">{props.also}</div>}
+        {props.waits && (
+          <div className="row-waits-note" id={`${props.anchor ?? rowId(props.label)}-waits`}>
+            {props.waits}
+          </div>
+        )}
       </div>
       <div className="row-control">{props.children}</div>
     </div>
@@ -134,8 +161,9 @@ export function Row(props: {
 }
 
 /**
- * One settings section: a heading in the column and its rows on a
- * panel. The id is what the rail scrolls to and tracks.
+ * One settings section: a heading in the column, then its Groups, each
+ * a panel with its rows in a well (US-155). The id is what the rail
+ * scrolls to and tracks.
  */
 export function Section(props: {
   id: string
@@ -144,10 +172,17 @@ export function Section(props: {
    *  results still name the section by its title alone. */
   mark?: React.ReactNode
   sub?: string
+  /** In place of the rows: the note a SectionGuard shows (US-163). */
+  note?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <section className="sec" id={`sec-${props.id}`} data-sec={props.id} aria-labelledby={`sec-${props.id}-title`}>
+    <section
+      className="sec"
+      id={`sec-${props.id}`}
+      data-sec={props.id}
+      aria-labelledby={`sec-${props.id}-title`}
+    >
       {/* Focusable by script only: the rail moves keyboard focus here
           when it scrolls to the section. */}
       <h2 className="sec-title" id={`sec-${props.id}-title`} tabIndex={-1}>
@@ -155,32 +190,112 @@ export function Section(props: {
         {props.mark}
       </h2>
       {props.sub && <p className="sec-sub">{props.sub}</p>}
-      <div className="panel">{props.children}</div>
+      {/* A problem drawing this section shows a note here; the title,
+          the rail and every other section keep working (US-163). */}
+      {props.note ?? (
+        <Boundary kind="section" where={`section ${props.id}`}>
+          <div className="sec-groups">{props.children}</div>
+        </Boundary>
+      )}
+    </section>
+  )
+}
+
+/** For a section drawn by its own component (Notes, Transform), whose
+ *  hooks run above its Section: a problem there still shows the
+ *  section's note under its title, not the whole-window note (US-163). */
+export function SectionGuard(props: { id: string; title: string; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <Boundary
+      kind="section"
+      where={`section ${props.id}`}
+      wrapNote={(note) => (
+        <Section id={props.id} title={props.title} note={note}>
+          {null}
+        </Section>
+      )}
+    >
+      {props.children}
+    </Boundary>
+  )
+}
+
+/**
+ * A group of rows inside a Section (US-154, US-155): a heading a step
+ * below the section's, a line on what the group does when that adds a
+ * fact, and its rows inset in a well a step darker than the panel, so
+ * what belongs together reads as 1 thing (LaBroi's pick, rows in a
+ * well, 2026-11-08). A section with 4 rows or fewer is 1 Group with no
+ * title (his pick, 2026-11-11).
+ */
+export function Group(props: {
+  id: string
+  title?: string
+  sub?: string
+  /** A line under the well: what else rides on this group, and links. */
+  note?: React.ReactNode
+  /** The heading folds the rows away, for settings most people never
+   *  touch (File layout). The tag says what is inside while closed. A
+   *  native details element, so it is keyboard reachable for free and a
+   *  jump opens it by walking up from the row it lands on. */
+  fold?: { tag: string; open?: boolean }
+  children: React.ReactNode
+}): React.JSX.Element {
+  const titleId = `group-${props.id}-title`
+  if (props.fold) {
+    return (
+      <details className="group group-fold" id={`group-${props.id}`} open={props.fold.open}>
+        <summary className="group-summary">
+          <h3 className="group-title" id={titleId}>
+            {props.title}
+          </h3>
+          <span className="group-tag">{props.fold.tag}</span>
+          {props.sub && <span className="group-sub">{props.sub}</span>}
+        </summary>
+        <div className="group-rows">{props.children}</div>
+        {props.note && <p className="group-note">{props.note}</p>}
+      </details>
+    )
+  }
+  return (
+    <section className="group" id={`group-${props.id}`} aria-labelledby={props.title ? titleId : undefined}>
+      {props.title && (
+        <h3 className="group-title" id={titleId}>
+          {props.title}
+        </h3>
+      )}
+      {props.sub && <p className="group-sub">{props.sub}</p>}
+      <div className="group-rows">{props.children}</div>
+      {props.note && <p className="group-note">{props.note}</p>}
     </section>
   )
 }
 
 /**
- * The fold for settings most people never touch. A native details
- * element, so it is keyboard reachable for free and a jump can open it
- * by walking up from the row it lands on.
+ * A setting that is 1 big box (a list, the practice box): the setting's
+ * name is the group heading, its description the group line, and the
+ * well holds the box itself, so nothing sits in a box inside a box
+ * (LaBroi's pick, 2026-11-11). It is still a row to search and to
+ * jumps: same id, label, description and keywords.
  */
-export function Advanced(props: {
-  label?: string
-  /** What is inside, so the fold says what it holds while closed. */
-  hint: string
-  /** Opens the fold when something inside needs attention. */
-  open?: boolean
+export function GroupRow(props: {
+  label: string
+  desc?: React.ReactNode
+  anchor?: string
+  keywords?: string
   children: React.ReactNode
 }): React.JSX.Element {
+  const id = props.anchor ?? rowId(props.label)
   return (
-    <details className="adv" open={props.open}>
-      <summary className="adv-summary">
-        <span>{props.label ?? 'Advanced'}</span>
-        <span className="adv-hint">{props.hint}</span>
-      </summary>
-      <div className="adv-body">{props.children}</div>
-    </details>
+    <section className="group group-row row" id={id} data-keywords={props.keywords} aria-labelledby={`${id}-title`}>
+      <div className="row-text">
+        <h3 className="group-title row-label" id={`${id}-title`}>
+          {props.label}
+        </h3>
+        {props.desc && <p className="group-sub row-desc">{props.desc}</p>}
+      </div>
+      <div className="group-rows row-control">{props.children}</div>
+    </section>
   )
 }
 
@@ -190,6 +305,8 @@ export function Switch(props: {
   checked: boolean
   label: string
   disabled?: boolean
+  /** The id of a line that says why the switch is off limits. */
+  describedBy?: string
   onChange: (next: boolean) => void
 }): React.JSX.Element {
   return (
@@ -199,6 +316,7 @@ export function Switch(props: {
       className="switch"
       aria-checked={props.checked}
       aria-label={props.label}
+      aria-describedby={props.describedBy}
       disabled={props.disabled}
       onClick={() => props.onChange(!props.checked)}
     >
@@ -241,7 +359,15 @@ export function Segmented<T extends string>(props: {
           disabled={props.disabled}
           onClick={() => props.onChange(o.value)}
         >
-          {o.label}
+          {/* The check shows on the picked option only, so the choice reads
+              without color (US-149). Every option keeps its space, and the
+              label reserves its bold width, so picking never shifts the row. */}
+          <svg className="seg-check" width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="seg-label" data-label={o.label}>
+            {o.label}
+          </span>
         </button>
       ))}
     </div>
@@ -283,6 +409,24 @@ export function jumpToRow(
       el.querySelector<HTMLElement>('.row-control button:not(:disabled):not([tabindex="-1"])')
     control?.focus({ preventScroll: true })
   }
+}
+
+/** The way from a shortcut's own row to the Shortcuts section, where
+ *  all of them sit together (US-165). It lands on the same shortcut. */
+export function AlsoInShortcuts(props: { slug: string; label: string }): React.JSX.Element {
+  return (
+    <>
+      also under{' '}
+      <button
+        className="link-btn"
+        aria-label={`${props.label}, under Shortcuts`}
+        onClick={() => jumpToRow(`row-shortcut-${props.slug}`, { tone: 'glow', focusControl: true })}
+      >
+        Shortcuts
+      </button>
+      , with every other shortcut
+    </>
+  )
 }
 
 export function ModelPicker(props: {
@@ -360,7 +504,9 @@ export function TimeInput(props: {
   onCommit: (time: string) => void
 }): React.JSX.Element {
   const [draft, setDraft] = useState(props.value)
-  useEffect(() => setDraft(props.value), [props.value])
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
   return (
     <input
       type="time"

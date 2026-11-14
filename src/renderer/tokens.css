@@ -30,9 +30,65 @@
      still outshines the hardware (LaBroi direction, 2026-09-07). */
   --brand: #d9a441;
   --brand-edge: rgba(217, 164, 65, 0.5);
+  /* The picked option's edge in a choice (US-149): strong enough for 3:1
+     against the ink track, so the pick shows at a glance (LaBroi, 2026-11-08). */
+  --brand-edge-strong: rgba(217, 164, 65, 0.72);
   /* the bright gold glow as a Pro mark fills (US-107, LaBroi 2026-10-23) */
   --brand-glow: rgba(217, 164, 65, 0.8);
   --brand-glow-fade: rgba(217, 164, 65, 0.5);
+
+  /* fog glass (US-157, LaBroi's picks 2026-11-09). Test, the optional
+     action, is a clear cream fog at 30% so it stands apart from the
+     other buttons; the ask-first box is a faint gold fog that glows once
+     as it opens, then keeps a faint steady glow. */
+  --fog-highlight: rgba(255, 255, 255, 0.1);
+  --fog-test: rgba(236, 233, 228, 0.3);
+  --fog-test-hover: rgba(236, 233, 228, 0.38);
+  --fog-test-sheen: rgba(236, 233, 228, 0.4);
+  --fog-ask: rgba(217, 164, 65, 0.11);
+  --fog-ask-glow: rgba(217, 164, 65, 0.16);
+  --fog-ask-glow-peak: rgba(217, 164, 65, 0.42);
+
+  /* glass over your desktop (US-150; LaBroi's round 3 picks 2026-11-08,
+     wells as darker glass 2026-11-11, and round 2 on 2026-11-12: Clear,
+     1 glass for every card, the sidebar and the top bar, and gold as a
+     thread). murmur is always dark to the system, and the window sits on
+     the system's dark floating-panel material under a sheet of ink at
+     50%, so the desktop shows as blurred light and color. Cards are
+     glass at 62% with an edge light; a group's well is a darker pane of
+     the same glass. look.test.ts computes every text and surface pair
+     over the material as measured over a white page, and holds each to
+     4.5 to 1. Where the system cannot show the desktop, the window is
+     solid with a gold glow at 68% (0.42 and 0.23 at full strength),
+     and cards keep their 85%. */
+  --glass-window: rgba(15, 14, 17, 0.5);
+  --glass-card: rgba(23, 22, 27, 0.62);
+  --glass-card-solid: rgba(23, 22, 27, 0.85);
+  --glass-edge: rgba(236, 233, 228, 0.1);
+  --glass-light: rgba(236, 233, 228, 0.12);
+  --glass-well: rgba(0, 0, 0, 0.28);
+  --glass-well-edge: rgba(236, 233, 228, 0.08);
+  --ink-clear: rgba(15, 14, 17, 0);
+  /* Helper text straight on the window (a page's date, a section's
+     line) is cream: over a white page the glass is mid grey, and no
+     grey keeps 4.5 to 1 on it. On a card, grey is 1 step brighter than
+     the flat look's. */
+  --text-dim-window: #ece9e4;
+  --text-dim-surface: #a3a09a;
+  /* Gold by role. Time back, the 1 card that celebrates, gets the
+     strong tint, 30% across a diagonal, and so does the sidebar line
+     you are on; the header of that day in your dictations gets a
+     lighter strip of the same gold (Today's, above the days). Text on
+     gold is cream, never grey or gold. */
+  --tint-strong-from: rgba(217, 164, 65, 0.39);
+  --tint-strong-to: rgba(217, 164, 65, 0.21);
+  --tint-thread-from: rgba(217, 164, 65, 0.3);
+  --tint-thread-to: rgba(217, 164, 65, 0.14);
+  /* Red on glass: brighter than --red, which on a glass card over a
+     white page reads 3.4 to 1. Still the 1 clean red. */
+  --red-glass: #f47a7e;
+  --glow-top: rgba(217, 164, 65, 0.286);
+  --glow-mid: rgba(217, 164, 65, 0.157);
 
   /* paint (US-073, the brushwork art direction, LaBroi 2026-10-01).
      Brush marks only, never interface chrome. Smoke is background
@@ -86,4 +142,14 @@
   --panel-edge: rgba(226, 233, 240, 0.08);
   --text: #e6ebf0;
   --text-dim: #93a0ac;
+  /* The glass look (US-150) in mist: the same panes cut from mist's
+     own ground, mist's own cream and grey, and a red a hair brighter
+     still, to hold 4.5 to 1 on its lighter cards. */
+  --glass-window: rgba(16, 19, 26, 0.5);
+  --glass-card: rgba(25, 29, 38, 0.62);
+  --glass-card-solid: rgba(25, 29, 38, 0.85);
+  --red-glass: #f6878b;
+  --ink-clear: rgba(16, 19, 26, 0);
+  --text-dim-window: #e6ebf0;
+  --text-dim-surface: #9da9b4;
 }

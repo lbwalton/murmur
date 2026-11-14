@@ -17,30 +17,68 @@ body {
 }
 
 /* The top bar spans the window on every tab so the nav never moves;
-   each tab's content sits in its own column beneath it. */
+   each tab's content scrolls in its own box beneath it (.page-scroll),
+   so nothing is ever behind the bar and the bar can be glass (US-150,
+   round 2). */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Pinned to the window: the window itself must never scroll. A line
+   hidden for screen readers inside the page box (.visually-hidden) is
+   placed outside the box's scroll, and before this pin it made the
+   window's own page a little taller than the window, so a jump to a
+   day pushed the top bar out of sight (LaBroi, 2026-11-12). */
 .shell {
-  padding: 0 32px 32px;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Classic scrollbars (Windows, or macOS set to always show them) would
+     narrow the page; the gutter is kept on every tab, and the bar above
+     pads itself by the same width, so the two stay lined up. */
+  scrollbar-gutter: stable;
+  /* Jumps and focus stop a little below the bar (US-097). */
+  scroll-padding-top: 8px;
+  padding: 18px 32px 32px;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-/* The header stays at the top while the page scrolls under it (US-097):
-   solid ink, so nothing shows through, over everything on the page but
-   dialogs, and the same height stuck or not, so nothing jumps. App.tsx
-   keeps --masthead-h at its height. */
+.page-scroll:focus {
+  outline: none;
+}
+
+/* The header stays at the top (US-097): the page scrolls in the box
+   below it, never under it. App.tsx keeps --masthead-h at its height.
+   Its side padding grows on a wide window so its insides hold the same
+   856 px column as the page; --page-gutter is the width of the page's
+   scroll bar gutter (scroller.ts), 0 with overlay bars. */
 .masthead {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 40;
+  flex: none;
   width: 100%;
-  max-width: 856px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 0 14px;
+  padding: 20px calc(max(32px, (100% - var(--page-gutter, 0px)) / 2 - 428px) + var(--page-gutter, 0px)) 14px
+    max(32px, calc((100% - var(--page-gutter, 0px)) / 2 - 428px));
   border-bottom: 1px solid var(--panel-edge);
   background: var(--ink);
   /* A narrow window wraps the tabs under the wordmark, never mid-name. */
@@ -403,10 +441,98 @@ body {
   margin-bottom: 6px;
 }
 
-.log-copy {
+/* A row's icons (US-166): what you said and report after the numbers,
+   copy at the right edge. No box (LaBroi, 2026-11-12). The hit area is
+   28 px though the glyph is 16. */
+.row-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.row-acts-end {
   margin-left: auto;
-  padding: 3px 10px;
-  font-size: 11px;
+}
+
+.row-icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.row-icon:hover,
+.row-icon:focus-visible,
+.row-icon[aria-expanded='true'] {
+  color: var(--text);
+}
+
+/* Gold: it shows only where cleanup changed your words, so it marks
+   that more of yours is behind this row. */
+.row-icon-said,
+.row-icon-said:hover,
+.row-icon-said:focus-visible,
+.row-icon-said[aria-expanded='true'] {
+  color: var(--brand);
+}
+
+.row-icon-copy {
+  color: var(--text);
+}
+
+/* An icon's name shows beside it on hover and focus. It sits in the
+   row after the icons and takes only room the row has left: copy is
+   held at the right edge, so nothing moves, and in a crowded row the
+   name is cut short before it would push anything. */
+.row-name {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-says {
+  display: none;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+
+.log-meta:has(.row-icon-said:focus-visible) .row-says-said,
+.log-meta:has(.row-icon-report:focus-visible) .row-says-report,
+.row-acts-end:has(.row-icon-copy:hover, .row-icon-copy:focus-visible) .row-says-copy,
+.row-says-on {
+  display: inline;
+}
+
+/* The pointer wins over the keyboard, so 2 names never show at once. */
+.log-meta:has(.row-icon-report:hover) .row-says-said,
+.log-meta:has(.row-icon-said:hover) .row-says-report {
+  display: none;
+}
+
+.log-meta:has(.row-icon-said:hover) .row-says-said,
+.log-meta:has(.row-icon-report:hover) .row-says-report {
+  display: inline;
+}
+
+.row-says-copy {
+  margin-right: 6px;
+}
+
+.copy-check {
+  display: block;
 }
 
 .log-text {
@@ -417,11 +543,6 @@ body {
 
 /* What you said (US-128): removed words are struck through as well as
    dimmed, so the mark never rests on color alone. */
-.log-said-toggle {
-  padding: 3px 10px;
-  font-size: 11px;
-}
-
 .log-said {
   margin-bottom: 8px;
 }
@@ -481,7 +602,7 @@ body {
 .waiting-intro,
 .waiting-message {
   margin: 6px 0 4px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -495,15 +616,21 @@ body {
   margin-left: auto;
 }
 
-.waiting-head .btn,
-.waiting-actions .btn {
-  padding: 3px 10px;
-  font-size: 11px;
+/* The waiting card's 4 buttons share 1 width, so retry lines up with
+   discard down the card and with retry all above (LaBroi, 2026-11-12).
+   delete audio?, the longer name discard takes on, grows past it. */
+.waiting-strip .waiting-actions .btn {
+  min-width: 96px;
+  text-align: center;
 }
 
+/* The reason sits where a dictation's words would, at their size, and
+   the buttons are the size of every other button on Home (LaBroi,
+   2026-11-12). */
 .waiting-reason {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .waiting-head .waiting-actions {
@@ -518,7 +645,10 @@ body {
 
 /* Asking before a delete (US-096, US-099): the count in words, keep
    them first and focused, and the deleting button in red, the one use
-   of red beside recording and errors (LaBroi, 2026-10-08). */
+   of red beside recording and errors (LaBroi, 2026-10-08). Since US-157
+   (LaBroi's pick, 2026-11-09) the box is gold fog glass that glows once
+   as it opens and then keeps a faint steady glow, and the rest of its
+   section dims while it is open, so the eye knows where to look. */
 .ask-first {
   display: flex;
   flex-wrap: wrap;
@@ -526,11 +656,24 @@ body {
   justify-content: space-between;
   gap: 8px 16px;
   margin: 10px 0 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--panel-edge);
-  border-radius: 8px;
-  background: var(--ink);
-  animation: confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  padding: 12px 14px;
+  border: 1px solid var(--brand-edge);
+  border-radius: 10px;
+  background: var(--fog-ask);
+  box-shadow:
+    inset 0 1px 0 var(--fog-highlight),
+    0 0 16px 0 var(--fog-ask-glow);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation:
+    confirm-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both,
+    ask-glow 1500ms ease-out both;
+}
+
+/* Everything else in the box's section while it asks; AskFirst sets it. */
+[data-ask-dim] {
+  opacity: 0.4;
+  transition: opacity 220ms ease;
 }
 
 .ask-first p {
@@ -577,9 +720,29 @@ body {
   }
 }
 
+@keyframes ask-glow {
+  0% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 0 0 transparent;
+  }
+  35% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 30px 3px var(--fog-ask-glow-peak);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 var(--fog-highlight),
+      0 0 16px 0 var(--fog-ask-glow);
+  }
+}
+
+/* Reduced motion: no slide and no glow; the box fades in already
+   wearing its steady glow. */
 @media (prefers-reduced-motion: reduce) {
   .ask-first {
-    animation-name: confirm-fade;
+    animation: confirm-fade 160ms ease-out both;
   }
 }
 
@@ -969,7 +1132,7 @@ select.field {
 
 .btn {
   background: var(--ink);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid var(--cream-14);
   border-radius: 8px;
   color: var(--text);
   padding: 7px 14px;
@@ -999,6 +1162,13 @@ select.field {
 
 .status-bad {
   color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* A soft warning: plain cream, never red, never amber. */
+.status-warn {
+  color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -1885,11 +2055,6 @@ details[open] > .ladder-summary::after {
   align-items: center;
 }
 
-.profiles-stack {
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
 
 .swatch {
   width: 18px;
@@ -2051,21 +2216,6 @@ details[open] > .ladder-summary::after {
   padding: 3px 8px;
 }
 
-/* What's new: one quiet line until asked; the amber dot is the only
-   thing that changes when a new version lands. */
-.whats-new-head {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
 .whats-new-dot {
   display: inline-block;
   width: 6px;
@@ -2128,15 +2278,6 @@ textarea.entry-field {
    column. Everything below is scoped to the settings tab and the
    wizard, so the other tabs keep their own compact controls.
    ------------------------------------------------------------------ */
-/* Classic scrollbars (Windows, or macOS set to always show them)
-   would narrow a scrolling tab and slide the centered top bar; the
-   gutter is kept on every tab so the nav stays put. */
-html {
-  scrollbar-gutter: stable;
-  /* Jumps and focus stop below the pinned header (US-097). */
-  scroll-padding-top: calc(var(--masthead-h, 0px) + 8px);
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -2158,7 +2299,7 @@ html {
 
 .rail {
   position: sticky;
-  top: calc(var(--masthead-h, 0px) + 16px);
+  top: 16px;
   max-height: calc(100vh - var(--masthead-h, 0px) - 32px);
   overflow-y: auto;
   display: flex;
@@ -2327,15 +2468,23 @@ html {
   outline: none;
 }
 
+/* Type steps in Settings (US-155): page title 28, section title 20,
+   group title 15, row label 14, descriptions 12.5. */
+.settings-content .page-title h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
 .sec-title {
-  font-size: 17px;
-  font-weight: 650;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .sec-sub {
-  margin: 4px 0 12px;
-  font-size: 12.5px;
+  margin: 4px 0 14px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
@@ -2345,8 +2494,7 @@ html {
   padding: 2px 20px;
 }
 
-.sec .panel > * + *,
-.adv-body > * + * {
+.sec .panel > * + * {
   border-top: 1px solid var(--panel-edge);
 }
 
@@ -2402,49 +2550,6 @@ html {
 
 .row-block .trybox {
   width: 100%;
-}
-
-/* The Advanced fold: closed, it says what it holds. */
-.adv > summary {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.adv > summary::-webkit-details-marker {
-  display: none;
-}
-
-.adv > summary::after {
-  content: '';
-  width: 7px;
-  height: 7px;
-  margin-left: auto;
-  margin-right: 4px;
-  border-right: 1.5px solid var(--text-dim);
-  border-bottom: 1.5px solid var(--text-dim);
-  transform: rotate(-45deg);
-  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.adv[open] > summary::after {
-  transform: rotate(45deg);
-}
-
-.adv-hint {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-dim);
-}
-
-.adv-body {
-  border-top: 1px solid var(--panel-edge);
 }
 
 /* One button: 32px tall, 84px minimum, three looks. Standard is the
@@ -2559,21 +2664,40 @@ html {
   cursor: default;
 }
 
-/* A short choice shown whole. Outer radius 8 = inner 6 + 2 padding. */
+/* A short choice shown whole. Outer radius 8 = inner 6 + 2 padding.
+   Every option is as wide as the widest, and the picked one is lifted,
+   edged in gold, and checked, so it reads at a glance and without color
+   (US-149, LaBroi's style C, 2026-11-08). */
 .seg {
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  /* minmax(0, 1fr), not 1fr: when the row is too narrow for every option
+     at its widest, the options stay equal and their words wrap instead of
+     spilling past the panel (review gate, 2026-11-08). */
+  grid-auto-columns: minmax(0, 1fr);
   gap: 2px;
-  height: 32px;
+  min-height: 32px;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 2px;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   background: var(--ink);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid var(--cream-14);
   border-radius: 8px;
 }
 
 .seg button {
-  height: 26px;
-  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 26px;
+  padding: 3px 12px;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -2581,7 +2705,6 @@ html {
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
-  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -2592,7 +2715,33 @@ html {
 .seg button[aria-checked='true'] {
   background: var(--panel-lift);
   color: var(--text);
-  box-shadow: 0 0 0 1px var(--cream-14);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--brand-edge-strong);
+}
+
+.seg-check {
+  flex: none;
+  color: var(--brand);
+  visibility: hidden;
+}
+
+.seg button[aria-checked='true'] .seg-check {
+  visibility: visible;
+}
+
+/* The label is as wide as its bold self, so the pick never nudges the row. */
+.seg-label {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.seg-label::after {
+  content: attr(data-label) / '';
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .seg button:disabled {
@@ -2600,7 +2749,7 @@ html {
   cursor: default;
 }
 
-.settings-layout :is(.btn, .switch, .seg button, .rail-item, .health, .capture, summary):focus-visible,
+.settings-layout :is(.btn, .switch, .seg button, .rail-item, .health, .capture, .row-also .link-btn, summary):focus-visible,
 .wizard-panel .btn:focus-visible {
   outline: 2px solid var(--amber-soft);
   outline-offset: 2px;
@@ -2619,10 +2768,13 @@ html {
   border-radius: 10px;
 }
 
+/* In a narrow window or at a high zoom the buttons drop to a line of
+   their own, on the right, so a key row never pushes the page sideways. */
 .well-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   min-height: 48px;
   padding: 7px 7px 7px 14px;
 }
@@ -2831,7 +2983,7 @@ textarea.well-multiline {
   .health-arrive,
   .switch,
   .switch-knob,
-  .adv > summary::after,
+  .group-tag::after,
   .settings-layout .btn {
     animation: none;
     transition: none;
@@ -2845,8 +2997,13 @@ textarea.well-multiline {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .shell {
-    padding: 0 20px 24px;
+  .page-scroll {
+    padding: 18px 20px 24px;
+  }
+
+  .masthead {
+    padding-left: 20px;
+    padding-right: calc(20px + var(--page-gutter, 0px));
   }
 
   .settings-layout {
@@ -2954,4 +3111,1670 @@ textarea.well-multiline {
 .loop-level-value {
   min-width: 36px;
   text-align: right;
+}
+
+/* Home with a rail (US-147, LaBroi's pick B, 2026-11-08). The rail is
+   the Settings rail's parts; the page beside it reads as zones: the
+   title line, takes waiting, time back beside the last note, then your
+   dictations under their own heading, a day at a time. */
+.page.page-wide {
+  max-width: 856px;
+}
+
+.home-layout {
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.home-layout.home-rail-off {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-rail-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-rail-top {
+  gap: 4px;
+}
+
+.home-rail-top .rail-search {
+  flex: 1;
+  height: 32px;
+  padding: 7px 8px;
+  font-size: 12.5px;
+}
+
+.home-rail-top .icon-btn {
+  width: 28px;
+}
+
+.rail-search:disabled {
+  opacity: 0.55;
+}
+
+/* A square button that is only a glyph (hide and show the sidebar). */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  border-color: var(--cream-14);
+}
+
+.icon-btn-edge {
+  color: var(--text);
+  border-color: var(--cream-14);
+}
+
+.rail-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.home-rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px 0;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.home-rail-hide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.home-rail-line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.home-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  scroll-margin-top: 8px;
+}
+
+.home-head .page-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-head h1:focus {
+  outline: none;
+}
+
+/* What's new: 1 line beside the title; the dot is the only thing that
+   changes when a new version lands. */
+.whats-new-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.whats-new-line:hover {
+  color: var(--text);
+}
+
+.whats-new-line .whats-new-dot {
+  margin-left: 0;
+  vertical-align: 0;
+}
+
+.home-head .whats-new-body {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+}
+
+/* A take waiting to retry is a card like the rest, marked by a red
+   dot beside its label and in the sidebar (LaBroi, 2026-11-12: the red
+   edge it had shouted louder than its place on the page). */
+.waiting-strip {
+  scroll-margin-top: 8px;
+}
+
+.waiting-strip .micro-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* In a narrow window the buttons drop under their line, inside the card. */
+.waiting-strip .waiting-head,
+.waiting-strip .log-meta {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+/* Cmd+F while Hide words is on: the line that says why search is off
+   lights for a moment (US-147). */
+.rail-nudge {
+  animation: rail-nudge 1.6s ease-out;
+}
+
+@keyframes rail-nudge {
+  0%,
+  55% {
+    color: var(--text);
+  }
+}
+
+/* A change of color is not motion: with Reduce motion on the line
+   lights and goes out in 1 step, with no fade. */
+@media (prefers-reduced-motion: reduce) {
+  .rail-nudge {
+    animation-timing-function: steps(1, end);
+  }
+}
+
+.home-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.home-pair:empty {
+  display: none;
+}
+
+.home-pair > .panel {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.home-pair > .home-timeback {
+  flex: 3 1 260px;
+}
+
+.home-pair > .last-note {
+  flex: 2 1 200px;
+}
+
+.home-pair .last-note-row {
+  flex-wrap: wrap;
+}
+
+.home-pair .last-note-text {
+  flex-basis: 100%;
+}
+
+.history {
+  margin-top: 14px;
+}
+
+.history-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+}
+
+/* The card's name is a gold label, like waiting to retry, back today
+   and last note (LaBroi, 2026-11-12); the line under it says what is
+   kept. */
+.history-head h2 {
+  margin-bottom: 0;
+  font-weight: 400;
+  flex-basis: 100%;
+}
+
+.history-kept,
+.history-found {
+  font-size: 13px;
+}
+
+.history-found {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 0 4px 10px;
+}
+
+.home-head-hide {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* Hide words has just moved here from the sidebar: it comes in, and 1
+   gold brush loop is drawn around it, then lifts (LandRing.tsx). */
+.land-ring {
+  position: absolute;
+  inset: -9px -11px;
+  width: calc(100% + 22px);
+  height: calc(100% + 18px);
+  pointer-events: none;
+  animation: land-ring-lift 0.45s ease-in 1.6s forwards;
+}
+
+.home-head-hide-landing > :not(.land-ring) {
+  animation: land-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes land-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes land-ring-lift {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-ring,
+  .home-head-hide-landing > :not(.land-ring) {
+    animation: none;
+  }
+}
+
+.waiting-strip:focus {
+  outline: none;
+}
+
+.day {
+  scroll-margin-top: 8px;
+}
+
+.day-h {
+  font: inherit;
+}
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 4px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--cream-14);
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.day-head:disabled {
+  cursor: default;
+}
+
+.day-name {
+  font-weight: 650;
+}
+
+.day-count {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.day-chevron {
+  flex: none;
+  color: var(--text-dim);
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.day-chevron-open {
+  color: var(--brand);
+  transform: rotate(90deg);
+}
+
+.day .log-list {
+  padding-left: 26px;
+}
+
+.day .log-entry:first-child {
+  border-top: 1px solid var(--panel-edge);
+}
+
+.home-layout :is(.btn, .switch, .rail-item, .icon-btn, .row-icon, .day-head, .whats-new-line, .link-btn):focus-visible {
+  outline: 2px solid var(--amber-soft);
+  outline-offset: 2px;
+}
+
+/* These fill a column that would clip an outside ring. */
+.home-layout :is(.rail-item, .day-head):focus-visible {
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-chevron {
+    transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .day .log-list {
+    padding-left: 8px;
+  }
+}
+
+/* Rows in a well (US-154, LaBroi's pick 2026-11-08; US-155 brings it to
+   every section). Each group is a panel with its own title a step below
+   the section's, and the group's rows sit inset in a well a step darker
+   than the panel. A section with 4 rows or fewer is 1 group with no
+   title. */
+.sec-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.group {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.group-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.group-sub {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+
+.group-rows {
+  background: var(--ink);
+  border: 1px solid var(--cream-06);
+  border-radius: 10px;
+  padding: 2px 16px;
+}
+
+.group-title + .group-rows,
+.group-sub + .group-rows {
+  margin-top: 10px;
+}
+
+.group-rows > * + * {
+  border-top: 1px solid var(--panel-edge);
+}
+
+.group-rows .row {
+  padding: 12px 0;
+}
+
+/* A row label inside a well is a setting, not a heading: regular weight
+   in a slightly dimmer cream, so it never reads like the group title
+   (LaBroi, 2026-11-08). Mixed from the theme's own text and ground. */
+.group-rows .row-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--text) 90%, var(--ink));
+}
+
+/* A row with nothing to press (the cost estimate) is its text alone. */
+.row-control:empty {
+  display: none;
+}
+
+/* A row waiting on another setting: its text dims (the disabled control
+   dims itself), with what it needs in the micro-label face (Smart lists
+   until Formatting is Full). */
+.row-waits .row-label,
+.row-waits .row-desc {
+  opacity: 0.45;
+}
+
+/* Where else a setting shows: a Shortcuts row names its own section
+   (US-164), and that row names Shortcuts (US-165). */
+.row-also {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.row-also .link-btn {
+  color: var(--brand);
+}
+
+.row-also .link-btn:hover {
+  color: var(--text);
+}
+
+.row-waits-note {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--brand);
+}
+
+/* A group whose heading folds its rows away (File layout). Closed, the
+   tag says what is inside. */
+.group-summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 12px;
+  cursor: pointer;
+}
+
+.group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.group-summary .group-sub {
+  grid-column: 1 / -1;
+}
+
+.group-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.group-tag::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--text-dim);
+  border-bottom: 1.5px solid var(--text-dim);
+  transform: rotate(-45deg);
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.group-fold[open] .group-tag::after {
+  transform: rotate(45deg);
+}
+
+.group-fold > .group-rows {
+  margin-top: 10px;
+}
+
+/* A setting that is 1 box (a list, the practice box): its name is the
+   group heading, and the well is the box itself, so no box sits inside
+   a box (LaBroi's pick, 2026-11-11). Still a .row to search and jumps. */
+.group-row,
+.sec .group-row {
+  display: block;
+  padding: 16px 20px;
+}
+
+.group-row > .row-text {
+  margin-bottom: 10px;
+}
+
+.group-row .row-label {
+  margin-bottom: 0;
+}
+
+.sec .group-row > .row-control {
+  max-width: none;
+}
+
+.sec .group-row .row-desc {
+  max-width: 64ch;
+}
+
+.sec .group-row.row-flash,
+.sec .group-row.row-glow {
+  margin-inline: 0;
+  padding-inline: 20px;
+}
+
+.group-row > .group-rows {
+  padding: 0;
+}
+
+.group-row > .group-rows > .well {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.group-row > .group-rows > .trybox {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+
+/* The box lost its own border, so the well shows the keyboard where it
+   is, in the field's focus color. */
+.group-row > .group-rows:has(> .trybox:focus) {
+  border-color: var(--amber-soft);
+}
+
+.group-row > .group-rows > .row-note {
+  padding: 12px 16px;
+}
+
+.group-note {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.group-note .link-btn {
+  color: var(--brand);
+}
+
+.group-note .link-btn:hover {
+  color: var(--text);
+}
+
+.btn-row {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(84px, 1fr);
+  gap: 8px;
+}
+
+.mono-dim {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* The Key rows (US-157, LaBroi's pick 2026-11-09): the controls set in
+   under the label on a thin line, the key field growing, the buttons on
+   the right edge, and the test's answer under them. */
+.sec .row-block.row-indent .row-control {
+  width: auto;
+  margin-left: 4px;
+  padding: 2px 0 2px 16px;
+  border-left: 1px solid var(--cream-22);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.key-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.key-line-end {
+  justify-content: flex-end;
+}
+
+/* Test, the optional action (US-157): fog glass at 30% so it stands
+   apart from the other buttons (LaBroi, 2026-11-09), set a little
+   further off, with a sheen only while a test runs. */
+.btn.btn-test {
+  margin-left: 8px;
+  background: var(--fog-test);
+  border-color: var(--cream-22);
+  box-shadow: inset 0 1px 0 var(--fog-highlight);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/* The color only: the shorthand would also clear the sheen below, and
+   the pointer is always over the button when it is pressed. */
+.btn.btn-test:hover:not(:disabled) {
+  background-color: var(--fog-test-hover);
+  border-color: var(--cream-35);
+}
+
+/* One pass takes SHEEN_MS (ConnectionRows.tsx); a test that answers
+   sooner still shows a whole pass. */
+.btn.btn-test[aria-busy='true'] {
+  background-image: linear-gradient(100deg, transparent 20%, var(--fog-test-sheen) 50%, transparent 80%);
+  background-size: 220% 100%;
+  animation: test-sheen 900ms linear infinite;
+  cursor: progress;
+}
+
+.test-verdict > span {
+  animation: verdict-in 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* The band starts and ends wholly off the button (220% wide, so past
+   147% and -47%), so a loop or the last pass never snaps. */
+@keyframes test-sheen {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes verdict-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn.btn-test[aria-busy='true'],
+  .test-verdict > span {
+    animation: none;
+  }
+}
+
+/* What runs now (US-152): always true, whatever a profile says. */
+.running-strip {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 10px 16px;
+}
+
+.running-kicker {
+  margin: 0 0 4px;
+}
+
+.running-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.running-lines b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.running-note {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* Profile cards (US-154, direction B). */
+.sec-groups > .profiles-row {
+  padding: 0;
+}
+
+.profiles-row .row-text {
+  margin-bottom: 8px;
+}
+
+.profiles-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profiles-row .row-control {
+  max-width: none;
+  width: 100%;
+}
+
+.profile-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 108px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.profile-card:hover {
+  background: var(--panel-lift);
+}
+
+.profile-card:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* The active card wears the picked style from US-149: lifted, gold
+   edged, checked, bold. */
+.profile-card-on {
+  background: var(--panel-lift);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--brand-edge-strong);
+  cursor: default;
+}
+
+.profile-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+/* Bold words on the pick, as in US-149. */
+.profile-card-on .profile-name {
+  font-weight: 700;
+}
+
+.profile-name-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+
+.profile-check {
+  flex: none;
+  margin-top: 4px;
+  color: var(--brand);
+}
+
+.profile-changed {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--brand-edge);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--brand);
+}
+
+.profile-line {
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.profile-line b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.profile-old {
+  font-style: italic;
+}
+
+.profile-new {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-style: dashed;
+  color: var(--text-dim);
+  background: transparent;
+}
+
+.profile-naming {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--panel-lift);
+  border: 1px solid var(--brand-edge);
+  border-radius: 12px;
+}
+
+.profile-bar-text {
+  flex: 1 1 260px;
+  font-size: 13px;
+}
+
+.profile-problem {
+  margin-top: 8px;
+  color: var(--red);
+}
+
+.profile-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-slot .profile-card {
+  flex: 1;
+}
+
+/* Rename and Delete under each card, on the right (US-157). */
+.profile-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+/* A card being renamed: the name becomes a field, Save and Cancel below. */
+.profile-editing {
+  cursor: default;
+  gap: 6px;
+}
+
+.profile-editing:hover {
+  background: var(--panel);
+}
+
+.profile-card-on.profile-editing:hover {
+  background: var(--panel-lift);
+}
+
+.profile-rename-field {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  border-color: var(--brand-edge);
+}
+
+.profile-rename-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-rename-hint {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.profiles-offer .row {
+  padding: 14px 0;
+}
+
+/* Many profiles stay small (US-160): the label line carries the view
+   choice on the right. */
+.profiles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+/* The card in use says so in words, as on the board. */
+.profile-inuse {
+  flex: none;
+  margin-left: auto;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.profile-card-none {
+  cursor: default;
+  min-height: 0;
+  border-style: dashed;
+  background: transparent;
+}
+
+.profile-card-none:hover {
+  background: transparent;
+}
+
+/* The row of names: 1 line at any count, scrolling sideways inside
+   itself, with + New and Show all outside the scroll so they never move. */
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.profile-switch {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-chips {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  /* Room for the 2 px focus ring and its 2 px gap inside the scroll. */
+  padding: 5px 5px;
+  margin: -2px -5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* Only an end with more names past it fades. */
+.profile-chips.fade-end {
+  -webkit-mask-image: linear-gradient(90deg, black calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, black calc(100% - 48px), transparent);
+}
+
+.profile-chips.fade-start {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 48px);
+  mask-image: linear-gradient(90deg, transparent, black 48px);
+}
+
+.profile-chips.fade-start.fade-end {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 48px, black calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, transparent, black 48px, black calc(100% - 48px), transparent);
+}
+
+.profile-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.profile-chip:hover {
+  color: var(--text);
+  border-color: var(--cream-25);
+}
+
+/* Cream, not gold: gold already means the name in use. */
+.profile-chip:focus-visible {
+  outline: 2px solid var(--cream-60);
+  outline-offset: 2px;
+}
+
+/* The name in use wears the picked style from US-149: lifted, gold
+   edged, checked, bold. */
+.profile-chip-on {
+  font-weight: 650;
+  color: var(--text);
+  background: var(--panel-lift);
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--brand-edge-strong);
+  cursor: default;
+}
+
+.profile-chip-on .profile-check {
+  margin-top: 0;
+}
+
+.profile-chip-new {
+  border-style: dashed;
+  background: transparent;
+}
+
+.profiles-more {
+  flex: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.profiles-fold-line {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* Cards on an arc (US-161): the front card large and upright, the rest
+   tilting back along a curve. Turning never switches. */
+.profile-arc {
+  margin: 0 -6px;
+  border-radius: 12px;
+  outline: none;
+}
+
+.profile-arc:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--cream-60);
+}
+
+/* The cards fade out toward both sides; the focus ring sits outside the
+   fade so it shows whole. */
+.arc-track {
+  position: relative;
+  min-height: 190px;
+  padding: 14px 0 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+
+.arc-slot {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: min(280px, 62%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1), opacity 300ms cubic-bezier(0.2, 0, 0, 1), filter 300ms ease;
+}
+
+.arc-slot .profile-card {
+  min-height: 124px;
+}
+
+/* The front card sits in the flow, so the track grows to hold all of it
+   (Use this profile, Rename, Delete, an old profile's note) at any width
+   or zoom; the cards beside it stay absolute and never add height. */
+.arc-front {
+  position: relative;
+  top: 0;
+  cursor: default;
+}
+
+.arc-front .profile-card {
+  cursor: default;
+  box-shadow: 0 14px 34px var(--ink-edge), inset 0 0 0 1px var(--cream-14);
+}
+
+.arc-front .profile-card-on {
+  box-shadow: 0 14px 34px var(--ink-edge), inset 0 0 0 1px var(--brand-edge-strong);
+}
+
+.arc-front .profile-new {
+  cursor: pointer;
+  width: 100%;
+}
+
+.profile-use {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.arc-nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.arc-arrow {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.arc-arrow:hover:not(:disabled) {
+  border-color: var(--cream-35);
+}
+
+.arc-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.arc-arrow:focus-visible,
+.arc-dot:focus-visible {
+  outline: 2px solid var(--cream-60);
+  outline-offset: 2px;
+}
+
+.arc-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.arc-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  background: var(--cream-25);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: width 200ms cubic-bezier(0.2, 0, 0, 1), background-color 200ms ease;
+}
+
+.arc-dot-front {
+  width: 22px;
+  background: var(--text);
+}
+
+/* The profile in use keeps its gold dot wherever the arc is turned. */
+.arc-dot-inuse {
+  background: var(--brand);
+}
+
+.arc-count {
+  min-width: 54px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-slot {
+    transition: none;
+  }
+
+  .arc-dot {
+    transition: none;
+  }
+}
+
+/* The Model list (US-158): a field you can type in, with our suggestions
+   on top and everything the provider offers below, read from it live. */
+.combo {
+  position: relative;
+  width: 280px;
+  max-width: 100%;
+}
+
+.combo-field {
+  position: relative;
+  display: flex;
+}
+
+.combo-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 30px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.combo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.combo-toggle:hover {
+  color: var(--text);
+}
+
+.combo-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  width: max(100%, 340px);
+  max-width: min(440px, 90vw);
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--panel-lift);
+  border: 1px solid var(--cream-14);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px var(--ink-edge);
+}
+
+.combo-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.combo-group {
+  padding: 8px 8px 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--brand);
+}
+
+.combo-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.combo-option:hover {
+  background: var(--cream-06);
+}
+
+.combo-option-active,
+.combo-option-active:hover {
+  background: var(--cream-14);
+}
+
+.combo-tag {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.combo-note {
+  margin: 6px 8px 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.combo-page {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 6px 8px 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cream-06);
+  font-size: 12px;
+  text-align: left;
+}
+
+/* A part of the window that hit a problem (US-163): a plain note with a
+   way back. No paint, no red: errors never splatter, and the note says
+   what still works. */
+.crash-note,
+.sec .panel.crash-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px;
+}
+/* The note is 1 thing, not rows: no hairlines between its lines. */
+.sec .panel.crash-note > * + * {
+  border-top: 0;
+}
+.crash-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.crash-line {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.crash-window {
+  /* The window itself does not scroll, so a tall note scrolls here. */
+  height: 100%;
+  overflow-y: auto;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--ink);
+}
+.crash-window .crash-note {
+  width: min(440px, 100%);
+}
+
+/* Glass over your desktop (US-150; LaBroi's round 3 picks 2026-11-08,
+   wells as darker glass 2026-11-11, round 2 on 2026-11-12). Main picks
+   the look and the page wears it on <html data-look>: glass where the
+   system shows the desktop through the window, solid with a gold glow
+   where it cannot or Reduce transparency is on. With no data-look at
+   all, everything above is the flat night studio.
+
+   Round 2: there is 1 glass. Every card, the sidebar and the top bar
+   are the same pane, so the eye reads 2 levels (window, card) and gold
+   does the rest: time back, the sidebar line you are on, and today's
+   header. The page scrolls in its own box under the bar, so the bar is
+   glass too.
+
+   The system's own material blurs the desktop, so nothing blurs
+   anything under a look: no backdrop blur is added, and the 2 the flat
+   look has (the fog on Test and on the ask-first box) are switched off.
+
+   Text: helper text straight on the window is cream, and every surface
+   puts grey back for what is inside it. A surface missing from the
+   list below only gets brighter text. */
+/* The attribute is named twice on purpose: it must outrank a theme's own
+   tokens on the same element (:root[data-theme='mist']), which set
+   --panel and --text-dim too. Red is brighter here, so red text on a
+   glass card keeps 4.5 to 1. */
+html[data-look][data-look] {
+  --panel: var(--glass-card);
+  --text-dim: var(--text-dim-window);
+  --red: var(--red-glass);
+}
+
+/* Over the glow, cards keep more of their own ink. */
+html[data-look='solid'][data-look='solid'] {
+  --panel: var(--glass-card-solid);
+}
+
+html[data-look]
+  :is(
+    .masthead,
+    .rail,
+    .panel,
+    .group,
+    .finish,
+    .running-strip,
+    .profile-card,
+    .profile-chip,
+    .share-dialog,
+    .rail-checks,
+    .wave-tile,
+    .whats-new-body,
+    .history,
+    .btn,
+    .field,
+    .seg,
+    .well,
+    .kbd,
+    .crash-window,
+    .loop-tile-wrap
+  ) {
+  --text-dim: var(--text-dim-surface);
+}
+
+/* The window. Glass: nothing is painted behind the page but 1 see-through
+   sheet of ink, so the desktop comes through everywhere. */
+html[data-look='glass'],
+html[data-look='glass'] body {
+  background: transparent;
+}
+
+html[data-look] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-look='glass'] body::before {
+  background: var(--glass-window);
+}
+
+/* Solid: ink with a gold glow from the top, fading out by the bottom. */
+html[data-look='solid'] body::before {
+  background:
+    radial-gradient(135% 90% at 50% 108%, var(--ink) 46%, var(--ink-clear) 82%),
+    linear-gradient(180deg, var(--glow-top) 0%, var(--glow-mid) 38%, var(--ink) 92%), var(--ink);
+}
+
+/* No rubber band past the page's ends: it would bare the material. */
+html[data-look] .page-scroll {
+  overscroll-behavior: none;
+}
+
+/* On glass the page fades out just under the bar, so a row never ends
+   on a hard line against the desktop. */
+html[data-look='glass'] .page-scroll {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 12px);
+  mask-image: linear-gradient(to bottom, transparent 0, black 12px);
+}
+
+/* The top bar and the sidebar are the same glass as every card (--panel:
+   62% on glass, 85% over the solid look's glow). */
+html[data-look] .masthead {
+  background: var(--panel);
+  border-bottom-color: var(--glass-edge);
+}
+
+html[data-look] .rail {
+  padding: 10px 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 var(--glass-light);
+}
+
+/* Names are cream until they are picked: a tab turns gold, and the
+   sidebar line you are on gets the gold strip (the thread). */
+html[data-look] :is(.nav-btn, .rail-item) {
+  color: var(--text);
+}
+
+html[data-look] .nav-btn[aria-current='page'] {
+  color: var(--brand);
+}
+
+/* Cream is the resting color now, so a hover lifts the ground instead. */
+html[data-look] :is(.nav-btn, .rail-item):hover {
+  background: var(--cream-06);
+}
+
+html[data-look] :is(.rail-item-on, .rail-item-on:hover) {
+  --text-dim: var(--text);
+  color: var(--text);
+  background: linear-gradient(135deg, var(--tint-strong-from), var(--tint-strong-to));
+  border-color: transparent;
+}
+
+/* What's new is gold, and gold needs a card under it. */
+html[data-look] .whats-new-line {
+  padding: 4px 10px;
+  background: var(--panel);
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+}
+
+/* Cards: glass with a light along the top edge. */
+/* Not the cards whose edge says something: Finish setup's red, and the
+   profile cards (gold ring for the one in use, a lifted shadow on the
+   arc) keep their own. */
+html[data-look] :is(.panel, .group, .running-strip, .history) {
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-light);
+}
+
+/* The setup badge is red or green on the sidebar's glass, where both
+   would fall under 4.5 to 1 over a bright desktop: it gets a solid chip. */
+html[data-look] .health {
+  background: var(--ink);
+}
+
+html[data-look] .health-bad {
+  background: linear-gradient(var(--red-wash), var(--red-wash)), var(--ink);
+}
+
+/* The fog on Test and on the ask-first box (US-157) blurred what was
+   behind it. On glass a blur paints black, and there is nothing behind
+   a card to blur, so the fog stays and the blur goes. */
+html[data-look] :is(.ask-first, .btn.btn-test) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* A group's well is a darker pane of the same glass, never a solid hole
+   (LaBroi's pick, board 12 option 2). Controls stay solid and clean. */
+html[data-look] :is(.well, .group-rows) {
+  background: var(--glass-well);
+  border-color: var(--glass-well-edge);
+}
+
+/* Home, gold by role. Time back is the 1 card that celebrates. */
+html[data-look] .home-timeback {
+  --text-dim: var(--text);
+  background: linear-gradient(135deg, var(--tint-strong-from), var(--tint-strong-to)), var(--panel);
+}
+
+html[data-look] .home-timeback :is(.micro-label, .link-btn) {
+  color: var(--text);
+}
+
+/* Your dictations is a card like the rest. */
+html[data-look] .history {
+  margin-top: 0;
+  padding: 16px 18px 6px;
+  background: var(--panel);
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+}
+
+/* The header of the day you are on carries the thread into the list:
+   the same day the sidebar's gold line is on, and Today while you are
+   above the days (homeMark). The band is painted behind the header's
+   words and changes nothing about its box, so the gold can move from
+   date to date without a single pixel of the list moving (LaBroi,
+   2026-11-14). It sits 4 px inside the header's top and bottom and
+   reaches 8 px past the column on each side, into the card's padding. */
+html[data-look] .day-head-on {
+  --text-dim: var(--text);
+  position: relative;
+  /* Its own layer, so the band paints over the card and under the words. */
+  z-index: 0;
+  border-top-color: transparent;
+}
+
+html[data-look] .day-head-on::before {
+  content: '';
+  position: absolute;
+  /* The header's 1 px top line is outside this box: 3 here is 4 from its top. */
+  inset: 3px -8px 4px;
+  z-index: -1;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--tint-thread-from), var(--tint-thread-to));
+}
+
+/* The focus ring follows the band's shape, not the plain header's, and
+   it is cream: the amber ring every other control wears reads about 2
+   to 1 on the gold band, and cream reads about 6 to 1. */
+html[data-look] .home-layout .day-head-on:focus-visible {
+  outline: none;
+}
+
+html[data-look] .home-layout .day-head-on:focus-visible::before {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+html[data-look] .day-head-on .day-chevron-open {
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  html[data-look] .rail {
+    padding: 8px;
+  }
+}
+
+/* Always-on scroll bars (main.tsx marks them): a track that matches the
+   window and a quiet thumb. */
+html[data-look][data-scrollbars='classic'] .page-scroll::-webkit-scrollbar {
+  width: 12px;
+  background: var(--ink);
+}
+
+/* The sheet over the desktop does not reach under the gutter, so on
+   glass the track is the same sheet. */
+html[data-look='glass'][data-scrollbars='classic'] .page-scroll::-webkit-scrollbar {
+  background: var(--glass-window);
+}
+
+html[data-look][data-scrollbars='classic'] .page-scroll::-webkit-scrollbar-thumb {
+  background: var(--cream-22);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 6px;
 }

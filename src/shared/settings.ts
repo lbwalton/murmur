@@ -17,6 +17,33 @@ export type MicMode = 'ready' | 'press'
 export const UPDATE_MODES = ['auto', 'ask', 'off'] as const
 export type UpdateMode = (typeof UPDATE_MODES)[number]
 
+/** A connection a profile carries, shaped like the cleanup slot. */
+export interface ProfileConnection {
+  enabled: boolean
+  baseUrl: string
+  llmModel: string
+}
+
+/**
+ * A saved provider setup (murmur Pro). Since US-154 a profile holds the
+ * whole setup: speech, cleanup, and the notes sorting and Transform
+ * connections. Keys never live in a profile: the key ring serves each
+ * base URL's key. A profile saved before US-154 has only the speech
+ * fields and applies only those, until it is saved again.
+ */
+export interface ProviderProfile {
+  id: string
+  name: string
+  baseUrl: string
+  sttModel: string
+  llmModel: string
+  polish?: ProfileConnection
+  sort?: ProfileConnection & { protocol: 'chat' | 'decide'; threshold: number }
+  transform?: ProfileConnection
+}
+
+export type ProfilesView = 'row' | 'arc'
+
 export interface Settings {
   hotkey: {
     mode: 'hold' | 'toggle'
@@ -39,7 +66,13 @@ export interface Settings {
     /** Saved provider setups (murmur Pro): switch endpoint, models,
      *  and the matching key in one click. The active fields above stay
      *  the single source of truth for what runs. */
-    profiles: Array<{ id: string; name: string; baseUrl: string; sttModel: string; llmModel: string }>
+    profiles: ProviderProfile[]
+    /** The profile last applied or saved (US-154), so the window can
+     *  say when the setup has changed since. Empty when none is. */
+    activeProfile: string
+    /** How Profiles shows them (US-160, US-161): the card in use and a
+     *  row of names, or cards on an arc. Anything else reads as row. */
+    profilesView: ProfilesView
   }
   /** Separate cleanup connection, so speech and cleanup can run on
    *  different providers (Groq speech, DeepSeek cleanup). It joins the
@@ -255,7 +288,9 @@ export const DEFAULT_SETTINGS: Settings = {
     // Groq decommissioned the llama defaults 2026-08-16; gpt-oss-120b is
     // their documented replacement (console.groq.com/docs/deprecations).
     llmModel: 'openai/gpt-oss-120b',
-    profiles: []
+    profiles: [],
+    activeProfile: '',
+    profilesView: 'row'
   },
   polish: {
     enabled: false,
@@ -397,6 +432,25 @@ function stringPair(value: unknown, a: string, b: string): boolean {
   return typeof v[a] === 'string' && typeof v[b] === 'string'
 }
 
+function isConnection(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  return typeof value.enabled === 'boolean' && stringPair(value, 'baseUrl', 'llmModel')
+}
+
+// A profile's cleanup, sort, and Transform parts come as a set (US-154).
+// One malformed part makes the profile speech only, the shape every
+// profile had before, so applying it never half switches a setup.
+function wholeOrSpeechOnly(profile: Record<string, unknown>): Record<string, unknown> {
+  const { polish, sort, transform, ...speech } = profile
+  if (polish === undefined && sort === undefined && transform === undefined) return speech
+  const sortOk =
+    isConnection(sort) &&
+    ((sort as Record<string, unknown>).protocol === 'chat' || (sort as Record<string, unknown>).protocol === 'decide') &&
+    typeof (sort as Record<string, unknown>).threshold === 'number'
+  if (!isConnection(polish) || !sortOk || !isConnection(transform)) return speech
+  return profile
+}
+
 function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknown> {
   if (Array.isArray(out.dictionary)) {
     out.dictionary = out.dictionary.filter((e) => stringPair(e, 'from', 'to'))
@@ -441,12 +495,19 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   }
   const provider = out.provider as Record<string, unknown> | undefined
   if (provider && Array.isArray(provider.profiles)) {
-    provider.profiles = provider.profiles.filter(
-      (p) =>
-        stringPair(p, 'id', 'name') &&
-        stringPair(p, 'baseUrl', 'sttModel') &&
-        typeof (p as Record<string, unknown>).llmModel === 'string'
-    )
+    const profiles = provider.profiles
+      .filter(
+        (p) =>
+          stringPair(p, 'id', 'name') &&
+          stringPair(p, 'baseUrl', 'sttModel') &&
+          typeof (p as Record<string, unknown>).llmModel === 'string'
+      )
+      .map((p) => wholeOrSpeechOnly(p as Record<string, unknown>))
+    provider.profiles = profiles
+    // A pointer at a profile that is gone points at nothing.
+    if (typeof provider.activeProfile === 'string' && !profiles.some((p) => p.id === provider.activeProfile)) {
+      provider.activeProfile = ''
+    }
   }
   return out
 }

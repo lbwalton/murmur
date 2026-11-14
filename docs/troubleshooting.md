@@ -6,9 +6,15 @@ Short answers first, details after. If a problem is not listed here, open an iss
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
 
+## What if Settings says "This section hit a problem"?
+
+Press **Try again**. If the note comes back, press **Reload window**. Dictation keeps working the whole time: the note only means 1 part of the window could not draw itself, and every other section, the rail, search and the other pages still work. The same note on Home, Analytics, Wrap-up or Journey says "This page hit a problem"; going to another page and back tries it again. If the whole window is affected, it says "This window hit a problem" with **Reload window**, instead of going black (added November 2026).
+
+Each note writes 1 line to the log (Settings, System, Diagnostics, **Open log folder**, then murmur.log): which part broke, the kind of error and the start of its message, cut before anything the message quotes. murmur puts no settings or keys in it, and the log stays on your computer until you save a report and send it. If it keeps happening, **Save report** and send it with the issue.
+
 ## How do I tell you a take came out wrong?
 
-Open the home tab and click **report** on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. What you said, what it typed, and what it should have been can all be edited here, and the rest in your mail app, so take out anything private.
+Open the home tab and click **report** (the flag) on that take. murmur shows what you said, what it typed, and a box for what it should have been, plus your version, your formatting switches, and your model names. What you said, what it typed, and what it should have been can all be edited here, and the rest in your mail app, so take out anything private.
 
 **Open in my mail app** starts an email to support@murmurapp.app in your own mail app, and nothing goes until you press send there. murmur itself sends nothing, and your audio, keys, base URLs, other takes, and your dictionary and expansion lists are never included. What murmur typed can hold an expansion that fired or a dictionary spelling, so read it first. A very long take may be too long for a mail link: then **Copy report and open mail** copies it, and you paste it in.
 
@@ -22,7 +28,7 @@ The diagnostics report adds these up for the last 30 days, or as far back as the
 
 ## What happens when a dictation fails, and how do I retry it?
 
-murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the API keys list under Settings, Provider and keys), then click **retry** beside the take, or **retry all** when several are waiting.
+murmur keeps the recording, and it waits on the home tab under **waiting to retry**. Fix whatever stopped it (most often: save your key in the Key row under Settings, Provider and keys, Speech), then click **retry** beside the take, or **retry all** when several are waiting.
 
 A take waits there when its transcription failed: no API key was saved, the provider did not accept the key, murmur could not reach the provider, the provider did not answer in time or had a problem on its end, or it refused the audio or the model name. The pill shows an error when this happens. A cleanup model that misbehaves never lands a take here: cleanup fails open, and your words arrive without it.
 
@@ -49,7 +55,7 @@ Yes. Many companies run a security service (Zscaler, Netskope, and others) that 
 If dictation still fails on a work network:
 
 1. Open your provider's address in your browser, for example `https://api.groq.com/openai/v1/models`. A short error about a missing or invalid API key means the network lets the provider through. A page from your company's security service saying the site is blocked means your company blocks that provider: ask IT to allow it, or switch to a provider your company allows.
-2. Press **Test** on the Connection row under Settings, Provider and keys. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
+2. Press **Test** on the Key row under Settings, Provider and keys, Speech. A network error names the network's own reason in parentheses. `net::ERR_CERT_AUTHORITY_INVALID` means your computer does not trust the certificate the network presented, which IT fixes by installing the company's root certificate. `net::ERR_PROXY_CONNECTION_FAILED` means the proxy your computer is set to use did not answer.
 3. Send diagnostics (above). The log names the same reason for each failed dictation.
 
 ## Why did murmur type words I never said, or words in another language, after a quiet take?

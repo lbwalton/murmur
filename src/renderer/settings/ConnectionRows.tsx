@@ -6,8 +6,19 @@
 import { PlainHttpNote } from './PlainHttpNote'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyStatus, ProviderTestResult } from '../../preload/settings'
-import { type CatalogKind, type ProviderCatalog, providerForBaseUrl } from '../../shared/catalog'
+import {
+  type CatalogKind,
+  type CatalogProvider,
+  type ModelListResult,
+  type ProviderCatalog,
+  providerForBaseUrl
+} from '../../shared/catalog'
+import { providerName } from '../../shared/profiles'
 import { ModelPicker, Row, Segmented, TextSetting } from './controls'
+import { ApiKeys, pasteHint } from './ApiKeys'
+import { ModelCombo } from './ModelCombo'
+
+const NO_LEGACY = { present: false, masked: null }
 
 export interface ConnectionValue {
   enabled: boolean
@@ -19,6 +30,12 @@ export interface ConnectionLabels {
   connection: string
   connectionDesc: string
   sameOption: string
+  /** The other choice's words; Separate when not given. */
+  separateOption?: string
+  /** Prefixed to the controls' accessible names when the visible labels
+   *  are short (Model under Cleanup reads Cleanup model to a screen
+   *  reader, US-154). */
+  ariaName?: string
   provider: string
   baseUrl: string
   model: string
@@ -45,9 +62,105 @@ export interface ConnectionKeyApi {
   clearKey: () => Promise<KeyStatus>
   status: () => Promise<KeyStatus>
   test: () => Promise<ProviderTestResult>
+  /** Every text model the provider offers, for the Model list (US-158). */
+  models?: () => Promise<ModelListResult>
+  /** Opens a catalog provider's models page by its id (US-158). */
+  openModelsPage?: (providerId: string) => void
 }
 
 const strip = (u: string): string => u.replace(/\/$/, '')
+
+/** A connection after picking a preset: its address and its suggested
+ *  model, or no model at all. A model id left over from another
+ *  provider would fail every call (LaBroi, 2026-11-08, US-152). */
+export function presetConnection<T extends ConnectionValue>(preset: CatalogProvider, value: T): T {
+  return { ...value, baseUrl: preset.llmBaseUrl ?? preset.baseUrl, llmModel: preset.llmModels[0]?.id ?? '' }
+}
+
+/** How a test result reads: green when it worked, red when it failed,
+ *  and a plain note when the provider answered but does not list a model.
+ *  That last one is a soft warning, not an error (LaBroi, 2026-11-08): it
+ *  is not critical, least of all for a model the setup is not using. */
+export type VerdictTone = 'ok' | 'warn' | 'bad'
+export const VERDICT_CLASS: Record<VerdictTone, string> = {
+  ok: 'status-ok',
+  warn: 'status-warn',
+  bad: 'status-bad'
+}
+
+/** What a connection test says (US-154): who answered, and whether it
+ *  offers each model being used. */
+export function testVerdict(result: ProviderTestResult, provider: string): { message: string; tone: VerdictTone } {
+  if (!result.ok) return { message: result.detail, tone: 'bad' }
+  const asked = result.models ?? (result.model ? [{ id: result.model, listed: result.listed ?? null }] : [])
+  const both = (ids: string[]): string => ids.join(' and ')
+  const missing = asked.filter((m) => m.listed === false).map((m) => m.id)
+  if (missing.length > 0) {
+    return {
+      message: `${provider} answered, but does not list ${both(missing)}. Check the model id${missing.length > 1 ? 's' : ''}.`,
+      tone: 'warn'
+    }
+  }
+  const offered = asked.filter((m) => m.listed === true).map((m) => m.id)
+  if (offered.length > 0) return { message: `${provider} answered and offers ${both(offered)}`, tone: 'ok' }
+  return { message: `${provider} answered`, tone: 'ok' }
+}
+
+/** A connection test's answer, under the Key row's buttons (US-157):
+ *  testing while it runs, then the verdict, fading in. Always mounted,
+ *  so a screen reader hears each answer. */
+export function TestVerdict(props: {
+  testing: boolean
+  verdict: { message: string; tone: VerdictTone } | null
+}): React.JSX.Element {
+  const shown = props.testing || props.verdict !== null
+  return (
+    <div className={shown ? 'test-verdict' : 'test-verdict visually-hidden'} role="status">
+      {props.testing ? (
+        <span className="status-dim">testing…</span>
+      ) : (
+        props.verdict && <span className={VERDICT_CLASS[props.verdict.tone]}>{props.verdict.message}</span>
+      )}
+    </div>
+  )
+}
+
+/** One pass of Test's sheen (test-sheen in styles.css). */
+export const SHEEN_MS = 900
+
+/**
+ * A pressed test's answer, held to the end of the sheen pass it lands
+ * in: at least 1 whole pass, so a provider that answers in 200 ms never
+ * cuts the shine off mid-flash, and one that answers in 1.2 s finishes
+ * its second pass. With reduced motion there is no sheen, so no wait.
+ */
+export async function afterOnePass<T>(work: Promise<T>, reduced = prefersReducedMotion()): Promise<T> {
+  const start = Date.now()
+  const result = await work
+  if (reduced) return result
+  const spent = Date.now() - start
+  const end = Math.max(1, Math.ceil(spent / SHEEN_MS)) * SHEEN_MS
+  await new Promise((resolve) => setTimeout(resolve, end - spent))
+  return result
+}
+
+/** Whether a pasted key was stored: it needs a base URL to file under,
+ *  and a stale legacy key can make present read true without this save
+ *  having gone anywhere (re-gate finding), so both must hold. When not,
+ *  the row keeps what was pasted (US-162). */
+export function keyLanded(baseUrl: string, status: KeyStatus): boolean {
+  return baseUrl !== '' && status.present
+}
+
+/** Which key the row holds, so a Test verdict is dropped once that key is
+ *  replaced or removed, here or in Saved keys (US-162 review). */
+export function keyMark(status: KeyStatus): string {
+  return status.present ? `key ${status.masked ?? ''}` : 'none'
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+}
 
 export function ConnectionRows(props: {
   value: ConnectionValue
@@ -64,11 +177,22 @@ export function ConnectionRows(props: {
   /** Row anchor for the first row (design QA captures, jump targets). */
   anchor?: string
   protocol?: ConnectionProtocolControl
+  /** Rows shown while the slot rides the other connection (the cleanup
+   *  group's same-as-speech Model row, US-154). */
+  whenSame?: React.ReactNode
 }): React.JSX.Element {
   const { value, catalog, labels } = props
-  const [draft, setDraft] = useState('')
   const [test, setTest] = useState<ProviderTestResult | null>(null)
   const [testing, setTesting] = useState(false)
+  // Each test carries a number; anything that makes a verdict stale (a
+  // new base URL, model or key) bumps it, so a test still running then,
+  // held a whole sheen pass or not, never lands to vouch for the change.
+  const testSeq = useRef(0)
+  const forget = (): void => {
+    testSeq.current++
+    setTest(null)
+    setTesting(false)
+  }
   // The presets a slot may pick from follow what it speaks: chat models
   // for a chat protocol, decision models for a decision protocol.
   const kind: CatalogKind = props.protocol?.value === 'decide' ? 'decide' : 'llm'
@@ -90,35 +214,51 @@ export function ConnectionRows(props: {
   useEffect(() => {
     const current = value.baseUrl
     if (prevUrl.current !== null && current !== prevUrl.current) {
-      setTest(null)
+      forget()
       void props.api.status().then(props.onKeyStatus)
     }
     prevUrl.current = current
   }, [value.baseUrl])
+  // A verdict about one model never vouches for another.
+  useEffect(() => {
+    forget()
+  }, [value.llmModel])
+  // Nor one about a key that was since replaced or removed, here or in
+  // Saved keys.
+  const mark = keyMark(props.keyStatus)
+  const prevMark = useRef(mark)
+  useEffect(() => {
+    if (mark !== prevMark.current) forget()
+    prevMark.current = mark
+  }, [mark])
 
   const shared =
     value.baseUrl !== '' && props.sharedWith.some((u) => u !== '' && strip(u) === strip(value.baseUrl))
+  const owner = providerName(catalog, value.baseUrl)
+  const verdict = test ? testVerdict(test, owner) : null
+  // Each row's id hangs off the slot's anchor, so 2 slots with the same
+  // short labels never share an id (Key under Speech and under Cleanup).
+  const sub = (part: string): string | undefined => (props.anchor ? `${props.anchor}-${part}` : undefined)
+  const aria = (label: string): string => (labels.ariaName ? `${labels.ariaName} ${label.toLowerCase()}` : label)
 
-  const save = async (): Promise<void> => {
-    if (draft.trim().length === 0) return
-    const status = await props.api.setKey(draft.trim())
+  // The key row is Speech's row (US-162). A save that could not land
+  // throws, so the row keeps what was pasted: wiping it would silently
+  // discard it.
+  const saveKey = async (key: string): Promise<void> => {
+    const status = await props.api.setKey(key)
     props.onKeyStatus(status)
-    // Keep the typed key when the save could not land (no base URL
-    // yet): wiping it would silently discard what the user pasted.
-    // The base URL is the landing condition; a stale legacy key can
-    // make present read true without this save having gone anywhere
-    // (re-gate finding).
-    if (value.baseUrl !== '' && status.present) {
-      setDraft('')
-      setTest(null)
-    }
+    if (!keyLanded(value.baseUrl, status)) throw new Error('key not stored')
+    forget()
   }
   const run = async (): Promise<void> => {
+    if (testing) return
+    const seq = ++testSeq.current
     setTesting(true)
     try {
-      setTest(await props.api.test())
+      const result = await afterOnePass(props.api.test())
+      if (seq === testSeq.current) setTest(result)
     } finally {
-      setTesting(false)
+      if (seq === testSeq.current) setTesting(false)
     }
   }
 
@@ -126,17 +266,18 @@ export function ConnectionRows(props: {
     <>
       <Row label={labels.connection} desc={labels.connectionDesc} anchor={props.anchor}>
         <Segmented
-          label={labels.connection}
+          label={aria(labels.connection)}
           value={value.enabled ? 'separate' : 'same'}
           options={[
             { value: 'same', label: labels.sameOption },
-            { value: 'separate', label: 'Separate' }
+            { value: 'separate', label: labels.separateOption ?? 'Separate' }
           ]}
           onChange={(next) => void props.onChange({ ...value, enabled: next === 'separate' })}
         />
       </Row>
+      {!value.enabled && props.whenSame}
       {value.enabled && props.protocol && (
-        <Row label={props.protocol.label} desc={props.protocol.desc}>
+        <Row label={props.protocol.label} desc={props.protocol.desc} anchor={sub('protocol')}>
           <select
             className="field"
             aria-label={props.protocol.label}
@@ -152,6 +293,7 @@ export function ConnectionRows(props: {
         <>
           <Row
             label={labels.provider}
+            anchor={sub('provider')}
             desc={
               mismatch
                 ? `${matched?.name ?? 'This provider'} is a ${kind === 'decide' ? 'chat' : 'decision'} model. Switch the sort protocol to use it, or pick a preset that speaks this one.`
@@ -160,16 +302,12 @@ export function ConnectionRows(props: {
           >
             <select
               className="field"
-              aria-label={labels.provider}
+              aria-label={aria(labels.provider)}
               value={matchedKind ? (matched?.id ?? 'custom') : 'custom'}
               onChange={(e) => {
                 const preset = llmProviders.find((p) => p.id === e.target.value)
                 if (!preset) return
-                void props.onChange({
-                  ...value,
-                  baseUrl: preset.llmBaseUrl ?? preset.baseUrl,
-                  llmModel: preset.llmModels[0]?.id ?? value.llmModel
-                })
+                void props.onChange(presetConnection(preset, value))
               }}
             >
               <option value="custom">Custom</option>
@@ -182,20 +320,38 @@ export function ConnectionRows(props: {
           </Row>
           <Row
             label={labels.baseUrl}
+            anchor={sub('base-url')}
             desc={kind === 'decide' ? "The decision endpoint's base URL, ending in /v1." : 'Any OpenAI-compatible chat endpoint.'}
           >
             <TextSetting
               wide
+              label={aria(labels.baseUrl)}
               value={value.baseUrl}
               placeholder={placeholders.baseUrl}
               onCommit={(baseUrl) => void props.onChange({ ...value, baseUrl })}
             />
           </Row>
           <PlainHttpNote url={value.baseUrl} />
-          <Row label={labels.model} desc="Pick a suggestion or type any model id this provider offers.">
-            {matched && matched.llmModels.length > 0 ? (
+          <Row label={labels.model} anchor={sub('model')} desc="Pick a suggestion or type any model id this provider offers.">
+            {kind === 'llm' && props.api.models ? (
+              <ModelCombo
+                label={aria(labels.model)}
+                value={value.llmModel}
+                suggestions={matchedKind && matched ? matched.llmModels.map((m) => m.id) : []}
+                placeholder={placeholders.model}
+                providerName={matchedKind && matched ? matched.name : 'this provider'}
+                source={value.baseUrl}
+                load={props.api.models}
+                onOpenPage={
+                  matchedKind && matched?.modelsUrl && props.api.openModelsPage
+                    ? () => props.api.openModelsPage?.(matched.id)
+                    : undefined
+                }
+                onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
+              />
+            ) : matched && matched.llmModels.length > 0 ? (
               <ModelPicker
-                label={labels.model}
+                label={aria(labels.model)}
                 value={value.llmModel}
                 options={matched.llmModels.map((m) => m.id)}
                 placeholder={placeholders.model}
@@ -203,6 +359,7 @@ export function ConnectionRows(props: {
               />
             ) : (
               <TextSetting
+                label={aria(labels.model)}
                 value={value.llmModel}
                 placeholder={placeholders.model}
                 onCommit={(llmModel) => void props.onChange({ ...value, llmModel })}
@@ -210,64 +367,52 @@ export function ConnectionRows(props: {
             )}
           </Row>
           {shared ? (
-            <Row label={labels.key} desc={labels.sharedDesc}>
+            <Row label={labels.key} anchor={sub('key')} desc={labels.sharedDesc}>
               <span className="dim">shared</span>
             </Row>
           ) : (
             <Row
               label={labels.key}
+              anchor={sub('key')}
               block
+              indent
               desc={
-                props.keyStatus.present
-                  ? `Saved and encrypted (${props.keyStatus.masked ?? ''})`
-                  : value.baseUrl === ''
-                    ? 'Pick a preset or base URL first; the key files under it.'
+                value.baseUrl === ''
+                  ? 'Pick a preset or base URL first; the key files under it.'
+                  : props.keyStatus.present
+                    ? `Encrypted on this computer and sent only to ${owner}. Test checks it, and the model, with ${owner}.`
                     : labels.keyDesc
               }
             >
-              <div className="inline">
-                <input
-                  type="password"
-                  className="field"
-                  placeholder={props.keyStatus.present ? 'replace key' : 'key…'}
-                  aria-label={labels.key}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void save()
-                  }}
-                />
-                <button className="btn btn-primary" onClick={() => void save()} disabled={draft.trim() === ''}>
-                  Save
-                </button>
-                {props.keyStatus.present && (
-                  <button
-                    className="btn btn-remove"
-                    onClick={() => {
-                      void props.api.clearKey().then(props.onKeyStatus)
-                      setTest(null)
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
+              <ApiKeys
+                providerName={owner}
+                name={aria(labels.key)}
+                keyUrl={matched?.keyUrl?.replace('https://', '') ?? null}
+                placeholder={matched ? pasteHint(matched.name) : 'key…'}
+                active={props.keyStatus}
+                others={[]}
+                legacy={NO_LEGACY}
+                onSave={saveKey}
+                onRemoveActive={() => {
+                  void props.api.clearKey().then(props.onKeyStatus)
+                  forget()
+                }}
+                onRemoveOther={() => undefined}
+                onAssignLegacy={() => undefined}
+                onRemoveLegacy={() => undefined}
+              />
+              <div className="key-line key-line-end">
                 <button
-                  className="btn"
+                  className="btn btn-test"
+                  aria-label={labels.ariaName ? `Test ${labels.ariaName.toLowerCase()} connection` : undefined}
+                  aria-busy={testing}
                   onClick={() => void run()}
-                  disabled={!props.keyStatus.present || testing}
+                  disabled={!props.keyStatus.present}
                 >
                   Test
                 </button>
-                {testing ? (
-                  <span className="status-dim">testing…</span>
-                ) : (
-                  test && (
-                    <span className={test.ok ? 'status-ok' : 'status-bad'}>
-                      {test.ok ? 'connected' : test.detail}
-                    </span>
-                  )
-                )}
               </div>
+              <TestVerdict testing={testing} verdict={test ? verdict : null} />
             </Row>
           )}
         </>

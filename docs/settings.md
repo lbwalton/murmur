@@ -8,19 +8,42 @@ The bar at the top of the window (the murmur wordmark with your belt, then home,
 
 ## What is the home view?
 
-The window opens on your transcription log: every dictation, grouped by day, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy button, so a dictation that landed in the wrong window is one click from your clipboard. Above the log, once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. A red ✗ next to the settings tab means setup needs attention.
+The window opens on Home. A sidebar on the left has a search box, the parts of the page, each day of your history with its count, and Hide words. Beside it, top to bottom: the title with a what's new line, any takes waiting to retry in a card marked with a red dot, your time back for today beside your last note, then **your dictations**, a day at a time, newest first, with the time, word count, and words-per-minute of each take. It updates live as you dictate. Each entry has a copy icon at its right edge, so a dictation that landed in the wrong window is one click from your clipboard. Once you have dictated at all, a card shows your time back for today (the minutes you did not spend typing, explained under "How does murmur calculate time earned back?") with this month and lifetime beneath it. A gold brush stroke under the number shows today against your typical day: the stroke is today, a dotted line carries on for the rest of a typical day, and a day past typical fills the width. The line under it says it in words, for example "63% of your typical day (41 min)", or "More than double your typical day" on a big one. Your typical day is the middle value (the median) of your time back across the days you dictated in the four weeks before today, so one huge day or one quiet day barely moves it. It needs three days with dictation in those four weeks, not counting today; until then the card says so and draws no stroke. Under the your dictations label, 1 line says how many are showing and how long they are kept, with a link to Settings, History. A red ✗ next to the settings tab means setup needs attention.
+
+## How do I find an old dictation?
+
+On Home, use the sidebar (added November 2026).
+
+- **Search.** Type in **Search dictations** at the top of the sidebar, or press Cmd+F (Ctrl+F on Windows). Every day is filtered as you type, the days with a match open, and a line says how many dictations match. A take matches when it holds every word you typed, in what landed or in what was heard. To clear it, click **Clear search** beside the count, or press Escape while you are in the search box. While **Hide words** is on, search is off: Cmd+F (Ctrl+F on Windows) takes you to the Hide words switch instead, and the line that says why lights up for a moment.
+- **Jump to a day.** The sidebar lists your 7 newest days that have dictations (today and yesterday by name), each with its number of dictations, then **Older days**. Click a day and the page scrolls to it and opens it. As you scroll, the sidebar marks the day you are looking at in gold, and that day's header in the list turns gold with it, so the gold follows you from date to date. Clicking a date's own header in the list moves the gold to it too. At the top of the page the gold header is Today's, once you have dictated today.
+- **Fold a day.** Each day has a header with its number of dictations and words. Click it (or press Enter or Space on it) to fold or open that day. Today and Yesterday start open, and older days start folded.
+- **Hide the sidebar.** Click the button beside the search box, or press Cmd+\\ (Ctrl+\\ on Windows). murmur remembers the choice. A **Show sidebar** button sits beside the Home title while it is hidden. In a narrow window the sidebar tucks itself away, and the same button brings it back. The window stops getting smaller at 480 by 400, the smallest size where every page still fits. Zoomed in, that smallest size grows by the same amount. While the sidebar is hidden, the Hide words switch sits beside the Home title, and a search you left on stays on until you clear it.
+
+Search is off while Hide words is on, so a search can never show hidden words; the sidebar says so. Home shows your newest 500 dictations, so a search covers those. A take whose words are not kept (under Don't keep, after a quit) has nothing to match.
 
 ## How is the settings tab organized, and how do I find a setting?
 
-A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Dictionary. Features: Notes, Transform, Time back and recap. App: Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
+A rail on the left lists every section in three groups. Essentials: Provider and keys, Dictation, Shortcuts, Dictionary. Features: Notes, Transform, Time back and recap. App: History, Look, System, murmur Pro. Click a section to scroll to it; the rail marks the section you are reading as you scroll, and a red dot beside a section means a setup check inside it needs you.
 
-The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening an Advanced fold if the setting lives inside one. Esc clears the search.
+Inside a section, settings that belong together sit in a group: a small heading, then the rows inset in a darker well (regrouped November 2026). Dictation has Hotkey, Microphone, Formatting, Where words land, and Try it. System has General, macOS permissions, and Help. Notes has Capture, Sorting, Alerts, and File layout once a notes folder is set; until then it shows only the note chord and the notes folder. The short sections (Transform, Time back and recap, History, Look, murmur Pro) are 1 well with no group headings. The formatting choice (Off, Light, Full) is the Level row in the Formatting group, and Smart lists and Apply corrections under it dim and say needs Full formatting until Level is Full.
 
-Settings most people never touch sit under a fold at the bottom of their section that says what it holds: Advanced under Provider and keys (base URL, profiles, price refresh, and the Groq defaults), and File layout under Notes. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row.
+The search field at the top of the rail finds any setting by its name, its description, or a common word for it (type shortcut and Hotkey comes up, type log and Diagnostics does). Matches replace the section list while you type. Click one, or press Enter for the first (the arrow keys move between them), and murmur scrolls to that setting and highlights it, opening the File layout fold if the setting lives inside it. Esc clears the search.
+
+Settings most people never touch sit in a group that folds from its heading and says what it holds while closed: File layout under Notes. The speech base URL sits in the Speech group, and price refresh and the Groq defaults sit in Cost and defaults, both under Provider and keys. On and off settings are switches; short choices like Hold to talk or Tap to start, tap to stop show every option as a button in a row, all the same width, and the one picked has a gold edge and a check mark.
+
+## Where are all of murmur's keyboard shortcuts?
+
+Under Settings, Shortcuts (added November 2026). It lists every key combo murmur listens for in 1 place, in 2 groups.
+
+**Yours to set** has the 4 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, and Transform. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform), so a change in either place shows in both, and the also under link on each row jumps to it there. The link runs both ways: each shortcut's row in its own section has an also under Shortcuts link that jumps back to the full list. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
+
+**Built in** lists the keys you cannot change: tapping the dictation or note shortcut twice for hands-free (when Double-tap for hands-free is on), Esc to cancel a hands-free take, and the zoom keys (Cmd +, Cmd −, Cmd 0 on a Mac; Ctrl on Windows).
+
+Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
 
 ## How long is my history kept, and where?
 
-History lives only on your machine, in murmur's local data folder. **Keep history for**, at the bottom of the home view, sets how long:
+History lives only on your machine, in murmur's local data folder. **Keep history for**, in Settings, under History, sets how long. Home says the current rule in 1 line under the your dictations label, with a link there:
 
 - **30 days, 90 days, a year, or forever.** Entries older than that are removed.
 - **24 hours.** The words of a take go after 24 hours, checked every 15 minutes while murmur runs. The numbers stay, so your stats, belts, and paintings keep counting.
@@ -32,7 +55,7 @@ Changing this tells you what it will remove first, whichever way you move it. Go
 
 ## Is my history encrypted?
 
-Yes, by default. The words in your history are encrypted on disk with a key your system's secure storage holds: the Keychain on Mac, and your account's protected storage on Windows. **Encrypt saved words**, beside **Keep history for** on the home tab, turns it off and on, and murmur changes the whole file right then.
+Yes, by default. The words in your history are encrypted on disk with a key your system's secure storage holds: the Keychain on Mac, and your account's protected storage on Windows. **Encrypt saved words**, beside **Keep history for** in Settings, under History, turns it off and on, and murmur changes the whole file right then.
 
 - **It protects the file, not your screen.** A copied history file or folder cannot be read elsewhere. On a Mac, another program has to ask the Keychain first. On Windows, a program already running as you can still reach the key, so there this guards copies more than programs. Your words still show on the home tab, so turning this on does not hide them while you share your screen or film. [Hide words](#how-do-i-hide-my-words-while-i-share-my-screen-or-film) does that.
 - **Your notes stay plain files.** They are your own, so they stay readable in any app. Recordings waiting to retry and your settings are not encrypted either, and the numbers in your history stay readable so your stats, belts, and paintings always work.
@@ -43,7 +66,7 @@ Yes, by default. The words in your history are encrypted on disk with a key your
 
 ## How do I hide my words while I share my screen or film?
 
-Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is on the home tab, just above your history, and in Settings, under System. They are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
+Turn on **Hide words**. Your dictated words stop showing in murmur's windows, and it stays on after a restart, so restarting mid-recording reveals nothing. The switch is in 3 places: on the home tab (at the bottom of the sidebar, or beside the Home title while the sidebar is hidden), in Settings under History, and in the tray menu (the menu bar menu on a Mac). All 3 are the same setting. The one exception to hidden words is a text field in murmur itself, such as the settings search or a dictionary entry: dictate into one and your words show there, so keep your cursor in another app.
 
 - **What stays:** the time, word count, pace, and status of every take, and every number, belt, and painting.
 - **What is hidden:** your takes on the home and wrap-up tabs, what you said, the last note's first line, and lines held in Notes. The words are left out of the window entirely, so hovering or selecting a row shows nothing. A row says Words hidden.
@@ -54,9 +77,17 @@ Turn on **Hide words**. Your dictated words stop showing in murmur's windows, an
 
 It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
+## What do the icons on a dictation mean?
+
+Each dictation on the home tab has up to 3 small icons on its top line. Point at one, or Tab to it, and its name shows beside it.
+
+- **Copy** (2 sheets, at the right edge) puts that dictation's words on your clipboard. A gold brushed check shows that it did.
+- **What you said** (a gold speech bubble) shows only when cleanup changed your words. It opens the words as they were heard.
+- **Report** (a flag) opens a short form to tell us what a dictation should have been. Nothing is sent until you send it.
+
 ## How do I see what cleanup changed, and get my words back?
 
-Open the home tab. When cleanup changed any of your words, that take shows **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
+Open the home tab. When cleanup changed any of your words, that take shows a gold speech bubble, **what you said**. Click it to see the words as they were heard, with anything removed struck through, then **Copy what you said** to put them on your clipboard. Nothing touches the clipboard until you click. Paste last, your numbers, and your belts stay as they were. Transforms and takes where nothing changed do not offer it.
 
 These are the words your speech provider heard, so if it misheard you, this shows that too.
 
@@ -72,9 +103,9 @@ When any check fails, a **Finish setup** card opens at the top of the settings c
 
 ## How do I set my API key?
 
-Under Settings, Provider and keys, paste your key into the **API keys** list on your provider's line and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to that provider. Only a masked form (like `gsk_…OC9g`) is ever displayed, marked **in use**. Replace swaps in a new key; Remove deletes it. The Connection row right below tests it on its own after a save, and its Test button runs the check again: green `connected` proves the key and base URL work together.
+Under Settings, Provider and keys, Speech, paste your key into the **Key** row and press Save. It is encrypted with your operating system's secure storage, kept only on your machine, and sent only to that provider. Only a masked form (like `gsk_…OC9g`) is ever displayed, marked **in use**. Replace swaps in a new key; Remove deletes it. murmur tests the key on its own after a save, and the **Test** button under it runs the check again; the answer shows under the button. A good result names the provider and your models, for example "Groq answered and offers whisper-large-v3-turbo and openai/gpt-oss-120b", which proves the key and base URL work together and that the provider offers the models you picked. If it says the provider does not list a model, check that model's id.
 
-Each provider keeps its own key, so the list also shows keys you saved for providers you are not using right now, one per line, each with its own Remove. Switching the Provider preset brings that provider's saved key back into use.
+Each provider keeps its own key. **Saved keys**, further down, lists every key you saved, 1 per provider, with what each is used for right now and its own Replace and Remove. Switching the Speech provider brings that provider's saved key back into use.
 
 ## How do I change the hotkey?
 
@@ -243,7 +274,7 @@ A painting a day. Each day murmur sets out a painting, and every take you make a
 - **It grows richer with your belt:** ink washes from blue belt, splatter from purple, a second motif from brown (a faint moon, far hills, or mist), and the heaviest washes and splatter from black; from purple on, each take paints more marks (two at purple, three at brown, four at black). The belt and level a day starts at stay with that day's painting, counted the way your belts are (dictations and notes). Levels add a bird or two.
 - **When it finishes,** it gets murmur's seal, stamped in the color of the belt you painted it at (ember before your first belt; the coral belts split in two, like their blocks), so your collection shows how far you have come. Then it gets a line from the day's own numbers, and it keeps growing: every take after that adds to the scene in its own way, on a schedule that keeps it a painting rather than a pile (leaves down the bamboo, then grass at its foot and leaves drifting down; maple leaves falling across the scene; more snow; ripples and reeds on the water), up to 60 more. Your takes shape it: a longer take grows a bigger mark, and a long one (150 words or more) earns a signature mark, such as a young bamboo stalk, a new bloom, a second boat far off, or a pine on a ledge, up to three a day. So no two people's paintings grow alike. A day you stop early keeps the strokes it has.
 - **Its light is the hours you painted it in.** When it finishes, the light comes in with the seal, laid under every stroke the way a painter lays the sky first. It goes by the middle hour of the takes that finished it: a rising sun if that hour falls in the morning (5 to 10 am), a pale sun with a thin cloud by day (10 am to 5 pm), a setting sun with a cloud across it in the evening (5 to 9 pm), or a crescent moon and stars at night (9 pm to 5 am). It goes in the open sky the painting leaves. A painting that already has a moon keeps it: at night it gets the stars, by day an afterglow under the moon. murmur keeps one number for this, the middle hour of those takes, never each take's time.
-- **Your paintings** from the last few days (up to six from the past four weeks) line up under it. Click one to open it large, with its numbers and its own Save card. They are kept in murmur's data folder (paintings.json) for about 400 days, as small records of each take's word count (plus the belt a painting was started at and, once it finishes, the middle hour of its takes), never your words, so they outlive the history retention setting; Clear all on the home tab clears them along with your history.
+- **Your paintings** from the last few days (up to six from the past four weeks) line up under it. Click one to open it large, with its numbers and its own Save card. They are kept in murmur's data folder (paintings.json) for about 400 days, as small records of each take's word count (plus the belt a painting was started at and, once it finishes, the middle hour of its takes), never your words, so they outlive the history retention setting; Clear all in Settings, under History, clears them along with your history.
 - **Save card** saves a portrait image, 1080 by 1350, for posting: the painting as it stands, its name, how far it got, the date, the rank and level it was painted at and its light (for example, white belt, one stripe, level 1, by moonlight), and the murmur wordmark. It is drawn and saved on your machine and sent nowhere.
 - **Save the week** (beside your paintings) saves the last seven days as one long image to post; see below.
 
@@ -275,7 +306,7 @@ Two rules keep the number truthful. A take where you held the key while thinking
 | Accessibility | Pressing Cmd+V for you, so text lands at your cursor |
 | Input monitoring | Hearing the hotkey while other apps are focused. After granting, quit and reopen murmur |
 
-The macOS permissions list under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
+The macOS permissions group under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
 
 ## What do the sound cues mean?
 
@@ -305,6 +336,17 @@ The period picker shows lifetime by default (everything since your first dictati
 
 The color picker chooses the fill: vibrant orange (the default), your belt color (follows your rank as you are promoted), or any belt color you have already earned; colors you have passed through stay yours for good. Locked colors list how to earn them. Dark colors like the black belt invert the wall automatically: every day sits on a white square and activity paints darker blots on it, so a dark fill never disappears into the background. Earning the black belt also unlocks the invert checkbox, which flips the wall to the white paper look for any fill color you choose (except near-white ones, which would vanish on paper). Cosmetic only; it changes nothing about what is counted.
 
+## Why can I see my desktop through murmur's window?
+
+That is murmur's look on a Mac since November 2026: the window is dark glass, and your desktop shows through it as blurred light and color. The cards, the sidebar, and the top bar are all the same darker glass. Gold marks what matters now: time back, the sidebar line you are on, and the header of that same day in your dictations.
+
+- **Is text still readable over a bright wallpaper or a white page?** Yes. Every piece of text keeps a contrast of at least 4.5 to 1, even with a white page behind the window. Grey and gold text always sit on a card, never on the bare glass.
+- **My Mac is set to its light look. Why is murmur dark?** murmur is always dark. It tells macOS so, which keeps its title bar and its glass dark whatever your system is set to.
+- **Where did Hide words go when I hid the sidebar?** Beside the Home title. A gold brush loop is drawn around it for a moment so you can find it.
+- **How do I turn it off?** On a Mac, turn on System Settings, Accessibility, Display, **Reduce transparency**, and murmur follows at once, with no restart. The window becomes solid, with a soft gold glow from the top.
+- **Which computers get the glass?** Macs, for now. On Windows and Linux the window is solid with the gold glow. Glass on Windows 11 is built but switched off until it has been checked on real PCs.
+- **Does it change the pill?** No. The small pill that shows while you dictate keeps its own look.
+
 ## Can my accent color change the rest of the app?
 
 Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey's painted gates (the words stroke and the tally marks). The default signal amber stays reserved for live recording states, so choosing it leaves the gates in your belt's own color. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.
@@ -325,19 +367,23 @@ The provider list has its own switch, because it is a separate request to GitHub
 
 ## Where do I see what changed in an update?
 
-The home tab keeps a quiet what's new line; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.
+The home tab keeps a quiet what's new line beside its title; a small amber dot appears when the running version is newer than the last one you looked at. Open it to read the current version's changes in plain language. The same text lives in the repo's CHANGELOG.md and on each GitHub release.
 
 ## What is the Price refresh setting?
 
-murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Advanced. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
+murmur ships with a provider catalog: presets, model rates, and billing notes, each rate carrying the date it was verified against the vendor. Price refresh lives under Settings, Provider and keys, Cost and defaults. With it on (the default), murmur downloads the newest catalog from the murmur repo once at launch, so the cost estimates stay current between app updates. It is a read-only file fetch from the same GitHub host the auto-updater already contacts, with nothing about you attached. Turn it off and murmur uses the rates this version shipped with. Either way, dictation never waits on it.
+
+## How is Provider and keys laid out?
+
+From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 4 groups, each with its settings inset in a darker well: **Speech** (provider, model, base URL, key), **Cleanup** (Runs on, then its model, or its own provider, model, and key), **Saved keys** (every key by provider, with what it is used for now), and **Cost and defaults** (the cost estimate, price refresh, and the Groq defaults).
 
 ## What is the cleanup connection?
 
-By default one provider handles both transcription and the cleanup pass. Setting Cleanup runs on to Separate (under Provider and keys) gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, DeepSeek cleanup). Details and per-provider setup live in the [providers guide](providers.md).
+By default one provider handles both transcription and the cleanup pass. Setting the Cleanup group's **Runs on** to **Its own provider** gives cleanup its own base URL, model, and encrypted key, so you can mix providers (Groq speech, OpenRouter cleanup). [How do I run cleanup on a different provider?](providers.md#how-do-i-run-cleanup-on-a-different-provider) walks through it with OpenRouter.
 
 ## What are provider profiles?
 
-A murmur Pro convenience: save your whole provider setup (base URL, speech model, cleanup model, and the matching API key) under a name, then switch setups in one click from Provider and keys, Advanced, Profiles. Profiles carry the endpoint and models; keys stay in the per-provider key ring, so applying a profile automatically uses that provider's saved key. The free single provider setup is unchanged, profiles are additive.
+A murmur Pro convenience: save your whole setup under a name and switch setups in 1 click from the cards at the top of Provider and keys. Since this version a profile holds speech (provider, base URL, model), cleanup (same as speech, or its own provider, base URL, and model), and the notes sorting and Transform connections. Keys never go in a profile: they stay under Saved keys, 1 per provider, so switching uses each provider's saved key without pasting it again. Change a setting and the active card says changed, with Save, Save as new, and Undo. Profiles saved by 0.1.17 or earlier apply their speech settings only until you save them again. The full guide is [How do I switch between whole provider setups?](providers.md#how-do-i-switch-between-whole-provider-setups). Without Pro, everything works as 1 setup.
 
 ## What is in the murmur Pro section?
 

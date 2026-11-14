@@ -1,7 +1,7 @@
 {
   "comment": "Single source of truth for provider presets, model rates, and billing nuances. Estimates only; every provider bills you directly and murmur never sees it. Refreshed weekly by .github/workflows/pricing-watch.yml, which re-checks each rate against the vendor's primary source and opens a PR when a number drifts; the app can also fetch this file from the repo at launch (Settings, Price refresh). Rates without a currency are USD.",
   "catalogVersion": 1,
-  "verifiedOn": "2026-09-21",
+  "verifiedOn": "2026-11-08",
   "estimate": {
     "comment": "Cleanup-pass token model shared with analytics: roughly 1.35 tokens per word each way plus a fixed per-session prompt overhead, amortized here as sessionsPer1kWords typical dictation sessions. fallbackWpm seeds the cost preview before any history exists.",
     "tokensPerWord": 1.35,
@@ -19,6 +19,7 @@
       ],
       "baseUrl": "https://api.groq.com/openai/v1",
       "keyUrl": "https://console.groq.com/keys",
+      "modelsUrl": "https://console.groq.com/docs/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://console.groq.com/docs/models",
@@ -69,6 +70,7 @@
       ],
       "baseUrl": "https://api.openai.com/v1",
       "keyUrl": "https://platform.openai.com/api-keys",
+      "modelsUrl": "https://developers.openai.com/api/docs/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://developers.openai.com/api/docs/pricing"
@@ -117,6 +119,7 @@
       ],
       "baseUrl": "https://api.mistral.ai/v1",
       "keyUrl": "https://console.mistral.ai",
+      "modelsUrl": "https://docs.mistral.ai/models",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://mistral.ai/pricing/api/",
@@ -154,6 +157,7 @@
       "free": true,
       "baseUrl": "http://localhost:8000/v1",
       "llmBaseUrl": "http://localhost:11434/v1",
+      "modelsUrl": "https://ollama.com/search",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://github.com/speaches-ai/speaches",
@@ -174,6 +178,7 @@
       ],
       "baseUrl": "https://api.deepseek.com",
       "keyUrl": "https://platform.deepseek.com",
+      "modelsUrl": "https://api-docs.deepseek.com/quick_start/pricing",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://api-docs.deepseek.com/quick_start/pricing"
@@ -199,6 +204,7 @@
       ],
       "baseUrl": "https://api.cerebras.ai/v1",
       "keyUrl": "https://cloud.cerebras.ai",
+      "modelsUrl": "https://inference-docs.cerebras.ai/models/overview",
       "verifiedOn": "2026-09-13",
       "sources": [
         "https://www.cerebras.ai"
@@ -217,15 +223,36 @@
       ],
       "baseUrl": "https://openrouter.ai/api/v1",
       "keyUrl": "https://openrouter.ai/keys",
-      "verifiedOn": "2026-09-13",
+      "modelsUrl": "https://openrouter.ai/models",
+      "verifiedOn": "2026-11-08",
       "sources": [
-        "https://openrouter.ai/models"
+        "https://openrouter.ai/models",
+        "https://openrouter.ai/api/v1/models"
       ],
       "nuances": [
-        "One key routes to hundreds of models from many vendors, billed through prepaid credits. Model ids look like vendor/model; per-model rates live on the OpenRouter models page."
+        "One key routes to hundreds of models from many vendors, billed through prepaid credits. Model ids look like vendor/model; per-model rates live on the OpenRouter models page and can move during a day as OpenRouter routes between hosts. Suggested cleanup models and their rates checked 2026-11-08."
       ],
       "sttModels": [],
-      "llmModels": []
+      "llmModels": [
+        {
+          "id": "openai/gpt-6-luna",
+          "label": "GPT-6 Luna",
+          "inputPerMTok": 0.1,
+          "outputPerMTok": 0.5
+        },
+        {
+          "id": "openai/gpt-oss-120b",
+          "label": "gpt-oss-120b",
+          "inputPerMTok": 0.015,
+          "outputPerMTok": 0.055
+        },
+        {
+          "id": "anthropic/claude-haiku-5.5",
+          "label": "Claude Haiku 5.5",
+          "inputPerMTok": 0.1,
+          "outputPerMTok": 0.5
+        }
+      ]
     },
     {
       "id": "typesafe",

@@ -6,6 +6,7 @@
 // index to keep in step.
 import { useEffect, useRef, useState } from 'react'
 import { jumpToRow } from './controls'
+import { onPageScroll, oncePageScrollEnds, pageScroller } from './scroller'
 import type { SetupCheck, SetupStatusValue } from './SetupStatus'
 
 export interface RailSection {
@@ -32,13 +33,19 @@ function findSettings(query: string): Match[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (words.length === 0) return []
   const whole = words.map((w) => new RegExp(`\\b${escapeRegExp(w)}\\b`))
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('.settings-content .row[id]'))
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.settings-content .row[id]:not([data-mirror])'))
   const scored: Array<Match & { score: number }> = []
   for (const row of rows) {
     const label = row.querySelector('.row-label')?.textContent ?? ''
     const desc = row.querySelector('.row-desc')?.textContent ?? ''
     const keywords = row.dataset.keywords ?? ''
-    const section = row.closest('.sec')?.querySelector('.sec-title')?.textContent ?? ''
+    // Inside a group (US-154) the group names the row too: Model under
+    // Speech and Model under Cleanup are different settings.
+    const secTitle = row.closest('.sec')?.querySelector('.sec-title')?.textContent ?? ''
+    // A row that is its own group (a list, the practice box) is named
+    // once, by its label.
+    const group = row.matches('.group') ? '' : (row.closest('.group')?.querySelector('.group-title')?.textContent ?? '')
+    const section = group === '' ? secTitle : `${secTitle}, ${group}`
     const hay = `${label} ${desc} ${keywords} ${section}`.toLowerCase()
     if (!words.every((w) => hay.includes(w))) continue
     // Whole words in the label or keywords first (log finds Diagnostics
@@ -113,8 +120,8 @@ export function SettingsRail(props: {
       for (const s of secs) {
         if (s.getBoundingClientRect().top <= header + 84) next = s.dataset.sec ?? next
       }
-      const doc = document.documentElement
-      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4) {
+      const box = pageScroller()
+      if (box && box.clientHeight + box.scrollTop >= box.scrollHeight - 4) {
         next = secs[secs.length - 1].dataset.sec ?? next
       }
       setCurrent(next)
@@ -123,10 +130,10 @@ export function SettingsRail(props: {
       if (!frame) frame = window.requestAnimationFrame(measure)
     }
     measure()
-    window.addEventListener('scroll', onScroll, { passive: true })
+    const stop = onPageScroll(onScroll)
     window.addEventListener('resize', onScroll)
     return () => {
-      window.removeEventListener('scroll', onScroll)
+      stop()
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
     }
@@ -140,11 +147,12 @@ export function SettingsRail(props: {
   const holdHighlight = (id: string): void => {
     locked.current = true
     setCurrent(id)
+    let stop = (): void => undefined
     const release = (): void => {
       locked.current = false
-      window.removeEventListener('scrollend', release)
+      stop()
     }
-    window.addEventListener('scrollend', release)
+    stop = oncePageScrollEnds(release)
     window.setTimeout(release, 1500)
   }
 
