@@ -227,7 +227,7 @@ function LastNoteRow(props: { hide: boolean }): React.JSX.Element | null {
       outcome === 'refused' || outcome === 'none'
         ? 'That file is not there anymore, or it is no longer a note.'
         : outcome === 'failed'
-          ? 'Your computer could not open it. Try the other button.'
+          ? 'Your computer could not open it. Try the link beside it.'
           : null
     )
   }
@@ -245,7 +245,10 @@ function LastNoteRow(props: { hide: boolean }): React.JSX.Element | null {
         <button className="btn quiet-btn" onClick={() => void act('open')}>
           open
         </button>
-        <button className="btn quiet-btn" onClick={() => void act('reveal')}>
+        {/* A link, not a second button: open does the whole thing, show in
+            Finder only gets you partway, and the 2 must not read as the same
+            action (LaBroi's pick D, board 18, 2026-11-14). */}
+        <button className="link-btn last-note-reveal" onClick={() => void act('reveal')}>
           {reveal.charAt(0).toLowerCase() + reveal.slice(1)}
         </button>
       </div>

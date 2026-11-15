@@ -35,9 +35,9 @@ Settings most people never touch sit in a group that folds from its heading and 
 
 Under Settings, Shortcuts (added November 2026). It lists every key combo murmur listens for in 1 place, in 2 groups.
 
-**Yours to set** has the 4 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, and Transform. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform), so a change in either place shows in both, and the also under link on each row jumps to it there. The link runs both ways: each shortcut's row in its own section has an also under Shortcuts link that jumps back to the full list. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
+**yours to set** has the 4 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, and Transform. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform), so a change in either place shows in both, and the also under link on each row jumps to it there. The link runs both ways: each shortcut's row in its own section has an also under Shortcuts link that jumps back to the full list. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
 
-**Built in** lists the keys you cannot change: tapping the dictation or note shortcut twice for hands-free (when Double-tap for hands-free is on), Esc to cancel a hands-free take, and the zoom keys (Cmd +, Cmd −, Cmd 0 on a Mac; Ctrl on Windows).
+**built in** lists the keys you cannot change: tapping the dictation or note shortcut twice for hands-free (when Double-tap for hands-free is on), Esc to cancel a hands-free take, and the zoom keys (Cmd +, Cmd −, Cmd 0 on a Mac; Ctrl on Windows).
 
 Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
 
@@ -375,7 +375,7 @@ murmur ships with a provider catalog: presets, model rates, and billing notes, e
 
 ## How is Provider and keys laid out?
 
-From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 4 groups, each with its settings inset in a darker well: **Speech** (provider, model, base URL, key), **Cleanup** (Runs on, then its model, or its own provider, model, and key), **Saved keys** (every key by provider, with what it is used for now), and **Cost and defaults** (the cost estimate, price refresh, and the Groq defaults).
+From the top: a **running now** strip that says which provider and model run speech and which run cleanup; your profiles as cards (murmur Pro); then 4 groups, each with its settings inset in a darker well: **speech** (provider, model, base URL, key), **cleanup** (Runs on, then its model, or its own provider, model, and key), **saved keys** (every key by provider, with what it is used for now), and **cost and defaults** (the cost estimate, price refresh, and the Groq defaults).
 
 ## What is the cleanup connection?
 

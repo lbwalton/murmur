@@ -119,7 +119,7 @@ export function ShortcutsSection(props: {
 
   return (
     <Section id="shortcuts" title="Shortcuts" sub="Every key combo murmur listens for, in 1 place.">
-      <Group id="shortcuts-yours" title="Yours to set">
+      <Group id="shortcuts-yours" title="yours to set">
         {shortcuts.map((s) => {
           const said = problem?.kind === s.kind ? problem.why : null
           const canClear = s.kind === 'dictation' ? s.binding !== DEFAULT_SETTINGS.hotkey.binding : s.binding !== ''
@@ -174,7 +174,7 @@ export function ShortcutsSection(props: {
         })}
       </Group>
 
-      <Group id="shortcuts-built-in" title="Built in" sub="Keys murmur always uses. These cannot be changed.">
+      <Group id="shortcuts-built-in" title="built in" sub="Keys murmur always uses. These cannot be changed.">
         <Row
           label="Hands-free"
           anchor="row-shortcut-hands-free"

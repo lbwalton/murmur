@@ -86,7 +86,7 @@ describe('Shortcuts: every key combo in 1 place (US-164)', () => {
   it('draws both groups, the combos on capture buttons, and Clear only where there is something to clear', () => {
     const html = draw(base)
     expect(html).toContain('id="sec-shortcuts"')
-    expect([...html.matchAll(/class="group-title"[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['Yours to set', 'Built in'])
+    expect([...html.matchAll(/class="group-title"[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['yours to set', 'built in'])
     expect([...html.matchAll(/class="row" id="(row-shortcut-[a-zA-Z-]+)"( data-mirror="")?/g)].map((m) => [m[1], Boolean(m[2])])).toEqual([
       ['row-shortcut-dictation', true],
       ['row-shortcut-paste-last', true],

@@ -35,7 +35,7 @@ export function FinishSetup(props: { checks: SetupCheck[] }): React.JSX.Element 
       <div className="finish-head">
         <div>
           <h2 className="finish-title" id="finish-title">
-            Finish setup
+            finish setup
           </h2>
           <p className="finish-sub">
             {ready.length} of {props.checks.length} ready

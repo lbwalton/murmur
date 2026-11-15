@@ -374,14 +374,14 @@ export function NotesPanel(props: {
   return (
     <Section id="notes" title="Notes" sub="Speak a note into a folder instead of at your cursor.">
       {folderSet && notes.sort && status && status.heldLines.length > 0 && (
-        <Group id="held" title="Held for a look" sub="Lines the sort was unsure of. Each stays in your inbox as you said it.">
+        <Group id="held" title="held for a look" sub="Lines the sort was unsure of. Each stays in your inbox as you said it.">
           <HeldLines status={status} settings={props.settings} acting={acting} onAct={(id, action) => void heldAction(id, action)} />
         </Group>
       )}
 
       <Group
         id="capture"
-        title={folderSet ? 'Capture' : undefined}
+        title={folderSet ? 'capture' : undefined}
         note={folderSet ? undefined : 'Sorting, alerts and file layout show here once you pick a notes folder.'}
       >
         <Row
@@ -493,7 +493,7 @@ export function NotesPanel(props: {
 
       {folderSet && (
         <>
-          <Group id="sorting" title="Sorting">
+          <Group id="sorting" title="sorting">
             <Row
               label="Sort into tasks and ideas"
               anchor="row-notes-sort"
@@ -581,7 +581,7 @@ export function NotesPanel(props: {
             )}
           </Group>
 
-          <Group id="note-alerts" title="Alerts">
+          <Group id="note-alerts" title="alerts">
             <Row
               label="Note receipts"
               anchor="row-note-receipts"
@@ -625,7 +625,7 @@ export function NotesPanel(props: {
 
           <Group
             id="file-layout"
-            title="File layout"
+            title="file layout"
             sub="Inbox, tasks and ideas files, headings and entries."
             fold={{ tag: customized ? 'customized' : notes.sort ? '6 settings' : '2 settings' }}
           >

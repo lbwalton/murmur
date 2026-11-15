@@ -369,7 +369,8 @@ export function JourneyView(props: {
           after="Words and days on the mat count toward your white belt."
         />
       )}
-      <section className="panel">
+      {/* The page's 1 gold card: the belt you hold now (US-156). */}
+      <section className="panel panel-strong">
         <div className="panel-head">
           <p className="micro-label">the journey</p>
           <button className="btn quiet-btn" onClick={() => setSharing(true)}>

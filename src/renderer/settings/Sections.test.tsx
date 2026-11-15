@@ -167,7 +167,7 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     const on = draw('/notes')
     expect(rowIds(on).slice(0, 5)).toEqual(['row-note-chord', 'row-notes-folder', 'row-last-note', 'row-notes-sort', 'row-note-receipts'])
     expect(rowIds(on)).toContain('row-inbox-file')
-    expect([...on.matchAll(/class="group-title"[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['Capture', 'Sorting', 'Alerts', 'File layout'])
+    expect([...on.matchAll(/class="group-title"[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['capture', 'sorting', 'alerts', 'file layout'])
     expect(on).not.toContain('show here once you pick')
     // 1 tree for both states: the 2 rows keep their place, so picking a
     // folder with the keyboard keeps focus on the button pressed.
@@ -210,10 +210,14 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     for (const words of rows.slice(1)) expect(words.split(' ')).toContain('hotkey')
   })
 
-  it('steps the type 28, 20, 15, 14 and keeps row labels a dimmer cream from the tokens', () => {
+  it('steps the type 28, 20, then a gold label per card, 14, and keeps row labels a dimmer cream from the tokens', () => {
     expect(css).toMatch(/\.settings-content \.page-title h1 \{\s+font-size: 28px;\s+font-weight: 700;/)
     expect(css).toMatch(/\.sec-title \{\s+font-size: 20px;\s+font-weight: 700;/)
-    expect(css).toMatch(/\.group-title \{\s+margin: 0;\s+font-size: 15px;\s+font-weight: 600;/)
+    // A card is named by the gold label every page uses (LaBroi's pick B,
+    // board 19, 2026-11-14); a GroupRow's name stays a row label.
+    expect(css).toMatch(/\.group-title \{\s+margin: 0;\s+font-family: var\(--font-mono\);\s+font-size: 11px;\s+font-weight: 400;\s+letter-spacing: 0\.18em;\s+color: var\(--brand\);/)
+    expect(css).toMatch(/\.group-title\.row-label \{\s+font-family: inherit;\s+font-size: 15px;\s+font-weight: 600;\s+letter-spacing: 0;\s+color: var\(--text\);/)
+    expect(css).toMatch(/\.finish-title \{\s+font-family: var\(--font-mono\);[^}]*color: var\(--brand\);/)
     expect(css).toMatch(/\.group-rows \.row-label \{\s+font-size: 14px;\s+font-weight: 400;\s+color: color-mix\(in srgb, var\(--text\) 90%, var\(--ink\)\);/)
     expect(css).toMatch(/\.row-desc \{\s+color: var\(--text-dim\);\s+font-size: 12\.5px;/)
     expect(css).not.toContain('sec-grouped')

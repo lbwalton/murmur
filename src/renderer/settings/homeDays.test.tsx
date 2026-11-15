@@ -529,6 +529,15 @@ describe('the day whose header wears the gold band', () => {
   })
 })
 
+describe('the last note card (board 18, pick D)', () => {
+  it('makes open the button and show in Finder a quiet link, so the 2 never read as the same action', () => {
+    const home = read('HomeView.tsx')
+    const card = home.slice(home.indexOf('function LastNoteRow'), home.indexOf('function LastNoteRow') + 2200)
+    expect(card).toMatch(/<button className="btn quiet-btn" onClick=\{\(\) => void act\('open'\)\}>\s*open/)
+    expect(card).toMatch(/<button className="link-btn last-note-reveal" onClick=\{\(\) => void act\('reveal'\)\}>/)
+  })
+})
+
 describe('the window itself never scrolls', () => {
   it('pins the shell, so a jump to a day cannot push the top bar out of the window', () => {
     // A line hidden for screen readers inside the page box sits outside

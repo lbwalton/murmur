@@ -1198,6 +1198,11 @@ select.field {
   color: var(--text);
 }
 
+/* Beside last note's open button, at the button's size. */
+.last-note-reveal {
+  font-size: 13px;
+}
+
 .foot {
   font-size: 11.5px;
   text-align: center;
@@ -2899,8 +2904,11 @@ textarea.well-multiline {
 }
 
 .finish-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--brand);
 }
 
 .finish-sub {
@@ -3516,11 +3524,26 @@ textarea.well-multiline {
   padding: 16px 20px;
 }
 
+/* A card in Settings is named by the gold label every page uses
+   (LaBroi's pick B, board 19, 2026-11-14): 1 cream title for the page and
+   each section, 1 gold label for each card. The names are written in
+   lowercase in the source, so macOS keeps its capitals. A setting that is
+   1 big box (GroupRow) keeps its name as a row label: it is a setting. */
 .group-title {
   margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--brand);
+}
+
+.group-title.row-label {
+  font-family: inherit;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0;
+  color: var(--text);
 }
 
 .group-sub {
@@ -3858,6 +3881,26 @@ textarea.well-multiline {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Without Pro, Profiles is an offer on its own card, so its name is the
+   gold label (board 19, B), shown lowercase while search keeps reading
+   "Profiles". With Pro the profiles row sits straight on the window, where
+   gold fails 4.5 to 1 over a bright desktop, so there it stays cream. */
+.profiles-offer .row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--brand);
+  text-transform: lowercase;
+}
+
+.profiles-offer .row-label .pro-mark {
+  text-transform: none;
 }
 
 .profiles-row .row-control {
@@ -4693,13 +4736,16 @@ html[data-look] :is(.well, .group-rows) {
   border-color: var(--glass-well-edge);
 }
 
-/* Home, gold by role. Time back is the 1 card that celebrates. */
-html[data-look] .home-timeback {
+/* Gold by role: 1 strong gold card per page, for what is yours right
+   now (US-156, LaBroi's picks of 2026-11-14). Home: time back. Analytics:
+   this month. Journey: the belt you hold. Settings: the setup running
+   now. Wrap-up has none; its painting is the hero. Text on gold is cream. */
+html[data-look] :is(.home-timeback, .panel-strong, .running-strip) {
   --text-dim: var(--text);
   background: linear-gradient(135deg, var(--tint-strong-from), var(--tint-strong-to)), var(--panel);
 }
 
-html[data-look] .home-timeback :is(.micro-label, .link-btn) {
+html[data-look] :is(.home-timeback, .panel-strong, .running-strip) :is(.micro-label, .link-btn) {
   color: var(--text);
 }
 

@@ -848,7 +848,7 @@ export function App(): React.JSX.Element {
               }
             />
 
-            <Group id="speech" title="Speech" sub="Turns your voice into words.">
+            <Group id="speech" title="speech" sub="Turns your voice into words.">
               <Row
                 label="Provider"
                 anchor="row-speech-provider"
@@ -980,7 +980,7 @@ export function App(): React.JSX.Element {
 
             <Group
               id="cleanup"
-              title="Cleanup"
+              title="cleanup"
               sub="Tidies the words before they land, at Full formatting."
               note={
                 sharesCleanup ? <CleanupShares settings={settings} catalog={catalog} keys={keysKnown} /> : undefined
@@ -1049,7 +1049,7 @@ export function App(): React.JSX.Element {
 
             <Group
               id="keys"
-              title="Saved keys"
+              title="saved keys"
               sub="1 per provider, encrypted on this computer. Profiles pick the right one."
             >
               <SavedKeys
@@ -1065,7 +1065,7 @@ export function App(): React.JSX.Element {
               />
             </Group>
 
-            <Group id="cost" title="Cost and defaults">
+            <Group id="cost" title="cost and defaults">
               {catalog && (
                 <Row
                   label="Estimated cost"
@@ -1126,7 +1126,7 @@ export function App(): React.JSX.Element {
           </Section>
 
           <Section id="dictation" title="Dictation" sub="How you start talking and where the words land.">
-            <Group id="hotkey" title="Hotkey">
+            <Group id="hotkey" title="hotkey">
               <Row
                 label="Hotkey"
                 anchor="row-hotkey"
@@ -1202,11 +1202,11 @@ export function App(): React.JSX.Element {
               )}
             </Group>
 
-            <Group id="microphone" title="Microphone">
+            <Group id="microphone" title="microphone">
               <MicRow settings={settings} onUpdate={update} />
             </Group>
 
-            <Group id="formatting" title="Formatting">
+            <Group id="formatting" title="formatting">
               <Row
                 label="Level"
                 anchor="row-formatting"
@@ -1256,7 +1256,7 @@ export function App(): React.JSX.Element {
               </Row>
             </Group>
 
-            <Group id="landing" title="Where words land">
+            <Group id="landing" title="where words land">
               <Row label="Insert by" keywords="paste clipboard copy" desc="Paste puts text at your cursor. Copy only fills the clipboard.">
                 <Segmented
                   label="Insert by"
@@ -1588,7 +1588,7 @@ export function App(): React.JSX.Element {
           </Section>
 
           <Section id="system" title="System" sub="Sounds, startup, permissions, and diagnostics.">
-            <Group id="general" title="General">
+            <Group id="general" title="general">
               <Row label="Sounds" keywords="audio volume chime cues" desc="Quiet cues for start, stop, insert, and errors.">
                 <div className="inline">
                   <VolumeSlider
@@ -1652,7 +1652,7 @@ export function App(): React.JSX.Element {
               </Group>
             )}
 
-            <Group id="help" title="Help">
+            <Group id="help" title="help">
               <Row
                 label="Diagnostics"
                 keywords="log logs bug report support troubleshoot"

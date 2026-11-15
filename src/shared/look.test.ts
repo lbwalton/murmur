@@ -282,7 +282,17 @@ describe('where the look is applied', () => {
   })
 
   it('puts gold where it says something: time back, the sidebar line you are on, the header of the day you are on', () => {
-    expect(look).toMatch(/html\[data-look\] \.home-timeback \{[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\), var\(--panel\);/)
+    // 1 strong gold card per page (US-156): Home's time back, Analytics' this
+    // month, Journey's belt, Settings' setup running now; none on Wrap-up.
+    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \{[^}]*--text-dim: var\(--text\);[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\), var\(--panel\);/)
+    expect(src('renderer/settings/AnalyticsView.tsx')).toMatch(/<section className="panel panel-strong">\s*<p className="micro-label">this month<\/p>/)
+    expect(src('renderer/settings/JourneyView.tsx')).toMatch(/<section className="panel panel-strong">\s*<div className="panel-head">\s*<p className="micro-label">the journey<\/p>/)
+    expect(src('renderer/settings/WrapUpView.tsx')).not.toContain('panel-strong')
+    // Settings' gold card is the running now strip (ProfileCards), held by the rule above.
+    expect(src('renderer/settings/ProfileCards.tsx')).toContain('<div className="running-strip" id="running-now">')
+    for (const page of ['AnalyticsView', 'JourneyView', 'HomeView']) {
+      expect(src(`renderer/settings/${page}.tsx`).match(/panel-strong/g)?.length ?? 0, page).toBeLessThanOrEqual(1)
+    }
     expect(look).toMatch(/:is\(\.rail-item-on, \.rail-item-on:hover\) \{[^}]*color: var\(--text\);[^}]*var\(--tint-strong-from\), var\(--tint-strong-to\)\);/)
     expect(look).toMatch(/html\[data-look\] \.day-head-on::before \{[^}]*var\(--tint-thread-from\), var\(--tint-thread-to\)\);/)
     // Names are cream until picked; the tab you are on is gold.
