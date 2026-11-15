@@ -193,7 +193,7 @@ function jsonLd() {
           { '@type': 'Offer', name: 'murmur', price: '0', priceCurrency: 'USD' },
           { '@type': 'Offer', name: 'murmur Pro', price: String(facts.proPrice), priceCurrency: 'USD', url: links.doc('pro') },
           ...(facts.founders
-            ? [{ '@type': 'Offer', name: 'murmur Pro, founding member price', price: String(facts.founders.price), priceCurrency: 'USD', priceValidUntil: facts.founders.endsOn, url: facts.founders.buy }]
+            ? [{ '@type': 'Offer', name: 'murmur Pro, founders window price', price: String(facts.founders.price), priceCurrency: 'USD', priceValidUntil: facts.founders.endsOn, url: facts.founders.buy }]
             : [])
         ],
         author: { '@id': org },
@@ -307,12 +307,14 @@ function footerHtml() {
 }
 
 /** The founders price line (LaBroi, 2026-10-24), under the download on
- *  home and atop the Pro doc while the window is open; nothing after. */
+ *  home and atop the Pro doc while the window is open; nothing after.
+ *  Every website purchase in the window makes a founding member, with
+ *  or without the code (2026-11-15). */
 function foundersHtml(onPro) {
   const f = facts.founders
   if (!f) return ''
   const pro = onPro ? 'murmur Pro' : '<a href="/docs/pro/">murmur Pro</a>, the optional one-time upgrade,'
-  return `<p class="founders"><strong>Founding member price:</strong> ${pro} is $${f.price} through ${f.ends}, then $${facts.proPrice}. Founding members keep 10% off every future paid product. <a href="${escapeHtml(f.buy)}" target="_blank" rel="noopener noreferrer">Get Pro for $${f.price}</a>, with the code ${f.code} already filled in.</p>`
+  return `<p class="founders"><strong>Founders window:</strong> ${pro} is $${f.price} with the code ${f.code} through ${f.ends}, then $${facts.proPrice}. Everyone who buys Pro on the website by then is a founding member, code or not, and keeps 10% off every future paid product we make. <a href="${escapeHtml(f.buy)}" target="_blank" rel="noopener noreferrer">Get Pro for $${f.price}</a>, with the code ${f.code} already filled in.</p>`
 }
 
 function fontPreload(font) {
@@ -422,7 +424,7 @@ function llmsTxt(docs) {
 
 ## Facts
 - Platforms: ${facts.macos} (Apple silicon and Intel, one universal download); ${facts.windows} (x64 and ARM, one installer)
-- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)${facts.founders ? `; through ${facts.founders.ends}, it is $${facts.founders.price} with the code ${facts.founders.code}, and buyers at that price are founding members with 10% off every future paid product` : ''}
+- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)${facts.founders ? `; through ${facts.founders.ends}, it is $${facts.founders.price} with the code ${facts.founders.code}, and everyone who buys it on the website by then, with or without the code, is a founding member with 10% off every future paid product Eze Media LLC makes` : ''}
 - Privacy: records only while the hotkey is held; audio goes only to the provider the user configured; history, stats, and settings stay on the computer; no account, no murmur server, no telemetry
 - Cleanup fails open: if the cleanup model errors, the plain transcript is still inserted, so a dictation is never lost
 - Current version: ${version}

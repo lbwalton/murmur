@@ -79,6 +79,21 @@ describe('the privacy page', () => {
   it('gives the support address for privacy questions', () => {
     expect(text).toContain(EMAIL)
   })
+
+  it('says Pro buyers may get emails about the purchase and founding member perks, who sends them, and how to stop them', () => {
+    const points = privacy.items.flatMap((item) => item.points ?? [])
+    const point = (lead) => {
+      const found = points.find(([l]) => l === lead)
+      expect(found, lead).toBeDefined()
+      return plain(found[1])
+    }
+    const buying = point('Buying murmur Pro.')
+    for (const fact of ['email you about your purchase and any founding member perks', 'a discount code when a new product launches', 'your license key included', 'Resend, an email delivery service', 'reply to one', EMAIL]) {
+      expect(buying).toContain(fact)
+    }
+    expect(point('Eze Media LLC.')).toContain('go through Resend, and the purchase and perk emails stop when you ask')
+    for (const fact of ['no analytics', 'no tracking', 'Nothing is sold']) expect(text).toContain(fact)
+  })
 })
 
 describe('the support page', () => {
@@ -217,6 +232,16 @@ describe('the site build (IOS-026)', () => {
       expect(read('docs/pro/index.html').split(`href="${PRO.buyUrl}"`).length - 1).toBe(3)
     })
 
+    // The build reads today's date, so the founders lines show only while
+    // the window is open.
+    it.skipIf(!content(SITE).facts.founders)('says wherever it names the window that any website purchase in it makes a founding member', () => {
+      for (const file of ['index.html', 'docs/pro/index.html', 'llms.txt', 'llms-full.txt']) {
+        expect(read(file), file).toContain('with or without the code')
+        expect(read(file), file).toContain('every future paid product we make')
+        expect(read(file), file).not.toMatch(/at that price|founding member price/i)
+      }
+    })
+
     it('answers the iPhone question on home, linking the iPhone doc, without claiming the App Store has it', () => {
       const home = read('index.html')
       expect(home).toContain('Is there a murmur app for iPhone?')
@@ -260,6 +285,16 @@ describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {
     expect(md).toContain(`$${PRO.price} once`)
     expect(md).toContain(`the code ${founders.code}`)
   })
+
+  // 2026-11-15: buying on the website in the window makes a founding
+  // member, whether or not the code went in.
+  it('makes every website buyer in the founders window a founding member, code or not', () => {
+    const answer = md.split('## What is a founding member?')[1].split('\n## ')[0]
+    expect(answer).toContain('Everyone who buys Pro on the website before the founders window ends')
+    expect(answer).toContain(`whether or not they enter the code ${founders.code}`)
+    expect(answer).toContain('every future paid product we make')
+    expect(md).not.toMatch(/buys Pro with the code|you become a founding member/)
+  })
 })
 
 describe('the founders price', () => {
@@ -272,6 +307,12 @@ describe('the founders price', () => {
     expect(founders.price).toBe(39)
     expect(founders.buy).toMatch(/^https:\/\/buy\.stripe\.com\/.+\?prefilled_promo_code=FOUNDERS$/)
     expect(cost(before)).toContain('Through December 31, 2026, Pro is $39 with the code FOUNDERS')
+  })
+
+  it('makes everyone who buys on the website by then a founding member, with or without the code', () => {
+    expect(cost(before)).toContain('Everyone who buys Pro on the website by then is a founding member, with or without the code')
+    expect(cost(before)).toContain('10% off every future paid product we make')
+    expect(cost(before)).not.toContain('at that price')
   })
 
   it('says nothing once the window closes', () => {
