@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/154 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (101/155 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -120,6 +120,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-109** Work networks that inspect secure traffic: every request rides Chromium's network stack
 - [ ] **US-145** Hide words
 - [ ] **US-167** Every website purchase in the founders window makes a founding member, and the privacy page names purchase emails
+- [ ] **US-168** The website never names the founder
 
 ## To do
 

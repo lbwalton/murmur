@@ -159,7 +159,6 @@ function jsonLd() {
         '@id': org,
         name: 'Eze Media LLC',
         url: `${SITE_URL}/`,
-        founder: { '@type': 'Person', name: 'LaBroi Walton' },
         ...(SUPPORT_EMAIL ? { contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: SUPPORT_EMAIL } } : {}),
         sameAs: [links.repo]
       },

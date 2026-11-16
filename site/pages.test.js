@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { content } from './content'
 import { FINGERPRINTED_PATHS } from './headers'
@@ -14,14 +14,14 @@ const SITE = 'https://murmurapp.app'
 const EMAIL = 'support@murmurapp.app'
 const plain = (pieces) => pieces.map((p) => (typeof p === 'string' ? p : p.text)).join('')
 const allText = (items) => items.map((item) => [item.q, plain(item.a), ...(item.points ?? []).map(([lead, rest]) => `${lead} ${plain(rest)}`)].join(' ')).join(' ')
+const files = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
+  )
 
 describe('fingerprinted files (US-121)', () => {
   const dist = mkdtempSync(join(tmpdir(), 'murmur-cache-'))
   afterAll(() => rmSync(dist, { recursive: true, force: true }))
-  const files = (dir) =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-      entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
-    )
 
   it('are never linked without their fingerprint, or a year of cache would serve the old copy', () => {
     const run = spawnSync(process.execPath, ['site/build.js'], {
@@ -249,6 +249,63 @@ describe('the site build (IOS-026)', () => {
       expect(home).toContain('on its way to the App Store')
       expect(home).not.toMatch(/apps\.apple\.com|free on the App Store|Download on the App Store/)
       expect(read('llms.txt')).toContain('Is there a murmur app for iPhone?')
+    })
+
+    // The site never names the person who makes murmur (US-168): not in the
+    // structured data, the pages, llms.txt, or any other file a visitor or
+    // a crawler reads. The company is Eze Media LLC. Comments in the
+    // stylesheets and scripts are code, and the GitHub repo's address
+    // carries the account name, so both are left out of the check.
+    describe('never names the founder (US-168)', () => {
+      const BINARY = /\.(?:png|jpe?g|gif|webp|ico|woff2?|mp4|webm)$/
+      // Either part of the name, spaced or run together, and the misheard
+      // spelling an example once used beside it; or the initials alone.
+      const named = (text) =>
+        [...text.matchAll(/(?<![a-z])la\s*bro[iy](?![a-z])|walton/gi), ...text.matchAll(/(?<![A-Za-z0-9])LB(?![A-Za-z0-9])/g)].map((match) =>
+          text.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40)
+        )
+      // Block comments in stylesheets and scripts, and whole line comments
+      // in scripts, the same cut the fingerprint check makes.
+      const visible = (file) => {
+        const text = readFileSync(file, 'utf8').replaceAll('lbwalton/murmur', 'REPO/murmur')
+        if (file.endsWith('.css')) return text.replace(/\/\*[\s\S]*?\*\//g, '')
+        if (file.endsWith('.js')) return text.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+        return text
+      }
+      const path = (file) => relative(dist, file).split(sep).join('/')
+
+      it('in any text file the build writes', () => {
+        const scanned = files(dist).filter((file) => !BINARY.test(file))
+        const written = scanned.map(path)
+        for (const file of ['index.html', 'docs/iphone/index.html', 'llms.txt', 'llms-full.txt', 'sitemap.xml', 'robots.txt', '.well-known/security.txt', '_headers', '_redirects']) {
+          expect(written).toContain(file)
+        }
+        const found = scanned.flatMap((file) => named(visible(file)).map((context) => `${path(file)}: ${context}`))
+        expect(found).toEqual([])
+      })
+
+      it('in the structured data, which names only the company', () => {
+        const pages = files(dist).filter((file) => file.endsWith('.html'))
+        const blocks = pages.flatMap((file) =>
+          [...readFileSync(file, 'utf8').matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]))
+        )
+        expect(blocks.length).toBeGreaterThan(pages.length / 2)
+        const people = []
+        const walk = (node) => {
+          if (Array.isArray(node)) return node.forEach(walk)
+          if (!node || typeof node !== 'object') return
+          if ('founder' in node || node['@type'] === 'Person') people.push(JSON.stringify(node).slice(0, 120))
+          Object.values(node).forEach(walk)
+        }
+        walk(blocks)
+        expect(people).toEqual([])
+        expect(named(JSON.stringify(blocks).replaceAll('lbwalton/murmur', 'REPO/murmur'))).toEqual([])
+        const home = blocks.find((block) => block['@graph']?.some((node) => node['@type'] === 'Organization'))
+        const org = home['@graph'].find((node) => node['@type'] === 'Organization')
+        expect(org.name).toBe('Eze Media LLC')
+        expect(org.contactPoint.email).toBe(EMAIL)
+        expect(org.sameAs).toEqual(['https://github.com/lbwalton/murmur'])
+      })
     })
   })
 
