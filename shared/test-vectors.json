@@ -141,8 +141,8 @@
     },
     {
       "name": "existing capitals are preserved",
-      "input": "ask LaBroi about the GPLv3 rollout",
-      "expected": "Ask LaBroi about the GPLv3 rollout."
+      "input": "ask LB about the GPLv3 rollout",
+      "expected": "Ask LB about the GPLv3 rollout."
     },
     {
       "name": "ends with punctuation already means no append",
@@ -169,13 +169,13 @@
       "settings": {
         "dictionary": [
           {
-            "from": "labroy",
-            "to": "LaBroi"
+            "from": "shivon",
+            "to": "Siobhan"
           }
         ]
       },
-      "input": "labroy will review the deck",
-      "expected": "LaBroi will review the deck."
+      "input": "shivon will review the deck",
+      "expected": "Siobhan will review the deck."
     },
     {
       "name": "dictionary phrases replace with word-boundary safety",
@@ -199,8 +199,8 @@
       "settings": {
         "dictionary": [
           {
-            "from": "labroy",
-            "to": "LaBroi"
+            "from": "shivon",
+            "to": "Siobhan"
           },
           {
             "from": "murmur app",
@@ -243,16 +243,16 @@
         "expansions": [
           {
             "trigger": "sign off",
-            "text": "Best,\nLaBroi"
+            "text": "Best,\nLB"
           },
           {
             "trigger": "sign off formal",
-            "text": "Sincerely,\nLaBroi Walton"
+            "text": "Sincerely,\nLB"
           }
         ]
       },
       "input": "sign off formal",
-      "expected": "Sincerely,\nLaBroi Walton."
+      "expected": "Sincerely,\nLB."
     },
     {
       "name": "expansion snippets are never rescanned",

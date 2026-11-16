@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { applyDictionary, dictionaryHint, enforceDictionaryCasing } from './dictionary'
 
 const entries = [
-  { from: 'labroy', to: 'LaBroi' },
+  { from: 'shivon', to: 'Siobhan' },
   { from: 'murmur app', to: 'murmur' },
   { from: 'cat', to: 'CAT scan' }
 ]
 
 describe('applyDictionary', () => {
   it('replaces whole words case-insensitively with exact casing out', () => {
-    expect(applyDictionary('tell Labroy the plan', entries)).toBe('tell LaBroi the plan')
-    expect(applyDictionary('LABROY agreed', entries)).toBe('LaBroi agreed')
+    expect(applyDictionary('tell Shivon the plan', entries)).toBe('tell Siobhan the plan')
+    expect(applyDictionary('SHIVON agreed', entries)).toBe('Siobhan agreed')
   })
 
   it('handles multi-word phrases, longest first', () => {
@@ -83,7 +83,7 @@ describe('dictionaryHint', () => {
 
   it('lists the pairs with an only-where-present instruction', () => {
     const hint = dictionaryHint(entries)!
-    expect(hint).toContain('"labroy" is written "LaBroi"')
+    expect(hint).toContain('"shivon" is written "Siobhan"')
     expect(hint).toContain('ONLY where these words already occur')
   })
 })

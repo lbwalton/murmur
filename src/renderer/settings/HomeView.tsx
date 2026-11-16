@@ -395,7 +395,7 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
  * keep, takes whose words reached no app (US-137). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, where paste-last finds a dictation, and the
- * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
+ * clipboard is left alone (LB, 2026-11-01). Discard asks once, then deletes the audio.
  * Discard all (US-096) asks in place, with the count, before deleting:
  * the question counts the takes listed when it opened, and only those
  * are deleted, so a take that fails while it is open is kept. Keep them

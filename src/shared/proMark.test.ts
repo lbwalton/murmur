@@ -160,7 +160,7 @@ describe('fillStrokes', () => {
     }
   })
 
-  it('lands in about 3 seconds (LaBroi picked the slow speed)', () => {
+  it('lands in about 3 seconds (LB picked the slow speed)', () => {
     for (let i = 1; i <= 40; i++) {
       const d = `2026-11-${String((i % 28) + 1).padStart(2, '0')}-${i}`
       const ms = fillDurationMs(fillStrokes(d))

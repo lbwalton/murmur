@@ -198,7 +198,7 @@ export function readDecisionAnswers(
   leadCounts: readonly number[] = [],
   keepCounts: readonly number[] = [],
   /** A keep end the model is less sure of than this keeps that end
-   *  whole (US-116, LaBroi 2026-10-30): a dropped word costs more than
+   *  whole (US-116, LB 2026-10-30): a dropped word costs more than
    *  a kept one. The sort passes its confidence threshold. */
   keepThreshold = 0
 ): SortVerdict {

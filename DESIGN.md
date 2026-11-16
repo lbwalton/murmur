@@ -13,7 +13,7 @@ The ground. Every renderer and website color is a token in `src/renderer/tokens.
 | text, text-dim | Words, and quieter words. |
 | brand (gold) | Headlines, micro-labels, static highlights, and dried paint. |
 | amber | Live only: the pill while you speak, wet paint. Always brighter than gold. |
-| red | Record, error, and the button that confirms a delete (LaBroi, 2026-10-08). Never decorative. |
+| red | Record, error, and the button that confirms a delete (LB, 2026-10-08). Never decorative. |
 | ok | Success states. |
 | founder-gold | Founder identity marks only. |
 | smoke | Background brushwork. |
@@ -24,7 +24,7 @@ Type in the app: the system UI face (Inter where present) and a mono face for eq
 
 ## Brushwork
 
-LaBroi's art direction from 2026-10-01: expressive brush paintings, a sharp calm figure in the middle and explosive brushwork around it. murmur's calm figure is the pill. **Your voice is the brush**: speaking paints a stroke, letting go flicks it, and the paint lands where your words land.
+LB's art direction from 2026-10-01: expressive brush paintings, a sharp calm figure in the middle and explosive brushwork around it. murmur's calm figure is the pill. **Your voice is the brush**: speaking paints a stroke, letting go flicks it, and the paint lands where your words land.
 
 Where paint goes:
 
@@ -33,9 +33,9 @@ Where paint goes:
 | Website hero | Full: paints in once, then the visitor can paint and save a poster. |
 | Logo and app icon | The ensō pill (US-075). Brushed at 64 px and up (the splat from 128 px); a clean drawn version below 64 px, in the tray, the favicon, and the site header. |
 | Journey, promotions, share card | Full. |
-| The pill | The ink waveform styles, earned one per belt. Hands-free (US-117, LaBroi's pick A from the Closing the loop preview, 2026-10-30): when a double-tap locks the mic, one signal amber brush stroke paints the pill's own outline all the way round and a little past its start, closing the loop the icon leaves open, so a locked pill is the logo, closed. Holding draws no loop. In bare the loop goes round the dot and the waveform together. In the last minute before the 12 minute stop it dries to brand gold; reduced motion draws it closed and still. LaBroi's picks from the Fading the loop preview (2026-11-01): the loop paints in at full strength, holds full for 1 second, then fades over 3 seconds (ease in and out) to a resting strength set in Settings, Dictation, Loop once it settles (10% to 100%, default 20%; 10% is the floor so a locked take never looks like a plain hold, 100% never fades), and stays there; in the last minute it dries to gold at that resting strength, never climbing back to full. Reduced motion keeps the fade, since it moves nothing. The lock chime is tap tap: 2 light ticks on one note (1319 Hz), an echo of the double-tap. |
+| The pill | The ink waveform styles, earned one per belt. Hands-free (US-117, LB's pick A from the Closing the loop preview, 2026-10-30): when a double-tap locks the mic, one signal amber brush stroke paints the pill's own outline all the way round and a little past its start, closing the loop the icon leaves open, so a locked pill is the logo, closed. Holding draws no loop. In bare the loop goes round the dot and the waveform together. In the last minute before the 12 minute stop it dries to brand gold; reduced motion draws it closed and still. LB's picks from the Fading the loop preview (2026-11-01): the loop paints in at full strength, holds full for 1 second, then fades over 3 seconds (ease in and out) to a resting strength set in Settings, Dictation, Loop once it settles (10% to 100%, default 20%; 10% is the floor so a locked take never looks like a plain hold, 100% never fades), and stays there; in the last minute it dries to gold at that resting strength, never climbing back to full. Reduced motion keeps the fade, since it moves nothing. The lock chime is tap tap: 2 light ticks on one note (1319 Hz), an echo of the double-tap. |
 | Launch film | Full. |
-| Settings | Small touches where something happened, from LaBroi's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles and the loop level tile are the exceptions, because each is a preview of the pill itself (the tiles live, the loop level tile still). |
+| Settings | Small touches where something happened, from LB's app refresh picks (2026-10-02): the Home stroke, ink analytics, the wrap-up painting, empty-state marks, the waveform tiles, and the painted insignia and tab marker. Controls and forms stay clean; the waveform tiles and the loop level tile are the exceptions, because each is a preview of the pill itself (the tiles live, the loop level tile still). |
 | Errors | None. Clean red, never splatter. |
 | Tray icon | None. |
 
@@ -49,12 +49,12 @@ Rules that never bend:
 
 ## Paint in the window
 
-The settings window is where people work, so paint appears only where something happened. LaBroi's picks from the app refresh preview, 2026-10-02:
+The settings window is where people work, so paint appears only where something happened. LB's picks from the app refresh preview, 2026-10-02:
 
 | Where | The touch | Story |
 | --- | --- | --- |
 | Look | Waveform tiles: each style as a live mini pill; locked ones dimmed with the belt that unlocks them. | US-084 |
-| Dictation | The loop level tile, above the Loop once it settles slider: a still preview of the locked pill (the waveform tiles' mini pill in your look, waveform, and accent, with the red live dot and a timer) with the loop painted round it at the slider's level, following the slider as you drag. LaBroi's pick from the Fading the loop preview, 2026-11-01. | US-117 |
+| Dictation | The loop level tile, above the Loop once it settles slider: a still preview of the locked pill (the waveform tiles' mini pill in your look, waveform, and accent, with the red live dot and a timer) with the loop painted round it at the slider's level, following the slider as you drag. LB's pick from the Fading the loop preview, 2026-11-01. | US-117 |
 | Home | One gold stroke under back today, today against a typical day; the last note row. | US-085, US-082 |
 | Every tab | Its own title; the how-to block stays on Home only for the first few dictations. | US-086 |
 | Analytics | The fourteen days as brush dabs, the activity wall as blots. Numbers unchanged. | US-087 |
@@ -68,7 +68,7 @@ Paint in the window is static unless the moment moves (a promotion, a live previ
 
 ## The Pro mark
 
-A small pill of brand gold with PRO in ink, mono caps (LaBroi's picks from the Pro canvas, https://claude.ai/artifact/ECbNrZm5ArdsGHftMYdAU7, 2026-10-19 and 2026-10-22). One rule: **a filled mark means Pro is yours, an outlined mark (brand edge border, gold text) means Pro offers it.** Never amber, never founder gold; the crown stays the founder's alone.
+A small pill of brand gold with PRO in ink, mono caps (LB's picks from the Pro canvas, https://claude.ai/artifact/ECbNrZm5ArdsGHftMYdAU7, 2026-10-19 and 2026-10-22). One rule: **a filled mark means Pro is yours, an outlined mark (brand edge border, gold text) means Pro offers it.** Never amber, never founder gold; the crown stays the founder's alone.
 
 | Who | Where |
 | --- | --- |
@@ -78,7 +78,7 @@ A small pill of brand gold with PRO in ink, mono caps (LaBroi's picks from the P
 - The word is CSS content (`.pro-mark::after`), so search results and section names never read it; `role="img"` names it aloud, except beside a title that already says murmur Pro (the rail, the section title), where it is hidden from screen readers. `src/renderer/settings/ProMark.tsx`, styles under `.pro-mark` in `styles.css`, rules in `src/shared/proMark.ts`.
 - The moment you buy: the outlined marks fill with gold once, a beat apart (`pro-mark-leaf`, 0.6 s), and the header mark arrives with its brush fill, which counts as the day's fill.
 - The header mark is painted, not filled: the brush engine draws the day's strokes on a canvas at twice the screen density (sharp at 2x), and PRO is drawn on the same canvas, ink wherever paint landed and gold where the ground is bare (`paintLabel`). A blend mode was tried first and left PRO a muddy brown on the darker strokes; measured over 60 days (re-measured with the soft grain, 2026-10-22), at most 0.1 percent of PRO's pixels, about 2 at a letter's edge, fall under 3:1 on the worst day, and the mean is 0.
-- The daily moment waits until the window is visible and focused, then 350 ms, grows to 2x (or as far as the room before the tabs allows) from its left edge over 300 ms with a 3 percent overshoot (cubic-bezier(.16, 1, .3, 1)), paints for about 3 s while big, holds 400 ms, and settles over 500 ms with no overshoot (cubic-bezier(.4, 0, .2, 1)). The belt steps aside by the mark's growth, so nothing covers words. The first, shallow stroke runs wet and centered, a solid body under the letters, while the steeper strokes stay dry. The grain is soft (LaBroi's pick on canvas board 7, 2026-10-22): 48 fine bristles per stroke, light and dark bristles only 5 and 10 percent off the gold, and a fuller body (0.55, up from 0.34) under the dry strokes, so the gaps between bristles read soft, like the painting a day's strokes. The first build used 26 bristles at 14 and 30 percent, and the streaks read as wood grain. A click, key, or blur skips to the end (200 ms settle). Settings, murmur Pro, Paint the mark each day turns it off; reduced motion shows the day's brushwork still. Both designers' notes (motion and brand) shaped this; the brand rule it answers to: Pro never moves bigger or more often than the belt's own ceremony.
+- The daily moment waits until the window is visible and focused, then 350 ms, grows to 2x (or as far as the room before the tabs allows) from its left edge over 300 ms with a 3 percent overshoot (cubic-bezier(.16, 1, .3, 1)), paints for about 3 s while big, holds 400 ms, and settles over 500 ms with no overshoot (cubic-bezier(.4, 0, .2, 1)). The belt steps aside by the mark's growth, so nothing covers words. The first, shallow stroke runs wet and centered, a solid body under the letters, while the steeper strokes stay dry. The grain is soft (LB's pick on canvas board 7, 2026-10-22): 48 fine bristles per stroke, light and dark bristles only 5 and 10 percent off the gold, and a fuller body (0.55, up from 0.34) under the dry strokes, so the gaps between bristles read soft, like the painting a day's strokes. The first build used 26 bristles at 14 and 30 percent, and the streaks read as wood grain. A click, key, or blur skips to the end (200 ms settle). Settings, murmur Pro, Paint the mark each day turns it off; reduced motion shows the day's brushwork still. Both designers' notes (motion and brand) shaped this; the brand rule it answers to: Pro never moves bigger or more often than the belt's own ceremony.
 
 ## Motion
 
@@ -123,5 +123,5 @@ The default accent is signal amber drying to brand gold; a custom accent dries t
 
 - `MURMUR_INK_SHOTS=<dir> npm run smoke` saves every ink style in every look, plus drying and error, from the hermetic smoke run.
 - Settings shots: run `npx electron-vite build`, then `MURMUR_SETTINGS_CAPTURE=<file.png> node_modules/.bin/electron . --murmur-userdata=<scratch dir>`. It saves a shot of the settings window and exits. Add `MURMUR_SETTINGS_PAGE` (home, analytics, wrap-up, or journey; anything else fails the run), `MURMUR_SETTINGS_ANCHOR`, `MURMUR_SETTINGS_SEARCH`, `MURMUR_SETTINGS_SCROLL` (a CSS selector scrolled to the top of the open tab; the activity wall also scrolls to its newest days), `MURMUR_SETTINGS_CLICK` (a CSS selector focused and clicked last, to open a dialog such as the share card or a hover note; several joined by `||` are clicked in turn, such as a confirm and then its yes), or `MURMUR_SETTINGS_PROBE` (an expression whose value is printed just before the shot, for state a picture hides) to choose what shows. Seed the scratch dir with a `settings.json` holding `{"onboarding": {"completed": true}}` (without it the setup wizard covers everything) and a `history.jsonl` of made-up sessions so the screens look real. The path is used exactly as given, so never pass the real profile, and the run starts the keyboard hook for a few seconds.
-- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LaBroi 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), picked by LaBroi 2026-10-02 (all yes; the stories are US-082 to US-091). Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
+- Previews: the brushwork preview (https://claude.ai/artifact/FjUpgYveR15wSUGaVC2Zx2), approved by LB 2026-10-01, and the app refresh preview (https://claude.ai/artifact/Cvnj1BjTPuLwavwjJdchnM), picked by LB 2026-10-02 (all yes; the stories are US-082 to US-091). Their source holds working prototypes of the hero, the Journey, the ceremony, the share card, and the film animatic.
 - The launch film lives outside the repo in `~/Projects/murmur-film` (HyperFrames; `scripts/build.sh` re-renders).

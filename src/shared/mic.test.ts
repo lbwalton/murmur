@@ -15,7 +15,7 @@ import {
 
 const FOLLOW = { id: '', label: '' }
 
-// LaBroi's Mac on 2026-10-23, the way Chromium lists it.
+// LB's Mac on 2026-10-23, the way Chromium lists it.
 const wave: MicDevice = { deviceId: 'w1', groupId: 'gw', label: 'Elgato Wave:3' }
 const dock: MicDevice = { deviceId: 'c1', groupId: 'gc', label: 'CalDigit TS4 Audio - Front' }
 const built: MicDevice = { deviceId: 'b1', groupId: 'gb', label: 'MacBook Pro Microphone' }

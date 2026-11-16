@@ -85,7 +85,7 @@ export type PaintingBook = Record<string, PaintingRecord>
 
 /** The brushwork tier a belt paints at: washes from blue, splatter from
  *  purple, a second motif from brown, and the heaviest washes and
- *  splatter from black. LaBroi asked for heavier ink washes and splatter
+ *  splatter from black. LB asked for heavier ink washes and splatter
  *  at the higher belts (2026-10-08); the steps between are a design call. */
 export function tierFor(belt: string): number {
   switch (belt) {

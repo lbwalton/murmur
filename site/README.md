@@ -8,7 +8,7 @@ Since US-092 the site also has:
 - **The Wispr Flow comparison** at `/wispr-flow-alternative/`, written in `content.js`. Every Wispr Flow fact there carries the date it was checked against Wispr's own pages; recheck before changing a word.
 - **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
 - **A 404 page** with the same header.
-- **Short addresses.** `/pro` and `/pro/` forward for good (a 301) to `/docs/pro/` (LaBroi, 2026-11-01). The list is `site/redirects.js`: the build checks each one lands on a page it built and writes them into `dist/_redirects`, which Pages applies, and the preview server answers the same way.
+- **Short addresses.** `/pro` and `/pro/` forward for good (a 301) to `/docs/pro/` (LB, 2026-11-01). The list is `site/redirects.js`: the build checks each one lands on a page it built and writes them into `dist/_redirects`, which Pages applies, and the preview server answers the same way.
 
 The build checks every link on every page: one that points at a page or a question that does not exist stops it.
 
@@ -39,7 +39,7 @@ What the page says lives in `content.js`. The FAQ renders from it twice, as the 
 
 ## Hosting: Cloudflare Pages
 
-Chosen by LaBroi 2026-10-02. Vercel's Hobby plan is for non-commercial use only, and a site that sells murmur Pro is commercial (Vercel's fair use guidelines, checked 2026-10-02); Cloudflare Pages' free plan allows it, and the domain's DNS already lives at Cloudflare.
+Chosen by LB 2026-10-02. Vercel's Hobby plan is for non-commercial use only, and a site that sells murmur Pro is commercial (Vercel's fair use guidelines, checked 2026-10-02); Cloudflare Pages' free plan allows it, and the domain's DNS already lives at Cloudflare.
 
 The project is deployed by direct upload from a Mac that has the film, so what was checked locally is exactly what ships:
 
@@ -59,10 +59,10 @@ The scripts, stylesheets, font, and film are kept in browsers for a year while t
 
 - **HTTPS only, forever.** The whole `.app` ending is on the browsers' HSTS preload list with `includeSubDomains` (Chrome, Firefox, Safari and Edge ship it built in; hstspreload.org reports murmurapp.app's preloaded domain as `app`). Browsers refuse plain HTTP for murmurapp.app and every subdomain, and nothing here can change that, so any new subdomain must serve valid HTTPS from its first minute or it will not load at all. `site/headers.js` still sends `includeSubDomains` and `preload`, because scanners grade them.
 - **Headers scanners can read.** Pages adds `Access-Control-Allow-Origin: *` to every response, so `headers.js` also sends `Access-Control-Expose-Headers` naming the security headers. Without it, a scanner that checks the site from its own web page (BrowserTotal) sees none of them and grades them missing (US-118).
-- **security.txt.** The build writes `/.well-known/security.txt` (RFC 9116) from `site/security-txt.js`: security reports go to security@murmurapp.app (LaBroi, 2026-10-31), forwarded by a Cloudflare Email Routing rule like support@. Its Expires date is 364 days after the build, so every deploy renews it; deploy again within 364 days of the last deploy, or it lapses.
-- **Not in the repo:** Cloudflare's Email Address Obfuscation adds a small script (`/cdn-cgi/scripts/.../email-decode.min.js`) to pages that show an email address. It is served from the site's own domain, so the CSP allows it. It can be turned off in the Cloudflare dashboard (the zone's Email Address Obfuscation setting); LaBroi decides.
+- **security.txt.** The build writes `/.well-known/security.txt` (RFC 9116) from `site/security-txt.js`: security reports go to security@murmurapp.app (LB, 2026-10-31), forwarded by a Cloudflare Email Routing rule like support@. Its Expires date is 364 days after the build, so every deploy renews it; deploy again within 364 days of the last deploy, or it lapses.
+- **Not in the repo:** Cloudflare's Email Address Obfuscation adds a small script (`/cdn-cgi/scripts/.../email-decode.min.js`) to pages that show an email address. It is served from the site's own domain, so the CSP allows it. It can be turned off in the Cloudflare dashboard (the zone's Email Address Obfuscation setting); LB decides.
 - `site/headers.test.js` fails if a security header goes missing, the CSP allows inline or eval code, HSTS loses preload readiness, a header is not exposed, or security.txt changes contact or expiry.
-- The full check: `node ~/.claude/skills/security-hardening/scripts/posture-check.mjs https://murmurapp.app --repo .` (LaBroi's security-hardening skill).
+- The full check: `node ~/.claude/skills/security-hardening/scripts/posture-check.mjs https://murmurapp.app --repo .` (LB's security-hardening skill).
 
 After a deploy:
 

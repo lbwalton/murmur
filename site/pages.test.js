@@ -262,10 +262,15 @@ describe('the site build (IOS-026)', () => {
       // spelling an example once used beside it. The initials are allowed:
       // the owner uses them on purpose where a personal touch helps
       // (2026-11-15); only the first and last name are off limits.
-      const named = (text) =>
-        [...text.matchAll(/(?<![a-z])la\s*bro[iy](?![a-z])|walton/gi)].map((match) =>
-          text.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40)
+      // A failure shows the text around each match with every match in it
+      // masked, so the CI log never prints the name (US-171).
+      const NAME = /(?<![a-z])la\s*bro[iy](?![a-z])|wal[t]on/gi
+      const named = (text) => {
+        const masked = text.replace(NAME, (match) => '#'.repeat(match.length))
+        return [...text.matchAll(NAME)].map((match) =>
+          masked.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40)
         )
+      }
       // Block comments in stylesheets and scripts, and whole line comments
       // in scripts, the same cut the fingerprint check makes.
       const visible = (file) => {
@@ -326,7 +331,7 @@ describe('the site build (IOS-026)', () => {
   }, 60_000)
 })
 
-describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {
+describe("the Pro doc's checkout links (LB, 2026-11-01)", () => {
   const md = readFileSync(join(__dirname, '..', 'docs', 'pro.md'), 'utf8')
   const { founders } = content(SITE, { now: Date.parse('2026-12-31T23:00:00-08:00') }).facts
 

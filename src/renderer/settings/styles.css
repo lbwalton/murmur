@@ -518,7 +518,7 @@ body {
 
 /* Asking before a delete (US-096, US-099): the count in words, keep
    them first and focused, and the deleting button in red, the one use
-   of red beside recording and errors (LaBroi, 2026-10-08). */
+   of red beside recording and errors (LB, 2026-10-08). */
 .ask-first {
   display: flex;
   flex-wrap: wrap;
@@ -1728,7 +1728,7 @@ details[open] > .ladder-summary::after {
   }
 }
 
-/* The header's painted mark (LaBroi's picks on canvas board 7): the
+/* The header's painted mark (LB's picks on canvas board 7): the
    day's brush strokes and PRO both drawn on a canvas, PRO in ink where
    paint lands and gold where the ground is bare. The CSS word stays only
    to size the pill. The button lifts it close (scripted, ProMark.tsx);
