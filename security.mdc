@@ -41,7 +41,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 
 ## Keys and secrets
 
-- Never commit, log, or paste a secret. LaBroi types secret values himself.
+- Never commit, log, or paste a secret. LB types secret values himself.
 - Signing keys, the notary key, and the license key stay outside the repo.
 - Rotate a key on any suspicion. `INCIDENT_RESPONSE.md` has the runbooks.
 
@@ -53,7 +53,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 
 ## Privacy
 
-- `/privacy/` states a period or a test for every kind of record. Changing a period means changing the page, and LaBroi signs off.
+- `/privacy/` states a period or a test for every kind of record. Changing a period means changing the page, and LB signs off.
 - A new thing leaving the device changes the privacy page and the App Store label first.
 - Never commit a real dictation, a scan report, or a vendor's review. `security-audits/` stays local.
 - A take someone reports becomes a test case only with their yes, rewritten without names or details.
@@ -67,6 +67,6 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 | Every year | Review `INCIDENT_RESPONSE.md`, confirm who can publish a release |
 | After an incident | A written review, and a lesson in the security-hardening skill |
 
-## Ask LaBroi first
+## Ask LB first
 
 Policy wording and retention periods, repo and account settings, deleting keys or data, rewriting git history, and anything that changes what leaves a device.

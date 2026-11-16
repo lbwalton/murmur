@@ -698,7 +698,7 @@ export function cutRun(
 }
 
 // ------------------------------------------------------------- keep ---
-// File only the item (US-115; LaBroi, 2026-10-27: pull out only what is
+// File only the item (US-115; LB, 2026-10-27: pull out only what is
 // a to-do or an idea, and the commentary stays in the brain dump). A
 // task or idea sentence often carries words that only announce or
 // comment on it: "Oh, and an idea: a rooftop launch party." The model

@@ -3,7 +3,7 @@
 // one place: build.js checks each target is a page it built and writes
 // them into Cloudflare Pages' _redirects file, and serve.js answers the
 // same way in the local preview. murmurapp.app/pro is the Pro page's
-// address to say out loud (LaBroi, 2026-11-01).
+// address to say out loud (LB, 2026-11-01).
 const { DOWNLOAD_PATHS, TARGETS } = require('./download')
 
 const REDIRECTS = [

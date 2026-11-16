@@ -2035,7 +2035,7 @@ export function initSorter(): void {
       const fallbackOk = fellBack.outcome === 'filed' && read(ideas) === `${afterIdeas}- a podcast tour. ${link}\n`
 
       // US-116: the decision model trims too, from two keep Choices.
-      // LaBroi's live dump of 2026-10-29, which filed whole on 0.1.16.
+      // LB's live dump of 2026-10-29, which filed whole on 0.1.16.
       const beforeDecideTodo = read(todo)
       const beforeDecideIdeas = read(ideas)
       let decideBody = ''

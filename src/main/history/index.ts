@@ -458,7 +458,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     sessionWords.clear()
     // The paintings were drawn from it, so they go with it (US-098).
     clearPaintings()
-    // Clear all forgets the last note's record too (LaBroi, 2026-10-02);
+    // Clear all forgets the last note's record too (LB, 2026-10-02);
     // the note file itself stays where it landed. The log is already
     // empty here, so a failure to forget is logged, not reported.
     try {

@@ -2,7 +2,7 @@
 // Asks in place before something is deleted (US-096, US-099): the
 // question names the count, keep them has focus (so Enter, Escape, or a
 // double click never deletes), and the button that deletes is red, the
-// one use of red beside recording and errors (LaBroi, 2026-10-08).
+// one use of red beside recording and errors (LB, 2026-10-08).
 import { useEffect, useRef } from 'react'
 
 export function AskFirst(props: {

@@ -2,7 +2,7 @@
 # each provider's primary pricing source against the catalog, and a PR
 # opens only when a number drifted. A human approves every number that
 # ships; the app itself never scrapes vendors. Auth: the
-# CLAUDE_CODE_OAUTH_TOKEN repo secret, minted from LaBroi's Claude
+# CLAUDE_CODE_OAUTH_TOKEN repo secret, minted from LB's Claude
 # subscription with claude setup-token (one-year lifetime, usage counts
 # against the subscription; see HANDOFF.md).
 #

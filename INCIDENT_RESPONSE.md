@@ -1,6 +1,6 @@
 # Incident response plan
 
-What to do when something goes wrong with murmur's security: a leaked key, a taken-over GitHub account, or a bad release. LaBroi Walton owns every step. This is an operating plan, not legal advice: for anything involving personal data, talk to a lawyer before sending a notice.
+What to do when something goes wrong with murmur's security: a leaked key, a taken-over GitHub account, or a bad release. LB owns every step. This is an operating plan, not legal advice: for anything involving personal data, talk to a lawyer before sending a notice.
 
 **Last reviewed: 2026-11-06.** Review it every year, and after every incident.
 
@@ -10,7 +10,7 @@ murmur has no server and no accounts, so a breach here does not expose dictation
 
 - **Signing and publishing:** a stolen signing key, or a taken-over GitHub account, could ship a bad update to every installed copy. This is the worst case.
 - **The website:** a taken-over Cloudflare account could change the download links.
-- **Purchase records:** Stripe holds the orders, and a private file on LaBroi's Mac lists the licenses issued. A leak of either exposes names, email addresses, and orders.
+- **Purchase records:** Stripe holds the orders, and a private file on LB's Mac lists the licenses issued. A leak of either exposes names, email addresses, and orders.
 - **Support mail:** support@ and security@ forward to a personal inbox.
 
 ## How serious is it?

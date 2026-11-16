@@ -184,7 +184,7 @@ export const spreadY = (i: number, salt: number): number => ((((i + 1) * 0.56984
  * own (what grows when, with caps, so it composes instead of piling up),
  * placed by the walk above, sized by the take's words, and a signature
  * mark for a long take, using the subject's own geometry. An earlier
- * stroke never moves, and two people's paintings grow apart (LaBroi,
+ * stroke never moves, and two people's paintings grow apart (LB,
  * 2026-10-09: keep elaborating, and make it uniquely theirs).
  */
 export interface Subject {

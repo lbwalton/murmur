@@ -160,7 +160,6 @@ function jsonLd() {
         '@id': org,
         name: 'Eze Media LLC',
         url: `${SITE_URL}/`,
-        founder: { '@type': 'Person', name: 'LaBroi Walton' },
         ...(SUPPORT_EMAIL ? { contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: SUPPORT_EMAIL } } : {}),
         sameAs: [links.repo]
       },
@@ -307,7 +306,7 @@ function footerHtml() {
     </footer>`
 }
 
-/** The founders price line (LaBroi, 2026-10-24), under the download on
+/** The founders price line (LB, 2026-10-24), under the download on
  *  home and atop the Pro doc while the window is open; nothing after.
  *  Every website purchase in the window makes a founding member, with
  *  or without the code (2026-11-15). */

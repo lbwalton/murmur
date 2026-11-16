@@ -182,7 +182,8 @@ describe('/download/me', () => {
     expect(html).toContain(OWNER_COOKIE)
     expect(html).toContain('2027-12-20')
     expect(html).not.toMatch(/<script|style=/)
-    expect(html).not.toMatch(/LaBroi|Walton|\bLB\b/)
+    // The owner's first and last name, never spelled out here (US-168, US-171).
+    expect(html).not.toMatch(/la\s*bro[iy]|wal[t]on/i)
   })
 })
 

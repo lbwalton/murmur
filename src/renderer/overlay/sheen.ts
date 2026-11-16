@@ -2,7 +2,7 @@
 // The drying sheen on the ink waveforms. When the brush lifts, one sheen
 // crosses the paint as it dries; while processing runs long, a softer
 // one follows every 2 seconds until the words land, so a long take or a
-// slow provider never looks frozen (US-091, LaBroi 2026-10-02). Reduced
+// slow provider never looks frozen (US-091, LB 2026-10-02). Reduced
 // motion shows none.
 
 /** How often a softer sheen follows the first one, in ms. */
