@@ -515,7 +515,7 @@ export type RetriedDelivery =
  * spoken into no longer has the cursor, so nothing is pasted and no
  * pill or cue plays: a dictation goes to the log at its original time,
  * where paste-last finds it next (it is the newest entry appended), and
- * the clipboard is left alone (LaBroi, 2026-11-01); a note files
+ * the clipboard is left alone (LB, 2026-11-01); a note files
  * like a live note under the day and time it was spoken; a transform's
  * instruction is kept unsent, since the selection it was for is gone.
  * A held take already has its numbers in the log, so its words go back

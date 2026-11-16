@@ -5,7 +5,7 @@
 // never joins a row's or a section's name in search; the role and label
 // say it aloud instead.
 //
-// The header's mark is painted, not filled (LaBroi's picks on canvas
+// The header's mark is painted, not filled (LB's picks on canvas
 // board 7, 2026-10-22): the first time each day the window opens in
 // front, it lifts to twice its size, 3 or 4 slashing brush strokes seeded
 // by the date paint its gold in from varied angles, and it settles back.
@@ -55,7 +55,7 @@ const WHITE: Rgb = [255, 255, 255]
 const BLACK: Rgb = [0, 0, 0]
 
 /** Bristles per stroke: fine for a 16 px mark, so the grain stays soft
- *  like the painting a day's strokes (LaBroi's pick, 2026-10-22). */
+ *  like the painting a day's strokes (LB's pick, 2026-10-22). */
 const BRISTLES = 48
 
 function strokePath(s: FillStroke, w: number, h: number): ReturnType<typeof path> {

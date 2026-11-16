@@ -305,7 +305,7 @@ function footerHtml() {
     </footer>`
 }
 
-/** The founders price line (LaBroi, 2026-10-24), under the download on
+/** The founders price line (LB, 2026-10-24), under the download on
  *  home and atop the Pro doc while the window is open; nothing after.
  *  Every website purchase in the window makes a founding member, with
  *  or without the code (2026-11-15). */

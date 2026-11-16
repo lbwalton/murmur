@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The rotating you-have-dictated line. Pure: the caller supplies a
-// 0..1 pick value (random per app open, per LaBroi's spec) and gets a
+// 0..1 pick value (random per app open, per LB's spec) and gets a
 // human sentence comparing lifetime words to a famous work.
 
 export interface WorkRef {

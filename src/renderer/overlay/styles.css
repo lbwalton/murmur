@@ -264,7 +264,7 @@ body {
   justify-content: center;
 }
 
-/* The ink edge (LaBroi pick 2026-09-25, from a live preview): every mark
+/* The ink edge (LB pick 2026-09-25, from a live preview): every mark
    carries a faint ink shadow that hugs it, so the needle reads over a
    white page and still reads as light over a dark one. Bars take it in
    CSS; the canvas styles draw it themselves (overlay/bare.ts). */

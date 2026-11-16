@@ -113,13 +113,13 @@ export function initFormatter(): void {
   registerSmokeCheck('dictionary', async () => {
     const { applyDictionary } = await import('../../shared/dictionary')
     const { updateSettings } = await import('../settings')
-    const entries = [{ from: 'labroy', to: 'LaBroi' }]
-    const replaced = applyDictionary('tell labroy the plan', entries) === 'tell LaBroi the plan'
+    const entries = [{ from: 'shivon', to: 'Siobhan' }]
+    const replaced = applyDictionary('tell shivon the plan', entries) === 'tell Siobhan the plan'
     const untouched = applyDictionary('collaborate on the plan', entries) === 'collaborate on the plan'
     // Store round trip through the real settings path.
     const before = getSettings().dictionary
     const saved = updateSettings({ dictionary: entries }).dictionary
-    const roundTrip = saved.length === 1 && saved[0].to === 'LaBroi'
+    const roundTrip = saved.length === 1 && saved[0].to === 'Siobhan'
     updateSettings({ dictionary: before })
     return replaced && untouched && roundTrip
   })

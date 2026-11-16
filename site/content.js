@@ -11,12 +11,12 @@ const REPO = 'https://github.com/lbwalton/murmur'
 // reads too, so the app and the site never disagree (US-107).
 const PRO = require('../shared/pro.json')
 
-// The founders window (LaBroi, 2026-10-24): through December 31, 2026,
+// The founders window (LB, 2026-10-24): through December 31, 2026,
 // murmur Pro is $39 on the website with the Stripe code FOUNDERS, which
 // the checkout link fills in; then it is $49. Website only: the App Store
 // price stays $49. A build made after the window drops every founders
 // line, so the site is redeployed on January 1. It closes at midnight
-// Pacific time, the end of December 31 where LaBroi is.
+// Pacific time, the end of December 31 where LB is.
 // Decided 2026-11-15: everyone who buys Pro on the website before it
 // closes is a founding member, with or without the code, and the 10%
 // covers every future paid product the company makes.

@@ -27,14 +27,14 @@
   /* brand: burnished gold, the icon's metal at label luminance.
      Headlines, micro-labels, and static highlights wear it; it sits
      deliberately below signal amber in brightness so the live needle
-     still outshines the hardware (LaBroi direction, 2026-09-07). */
+     still outshines the hardware (LB direction, 2026-09-07). */
   --brand: #d9a441;
   --brand-edge: rgba(217, 164, 65, 0.5);
-  /* the bright gold glow as a Pro mark fills (US-107, LaBroi 2026-10-23) */
+  /* the bright gold glow as a Pro mark fills (US-107, LB 2026-10-23) */
   --brand-glow: rgba(217, 164, 65, 0.8);
   --brand-glow-fade: rgba(217, 164, 65, 0.5);
 
-  /* paint (US-073, the brushwork art direction, LaBroi 2026-10-01).
+  /* paint (US-073, the brushwork art direction, LB 2026-10-01).
      Brush marks only, never interface chrome. Smoke is background
      brushwork, rice paper is chalky strokes and paper grounds, ember is
      splatter and celebration. Ember never marks an error; red does. */
@@ -49,7 +49,7 @@
   --red-soft: rgba(229, 72, 77, 0.55);
 
   /* data emphasis: the activity wall's default fill. Vibrant orange on
-     purpose (LaBroi, 2026-09-07): cream read as the white belt color.
+     purpose (LB, 2026-09-07): cream read as the white belt color.
      Distinct from signal amber, which stays reserved for live states. */
   --heat-default: #f97316;
   /* The inverted wall's resting square: pure white by founder decree
@@ -73,7 +73,7 @@
 
   /* The bare overlay's ink edge (US-061): the ink at about half strength,
      hugging each mark so it reads over a white page without drawing an
-     outline. LaBroi picked this over a hard outline and a smoke cloud
+     outline. LB picked this over a hard outline and a smoke cloud
      from a live preview, 2026-09-25. */
   --ink-edge: rgba(15, 14, 17, 0.55);
 }

@@ -145,9 +145,9 @@ describe('mergeSettings', () => {
 
   it('replaces arrays wholesale', () => {
     const merged = mergeSettings(DEFAULT_SETTINGS, {
-      dictionary: [{ from: 'labroy', to: 'LaBroi' }]
+      dictionary: [{ from: 'shivon', to: 'Siobhan' }]
     })
-    expect(merged.dictionary).toEqual([{ from: 'labroy', to: 'LaBroi' }])
+    expect(merged.dictionary).toEqual([{ from: 'shivon', to: 'Siobhan' }])
   })
 
   it('never mutates the defaults object', () => {

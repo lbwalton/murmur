@@ -1,5 +1,5 @@
 {
-  "comment": "The murmur belt ladder, modeled on the adult IBJJF graduation system (researched and verified against the IBJJF General Graduation System, 2026-09-05; see prd US-029). Promotion requires BOTH gates: lifetime words AND distinct active days, honoring the spirit of IBJJF time-in-grade minimums, so a burst week cannot skip a belt. Every number here is balancing data, tunable without code changes. The 10th degree is the Founder belt: held by LaBroi alone, granted only by the founder marker, unearnable by usage.",
+  "comment": "The murmur belt ladder, modeled on the adult IBJJF graduation system (researched and verified against the IBJJF General Graduation System, 2026-09-05; see prd US-029). Promotion requires BOTH gates: lifetime words AND distinct active days, honoring the spirit of IBJJF time-in-grade minimums, so a burst week cannot skip a belt. Every number here is balancing data, tunable without code changes. The 10th degree is the Founder belt: held by LB alone, granted only by the founder marker, unearnable by usage.",
   "ranks": [
     {
       "id": "none",

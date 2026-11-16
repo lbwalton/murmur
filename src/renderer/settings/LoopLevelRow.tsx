@@ -2,7 +2,7 @@
 // The hands-free loop's resting level (US-117): a slider, and a still
 // tile above it showing a locked recording as the overlay draws it in
 // the user's own look, waveform, and accent (the waveform tiles' mini
-// pill, scaled to the tile as in the preview LaBroi approved on
+// pill, scaled to the tile as in the preview LB approved on
 // 2026-11-01), with the loop painted round the measured pill (the
 // needle in bare) at the slider's level, by the overlay's own stadium,
 // brush, and stroke, so dragging shows the result. The tile follows the
