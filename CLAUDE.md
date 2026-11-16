@@ -13,7 +13,7 @@ The owner's first and last name never appear anywhere in this repo: not in copy,
 LB's model (2026-11-15). Copy, docs, and stories must not contradict it.
 
 - The desktop app, Mac and Windows, is free and open source (GPL-3.0, see `LICENSE`) and runs on your own transcription key, with every dictation feature included.
-- murmur Pro is a one-time purchase on the website: $49, or $39 with the code FOUNDERS through December 31, 2026 (`shared/pro.json` holds the price; `site/content.js` holds the founders window).
+- murmur Pro is a one-time purchase on the website: $49, or $39 with the code FOUNDERS through December 31, 2026 (`shared/pro.json` holds the price and the founders code and its closing time, which the site's checkout links and the app's Get Pro buttons share, US-172; `site/content.js` holds the founders copy).
 - On iPhone, Pro sells as the $49 one-time in-app purchase through Apple (IOS-025 in ios/prd.json, on feature/ios until it merges), and one Pro covers both devices.
 - Later, a hosted transcription service that needs no API key will be sold as a subscription inside the app (ios/prd.json IOS-028). Using your own key is free today.
 - That subscription is why copy never promises murmur is free forever: say what is free today, never that it always will be.

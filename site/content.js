@@ -22,7 +22,9 @@ const PRO = require('../shared/pro.json')
 // Decided 2026-11-15: everyone who buys Pro on the website before it
 // closes is a founding member, with or without the code, and the 10%
 // covers every future paid product the company makes.
-const FOUNDERS = { price: 39, code: 'FOUNDERS', ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse('2027-01-01T08:00:00Z') }
+// The code and the moment it closes live in shared/pro.json, which the
+// app's Get Pro buttons read too (US-172).
+const FOUNDERS = { price: 39, code: PRO.founders.code, ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse(PRO.founders.closes) }
 
 function content(site, { supportEmail = '', now = Date.now() } = {}) {
   const links = {
@@ -48,12 +50,17 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
   // Verified 2026-09-26: the macOS 13 and Windows 10 minimums are Electron
   // 44's (electronjs.org breaking changes; the electron/electron README's
   // platform support), and murmur Pro is $49 on the live Stripe checkout.
+  const foundersOpen = now < FOUNDERS.closes
+  const checkout = foundersOpen ? `${PRO.buyUrl}?prefilled_promo_code=${FOUNDERS.code}` : PRO.buyUrl
   const facts = {
     macos: 'macOS 13 Ventura or later',
     windows: 'Windows 10 or later',
     proPrice: PRO.price,
     // null once the window closes, so nothing says it any more.
-    founders: now < FOUNDERS.closes ? { ...FOUNDERS, buy: `${PRO.buyUrl}?prefilled_promo_code=${FOUNDERS.code}` } : null
+    founders: foundersOpen ? { ...FOUNDERS, buy: checkout } : null,
+    // Where every checkout link points (US-172): the code filled in while
+    // the window is open, the plain Payment Link after.
+    checkout
   }
 
   const title = 'murmur: free, open source dictation app for Mac and Windows'

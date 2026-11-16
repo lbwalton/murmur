@@ -22,6 +22,7 @@ const { encodePng } = require('../scripts/lib/draw')
 const { ensoSvgParts, loadBrush } = require('../scripts/lib/enso')
 const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
+const PRO = require('../shared/pro.json')
 const { clip, firstParagraph, renderDoc, slugify } = require('./markdown')
 const { headersFile } = require('./headers')
 const { REDIRECTS, redirectsFile } = require('./redirects')
@@ -561,9 +562,13 @@ const DOC_NAMES = new Set(DOCS.map(([name]) => name))
 const isQuestion = (heading) => /\?(\s*\([^)]*\))?$/.test(heading)
 
 /** A link inside a doc: another doc becomes its page here, a page's own
- *  anchors stay, the web stays the web, and any other repo file goes to
+ *  anchors stay, the web stays the web (the checkout with the founders
+ *  code while the window is open), and any other repo file goes to
  *  GitHub. */
 function resolveDocLink(href) {
+  // The docs link the plain checkout; while the founders window is open
+  // every one of those links carries the code (US-172).
+  if (href === PRO.buyUrl) return { href: facts.checkout, external: true }
   if (/^(https?:|mailto:)/.test(href)) return { href, external: /^https?:/.test(href) }
   if (href.startsWith('#')) return { href, external: false }
   const doc = /^(?:\.\/)?([a-z0-9-]+)\.md(#[^\s]*)?$/.exec(href)

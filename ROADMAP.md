@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (102/158 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (103/159 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -106,6 +106,7 @@
 - [x] **US-140** Warn before sending over plain http
 - [x] **US-153** Build tool security alert, November: minimatch
 - [x] **US-171** The repo never names its owner
+- [x] **US-172** Every checkout link fills in FOUNDERS while the founders window is open
 
 ## Built, awaiting live verification
 
