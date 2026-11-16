@@ -59,7 +59,7 @@ describe('the privacy page', () => {
   })
 
   it('names everything that leaves a device, on every platform', () => {
-    for (const fact of ['no server', 'provider you chose', 'your own key', 'GitHub', 'update', 'offline', 'Stripe', 'Apple', 'keyboard sends nothing', 'Keychain', 'no analytics', 'no cookies']) {
+    for (const fact of ['no server', 'provider you chose', 'your own key', 'GitHub', 'update', 'offline', 'Stripe', 'Apple', 'keyboard sends nothing', 'Keychain', 'no analytics', 'no cookies on visitors']) {
       expect(text).toContain(fact)
     }
     // Found by the review gate: each of these leaves a device too.
@@ -93,6 +93,41 @@ describe('the privacy page', () => {
     }
     expect(point('Eze Media LLC.')).toContain('go through Resend, and the purchase and perk emails stop when you ask')
     for (const fact of ['no analytics', 'no tracking', 'Nothing is sold']) expect(text).toContain(fact)
+  })
+})
+
+// US-169: the site counts download clicks, never who, and visitors get
+// no cookie; every line that says what the site does stays true.
+describe('what the site says about counting downloads', () => {
+  const { privacy, security } = content(SITE, { supportEmail: EMAIL })
+  const answer = (info, q) => {
+    const item = info.items.find((i) => i.q === q)
+    expect(item, q).toBeDefined()
+    return plain(item.a)
+  }
+
+  it('answers Does this website track me? with what is counted and what never is', () => {
+    const text = answer(privacy, 'Does this website track me?')
+    for (const fact of ['counts clicks on its download buttons', 'which link sent them', '?ref=reddit', 'never records who', 'no IP address', 'no cookies on visitors', 'no analytics', 'The only cookie is 1 we set on our own browsers']) {
+      expect(text).toContain(fact)
+    }
+    expect(text).not.toMatch(/no cookies of its own|LaBroi|Walton|\bLB\b/)
+  })
+
+  it('says in the summary that visitors get no cookie, and names the 1 that exists', () => {
+    const cookies = privacy.summary.find(([lead]) => lead === 'Cookies.')
+    expect(plain(cookies[1])).toContain('Visitors get none')
+    expect(plain(cookies[1])).toContain('The only cookie is 1 we set on our own browsers')
+    expect(plain(cookies[1])).not.toContain('The site sets none')
+  })
+
+  it('tells security reviewers the download links count clicks, never who', () => {
+    const text = answer(security, 'How is this website protected?')
+    for (const fact of ['download links, which count each click', 'never who', 'Visitors get no cookies', 'no analytics']) {
+      expect(text).toContain(fact)
+    }
+    expect(text).not.toMatch(/static, with no cookies/)
+    expect(security.updated).toBe('2026-11-15')
   })
 })
 
@@ -220,6 +255,18 @@ describe('the site build (IOS-026)', () => {
         expect(read(file)).toContain(`${SITE}/privacy/`)
         expect(read(file)).toContain(`${SITE}/support/`)
       }
+    })
+
+    it('sends both download buttons through the counter, and keeps crawlers off it (US-169)', () => {
+      const home = read('index.html')
+      expect(home).toContain('<a class="btn" href="/download/mac">Download for Mac</a>')
+      expect(home).toContain('<a class="btn" href="/download/windows">Download for Windows</a>')
+      expect(home).not.toContain('href="https://github.com/lbwalton/murmur/releases/latest/download/')
+      // Machines read the files themselves, so they never count as a click.
+      expect(read('llms.txt')).toContain('https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg')
+      expect(home).toContain('"downloadUrl":["https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg"')
+      const robots = read('robots.txt')
+      expect(robots.match(/^Disallow: \/download\/$/gm)).toHaveLength(robots.match(/^User-agent:/gm).length)
     })
 
     it('forwards /pro and /pro/ to the Pro doc for good', () => {

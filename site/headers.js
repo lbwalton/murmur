@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The six security headers (plus COOP) every response carries, in one
-// place: build.js writes them into Cloudflare Pages' _headers file and
-// serve.js sends them from the local preview, so what is checked
-// locally is what ships. No unsafe-inline anywhere: the page has no
-// inline script or style attribute. blob: images are the visitor's own
+// place: build.js writes them into Cloudflare Pages' _headers file,
+// serve.js sends them from the local preview, and the download counter
+// (download.js) sends them itself, since Pages never applies _headers to
+// a Function's responses (US-169). What is checked locally is what
+// ships. No unsafe-inline anywhere: the page has no inline script or
+// style attribute. blob: images are the visitor's own
 // poster, made in the browser. The whole .app ending is HSTS preloaded,
 // so murmurapp.app is HTTPS-only whatever this says; Strict-Transport-
 // Security keeps includeSubDomains and preload because scanners grade

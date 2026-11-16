@@ -7,6 +7,8 @@
 // address: content(siteUrl) builds everything for one.
 
 const REPO = 'https://github.com/lbwalton/murmur'
+// The release files the download buttons forward to (US-169).
+const { TARGETS } = require('./download')
 // The Pro price lives in shared/pro.json, which the app's Get Pro button
 // reads too, so the app and the site never disagree (US-107).
 const PRO = require('../shared/pro.json')
@@ -26,9 +28,11 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
   const links = {
     site,
     repo: REPO,
-    // US-063: permanent names that always serve the newest release.
-    mac: `${REPO}/releases/latest/download/murmur-mac.dmg`,
-    windows: `${REPO}/releases/latest/download/murmur-windows.exe`,
+    // US-063: permanent names that always serve the newest release. The
+    // buttons go through the counter at /download/<platform> instead
+    // (US-169); structured data and llms.txt name the files themselves.
+    mac: TARGETS.mac,
+    windows: TARGETS.windows,
     releases: `${REPO}/releases`,
     issues: `${REPO}/issues`,
     docs: `${site}/docs/`,
@@ -167,11 +171,14 @@ const ask = (links, supportEmail) => (supportEmail ? { text: supportEmail, href:
 // keyboard no networking API (scripts/lib/keyboard-network.test.js), the
 // desktop main process only the provider, GitHub's releases (src/main/
 // updater.ts), and the provider list on GitHub (src/main/catalog.ts); the
-// site's own policy allows nothing but its own files (site/headers.js).
+// site's own policy allows nothing but its own files (site/headers.js),
+// and its download counter keeps only the day, the platform, and the ref,
+// and cookies only a browser that opens /download/me (site/download.js,
+// US-169).
 function privacy(links, supportEmail) {
   return {
     title: 'Privacy: murmur collects nothing',
-    description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
+    description: 'The murmur apps have no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
     updated: '2026-11-15',
@@ -179,7 +186,7 @@ function privacy(links, supportEmail) {
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
       ['Your rights.', ['You can see, correct, and delete what Eze Media LLC holds about you. Nothing is sold or shared.']],
-      ['Cookies.', ['The site sets none, so it shows no cookie banner.']]
+      ['Cookies.', ['Visitors get none, so the site shows no cookie banner. The only cookie is 1 we set on our own browsers, so our own downloads are not counted.']]
     ],
     items: [
       {
@@ -276,7 +283,7 @@ function privacy(links, supportEmail) {
       {
         q: 'Does this website track me?',
         a: [
-          'No. murmurapp.app has no analytics, no cookies of its own, and no scripts but its own. Cloudflare hosts it and handles each request as any web host does.'
+          'No. murmurapp.app counts clicks on its download buttons: how many, on which day, for Mac or Windows, and which link sent them (a tag like ?ref=reddit). It never records who: no IP address, no browser details, and no cookies on visitors. There is no analytics service and no script but its own. The only cookie is 1 we set on our own browsers, so our own downloads are left out. Cloudflare hosts the site and handles each request as any web host does.'
         ]
       },
       {
@@ -290,14 +297,14 @@ function privacy(links, supportEmail) {
 // The 1 page to send a security reviewer (US-124). It says what murmur
 // lacks as plainly as what it has. Claims were checked against the code
 // on the day in updated: src/main/updater.ts, src/main/license.ts,
-// src/renderer/audio/recorder.ts, and site/headers.js.
+// src/renderer/audio/recorder.ts, site/headers.js, and site/download.js.
 function security(links, supportEmail) {
   return {
     title: 'Security: how murmur handles your data',
     description: 'For security reviewers: what leaves the device, who processes it, how keys and updates are protected, what is signed, what murmur does not have, and how to report a problem.',
     h1: 'Security at murmur.',
-    lede: 'murmur has no server and no accounts, so there is no murmur database to breach. This page answers what a security review usually asks, including what murmur does not have.',
-    updated: '2026-11-07',
+    lede: 'The murmur apps have no server and no accounts, so there is no database of people to breach. This page answers what a security review usually asks, including what murmur does not have.',
+    updated: '2026-11-15',
     items: [
       {
         q: 'What leaves the device, and where does it go?',
@@ -372,7 +379,7 @@ function security(links, supportEmail) {
       {
         q: 'How is this website protected?',
         a: [
-          'It is static, with no cookies, no analytics, and no scripts but its own, under a strict content security policy. Checked 2026-11-05: A+ from Mozilla Observatory, Qualys SSL Labs, and securityheaders.com. A weekly check watches the live site.'
+          'It is static apart from the download links, which count each click (the day, Mac or Windows, and which link sent it, never who) and forward to the file on GitHub. Visitors get no cookies, and there is no analytics service and no script but its own, under a strict content security policy. Checked 2026-11-05: A+ from Mozilla Observatory, Qualys SSL Labs, and securityheaders.com. A weekly check watches the live site.'
         ]
       },
       {

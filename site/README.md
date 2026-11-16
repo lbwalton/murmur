@@ -9,6 +9,7 @@ Since US-092 the site also has:
 - **One header and footer** on every page, written by `build.js`. The header stays at the top while a page scrolls.
 - **A 404 page** with the same header.
 - **Short addresses.** `/pro` and `/pro/` forward for good (a 301) to `/docs/pro/` (LaBroi, 2026-11-01). The list is `site/redirects.js`: the build checks each one lands on a page it built and writes them into `dist/_redirects`, which Pages applies, and the preview server answers the same way.
+- **The download counter** (US-169, LaBroi, 2026-11-15). See its own section below.
 
 The build checks every link on every page: one that points at a page or a question that does not exist stops it.
 
@@ -16,7 +17,7 @@ The build checks every link on every page: one that points at a page or a questi
 
 Here in `site/`, inside the murmur repo, decided 2026-09-26. The page reads the app's own `src/renderer/tokens.css`, paints with the app's own brush engine (`src/renderer/brush.ts`, stripped of its types by Node at build time), takes the belt colors from `shared/cosmetics.json`, draws its favicon and preview image with the same kit as the app icons (`scripts/lib/draw.js`), takes the version from `package.json`, and points at the stable release links from US-063. Keeping it in the repo means none of that can drift, and the design and header lints cover it too.
 
-It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework. The docs and comparison pages ship no script of their own (Cloudflare adds one to pages that show an email address; see Security). Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
+It is plain HTML, CSS, and two small scripts (`app.js` picks the download; `hero.js` is the hero) with no dependencies and no framework, plus one small Pages Function behind the download links (below). The docs and comparison pages ship no script of their own (Cloudflare adds one to pages that show an email address; see Security). Nothing here ever needs `npm install`; the build needs Node 22.13 or later.
 
 ## Build and preview
 
@@ -49,11 +50,25 @@ SITE_URL=https://murmurapp.app SITE_DEPLOY=1 SUPPORT_EMAIL=support@murmurapp.app
 npx wrangler pages deploy site/dist --project-name murmur --branch main
 ```
 
+Run these from the repo root: wrangler takes the download counter from `functions/` in the folder it runs from, and its output says Compiled Worker successfully when it found it. Deployed from anywhere else, the download links still work through the fallback in `_redirects`, but nothing is counted.
+
 The docs pages come from the tag of the version in package.json, and the download buttons serve GitHub's latest published release, so deploy a new version's site only after its release is published (not while it is a draft). Until then, a deploy from a branch that already carries the new version fails for want of its tag; set `DOCS_REF` to the published tag to deploy anyway.
 
 The scripts, stylesheets, font, and film are kept in browsers for a year while the page itself is always fetched fresh, so the build stamps every reference to them with a fingerprint of the file. A new file gets a new address, and a test fails on any reference without one. Add a new file of this kind to `FINGERPRINTED_PATHS` in `site/headers.js` and to the stamp list in `site/build.js`.
 
 `site/headers.js` is the one list of security headers: the build writes it into `dist/_headers`, which Pages applies to every response, and the preview server sends the same list.
+
+## The download counter
+
+The download buttons go through `/download/mac` and `/download/windows`, which count the click and forward (a 302) to the same GitHub release files the buttons always served (US-063's permanent names). Decided by LaBroi 2026-11-15, so we can see how many people download murmur and which link sent them.
+
+- **What a count is.** The day (UTC), the platform, and the ref tag: the link's own `?ref=reddit`, or the `?ref=` of the page on this site the button was on (read from the Referer a browser sends for a same-site click, so `murmurapp.app/?ref=reddit` works with no script on the page). Nothing else: no IP address, no user agent, no cookie on visitors. The user agent is read only to skip crawlers, chat link previews, and scripts; prefetches and HEAD requests are skipped too, and `robots.txt` keeps crawlers off `/download/`.
+- **Our own clicks.** Opening `/download/me` sets 1 cookie, `murmur_owner` (HttpOnly, Secure, SameSite=Lax, sent only to `/download/`, 400 days, the most Chrome keeps one), and clicks from that browser are not counted. It is the only cookie the site ever sets, and only on a browser that opens that page.
+- **It fails open.** The forward goes out at once and the count is written after it (`waitUntil`); a count that fails is dropped. With no store bound, the links still forward, uncounted.
+- **Where it lives.** The logic is `site/download.js`; Cloudflare Pages runs it through `functions/download/[target].js`, which sits at the repo root because that is where `wrangler pages deploy` looks. Wrangler routes only `/download/*` to it, so every other request stays static. Pages applies neither `_headers` nor `_redirects` to a Function's responses, so `download.js` sends the security headers from `headers.js` itself, and `_redirects` carries a plain forward for each link as a fallback for a deploy without the function.
+- **Where counts go.** A Workers KV namespace named `murmur-downloads`, bound to the Pages project as `DOWNLOADS` in the dashboard (HANDOFF.md), 1 key per click (`2026-11-15:mac:reddit:<random>`, the random part only so 2 clicks never share a key). KV over Workers Analytics Engine because KV keeps the counts for good, where Analytics Engine keeps 3 months, and KV reads back with your own wrangler login, where Analytics Engine needs an API token of its own. The free plan allows 1,000 KV writes a day (developers.cloudflare.com/kv/platform/limits, checked 2026-11-15); past that, a day's further clicks still download, uncounted.
+- **Reading them.** `npm run site:downloads` prints clicks by day, by ref, and in all, each split into Mac and Windows; `-- --since 2026-11-01` starts at a day and `-- --json` prints JSON. It runs `wrangler kv key list --remote` under your Cloudflare login.
+- **Locally.** `node site/serve.js` answers `/download/` with the same code and prints each count in the terminal. To run the real Function, `npx wrangler pages dev site/dist --kv DOWNLOADS --port 4871` from the repo root (port 4871 is claimed in the port registry); its counts stay on this machine.
 
 ## Security
 
@@ -68,5 +83,6 @@ After a deploy:
 
 - `curl -sI https://murmurapp.app/` shows Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, and Access-Control-Expose-Headers.
 - `curl -s https://murmurapp.app/.well-known/security.txt` shows the Contact line and an Expires date about a year out.
+- `curl -sI https://murmurapp.app/download/mac` shows a 302 whose Location is the GitHub `murmur-mac.dmg`, with Content-Security-Policy and Strict-Transport-Security, and no Set-Cookie.
 - `dig +short TXT murmurapp.app` shows the SPF record, and `dig +short TXT _dmarc.murmurapp.app` shows `v=DMARC1; p=reject`.
 - `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` load; the JSON-LD on the home page, a doc, and the comparison passes validator.schema.org; the sitemap is submitted in Google Search Console.

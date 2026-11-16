@@ -25,6 +25,7 @@ const { content, DOCS } = require('./content')
 const { clip, firstParagraph, renderDoc, slugify } = require('./markdown')
 const { headersFile } = require('./headers')
 const { REDIRECTS, redirectsFile } = require('./redirects')
+const { DOWNLOAD_PATHS, downloadPath } = require('./download')
 const { securityTxt } = require('./security-txt')
 const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
@@ -336,8 +337,9 @@ function page(tokens, font) {
     PILL_BARS: pillBars(),
     FAQ: faqHtml(),
     FOUNDERS: foundersHtml(false),
-    MAC_URL: links.mac,
-    WINDOWS_URL: links.windows,
+    // Through the download counter (US-169), which forwards to the file.
+    MAC_URL: downloadPath('mac'),
+    WINDOWS_URL: downloadPath('windows'),
     WINDOWS_SCREEN_URL: links.windowsScreen.slice(SITE_URL.length),
     MACOS: facts.macos.replace(' Ventura', ''),
     WINDOWS: facts.windows
@@ -392,8 +394,10 @@ const AI_CRAWLERS = [
   'Bytespider'
 ]
 
+// Crawlers stay off the download links (US-169): a fetch there is not a
+// person downloading murmur, and it would count as one.
 function robotsTxt() {
-  const blocks = ['*', ...AI_CRAWLERS].map((agent) => `User-agent: ${agent}\nAllow: /\n`)
+  const blocks = ['*', ...AI_CRAWLERS].map((agent) => `User-agent: ${agent}\nDisallow: /download/\nAllow: /\n`)
   return `${blocks.join('\n')}\nSitemap: ${SITE_URL}/sitemap.xml\n`
 }
 
@@ -840,6 +844,8 @@ function checkLinks(pages) {
       const local = href.startsWith(`${SITE_URL}/`) ? href.slice(SITE_URL.length) : href
       if (!local.startsWith('/') || local.startsWith('//')) continue
       const [target, anchor] = local.split('#')
+      // The download links are the counter function's, not pages (US-169).
+      if (DOWNLOAD_PATHS.includes(target.split('?')[0])) continue
       if (/\.[a-z0-9]+$/i.test(target)) {
         files.add(target)
         continue

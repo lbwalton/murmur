@@ -24,7 +24,8 @@
     "notices": "node scripts/gen-notices.js",
     "release:stable": "node scripts/stable-assets.js",
     "release:manifest": "node scripts/release-manifest.js",
-    "site": "node site/build.js"
+    "site": "node site/build.js",
+    "site:downloads": "node scripts/site-downloads.js"
   },
   "build": {
     "appId": "com.lbwalton.murmur",

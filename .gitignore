@@ -12,3 +12,4 @@ src/renderer/public/fonts/
 .DS_Store
 .env
 .env.*
+.wrangler/
