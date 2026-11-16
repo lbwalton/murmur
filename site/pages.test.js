@@ -259,9 +259,11 @@ describe('the site build (IOS-026)', () => {
     describe('never names the founder (US-168)', () => {
       const BINARY = /\.(?:png|jpe?g|gif|webp|ico|woff2?|mp4|webm)$/
       // Either part of the name, spaced or run together, and the misheard
-      // spelling an example once used beside it; or the initials alone.
+      // spelling an example once used beside it. The initials are allowed:
+      // the owner uses them on purpose where a personal touch helps
+      // (2026-11-15); only the first and last name are off limits.
       const named = (text) =>
-        [...text.matchAll(/(?<![a-z])la\s*bro[iy](?![a-z])|walton/gi), ...text.matchAll(/(?<![A-Za-z0-9])LB(?![A-Za-z0-9])/g)].map((match) =>
+        [...text.matchAll(/(?<![a-z])la\s*bro[iy](?![a-z])|walton/gi)].map((match) =>
           text.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40)
         )
       // Block comments in stylesheets and scripts, and whole line comments
