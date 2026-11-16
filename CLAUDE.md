@@ -6,6 +6,16 @@ Push-to-talk dictation for Windows and macOS. Widget-first: the tray pill is the
 
 The product name is always lowercase: murmur. Even at the start of a sentence, in headings, window titles, tray menus, installers, docs, and marketing copy. Never Murmur or MURMUR. Code identifiers follow normal language conventions.
 
+## Business model
+
+LaBroi's model (2026-11-15). Copy, docs, and stories must not contradict it.
+
+- The desktop app, Mac and Windows, is free and open source (GPL-3.0, see `LICENSE`) and runs on your own transcription key, with every dictation feature included.
+- murmur Pro is a one-time purchase on the website: $49, or $39 with the code FOUNDERS through December 31, 2026 (`shared/pro.json` holds the price; `site/content.js` holds the founders window).
+- On iPhone, Pro sells as the $49 one-time in-app purchase through Apple (IOS-025 in ios/prd.json, on feature/ios until it merges), and one Pro covers both devices.
+- Later, a hosted transcription service that needs no API key will be sold as a subscription inside the app (ios/prd.json IOS-028). Using your own key is free today.
+- That subscription is why copy never promises murmur is free forever: say what is free today, never that it always will be.
+
 ## Provenance (non-negotiable)
 
 This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walton on his personal machine and assigned to his LLC, 2026-09-14), GPLv3 from commit one.

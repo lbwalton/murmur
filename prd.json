@@ -2480,6 +2480,20 @@
       "passes": false,
       "needs_human": true,
       "notes": "Built 2026-11-15 on fix/founders-and-privacy-copy, automated criteria verified: site/content.js (cost answer, privacy answers, privacy Last changed), site/build.js (the founders line now leads with Founders window: and names the code in its price sentence, the llms.txt price fact, and the structured data offer named founders window price), docs/pro.md, SUPPORTERS.md, and new tests in site/pages.test.js (content wording at fixed dates, the Pro doc answer, the privacy points, and the built home, Pro doc, llms.txt, and llms-full.txt while the window is open). A local site build, typecheck, the full suite (1358 tests at the first pass), and smoke are green. Review gate 2026-11-15: no blocking findings; its should-fix findings are fixed in the same branch (the license key email goes through Resend too, the founders line names the code before saying code or not, the Pro doc says Get Pro in the app counts, and the human step is in HANDOFF.md). Left: approval of the wording, then a deploy. The home page and the founders line atop /docs/pro/ change with that deploy; the body of /docs/pro/ and llms-full.txt read docs/ at the release tag, so they change with the first deploy after the next release. Open for a human call: whether the retention list should say Resend keeps its own record of the emails it delivers."
+    },
+    {
+      "id": "US-170",
+      "title": "The business model is written down, and the license is stated right",
+      "description": "LaBroi, 2026-11-15: CLAUDE.md gets a Business model section so every session knows it. The desktop app is free and open source with your own key; Pro is a one-time $49 on the website ($39 with FOUNDERS through December 31, 2026); on iPhone, Pro sells as the $49 one-time in-app purchase; later, a hosted transcription service that needs no API key is sold as a subscription inside the app, which is why copy never promises free forever. The iPhone PRD is checked against it, and the license is confirmed GPL-3.0 everywhere the repo states it.",
+      "acceptance": [
+        "CLAUDE.md has a Business model section after Brand with those 5 points",
+        "LICENSE is GPL-3.0, and no repo doc claims murmur is MIT licensed (MIT appears only for third-party packages and the excluded VFlow repo)",
+        "ios/prd.json (on feature/ios) is checked against the model, and any story that contradicts it is fixed or raised with LaBroi",
+        "LaBroi reads the section in the pull request and says yes"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Built 2026-11-15 on feature/site-download-counter. CLAUDE.md has the Business model section after Brand. LICENSE is the GNU GPL version 3, package.json says GPL-3.0-only, and README, the site, and the docs say GPL-3.0; MIT appears only for third-party packages in THIRD-PARTY-NOTICES.md and prd notes, and for VFlow in CLAUDE.md, so nothing needed correcting. No repo copy promises free forever (searched main and feature/ios). ios/prd.json lives on feature/ios, not main: IOS-025 matches ($49 one-time in-app purchase, one Pro for both devices), but its money decision and IOS-028 call the hosted no-key service Pro, later (Later, Pro adds a done-for-you key sold weekly or monthly), where the model has Pro one-time and the subscription its own product; not changed here, since it is another branch and the fix is LaBroi's call (HANDOFF.md). Also for later: the comparison page says No subscription, true today, which changes when the hosted service ships. Review gate 2026-11-15: your own key stays free became free today."
     }
   ]
 }

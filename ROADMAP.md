@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (101/154 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (101/155 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -166,3 +166,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-150** Glass over your desktop
 - [ ] **US-151** Look settings for Pro
 - [ ] **US-152** Clearer cleanup on another provider
+- [ ] **US-170** The business model is written down, and the license is stated right
