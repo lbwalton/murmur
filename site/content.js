@@ -17,6 +17,9 @@ const PRO = require('../shared/pro.json')
 // price stays $49. A build made after the window drops every founders
 // line, so the site is redeployed on January 1. It closes at midnight
 // Pacific time, the end of December 31 where LaBroi is.
+// Decided 2026-11-15: everyone who buys Pro on the website before it
+// closes is a founding member, with or without the code, and the 10%
+// covers every future paid product the company makes.
 const FOUNDERS = { price: 39, code: 'FOUNDERS', ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse('2027-01-01T08:00:00Z') }
 
 function content(site, { supportEmail = '', now = Date.now() } = {}) {
@@ -71,7 +74,7 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
         '.',
         ...(facts.founders
           ? [
-              ` Through ${facts.founders.ends}, Pro is $${facts.founders.price} with the code ${facts.founders.code}, and everyone who buys at that price is a founding member, with 10% off every future paid product.`
+              ` Through ${facts.founders.ends}, Pro is $${facts.founders.price} with the code ${facts.founders.code}. Everyone who buys Pro on the website by then is a founding member, with or without the code, and keeps 10% off every future paid product we make.`
             ]
           : [])
       ]
@@ -171,7 +174,7 @@ function privacy(links, supportEmail) {
     description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-07',
+    updated: '2026-11-15',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -213,7 +216,9 @@ function privacy(links, supportEmail) {
           [
             'Buying murmur Pro.',
             [
-              "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server."
+              "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server. Eze Media LLC may also email you about your purchase and any founding member perks, like a discount code when a new product launches. Its emails, your license key included, go through Resend, an email delivery service. To stop the purchase and perk emails, reply to one or write to ",
+              ask(links, supportEmail),
+              '.'
             ]
           ],
           ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address. Report this take shows you the whole email first, in your own mail app, and you can change or take out anything before you send it.']]
@@ -261,7 +266,7 @@ function privacy(links, supportEmail) {
           [
             'Eze Media LLC.',
             [
-              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It deletes them when you ask, unless the law requires keeping them. Write to ',
+              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It deletes them when you ask, unless the law requires keeping them. Its emails go through Resend, and the purchase and perk emails stop when you ask. Write to ',
               ask(links, supportEmail),
               '.'
             ]
