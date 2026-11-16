@@ -7,7 +7,7 @@ const { join, relative } = require('node:path')
 
 const root = join(__dirname, '..')
 const SPDX = 'SPDX-License-Identifier: GPL-3.0-only'
-const ROOTS = ['src', 'scripts', 'site']
+const ROOTS = ['src', 'scripts', 'site', 'functions']
 const EXTENSIONS = /\.(ts|tsx|js|mjs|css)$/
 
 function walk(dir, out = []) {

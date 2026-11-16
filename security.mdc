@@ -23,6 +23,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 - `/.well-known/security.txt` has a Contact and an Expires within a year.
 - Fingerprinted files are cached a year and always linked with `?v=`. HTML revalidates.
 - No third-party script, tracker, or cookie, so there is no consent banner to need.
+- The download counter (`/download/*`, a Pages Function in `functions/`, logic in `site/download.js`) keeps only the day, the platform, and the ref. It never stores an IP address or a user agent, and visitors never get a cookie; the 1 owner cookie is set only on a browser that opens `/download/me`. It sends the security headers itself, since Pages does not apply `_headers` to a Function, and it fails open: the forward never waits on the count.
 - SPF and DMARC stay on the domain.
 - Scan `https://`, never `http://`.
 
