@@ -277,8 +277,17 @@ describe('the site build (IOS-026)', () => {
       expect(redirects).toContain('/pro/ /docs/pro/ 301')
     })
 
-    it('puts the checkout link on the Pro page 3 times', () => {
-      expect(read('docs/pro/index.html').split(`href="${PRO.buyUrl}"`).length - 1).toBe(3)
+    it('puts the checkout link on the Pro page 3 times, with the founders code filled in while the window is open (US-172)', () => {
+      const html = read('docs/pro/index.html')
+      const count = (href) => html.split(`href="${href}"`).length - 1
+      const { founders } = content(SITE).facts
+      if (founders) {
+        // The doc's 3 links, plus the founders line above them.
+        expect(count(founders.buy)).toBe(4)
+        expect(count(PRO.buyUrl)).toBe(0)
+      } else {
+        expect(count(PRO.buyUrl)).toBe(3)
+      }
     })
 
     // The build reads today's date, so the founders lines show only while
@@ -426,6 +435,12 @@ describe('the founders price', () => {
     expect(cost(before)).toContain('Everyone who buys Pro on the website by then is a founding member, with or without the code')
     expect(cost(before)).toContain('10% off every future paid product we make')
     expect(cost(before)).not.toContain('at that price')
+  })
+
+  it('sends every checkout link to the code filled in through December 31, and to the plain checkout after (US-172)', () => {
+    expect(content(SITE, { now: before }).facts.checkout).toBe(`${PRO.buyUrl}?prefilled_promo_code=FOUNDERS`)
+    expect(content(SITE, { now: before }).facts.founders.buy).toBe(content(SITE, { now: before }).facts.checkout)
+    expect(content(SITE, { now: after }).facts.checkout).toBe(PRO.buyUrl)
   })
 
   it('says nothing once the window closes', () => {
