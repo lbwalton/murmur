@@ -2,8 +2,15 @@
 // The API keys list (US-069): the active provider's key and every
 // other key in the ring, one line each, one Remove size in one column.
 // The active key is the only line that can be replaced or pasted; the
-// others belong to providers you are not using right now.
+// others belong to providers you are not using right now. Cleanup,
+// Notes sorting and Transform show their own key with this same row
+// (US-162), naming it for their section so it never reads as Speech's.
 import { useState } from 'react'
+
+/** The key field's hint: "paste an OpenRouter key", "paste a Groq key". */
+export function pasteHint(providerName: string): string {
+  return `paste ${/^[aeiou]/i.test(providerName) ? 'an' : 'a'} ${providerName} key`
+}
 
 export interface OtherKey {
   baseUrl: string
@@ -25,6 +32,10 @@ export function ApiKeys(props: {
   onRemoveOther: (baseUrl: string) => void
   onAssignLegacy: () => void
   onRemoveLegacy: () => void
+  /** The key's accessible name when the row belongs to a section other
+   *  than Speech (Cleanup key), so 2 rows for the same provider never
+   *  share a name. Defaults to the provider's name. */
+  name?: string
 }): React.JSX.Element {
   const [draft, setDraft] = useState('')
   const [replacing, setReplacing] = useState(false)
@@ -59,7 +70,7 @@ export function ApiKeys(props: {
               type="password"
               className="field mono-field well-field"
               placeholder={props.placeholder}
-              aria-label={`${props.providerName} API key`}
+              aria-label={props.name ?? `${props.providerName} API key`}
               value={draft}
               autoFocus={replacing}
               onChange={(e) => setDraft(e.target.value)}
@@ -88,12 +99,16 @@ export function ApiKeys(props: {
             <span className="well-meta">{props.active.masked ?? ''}</span>
             <span className="badge-ok">in use</span>
             <div className="well-actions">
-              <button className="btn" onClick={() => setReplacing(true)}>
+              <button
+                className="btn"
+                aria-label={props.name ? `Replace ${props.name.toLowerCase()}` : undefined}
+                onClick={() => setReplacing(true)}
+              >
                 Replace
               </button>
               <button
                 className="btn btn-remove"
-                aria-label={`Remove ${props.providerName} key`}
+                aria-label={props.name ? `Remove ${props.name.toLowerCase()}` : `Remove ${props.providerName} key`}
                 onClick={props.onRemoveActive}
               >
                 Remove

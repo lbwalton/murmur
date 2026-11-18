@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, clipboard } from 'electron'
+import { BrowserWindow, Menu, app, clipboard, nativeTheme, systemPreferences } from 'electron'
 import { ipc, setRendererRoot } from './ipc'
 import { MAX_TEXT_CHARS, boundedText } from './ipc-rules'
 import { initAudio } from './audio'
@@ -41,11 +41,24 @@ import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayInboxVisible, setTrayLastNoteVisible } from './tray'
+import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, clickTrayHideWords, trayHideWordsChecked } from './tray'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
 import { attachSettingsZoom, stepSettingsZoom } from './zoom'
+import {
+  MAC_VIBRANCY,
+  SOLID_BACKGROUND,
+  THEME_SOURCE,
+  WIN_MATERIAL,
+  type WindowLook,
+  asLook,
+  pageBackground,
+  startsWithoutMaterial,
+  windowLook,
+  windowOptions
+} from '../shared/look'
+import { SETTINGS_MIN } from '../shared/zoom'
 
 // The biggest share card a page can hand over, as a data URL.
 const MAX_CARD_CHARS = 64 * 1024 * 1024
@@ -150,12 +163,62 @@ function captureZoom(): number | undefined {
   return Number.isFinite(factor) && factor >= 1 && factor <= 4 ? factor : undefined
 }
 
+// MURMUR_SETTINGS_SIZE=480x400 (isolated runs only) opens the settings
+// window at that size, so narrow layouts can be shot.
+function captureSize(): { width: number; height: number } | undefined {
+  if (!isolatedRun) return undefined
+  const [width, height] = (process.env.MURMUR_SETTINGS_SIZE ?? '').split('x').map((n) => Math.round(Number(n)))
+  return width > 0 && height > 0 ? { width, height } : undefined
+}
+
+/** The look the settings window should have right now (US-150): glass
+ *  where the system can show the desktop through it, solid with a glow
+ *  where it cannot or Reduce transparency is on. MURMUR_LOOK=glass or
+ *  solid picks one for a capture (isolated runs only), so both can be
+ *  shot on 1 machine. */
+function currentLook(): WindowLook {
+  const forced = isolatedRun && !isSmoke ? asLook(process.env.MURMUR_LOOK) : null
+  return (
+    forced ??
+    windowLook({
+      platform: process.platform,
+      systemVersion: process.getSystemVersion(),
+      reducedTransparency: nativeTheme.prefersReducedTransparency,
+      windowsGlass: process.env.MURMUR_WINDOWS_GLASS === '1'
+    })
+  )
+}
+
+// murmur is always dark: the title bar, the menus, and the glass behind
+// the settings window (US-150).
+nativeTheme.themeSource = THEME_SOURCE
+
+/** The look the window has, which the page asks for and is told about. */
+let shownLook: WindowLook = 'solid'
+
+/** Moves a live window to a look and tells its page, so turning Reduce
+ *  transparency on or off takes effect without a restart. */
+function applyLook(win: BrowserWindow, look: WindowLook): void {
+  shownLook = look
+  if (process.platform === 'darwin') win.setVibrancy(look === 'glass' ? MAC_VIBRANCY : null)
+  if (process.platform === 'win32') win.setBackgroundMaterial(look === 'glass' ? WIN_MATERIAL : 'none')
+  win.setBackgroundColor(pageBackground(look, process.platform))
+  win.webContents.send('look:changed', look)
+}
+
 function createSettingsWindow(): BrowserWindow {
+  shownLook = currentLook()
   const win = new BrowserWindow({
     width: 920,
     height: 640,
+    minWidth: SETTINGS_MIN.width,
+    minHeight: SETTINGS_MIN.height,
+    ...captureSize(),
     show: !isSmoke,
-    backgroundColor: '#0F0E11',
+    ...windowOptions(shownLook, process.platform),
+    // Ink until the page has drawn itself: a glass window with nothing
+    // behind an unstyled page would flash the bare material.
+    backgroundColor: SOLID_BACKGROUND,
     title: 'murmur',
     webPreferences: {
       preload: join(__dirname, '../preload/settings.js'),
@@ -163,6 +226,16 @@ function createSettingsWindow(): BrowserWindow {
       nodeIntegration: false,
       sandbox: true
     }
+  })
+
+  if (startsWithoutMaterial(shownLook, process.platform)) win.setVibrancy(null)
+  // The page's ground goes clear only once the page is drawn, and back to
+  // ink for as long as a reload takes (a revive, Reload window).
+  win.webContents.on('did-start-loading', () => {
+    if (!win.isDestroyed()) win.setBackgroundColor(SOLID_BACKGROUND)
+  })
+  win.webContents.on('did-finish-load', () => {
+    if (!win.isDestroyed()) win.setBackgroundColor(pageBackground(shownLook, process.platform))
   })
 
   watchWindow(win, 'settings')
@@ -188,9 +261,10 @@ function createSettingsWindow(): BrowserWindow {
 
   const devServer = devRendererUrl()
   if (devServer) {
-    void win.loadURL(`${devServer}/settings/index.html`)
+    void win.loadURL(`${devServer}/settings/index.html?look=${shownLook}`)
   } else {
-    void win.loadFile(join(__dirname, '../renderer/settings/index.html'))
+    // The look rides in the address so the first paint already has it.
+    void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query: { look: shownLook } })
   }
   return win
 }
@@ -337,6 +411,8 @@ app.whenReady().then(async () => {
   initInstallDate()
   const { initProfiles } = await import('./profiles')
   initProfiles()
+  const { initModelList } = await import('./model-list')
+  initModelList()
   initTranscribe()
   initFormatter()
   const openWrapup = (): void => {
@@ -411,6 +487,25 @@ app.whenReady().then(async () => {
   })
 
   ipc.handle('app:version', () => app.getVersion())
+  ipc.handle('look:get', () => shownLook)
+  // Reduce transparency, switched in the system's settings while murmur
+  // runs, moves the window between glass and solid at once (US-150).
+  const followLook = (heard: string): void => {
+    const look = currentLook()
+    // 1 line per notice, so the log settles what the system told murmur.
+    crashLog.write(`[look] heard=${heard} reducedTransparency=${nativeTheme.prefersReducedTransparency} look=${look} shown=${shownLook}`)
+    if (look !== shownLook && settingsWindow && !settingsWindow.isDestroyed()) applyLook(settingsWindow, look)
+  }
+  nativeTheme.on('updated', () => followLook('theme'))
+  // On a Mac the window did not follow Reduce transparency through the
+  // theme alone (live check, 2026-11-12), so the system's own notice is
+  // heard too, and once more a moment later in case the answer lags it.
+  if (process.platform === 'darwin') {
+    systemPreferences.subscribeWorkspaceNotification('NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification', () => {
+      followLook('system')
+      setTimeout(() => followLook('system-later'), 400)
+    })
+  }
   ipc.handle('app:license', async () => {
     const { shell } = await import('electron')
     await shell.openExternal('https://www.gnu.org/licenses/gpl-3.0.html')
@@ -496,7 +591,22 @@ app.whenReady().then(async () => {
     },
     onDiscardHandsFree: () => {
       handsFreeCancel(false)
+    },
+    // Hide words from the menu (US-148): the window hears it at once.
+    onToggleHideWords: (on) => {
+      const settings = updateSettings({ history: { hideWords: on } })
+      if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('settings:pushed', settings)
     }
+  })
+  setTrayHideWords(getSettings().history.hideWords)
+  onSettingsChanged((s) => setTrayHideWords(s.history.hideWords))
+  // The tray's Hide words follows the setting both ways (US-148).
+  registerSmokeCheck('trayHideWords', () => {
+    const before = getSettings().history.hideWords
+    updateSettings({ history: { hideWords: !before } })
+    const flipped = trayHideWordsChecked() === !before
+    updateSettings({ history: { hideWords: before } })
+    return flipped && trayHideWordsChecked() === before
   })
   // The inbox item exists only while there is a folder to open.
   setTrayInboxVisible(getSettings().notes.folder.trim() !== '')
@@ -692,7 +802,121 @@ app.whenReady().then(async () => {
       }
     })()`)) as { items: number; sections: number; finish: boolean; first: string | null } | null
     if (!probe) return false
-    return probe.items === 9 && probe.sections === 9 && probe.finish && probe.first === 'Hotkey'
+    // 11 sections since Shortcuts joined the essentials (US-164).
+    return probe.items === 11 && probe.sections === 11 && probe.finish && probe.first === 'Hotkey'
+  })
+
+  registerSmokeCheck('settingsUnbroken', async () => {
+    // A note in place of a broken part keeps the window alive (US-163),
+    // so it must never hide a startup problem from smoke: once the
+    // settings tab is open (settingsRail, just before, skips the wizard
+    // a fresh profile gets), no section, page or window note may show.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    let drawn = false
+    for (let i = 0; i < 30 && !drawn; i++) {
+      drawn = await win.webContents.executeJavaScript('document.querySelector(".settings-content .sec") !== null')
+      if (!drawn) await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    if (!drawn) return false
+    // A moment for effects that throw after the first paint.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const notes = await win.webContents.executeJavaScript('document.querySelectorAll("[data-crashed]").length')
+    if (notes !== 0) return false
+    // Then every page, 1 at a time, ending back on the settings tab the
+    // checks after this one expect.
+    const pages = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const counts = {}
+      for (const label of ['home', 'analytics', 'wrap-up', 'journey', 'settings']) {
+        const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === label)
+        if (!nav) return null
+        nav.click()
+        await wait(400)
+        counts[label] = document.querySelectorAll('[data-crashed]').length
+      }
+      return counts
+    })()`)) as Record<string, number> | null
+    return pages !== null && Object.values(pages).every((n) => n === 0)
+  })
+
+  registerSmokeCheck('lookDefaults', async () => {
+    // The window's look (US-150): the one the rules pick for this system
+    // (the hud material on a Mac; solid on Windows until its
+    // glass is proven, on Linux, and under Reduce transparency), the page
+    // wearing the same one, the ground behind the page matching it, and a
+    // live switch to the other look and back reaching the page.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const facts = {
+      platform: process.platform,
+      systemVersion: process.getSystemVersion(),
+      reducedTransparency: nativeTheme.prefersReducedTransparency
+    }
+    const expected = windowLook(facts)
+    const rules =
+      windowLook({ ...facts, reducedTransparency: true }) === 'solid' &&
+      windowLook({ ...facts, platform: 'linux' }) === 'solid' &&
+      windowOptions('glass', 'darwin').vibrancy === 'hud' &&
+      nativeTheme.themeSource === 'dark' &&
+      windowOptions('glass', 'win32').backgroundMaterial === 'acrylic' &&
+      windowLook({ ...facts, platform: 'win32', systemVersion: '10.0.22631' }) === 'solid' &&
+      pageBackground('solid', process.platform) === SOLID_BACKGROUND
+    const worn = (): Promise<string | undefined> => win.webContents.executeJavaScript('document.documentElement.dataset.look')
+    const until = async (want: string): Promise<boolean> => {
+      for (let i = 0; i < 30; i++) {
+        if ((await worn()) === want) return true
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return false
+    }
+    const first = shownLook === expected && (await until(expected))
+    const other: WindowLook = expected === 'glass' ? 'solid' : 'glass'
+    applyLook(win, other)
+    const switched = await until(other)
+    applyLook(win, expected)
+    const back = await until(expected)
+    // Ink behind a solid page, nothing behind a glass one.
+    const ground = win.getBackgroundColor().toUpperCase().endsWith('0F0E11') === (expected === 'solid')
+    return rules && first && switched && back && ground
+  })
+
+  registerSmokeCheck('homeRail', async () => {
+    // Home has its rail (US-147): the search, the Overview line and Hide
+    // words are there, the rail hides and comes back with its buttons,
+    // and the choice is put back, ending on the settings tab the checks
+    // after this one expect.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const probe = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const tab = (label) => {
+        const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === label)
+        if (nav) nav.click()
+        return Boolean(nav)
+      }
+      if (!tab('home')) return null
+      await wait(300)
+      const rail = document.querySelector('.home-layout .home-rail')
+      // A window too narrow for 2 columns tucks the rail away; smoke's is not.
+      if (!rail) return { rail: false }
+      const parts =
+        rail.querySelector('.rail-search') !== null &&
+        [...rail.querySelectorAll('.rail-item')].some((b) => b.textContent === 'Overview') &&
+        rail.querySelector('#home-hide-words [role=switch]') !== null
+      rail.querySelector('[aria-label="Hide sidebar"]').click()
+      await wait(200)
+      const show = document.querySelector('.home [aria-label="Show sidebar"]')
+      const hidden = document.querySelector('.home-rail') === null && show !== null
+      if (show) show.click()
+      await wait(200)
+      const back = document.querySelector('.home-rail') !== null && document.querySelector('.home [aria-label="Show sidebar"]') === null
+      const title = document.querySelector('.home h1')?.textContent
+      tab('settings')
+      await wait(200)
+      return { rail: true, parts, hidden, back, title }
+    })()`)) as { rail: boolean; parts?: boolean; hidden?: boolean; back?: boolean; title?: string } | null
+    return probe !== null && probe.rail && probe.parts === true && probe.hidden === true && probe.back === true && probe.title === 'Home'
   })
 
   registerSmokeCheck('settingsZoomSharp', async () => {
@@ -725,6 +949,63 @@ app.whenReady().then(async () => {
     }
     const ok = Math.abs(top - 3) < 0.01 && sharp === 'ok'
     if (!ok) console.error(`smoke settingsZoomSharp: top=${top} sharp=${sharp}`)
+    return ok
+  })
+
+  registerSmokeCheck('historyInSettings', async () => {
+    // US-148 on the real window: a click on the tray's Hide words reaches
+    // both switches and back, Clear all asks before it clears, and a
+    // shorter Keep history asks before it removes anything. Nothing is
+    // cleared or shortened here: each question is answered keep.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const { recordSession } = await import('./history')
+    recordSession({ startedAt: Date.now() - 2000, rawText: 'smoke keep probe', finalText: 'Smoke keep probe.' })
+    const before = getSettings().history.hideWords
+    const keepBefore = getSettings().history.retentionDays
+    const switchIs = (want: boolean): string => `(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const nav = [...document.querySelectorAll('.nav-btn')].find((b) => b.textContent === 'settings')
+      if (nav) nav.click()
+      for (let i = 0; i < 60; i++) {
+        const sw = document.querySelector('#row-hide-words [role=switch]')
+        if (sw && sw.getAttribute('aria-checked') === ${JSON.stringify(String(want))}) return true
+        await wait(50)
+      }
+      return false
+    })()`
+    if (!clickTrayHideWords()) return false
+    const flipped = (await win.webContents.executeJavaScript(switchIs(!before))) as boolean
+    clickTrayHideWords()
+    const back = (await win.webContents.executeJavaScript(switchIs(before))) as boolean
+    const asks = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const until = async (test) => {
+        for (let i = 0; i < 60 && !test(); i++) await wait(50)
+        return test()
+      }
+      const countBefore = await window.murmur.countHistory()
+      const clear = document.querySelector('#row-clear-history button')
+      if (!clear || !(await until(() => !clear.disabled))) return 'clear button missing or disabled'
+      clear.click()
+      if (!(await until(() => document.getElementById('clear-all-confirm') !== null))) return 'clear all did not ask'
+      if ((await window.murmur.countHistory()) !== countBefore) return 'clear all cleared without asking'
+      await wait(600)
+      clear.click()
+      if (!(await until(() => document.getElementById('clear-all-confirm') === null))) return 'clear all question stayed open'
+      const select = document.querySelector('#row-keep-history select')
+      if (!select) return 'keep select missing'
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, '-1')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      if (!(await until(() => document.getElementById('keep-shorter-confirm') !== null))) return 'shorter keep did not ask'
+      const keep = [...document.querySelectorAll('#keep-shorter-confirm button')].find((b) => b.textContent.trim() === 'keep them')
+      if (!keep) return 'no keep them button'
+      keep.click()
+      return (await until(() => document.getElementById('keep-shorter-confirm') === null)) ? 'ok' : 'keep question stayed open'
+    })()`)) as string
+    const kept = getSettings().history.retentionDays === keepBefore
+    const ok = flipped && back && asks === 'ok' && kept && getSettings().history.hideWords === before
+    if (!ok) console.error(`smoke historyInSettings: flipped=${flipped} back=${back} asks=${asks} kept=${kept}`)
     return ok
   })
 
@@ -911,7 +1192,7 @@ app.whenReady().then(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600))
     }
     // MURMUR_SETTINGS_ANCHOR=row-id opens the settings tab, scrolls that
-    // row to the top, and unfolds any disclosure in its panel, so any
+    // row to the top, and unfolds the group it sits in, so any
     // row can be shot, not just the home tab.
     const anchor = process.env.MURMUR_SETTINGS_ANCHOR
     // MURMUR_SETTINGS_SEARCH=words types into the settings search, so a
@@ -944,8 +1225,9 @@ app.whenReady().then(async () => {
       await settingsWindow.webContents.executeJavaScript(
         `(() => {
           const row = document.getElementById(${JSON.stringify(anchor)})
-          const panel = row ? row.closest('.panel') : null
-          for (const d of panel ? panel.querySelectorAll('details') : []) d.setAttribute('open', '')
+          // A fold is a group now (US-155): open the one the row sits in.
+          const fold = row ? row.closest('details') : null
+          if (fold) fold.setAttribute('open', '')
           if (row) row.scrollIntoView({ block: 'start' })
           return true
         })()`
@@ -987,11 +1269,28 @@ app.whenReady().then(async () => {
       )
       await new Promise((resolve) => setTimeout(resolve, 1500))
     }
+    // MURMUR_SETTINGS_TYPE=words types them, as real input, into whatever
+    // the clicks left focused, so a search can be shot with its results.
+    const typed = process.env.MURMUR_SETTINGS_TYPE
+    if (typed) {
+      for (const keyCode of typed) settingsWindow.webContents.sendInputEvent({ type: 'char', keyCode })
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+    // MURMUR_SETTINGS_KEYS=Down,Down,Return presses those keys, as real
+    // input, in whatever the clicks left focused, each after the last
+    // has painted, so keyboard paths can be shot too (the Model list's
+    // Enter took the window down on 2026-11-10 with no shot to show it).
+    const keys = process.env.MURMUR_SETTINGS_KEYS
+    for (const keyCode of keys ? keys.split(',').map((x) => x.trim()).filter(Boolean) : []) {
+      settingsWindow.webContents.sendInputEvent({ type: 'keyDown', keyCode })
+      settingsWindow.webContents.sendInputEvent({ type: 'keyUp', keyCode })
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
     // MURMUR_SETTINGS_PROBE=expression prints what it evaluates to in the
     // window just before the shot, for checking state a picture hides.
     const probe = process.env.MURMUR_SETTINGS_PROBE
     if (probe) {
-      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(() => { try { return JSON.stringify(${probe}) } catch (e) { return String(e) } })()`)
+      const value: unknown = await settingsWindow.webContents.executeJavaScript(`(async () => { try { return JSON.stringify(await (${probe})) } catch (e) { return String(e) } })()`)
       console.log(`[murmur] probe ${String(value)}`)
     }
     const image = await settingsWindow.webContents.capturePage()

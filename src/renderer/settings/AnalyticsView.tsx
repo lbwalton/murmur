@@ -102,7 +102,8 @@ export function AnalyticsView(props: { hotkey: string }): React.JSX.Element {
   return (
     <div className="home">
       {title}
-      <section className="panel">
+      {/* The page's 1 gold card: your numbers now (US-156). */}
+      <section className="panel panel-strong">
         <p className="micro-label">this month</p>
         <div className="stat-row">
           <Stat label="minutes dictated" value={String(summary.month.minutes)} />

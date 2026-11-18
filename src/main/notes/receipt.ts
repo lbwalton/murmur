@@ -120,7 +120,7 @@ export function withdrawReceipt(): void {
 }
 
 /** Forget the last note: the record, its file, and a receipt still
- *  sitting in Notification Center. Clear all on the home tab calls it;
+ *  sitting in Notification Center. Clear all in Settings, History calls it;
  *  the note file itself is never touched. */
 export function forgetLastNote(): void {
   lastNote = null

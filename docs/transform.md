@@ -53,7 +53,7 @@ Yes. Reading a selection means pressing copy, so murmur first takes a snapshot o
 
 ## Can transforms use a different model than cleanup?
 
-Yes. Under Settings, Transform, set Transform runs on to Separate, pick a provider (or type a base URL and model id), save its key, and press Test. Rewriting is harder work than cleanup, so a stronger model here often pays off. The key is stored encrypted like your other keys, and a provider you already use shares its key automatically. Until the separate connection is complete, with a saved key, transforms run on your cleanup connection.
+Yes. Under Settings, Transform, set Runs on to Its own provider, pick a provider (or type a base URL and model id), save its key, and press Test. Rewriting is harder work than cleanup, so a stronger model here often pays off. The key is stored encrypted like your other keys, and a provider you already use shares its key automatically. Until the separate connection is complete, with a saved key, transforms run on your cleanup connection.
 
 Unlike cleanup, transforms do not depend on your formatting level: they run at Off and Light too.
 

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (103/159 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (121/177 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,9 +104,27 @@
 - [x] **US-130** Report this take
 - [x] **US-138** History encrypted on disk
 - [x] **US-140** Warn before sending over plain http
+- [x] **US-147** Home with a rail: find any take fast
+- [x] **US-148** History settings move into Settings
+- [x] **US-149** Choices you can tell apart
+- [x] **US-152** Clearer cleanup on another provider
 - [x] **US-153** Build tool security alert, November: minimatch
+- [x] **US-154** Provider and keys, rebuilt around profiles
+- [x] **US-155** Every Settings section grouped, with rows in a well
+- [x] **US-156** The look on every page
+- [x] **US-157** Key rows, Test, asking first, and renaming profiles
+- [x] **US-158** Every model the provider offers, in the Model list
+- [x] **US-160** Profiles stay small: the card in use, then 1 row of names
+- [x] **US-161** Profiles as cards on an arc, a view you can pick
+- [x] **US-162** Every saved key looks like the speech key
+- [x] **US-163** A problem in 1 part of Settings never blacks out the window
+- [x] **US-164** Shortcuts: every key combo in 1 place
+- [x] **US-165** Shortcuts: a way back from each shortcut's own row
+- [x] **US-166** Icons on a dictation's row, and a gold label for your dictations
 - [x] **US-171** The repo never names its owner
 - [x] **US-172** Every checkout link fills in FOUNDERS while the founders window is open
+- [x] **US-173** Titles on gold cards wear an ink tag
+- [x] **US-177** Your level reads like your other numbers
 
 ## Built, awaiting live verification
 
@@ -163,11 +181,11 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-143** A policy file IT can deploy
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
-- [ ] **US-147** Home with a rail: find any take fast
-- [ ] **US-148** History settings move into Settings
-- [ ] **US-149** Choices you can tell apart
 - [ ] **US-150** Glass over your desktop
-- [ ] **US-151** Look settings for Pro
-- [ ] **US-152** Clearer cleanup on another provider
+- [ ] **US-151** Look: themes, glass levels and motion
+- [ ] **US-159** Pro: color the fog
 - [ ] **US-169** The website counts download clicks, never who
 - [ ] **US-170** The business model is written down, and the license is stated right
+- [ ] **US-174** 5 belt themes
+- [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
+- [ ] **US-176** Day and night: a theme that follows your clock

@@ -369,7 +369,8 @@ export function JourneyView(props: {
           after="Words and days on the mat count toward your white belt."
         />
       )}
-      <section className="panel">
+      {/* The page's 1 gold card: the belt you hold now (US-156). */}
+      <section className="panel panel-strong">
         <div className="panel-head">
           <p className="micro-label">the journey</p>
           <button className="btn quiet-btn" onClick={() => setSharing(true)}>
@@ -388,8 +389,11 @@ export function JourneyView(props: {
           />
           <div>
             <p className="journey-rank">
+              {/* Your level reads like your other numbers (US-177): a big
+                  figure and a small word, no box. */}
               <HoverNote className="level-chip" note={levelNote(progress.level, progress.totals.words)}>
-                lvl. {progress.level.toLocaleString()}
+                <b className="level-value">{progress.level.toLocaleString()}</b>{' '}
+                <span className="level-word">level</span>
               </HoverNote>
             </p>
             {progress.founder && (

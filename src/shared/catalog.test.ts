@@ -4,7 +4,9 @@ import bundled from '../../shared/provider-catalog.json'
 import {
   type ProviderCatalog,
   catalogRefusal,
+  chatModelIds,
   costPer1kWords,
+  modelListed,
   providerForBaseUrl,
   providerForKeyMask,
   ratesFromCatalog,
@@ -129,7 +131,14 @@ describe('providerForBaseUrl', () => {
 
 describe('catalogRefusal', () => {
   const shipped = validateCatalog(bundled) as ProviderCatalog
-  const today = '2026-10-01'
+  // Today is the shipped catalog's newest date, so a rate check that
+  // moves the shipped dates forward never makes this test go stale.
+  const addDays = (day: string, n: number): string => {
+    const d = new Date(`${day}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  const today = [shipped.verifiedOn, ...shipped.providers.map((p) => p.verifiedOn)].sort().at(-1) as string
   const edited = (edit: (c: ProviderCatalog) => void): ProviderCatalog => {
     const copy = structuredClone(shipped)
     edit(copy)
@@ -144,6 +153,20 @@ describe('catalogRefusal', () => {
       c.providers[0].sttModels[0].perHourUsd = 0.05
     })
     expect(catalogRefusal(refreshed, shipped, today)).toBeNull()
+  })
+
+  it('refuses a models page that is not https or that a refresh moved (US-158)', () => {
+    const openrouter = shipped.providers.findIndex((p) => p.id === 'openrouter')
+    expect(
+      catalogRefusal(
+        edited((c) => (c.providers[openrouter].modelsUrl = 'https://openrouter.ai.evil.example/models')),
+        shipped,
+        today
+      )
+    ).toBe('openrouter models page changed')
+    expect(
+      catalogRefusal(edited((c) => (c.providers[openrouter].modelsUrl = 'http://openrouter.ai/models')), shipped, today)
+    ).toBe('openrouter models page is not https')
   })
 
   it('refuses a refresh that moves where a shipped preset sends keys', () => {
@@ -172,10 +195,10 @@ describe('catalogRefusal', () => {
     expect(catalogRefusal(edited((c) => (c.verifiedOn = '9999-12-31')), shipped, today)).toBe(
       'verifiedOn malformed or in the future'
     )
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-01z')), shipped, today)).toBe(
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = `${today}z`)), shipped, today)).toBe(
       'verifiedOn malformed or in the future'
     )
-    expect(catalogRefusal(edited((c) => (c.providers[1].verifiedOn = '2026-10-05')), shipped, today)).toBe(
+    expect(catalogRefusal(edited((c) => (c.providers[1].verifiedOn = addDays(today, 4))), shipped, today)).toBe(
       `${shipped.providers[1].id} verifiedOn malformed or in the future`
     )
   })
@@ -206,7 +229,92 @@ describe('catalogRefusal', () => {
   })
 
   it('allows one day ahead for time zones east of this machine', () => {
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-02')), shipped, today)).toBeNull()
-    expect(catalogRefusal(edited((c) => (c.verifiedOn = '2026-10-03')), shipped, today)).not.toBeNull()
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = addDays(today, 1))), shipped, today)).toBeNull()
+    expect(catalogRefusal(edited((c) => (c.verifiedOn = addDays(today, 2))), shipped, today)).not.toBeNull()
+  })
+})
+
+describe('modelListed (US-154)', () => {
+  const groq = JSON.stringify({ object: 'list', data: [{ id: 'whisper-large-v3-turbo' }, { id: 'openai/gpt-oss-120b' }] })
+
+  it('finds a model in an OpenAI-compatible list, ignoring stray spaces', () => {
+    expect(modelListed(groq, 'whisper-large-v3-turbo')).toBe(true)
+    expect(modelListed(groq, ' openai/gpt-oss-120b ')).toBe(true)
+  })
+
+  it('never calls a working model missing: Ollama tags, aliases, another case, more pages', () => {
+    const ollama = JSON.stringify({ object: 'list', data: [{ id: 'llama3.2:latest' }, { id: 'qwen3:8b' }] })
+    expect(modelListed(ollama, 'llama3.2')).toBe(true)
+    expect(modelListed(ollama, 'qwen3')).toBe(false)
+    expect(modelListed(JSON.stringify({ data: [{ id: 'm-2026-10', aliases: ['m-latest'] }] }), 'm-latest')).toBe(true)
+    expect(modelListed(groq, 'OpenAI/GPT-OSS-120B')).toBeNull()
+    expect(modelListed(JSON.stringify({ data: [{ id: 'a' }], has_more: true }), 'b')).toBeNull()
+  })
+
+  it('says a typo is not listed', () => {
+    expect(modelListed(groq, 'openai/gpt-oss-12b')).toBe(false)
+  })
+
+  it('reads the other shapes, and never guesses on a body it cannot read', () => {
+    expect(modelListed(JSON.stringify({ models: [{ name: 'llama3' }] }), 'llama3')).toBe(true)
+    expect(modelListed(JSON.stringify(['a', 'b']), 'b')).toBe(true)
+    expect(modelListed('<html>nope</html>', 'a')).toBeNull()
+    expect(modelListed(JSON.stringify({ data: [] }), 'a')).toBeNull()
+    expect(modelListed(JSON.stringify({ error: 'x' }), 'a')).toBeNull()
+  })
+})
+
+describe('the bundled models pages (US-158)', () => {
+  it('give every chat provider an https models page', () => {
+    const catalog = validateCatalog(bundled) as ProviderCatalog
+    for (const p of catalog.providers.filter((p) => p.kinds.includes('llm'))) {
+      expect(p.modelsUrl, p.id).toMatch(/^https:\/\//)
+    }
+  })
+})
+
+describe('chatModelIds (US-158)', () => {
+  it("keeps OpenRouter's text models, A to Z, and drops what cannot write text", () => {
+    const body = JSON.stringify({
+      data: [
+        { id: 'openai/gpt-6-luna', architecture: { input_modalities: ['text'], output_modalities: ['text'] } },
+        { id: 'anthropic/claude-haiku-5.5', architecture: { input_modalities: ['text', 'image'], output_modalities: ['text'] } },
+        { id: 'google/painter', architecture: { input_modalities: ['text'], output_modalities: ['image'] } },
+        { id: 'x/listener', architecture: { input_modalities: ['audio'], output_modalities: ['text'] } },
+        { id: 'openai/gpt-6-luna', architecture: { input_modalities: ['text'], output_modalities: ['text'] } }
+      ]
+    })
+    expect(chatModelIds(body)).toEqual(['anthropic/claude-haiku-5.5', 'openai/gpt-6-luna'])
+  })
+
+  it("sorts OpenRouter's ~latest aliases beside their models, not ahead of everything", () => {
+    const body = JSON.stringify(['openai/gpt-6-luna', '~openai/gpt-latest', 'anthropic/claude-haiku-5.5', '~anthropic/claude-latest'])
+    expect(chatModelIds(body)).toEqual([
+      'anthropic/claude-haiku-5.5',
+      '~anthropic/claude-latest',
+      'openai/gpt-6-luna',
+      '~openai/gpt-latest'
+    ])
+  })
+
+  it("drops Groq's speech, safety and inactive models", () => {
+    const body = JSON.stringify({
+      object: 'list',
+      data: [
+        { id: 'openai/gpt-oss-120b', active: true },
+        { id: 'whisper-large-v3-turbo', active: true },
+        { id: 'meta-llama/llama-guard-4-12b', active: true },
+        { id: 'playai-tts', active: true },
+        { id: 'retired-model', active: false }
+      ]
+    })
+    expect(chatModelIds(body)).toEqual(['openai/gpt-oss-120b'])
+  })
+
+  it('reads a bare list and a models list, and says null for anything else', () => {
+    expect(chatModelIds(JSON.stringify(['llama3.2:latest', 'nomic-embed-text']))).toEqual(['llama3.2:latest'])
+    expect(chatModelIds(JSON.stringify({ models: [{ name: 'qwen3:8b' }] }))).toEqual(['qwen3:8b'])
+    expect(chatModelIds('<html>not json</html>')).toBeNull()
+    expect(chatModelIds(JSON.stringify({ error: 'nope' }))).toBeNull()
   })
 })

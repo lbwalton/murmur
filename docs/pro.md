@@ -8,7 +8,7 @@ A one-time purchase that supports murmur's development. The free app is complete
 
 ## What does Pro include?
 
-- Provider profiles: save whole provider setups (endpoint and models; the key ring supplies each provider's saved key automatically) under names and switch between them in one click.
+- Provider profiles: save whole setups (speech, cleanup, and the notes sorting and Transform connections; never keys, since each provider's saved key comes along automatically) under names and switch between them in 1 click.
 - Early access: new conveniences unlock for Pro first in official builds, then go free for everyone after a window. The source is public the entire time.
 - Priority support and, if you like, your name in SUPPORTERS.md.
 
@@ -18,8 +18,8 @@ All of that for one payment, with no subscription: [**Get murmur Pro, $49 once**
 
 The Pro mark is a small gold pill that says PRO. **Filled means Pro is yours; outlined means Pro offers something there.**
 
-- **With Pro:** a filled mark sits right after the murmur wordmark at the top of the window, before your belt, beside murmur Pro in the settings rail and in the murmur Pro section title, and on the Profiles row under Provider and keys. Founding members wear the same mark, and their Pro section says Founding member.
-- **Without Pro:** an outlined mark appears only where Pro adds something: the Profiles row under Provider and keys, the murmur Pro entry in the rail, and the murmur Pro section title. There is no mark at the top of the window. A deactivated key counts as free until you reactivate it.
+- **With Pro:** a filled mark sits right after the murmur wordmark at the top of the window, before your belt, beside murmur Pro in the settings rail and in the murmur Pro section title, and beside Profiles at the top of Provider and keys. Founding members wear the same mark, and their Pro section says Founding member.
+- **Without Pro:** an outlined mark appears only where Pro adds something: beside Profiles at the top of Provider and keys, the murmur Pro entry in the rail, and the murmur Pro section title. There is no mark at the top of the window. A deactivated key counts as free until you reactivate it.
 
 Nothing else in the app grows a mark, and Home never shows a standing one.
 

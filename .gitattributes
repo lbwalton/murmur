@@ -1,3 +1,9 @@
+# Every text file is LF in every checkout. Tests read source files and
+# match across lines, so a Windows checkout's CRLF broke 4 of them on the
+# redesign branch's first Windows run (2026-11-14). Git still detects
+# binary files by itself.
+* text=auto eol=lf
+
 # Node scripts keep LF everywhere. A Windows checkout would otherwise
 # give them CRLF, and a #! first line with CRLF stops Vite from loading
 # the file in tests (and env from finding node).

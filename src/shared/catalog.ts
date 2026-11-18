@@ -38,6 +38,9 @@ export interface CatalogProvider {
    *  (the local preset: speech and cleanup run on different ports). */
   llmBaseUrl?: string
   keyUrl?: string
+  /** The provider's own page of models, ids and prices (US-158). Opened
+   *  from the Model list by provider id, so a window never names a URL. */
+  modelsUrl?: string
   /** Runs on the user's machine at no cost; the cost preview says so
    *  instead of showing a rate. */
   free?: boolean
@@ -110,6 +113,7 @@ export function validateCatalog(data: unknown): ProviderCatalog | null {
     }
     if (typeof p.verifiedOn !== 'string') return null
     if (!Array.isArray(p.nuances) || !p.nuances.every((n) => typeof n === 'string')) return null
+    if (p.modelsUrl !== undefined && typeof p.modelsUrl !== 'string') return null
     if (p.keyPrefixes !== undefined) {
       if (!Array.isArray(p.keyPrefixes) || !p.keyPrefixes.every((k) => typeof k === 'string' && k.length > 0)) {
         return null
@@ -132,6 +136,15 @@ function safePresetUrl(baseUrl: string): boolean {
     const url = new URL(baseUrl)
     if (url.protocol === 'https:') return true
     return url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+/** A page murmur may open in the browser: https only. */
+export function httpsUrl(url: string): boolean {
+  try {
+    return new URL(url).protocol === 'https:'
   } catch {
     return false
   }
@@ -171,8 +184,10 @@ export function catalogRefusal(candidate: ProviderCatalog, bundled: ProviderCata
     if (llm !== undefined && (typeof llm !== 'string' || !safePresetUrl(llm))) {
       return `${provider.id} cleanup URL is not https`
     }
+    if (provider.modelsUrl !== undefined && !httpsUrl(provider.modelsUrl)) return `${provider.id} models page is not https`
     const shipped = bundled.providers.find((p) => p.id === provider.id)
     if (shipped && shipped.baseUrl !== provider.baseUrl) return `${provider.id} base URL changed`
+    if (shipped && shipped.modelsUrl !== provider.modelsUrl) return `${provider.id} models page changed`
     if (shipped && shipped.llmBaseUrl !== llm) return `${provider.id} cleanup URL changed`
   }
   return null
@@ -287,4 +302,92 @@ export function providerForBaseUrl(catalog: ProviderCatalog, baseUrl: string): C
       (p) => p.baseUrl.replace(/\/$/, '') === normalized || p.llmBaseUrl?.replace(/\/$/, '') === normalized
     ) ?? null
   )
+}
+
+/**
+ * Whether a provider's model list (the body of GET /models) names a
+ * model (US-154). OpenAI-compatible lists put { id } entries under
+ * data; a few use models or a bare array. null when the body is not a
+ * list this can read, so Test never claims a model is missing on a
+ * guess.
+ */
+export function modelListed(body: string, model: string): boolean | null {
+  const read = readModelList(body)
+  if (!read) return null
+  const { parsed, list } = read
+  const ids = list
+    .map((entry) => (typeof entry === 'string' ? entry : isRecord(entry) ? (entry.id ?? entry.name) : null))
+    .filter((id): id is string => typeof id === 'string')
+  if (ids.length === 0) return null
+  const wanted = model.trim()
+  // Ollama lists llama3.2:latest and takes llama3.2 for it.
+  const names = wanted.includes(':') ? [wanted] : [wanted, `${wanted}:latest`]
+  const aliases = list.flatMap((entry) =>
+    isRecord(entry) && Array.isArray(entry.aliases) ? entry.aliases.filter((a): a is string => typeof a === 'string') : []
+  )
+  if ([...ids, ...aliases].some((id) => names.includes(id))) return true
+  // The same id in another case may or may not work, depending on the
+  // host, and a list with more pages may hold it on a later one: in
+  // both cases this cannot say.
+  const lower = wanted.toLowerCase()
+  if (ids.some((id) => id.toLowerCase() === lower)) return null
+  if (isRecord(parsed) && parsed.has_more === true) return null
+  return false
+}
+
+/** A /models body as JSON and its list of entries, or null when it is
+ *  not a list this can read: most providers use data, a few use models
+ *  or a bare array. */
+function readModelList(body: string): { parsed: unknown; list: unknown[] } | null {
+  if (body.length > 16_000_000) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body)
+  } catch {
+    return null
+  }
+  if (Array.isArray(parsed)) return { parsed, list: parsed }
+  if (isRecord(parsed) && Array.isArray(parsed.data)) return { parsed, list: parsed.data }
+  if (isRecord(parsed) && Array.isArray(parsed.models)) return { parsed, list: parsed.models }
+  return null
+}
+
+/** What a model list request answers (US-158): the ids, or why not. */
+export type ModelListResult = { ok: true; ids: string[] } | { ok: false; detail: string }
+
+// Models that turn speech into text, text into speech or pictures, text
+// into numbers, or that only grade safety: none can tidy a dictation.
+const NOT_FOR_CLEANUP = /whisper|transcri|tts|text-to-speech|embed|moderation|dall-e|gpt-image|imagen|audio|realtime|llama-guard|prompt-guard/i
+
+const modalities = (value: unknown): string[] | null =>
+  Array.isArray(value) ? value.filter((m): m is string => typeof m === 'string') : null
+
+/**
+ * The ids in a /models body that can write text for cleanup, A to Z
+ * (US-158), or null when the body is not a list. A list that says what
+ * a model takes and gives (OpenRouter's architecture) is believed; a
+ * model the provider marks inactive (Groq) is left out; and ids that
+ * name speech, image, embedding or moderation models are left out on
+ * every list.
+ */
+export function chatModelIds(body: string): string[] | null {
+  const read = readModelList(body)
+  if (!read) return null
+  const ids = new Set<string>()
+  for (const entry of read.list) {
+    const id = typeof entry === 'string' ? entry : isRecord(entry) ? (entry.id ?? entry.name) : null
+    if (typeof id !== 'string' || id.trim() === '' || id.length > 200 || NOT_FOR_CLEANUP.test(id)) continue
+    if (isRecord(entry)) {
+      if (entry.active === false) continue
+      const arch = isRecord(entry.architecture) ? entry.architecture : null
+      const output = modalities(arch?.output_modalities)
+      const input = modalities(arch?.input_modalities)
+      if (output && !output.includes('text')) continue
+      if (input && !input.includes('text')) continue
+    }
+    ids.add(id.trim())
+  }
+  // A to Z by name: OpenRouter's ~latest aliases sort beside their model.
+  const key = (id: string): string => id.replace(/^[^a-z0-9]+/i, '')
+  return [...ids].sort((a, b) => key(a).localeCompare(key(b), 'en', { sensitivity: 'base' }) || a.localeCompare(b))
 }

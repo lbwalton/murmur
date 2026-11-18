@@ -75,3 +75,22 @@ describe('zoomActionForKey', () => {
     expect(zoomActionForKey(key('v'))).toBeNull()
   })
 })
+
+describe('the smallest settings window', () => {
+  const screen = { width: 1512, height: 944 }
+  it('is 480 by 400 at 100 percent and below', async () => {
+    const { minSizeAt } = await import('./zoom')
+    expect(minSizeAt(1, screen)).toEqual({ width: 480, height: 400 })
+    expect(minSizeAt(0.8, screen)).toEqual({ width: 480, height: 400 })
+    expect(minSizeAt(Number.NaN, screen)).toEqual({ width: 480, height: 400 })
+  })
+  it('grows with the zoom, so the page keeps the same room', async () => {
+    const { minSizeAt } = await import('./zoom')
+    expect(minSizeAt(1.5, screen)).toEqual({ width: 720, height: 600 })
+  })
+  it('never asks for more than the screen', async () => {
+    const { minSizeAt } = await import('./zoom')
+    expect(minSizeAt(3, screen)).toEqual({ width: 1440, height: 944 })
+    expect(minSizeAt(3, { width: 1280, height: 720 })).toEqual({ width: 1280, height: 720 })
+  })
+})

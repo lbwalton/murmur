@@ -12,9 +12,29 @@
 // packs each architecture first into a folder ending in -temp with fuses
 // disabled; the fuses go on the merged app here, just before
 // electron-builder flips the fuses in package.json and signs.
+//
+// It first checks that app.asar holds every module the app needs at run
+// time (scripts/lib/packed-modules.js), so a build packed from an
+// incomplete node_modules fails here instead of stopping at launch.
+const { join } = require('node:path')
+const { listPackage } = require('@electron/asar')
+const { missingModules, runtimeModules } = require('./lib/packed-modules')
+
+function checkPackedModules(context) {
+  const resources =
+    context.electronPlatformName === 'darwin'
+      ? join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, 'Contents', 'Resources')
+      : join(context.appOutDir, 'resources')
+  const missing = missingModules(runtimeModules(context.packager.projectDir), listPackage(join(resources, 'app.asar')))
+  if (missing.length > 0) {
+    throw new Error(`app.asar is missing ${missing.join(', ')}. Run npm ci in this folder, then build again.`)
+  }
+}
+
 exports.default = async function afterPack(context) {
   if (!['darwin', 'win32'].includes(context.electronPlatformName)) return
   if (context.appOutDir.endsWith('-temp')) return
+  checkPackedModules(context)
   const fuses = await context.packager.generateFuseConfig({
     enableEmbeddedAsarIntegrityValidation: true,
     onlyLoadAppFromAsar: true

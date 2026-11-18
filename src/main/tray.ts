@@ -33,12 +33,16 @@ export interface TrayHandlers {
    *  words without a paste, or throw it away. */
   onStopHandsFree?: () => void
   onDiscardHandsFree?: () => void
+  /** Hide words (US-148): flip it before screen sharing without opening
+   *  the window. Gets the new value. */
+  onToggleHideWords?: (on: boolean) => void
 }
 
 let trayHandlers: TrayHandlers | null = null
 let inboxVisible = false
 let lastNoteVisible = false
 let handsFreeVisible = false
+let hideWordsOn = false
 
 function buildMenu(): Menu {
   const handlers = trayHandlers
@@ -60,6 +64,17 @@ function buildMenu(): Menu {
       : []),
     ...(inboxVisible && handlers.onOpenInbox
       ? [{ label: "Open today's inbox", click: handlers.onOpenInbox }]
+      : []),
+    ...(handlers.onToggleHideWords
+      ? [
+          { type: 'separator' as const },
+          {
+            label: 'Hide words',
+            type: 'checkbox' as const,
+            checked: hideWordsOn,
+            click: (item: Electron.MenuItem) => handlers.onToggleHideWords?.(item.checked)
+          }
+        ]
       : []),
     { type: 'separator' as const },
     { label: 'Quit murmur', click: handlers.onQuit }
@@ -83,6 +98,27 @@ export function setTrayLastNoteVisible(visible: boolean): void {
   if (visible === lastNoteVisible) return
   lastNoteVisible = visible
   tray?.setContextMenu(buildMenu())
+}
+
+/** Keep the Hide words check in step with the setting. */
+export function setTrayHideWords(on: boolean): void {
+  if (on === hideWordsOn) return
+  hideWordsOn = on
+  tray?.setContextMenu(buildMenu())
+}
+
+/** Click the menu's Hide words item as a person would; the smoke check
+ *  uses it to prove the click reaches the window (US-148). */
+export function clickTrayHideWords(): boolean {
+  const item = buildMenu().items.find((entry) => entry.label === 'Hide words')
+  if (!item) return false
+  item.click()
+  return true
+}
+
+/** Whether the menu's Hide words item is checked; the smoke check reads it. */
+export function trayHideWordsChecked(): boolean {
+  return buildMenu().items.find((item) => item.label === 'Hide words')?.checked === true
 }
 
 /** Show Stop hands-free and Discard while a take is locked. */

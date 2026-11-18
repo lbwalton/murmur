@@ -22,6 +22,14 @@ describe('SettingsStore', () => {
     expect(new SettingsStore(dir).get().history.hideWords).toBe(true)
   })
 
+  it('keeps the Profiles view across a restart, row by default, and drops a value of the wrong kind (US-161)', () => {
+    expect(new SettingsStore(dir).get().provider.profilesView).toBe('row')
+    new SettingsStore(dir).update({ provider: { profilesView: 'arc' } })
+    expect(new SettingsStore(dir).get().provider.profilesView).toBe('arc')
+    new SettingsStore(dir).update({ provider: { profilesView: 7 } })
+    expect(new SettingsStore(dir).get().provider.profilesView).toBe('arc')
+  })
+
   it('starts from defaults with no file', () => {
     const store = new SettingsStore(dir)
     expect(store.get()).toEqual(DEFAULT_SETTINGS)

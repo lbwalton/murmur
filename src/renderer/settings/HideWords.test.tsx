@@ -231,6 +231,8 @@ const WORD_READS: Record<string, string[]> = {
     '<TakeWords text={event.finalText} hide={hide} />',
     'await bridge().copyText(event.finalText)' // a click, never the page
   ],
+  // Home's search reads the words to filter by them; searchDays is off while hidden, and the box is disabled
+  'homeDays.ts': ["return hasText(event) ? `${event.finalText} ${event.rawText}`.toLowerCase() : ''"],
   'JourneyView.tsx': ['{tip.text}'], // a belt tip, written by murmur
   'NotesPanel.tsx': [
     "const item = line.match?.text ?? ''", // heldPhrase, behind hide
