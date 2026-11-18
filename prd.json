@@ -508,7 +508,7 @@
       ],
       "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-09-07, automated criteria verified: levelFor and report tests green, typecheck, full test suite, smoke. Visual confirmation of the chip rides the US-032 journey look check. Same batch recenters the founder crown onto the belt fabric (it previously floated beside the rank text and read as a stray glyph) with a hover tooltip naming it. LaBroi live-verified 2026-09-07: level chip blessed with the journey look."
+      "notes": "Built 2026-09-07, automated criteria verified: levelFor and report tests green, typecheck, full test suite, smoke. Visual confirmation of the chip rides the US-032 journey look check. Same batch recenters the founder crown onto the belt fabric (it previously floated beside the rank text and read as a stray glyph) with a hover tooltip naming it. LaBroi live-verified 2026-09-07: level chip blessed with the journey look. 2026-11-18: US-177 replaced lvl. n on the Journey hero with a big number and the word level; the share card still prints lvl. N."
     },
     {
       "id": "US-036",
@@ -1474,7 +1474,7 @@
       "description": "Asked by LaBroi on 2026-10-07: the founder's belt is an identity, so the founder never saw the words and days gates or a promotion. The founder now has a practice belt (the rank the founder's words and days earned) that the road, the gates, the ceremony, and the tape moment follow, and the gates draw on the progress made since you last looked, for everyone.",
       "acceptance": [
         "The progress engine reports a practice rank, its next rank, and both gates for everyone; for everyone but the founder it equals the report itself, and the founder's is computed from words and days exactly as anyone's (unit tests and the ranks smoke check)",
-        "The founder's Journey shows the words and days gates toward the next practice rank, the road placed by practice, and a small painted practice belt under the level chip naming the practice rank; the founder's own belt, title, insignia, and share card are unchanged",
+        "The founder's Journey shows the words and days gates toward the next practice rank, the road placed by practice, and a small painted practice belt under the level naming the practice rank; the founder's own belt, title, insignia, and share card are unchanged",
         "A new practice belt plays the ceremony for the founder; a new practice stripe plays the tape moment on the practice belt; each once, by the same rules as everyone's",
         "The gates draw on only the progress made since the Journey last showed them, on the same rank; a new rank or no record draws them on from the start; with the Journey open, new progress draws on as it lands; reduced motion paints them finished",
         "Regular users' Journey is unchanged apart from the gates drawing on only the new progress",
@@ -2784,6 +2784,22 @@
       "passes": false,
       "needs_human": true,
       "notes": "Added 2026-11-18. The preview estimates sunrise and sunset from the time zone offset and a fixed latitude; the app uses the zone's own coordinates."
+    },
+    {
+      "id": "US-177",
+      "title": "Your level reads like your other numbers",
+      "description": "On Journey's gold card the lvl. chip had a 7% cream outline that nearly vanished on the gold, so it read as neither a box nor plain text (LB, 2026-11-18). He picked A on the level badge preview: a big figure and a small mono word, like the stats on Analytics, with no box.",
+      "acceptance": [
+        "Journey shows your level as a big number (22 px, semibold, cream) with the word level in small mono beside it, on the same baseline, with no border or box",
+        "A dotted line under the word says more opens on hover; hovering for a moment, a click, or keyboard focus still opens the note on how levels work (US-093), and Escape closes it",
+        "The button's name reads as 1 level (a space between the number and the word)",
+        "docs/journey.md describes the level as the screen shows it",
+        "Tests pin the markup and the style",
+        "Live check on LB's Mac: Journey on a dark and a bright wallpaper"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added and built 2026-11-18 from his pick A (options A a number, B a real box with a shadow, C a gold ring like the PRO mark, D bolder with no box, each on the real Journey card over a dark and a bright desktop). The share card still prints lvl. N; it was not part of the ask. The number is 22 px, as on the preview he picked, a step under the 24 px Analytics stats because it sits beside the belt."
     }
   ]
 }

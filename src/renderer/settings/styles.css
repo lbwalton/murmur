@@ -1628,21 +1628,35 @@ select.field {
   color: var(--founder-gold);
 }
 
+/* Your level reads like your other numbers (US-177, LB's pick A on the
+   level badge preview, 2026-11-18): a big figure and a small mono word,
+   like the stats on Analytics, with no box. The faint outline it had
+   nearly vanished on the gold card. The dotted line under the word says
+   a note opens on hover; the button still opens it on click and focus. */
 .level-chip {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-dim);
-  border: 1px solid var(--panel-edge);
-  border-radius: 5px;
-  padding: 2px 7px;
-  margin-left: 10px;
-  vertical-align: 4px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: var(--text);
   white-space: nowrap;
 }
 
-.journey-rank .level-chip {
-  margin-left: 0;
+.level-value {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.level-word {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-decoration: underline dotted var(--text-dim);
+  text-underline-offset: 3px;
 }
 
 /* The founder's practice belt (US-095): the rank words and days have

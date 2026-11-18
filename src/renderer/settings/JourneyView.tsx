@@ -389,8 +389,11 @@ export function JourneyView(props: {
           />
           <div>
             <p className="journey-rank">
+              {/* Your level reads like your other numbers (US-177): a big
+                  figure and a small word, no box. */}
               <HoverNote className="level-chip" note={levelNote(progress.level, progress.totals.words)}>
-                lvl. {progress.level.toLocaleString()}
+                <b className="level-value">{progress.level.toLocaleString()}</b>{' '}
+                <span className="level-word">level</span>
               </HoverNote>
             </p>
             {progress.founder && (

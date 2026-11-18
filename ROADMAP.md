@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (118/170 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (118/171 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -182,3 +182,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-174** 5 belt themes
 - [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
 - [ ] **US-176** Day and night: a theme that follows your clock
+- [ ] **US-177** Your level reads like your other numbers

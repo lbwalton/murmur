@@ -297,6 +297,11 @@ describe('where the look is applied', () => {
     expect(src('renderer/settings/ProfileCards.tsx')).toContain('<p className="micro-label running-kicker">running now</p>')
     expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.link-btn \{\s*color: var\(--text\);/)
     expect(look).not.toMatch(/:is\(\.micro-label, \.link-btn\)/)
+    // Journey's level reads like a number, not a faint box (US-177).
+    expect(src('renderer/settings/JourneyView.tsx')).toMatch(/<HoverNote className="level-chip"[^>]*>\s*<b className="level-value">\{progress\.level\.toLocaleString\(\)\}<\/b>\{' '\}\s*<span className="level-word">level<\/span>/)
+    expect(css).toMatch(/\.level-chip \{[^}]*padding: 0;[^}]*border: 0;[^}]*color: var\(--text\);/)
+    expect(css).toMatch(/\.level-value \{[^}]*font-size: 22px;[^}]*font-weight: 650;/)
+    expect(css).toMatch(/\.level-word \{[^}]*font-family: var\(--font-mono\);[^}]*text-decoration: underline dotted var\(--text-dim\);/)
     // Settings' gold card is the running now strip (ProfileCards), held by the rule above.
     expect(src('renderer/settings/ProfileCards.tsx')).toContain('<div className="running-strip" id="running-now">')
     for (const page of ['AnalyticsView', 'JourneyView', 'HomeView']) {
