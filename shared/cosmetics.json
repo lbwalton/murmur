@@ -191,29 +191,5 @@
         "rank": "red-10"
       }
     }
-  ],
-  "uiThemes": [
-    {
-      "id": "ember",
-      "name": "night studio",
-      "hint": "the original",
-      "unlock": null,
-      "preview": [
-        "#0f0e11",
-        "#17161b"
-      ]
-    },
-    {
-      "id": "mist",
-      "name": "morning mist",
-      "hint": "earn your blue belt",
-      "unlock": {
-        "rank": "blue"
-      },
-      "preview": [
-        "#10131a",
-        "#191d26"
-      ]
-    }
   ]
 }

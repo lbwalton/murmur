@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type Rgba, contrast, over, parseColor, stack } from './contrast'
+import { type GlassLevel, GLASS_LEVELS, THEMES } from './themes'
 import { CLEAR_BACKGROUND, SOLID_BACKGROUND, THEME_SOURCE, asLook, pageBackground, startsWithoutMaterial, windowLook, windowOptions, windowsBuild } from './look'
 
 const src = (path: string): string => readFileSync(join(__dirname, '..', path), 'utf8')
@@ -105,20 +106,43 @@ describe('reading colors', () => {
   })
 })
 
-/** tokens.css as name to value: the :root block, with a theme's own
- *  block laid over it when one is named. */
-function tokens(theme?: string): Record<string, Rgba> {
+/** tokens.css as name to color: the :root block, with a theme's own
+ *  block and a glass level's block laid over it when named (US-151).
+ *  Values written as a var() or as a color cut from another token
+ *  (rgb(from var(--ink) r g b / 0.5), the panes) are resolved the way
+ *  the browser does. */
+function tokens(theme?: string, level: GlassLevel = 'clear'): Record<string, Rgba> {
   const css = src('renderer/tokens.css')
   const block = (start: string): string => {
     const from = css.indexOf(start)
     if (from < 0) throw new Error(`no ${start} in tokens.css`)
-    return css.slice(from, css.indexOf('\n}\n', from))
+    const open = css.indexOf('{', from)
+    return css.slice(open, css.indexOf('\n}\n', open))
+  }
+  const parts = [block(':root {')]
+  if (theme && theme !== 'ember') parts.push(block(`:root[data-theme='${theme}']`))
+  if (level !== 'clear') parts.push(block(`:root[data-glass='${level}']`))
+  const raw: Record<string, string> = {}
+  for (const part of parts) {
+    for (const [, name, value] of part.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) raw[name] = value.trim()
+  }
+  const resolve = (name: string, depth = 0): Rgba | undefined => {
+    const value = raw[name]
+    if (value === undefined || depth > 8) return undefined
+    const ref = /^var\(--([a-z0-9-]+)\)$/.exec(value)
+    if (ref) return resolve(ref[1], depth + 1)
+    const cut = /^rgb\(from var\(--([a-z0-9-]+)\) r g b \/ (?:var\(--([a-z0-9-]+)\)|([0-9.]+))\)$/.exec(value)
+    if (cut) {
+      const base = resolve(cut[1], depth + 1)
+      const alpha = Number(cut[2] ? raw[cut[2]] : cut[3])
+      return base && Number.isFinite(alpha) ? { ...base, a: alpha } : undefined
+    }
+    return /^(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))$/.test(value) ? parseColor(value) : undefined
   }
   const found: Record<string, Rgba> = {}
-  for (const part of [block(':root {'), ...(theme ? [block(`:root[data-theme='${theme}'] {`)] : [])]) {
-    for (const [, name, value] of part.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))\s*;/g)) {
-      found[name] = parseColor(value)
-    }
+  for (const name of Object.keys(raw)) {
+    const color = resolve(name)
+    if (color) found[name] = color
   }
   return found
 }
@@ -179,22 +203,25 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   const t = tokens()
 
   it('finds the tokens it needs', () => {
-    for (const name of ['ink', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'tag-ink', 'tag-edge', 'glow-top', 'glow-mid']) {
+    for (const name of ['ink', 'pane', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'tag-ink', 'tag-edge', 'glow-top', 'glow-mid']) {
       expect(t[name], name).toBeDefined()
     }
   })
 
   // The glow is strongest at the very top of the window, so that is the
-  // ground every solid pair is held to.
-  describe.each([['night studio', undefined], ['mist', 'mist']] as const)('in %s', (_name, theme) => {
-    const th = tokens(theme)
+  // ground every solid pair is held to. Every theme in shared/themes.json
+  // at every glass level (US-151).
+  describe.each(THEMES.map((theme) => [theme.name, theme.id, theme.scene] as const))('in %s', (_name, id, scene) => {
+    const rgb = (c: Rgba): number[] => [c.r, c.g, c.b]
 
     it('has its own panes, cut from its own ground', () => {
-      const rgb = (c: Rgba): number[] => [c.r, c.g, c.b]
+      const th = tokens(id)
+      expect(rgb(th.pane)).toEqual(rgb(th.panel))
       expect(rgb(th['glass-window'])).toEqual(rgb(th.ink))
-      expect(rgb(th['glass-card'])).toEqual(rgb(th.panel))
-      expect(rgb(th['glass-card-solid'])).toEqual(rgb(th.panel))
+      expect(rgb(th['glass-card'])).toEqual(rgb(th.pane))
+      expect(rgb(th['glass-card-solid'])).toEqual(rgb(th.pane))
       expect(rgb(th['ink-clear'])).toEqual(rgb(th.ink))
+      expect(rgb(th['tag-ink'])).toEqual(rgb(th.ink))
       // Helper text on the window is the theme's own cream.
       expect(th['text-dim-window']).toEqual(th.text)
       // Clear (LB's pick, 2026-11-12): half sheet, cards at 62%.
@@ -203,16 +230,39 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
       expect(th['glass-card-solid'].a).toBe(0.85)
     })
 
-    it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
-      expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+    it('thickens at Soft and lets a card show more at Clearest, never thinning the sheet', () => {
+      expect(tokens(id, 'soft')['glass-window'].a).toBe(0.58)
+      expect(tokens(id, 'soft')['glass-card'].a).toBe(0.74)
+      expect(tokens(id, 'clearest')['glass-window'].a).toBe(0.5)
+      expect(tokens(id, 'clearest')['glass-card'].a).toBe(0.55)
     })
 
-    it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black desktop: %s keeps 4.5 to 1', (_pair, text, ground) => {
-      expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-    })
+    describe.each(GLASS_LEVELS)('at %s glass', (level) => {
+      const th = tokens(id, level)
 
-    it.each(pairs(th, stack(th.ink, th['glow-top']), 'solid'))('solid with the glow at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
-      expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+      it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
+        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+      })
+
+      it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black desktop: %s keeps 4.5 to 1', (_pair, text, ground) => {
+        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+      })
+
+      it.each(pairs(th, stack(th.ink, th['glow-top']), 'solid'))('solid with the glow at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
+        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+      })
+
+      // A painting behind the cards: every text is held over the
+      // painting's brightest color under the theme's ink sheet.
+      if (scene) {
+        const painted = (): Rgba => stack(th['scene-bright'], th['scene-sheet'])
+        it.each(pairs(th, painted()))('glass over its painting at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
+          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+        })
+        it.each(pairs(th, painted(), 'solid'))('solid over its painting at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
+          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+        })
+      }
     })
   })
 
@@ -255,7 +305,9 @@ describe('where the look is applied', () => {
     expect(look).toMatch(/html\[data-look='solid'\]\[data-look='solid'\] \{\s*--panel: var\(--glass-card-solid\);/)
     // The bar and the sidebar are surfaces too.
     expect(look).toMatch(/:is\(\s*\.masthead,\s*\.rail,\s*\.panel,/)
-    expect(src('renderer/tokens.css')).toContain(":root[data-theme='mist'] {")
+    for (const theme of THEMES.filter((t) => t.id !== 'ember')) {
+      expect(src('renderer/tokens.css')).toContain(`:root[data-theme='${theme.id}'],\n[data-theme-preview='${theme.id}'] {`)
+    }
     expect(look).toMatch(/\.loop-tile-wrap\s*\) \{\s*--text-dim: var\(--text-dim-surface\);/)
     expect(look).toContain("html[data-look='glass'] body::before {\n  background: var(--glass-window);")
   })

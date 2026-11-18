@@ -259,12 +259,16 @@ function createSettingsWindow(): BrowserWindow {
     }
   })
 
+  // The theme rides along too (US-151), so the first paint wears it; the
+  // page checks it against the belt and Pro once those load.
+  const { uiTheme, glass, ground } = getSettings().cosmetics
+  const query = { look: shownLook, theme: uiTheme, glass, ground }
   const devServer = devRendererUrl()
   if (devServer) {
-    void win.loadURL(`${devServer}/settings/index.html?look=${shownLook}`)
+    void win.loadURL(`${devServer}/settings/index.html?${new URLSearchParams(query).toString()}`)
   } else {
     // The look rides in the address so the first paint already has it.
-    void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query: { look: shownLook } })
+    void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query })
   }
   return win
 }
@@ -879,6 +883,22 @@ app.whenReady().then(async () => {
     // Ink behind a solid page, nothing behind a glass one.
     const ground = win.getBackgroundColor().toUpperCase().endsWith('0F0E11') === (expected === 'solid')
     return rules && first && switched && back && ground
+  })
+
+  registerSmokeCheck('themeDefaults', async () => {
+    // The window's theme (US-151): a fresh profile wears night studio from
+    // its first paint (the theme rides in the address), with Clear glass
+    // and no painting, and the cosmetics report lists themes.json's themes.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const worn = JSON.parse(
+      await win.webContents.executeJavaScript(
+        'JSON.stringify({ theme: document.documentElement.dataset.theme, glass: document.documentElement.dataset.glass ?? null, ground: document.documentElement.dataset.ground ?? null, address: new URLSearchParams(location.search).get("theme") })'
+      )
+    ) as { theme?: string; glass: string | null; ground: string | null; address: string | null }
+    const { THEMES } = await import('../shared/themes')
+    const listed = THEMES.length >= 3 && THEMES[0].id === 'ember' && THEMES.some((t) => t.scene)
+    return worn.theme === 'ember' && worn.glass === null && worn.ground === null && worn.address === 'ember' && listed
   })
 
   registerSmokeCheck('homeRail', async () => {

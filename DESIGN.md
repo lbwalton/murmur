@@ -42,6 +42,19 @@ LB's direction of 2026-11-08 (round 3 of the Home redesign preview), with his pi
 - **Unchanged:** amber for live states, red for errors, the brush paint, and the overlay pill, which keeps its own look and stays unfocusable and click-through.
 - The other pages (Analytics, Wrap-up, Journey) wear the base glass until their roles are designed page by page (US-156). With no look set at all, the styles are the flat night studio, which is what a Flat choice will use (US-151).
 
+## Themes
+
+LB's picks on the Look preview, 2026-11-18 (US-151 builds the engine; the themes are US-174 to US-176). Night studio stays the default and the ground everyone has; a theme may change the ground, which is the 1 exception to "night studio stays the ground".
+
+- **1 entry, 1 block, 1 painting.** A theme is an entry in `shared/themes.json` (id, name, how it unlocks: nothing, a belt, or murmur Pro; its painting; what moves), its colors in a `:root[data-theme='<id>']` block in `tokens.css`, and, for a painted theme, a scene in `src/renderer/settings/scenes/` drawn in code from the block's `scene-*` tokens. No image files.
+- **Belts earn themes for everyone; Pro adds its own.** A locked theme stays visible as a dimmed tile saying what earns it.
+- **The painting fills the window where the desktop would show**, under the theme's ink sheet (`--scene-sheet`), and cards stay glass over it. Behind the cards: Painting or Desktop.
+- **Glass levels** (Pro): Soft (sheet 58%, cards 74%), Clear (50%, 62%, everyone's), Clearest (cards 55%, with brighter grey, red and green). The sheet never goes under 50%: over a white page, page titles would fall under 4.5 to 1.
+- **Contrast is computed, never eyeballed.** `look.test.ts` holds every text in every theme at every glass level over a white page, a black desktop, the solid glow, and, for a painted theme, its brightest color (`--scene-bright`) under its sheet.
+- **Motion is subtle and yours.** Off, Slow, Normal (the speed on the preview), Lively; a painting moves only while its window is showing and in front, and Reduce motion always gets a still, finished painting.
+- **Signals never change.** No painting uses signal amber or the error red; Moonlit's petals are vermilion, a paint color.
+- **The pill keeps its own look** in every theme.
+
 ## Brushwork
 
 LB's art direction from 2026-10-01: expressive brush paintings, a sharp calm figure in the middle and explosive brushwork around it. murmur's calm figure is the pill. **Your voice is the brush**: speaking paints a stroke, letting go flicks it, and the paint lands where your words land.

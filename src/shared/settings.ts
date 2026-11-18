@@ -10,6 +10,7 @@ import {
 import { LOOP_LEVEL_DEFAULT, type OverlayLook, normalizeLoopLevel, normalizeOverlayLook } from './overlay-state'
 import { DEFAULT_FILED_HEADING_TEMPLATE } from './sorter'
 import { DEFAULT_TYPING_WPM, clampTypingWpm } from './timeback'
+import { type GlassLevel, type Ground, type Motion, normalizeGlass, normalizeGround, normalizeMotion, normalizeTheme } from './themes'
 import { normalizeZoom } from './zoom'
 
 export type MicMode = 'ready' | 'press'
@@ -117,7 +118,15 @@ export interface Settings {
   }
   cosmetics: {
     accent: string
+    /** The window's theme, an id in shared/themes.json (US-151). */
     uiTheme: string
+    /** Behind the cards when the theme has a painting: the painting, or
+     *  the desktop through the glass with the theme's colors. */
+    ground: Ground
+    /** How much the glass lets through; murmur Pro. Clear for everyone. */
+    glass: GlassLevel
+    /** How fast a theme's painting moves; off stands it still. */
+    motion: Motion
     /** Activity-wall fill: 'orange' (the default), 'belt' (follows
      *  rank), or any earned belt-color accent id. Unknown or locked
      *  ids fall back to orange at render time. */
@@ -318,6 +327,9 @@ export const DEFAULT_SETTINGS: Settings = {
   cosmetics: {
     accent: 'amber',
     uiTheme: 'ember',
+    ground: 'scene',
+    glass: 'clear',
+    motion: 'normal',
     heat: 'orange',
     heatInverted: false
   },
@@ -487,6 +499,15 @@ function sanitizeEntryLists(out: Record<string, unknown>): Record<string, unknow
   // A zoom off the steps (a hand edit, a corrupt file) would leave the
   // window too small or too big to read; snap it to the nearest step.
   if ('windowZoom' in out) out.windowZoom = normalizeZoom(out.windowZoom)
+  // A theme that no longer exists, or a look choice outside its set,
+  // falls back to the default rather than wearing nothing (US-151).
+  const cosmetics = out.cosmetics as Record<string, unknown> | undefined
+  if (cosmetics) {
+    cosmetics.uiTheme = normalizeTheme(cosmetics.uiTheme)
+    cosmetics.ground = normalizeGround(cosmetics.ground)
+    cosmetics.glass = normalizeGlass(cosmetics.glass)
+    cosmetics.motion = normalizeMotion(cosmetics.motion)
+  }
   // A look outside the three would leave the pill undrawn.
   const overlay = out.overlay as Record<string, unknown> | undefined
   if (overlay) {

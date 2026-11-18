@@ -2436,7 +2436,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-08 from LB's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Rewritten 2026-11-18 from his picks on the Look preview: all 5 belt themes stay and each belt unlocks its theme for everyone; Pro gets its own themes on top; motion stays subtle with a control; Day and night is Pro only; Moonlit and morning mist both stay at blue belt. The themes themselves are US-174 to US-176. Not started."
+      "notes": "Added 2026-11-08 from LB's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Rewritten 2026-11-18 from his picks on the Look preview: all 5 belt themes stay and each belt unlocks its theme for everyone; Pro gets its own themes on top; motion stays subtle with a control; Day and night is Pro only; Moonlit and morning mist both stay at blue belt. The themes themselves are US-174 to US-176. Not started. Built 2026-11-18 on feature/themes with Moonlit (US-174) as the proving painting: shared/themes.json (night studio, morning mist, moonlit; cosmetics.json's uiThemes moved there) and src/shared/themes.ts (wornLook, motionSpeed, sceneMoves); settings cosmetics.ground, glass and motion, sanitized; the theme rides in the settings window's address and is worn before the first paint (themeWear.ts), then checked against the belt and Pro; panes are cut from each theme's ink and pane with relative color (--glass-window-a, --glass-card-a), so every theme gets every level; Soft 58/74, Clear 50/62, Clearest cards 55 with brighter grey, red and green (cards at 50 failed green and mist's gold over a white page, so 55); the painting is a canvas in <body> under body::before's --scene-sheet (ScenePainting.tsx, scenes/); Settings, Look: ThemeTiles (radiogroup, tiles preview each theme under data-theme-preview), Behind the cards (Painting, Desktop) for a painted theme, Glass (Pro, the Pro mark without it), Motion. The overlay pill keeps its own look in every theme (it never wore data-theme), so 'every window' means the murmur window. look.test.ts reads every theme from themes.json at every level, plus each painting at its brightest; themes.test.ts and scenes.test.ts cover the list, the wear rules, motion, and the paintings; smoke gains themeDefaults. Verified: typecheck, 2445 tests, design lint. Smoke could not run while the Mac's screen was locked (the merged redesign build hung the same way, so it is the session, not this change); run it again unlocked before the push."
     },
     {
       "id": "US-152",
@@ -2844,7 +2844,7 @@
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-18. Built on US-151's engine. The references are described in words only (project rule: no images in the repo); the preview's scene code is the starting sketch."
+      "notes": "Added 2026-11-18. Built on US-151's engine. The references are described in words only (project rule: no images in the repo); the preview's scene code is the starting sketch. 2026-11-18: Moonlit landed with US-151 as its proving painting (tokens block, scenes/moonlit.ts); its moon is muted (#b4ab95 at its brightest) so a 45% ink sheet holds window text at 4.5 to 1."
     },
     {
       "id": "US-175",
