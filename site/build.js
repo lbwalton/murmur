@@ -22,9 +22,11 @@ const { encodePng } = require('../scripts/lib/draw')
 const { ensoSvgParts, loadBrush } = require('../scripts/lib/enso')
 const { markOnInkRgba } = require('../scripts/lib/icons')
 const { content, DOCS } = require('./content')
+const PRO = require('../shared/pro.json')
 const { clip, firstParagraph, renderDoc, slugify } = require('./markdown')
 const { headersFile } = require('./headers')
 const { REDIRECTS, redirectsFile } = require('./redirects')
+const { DOWNLOAD_PATHS, downloadPath } = require('./download')
 const { securityTxt } = require('./security-txt')
 const { DISPLAY_FACE_FILE, fetchDisplayFace } = require('../scripts/lib/display-face')
 
@@ -159,7 +161,6 @@ function jsonLd() {
         '@id': org,
         name: 'Eze Media LLC',
         url: `${SITE_URL}/`,
-        founder: { '@type': 'Person', name: 'LaBroi Walton' },
         ...(SUPPORT_EMAIL ? { contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: SUPPORT_EMAIL } } : {}),
         sameAs: [links.repo]
       },
@@ -193,7 +194,7 @@ function jsonLd() {
           { '@type': 'Offer', name: 'murmur', price: '0', priceCurrency: 'USD' },
           { '@type': 'Offer', name: 'murmur Pro', price: String(facts.proPrice), priceCurrency: 'USD', url: links.doc('pro') },
           ...(facts.founders
-            ? [{ '@type': 'Offer', name: 'murmur Pro, founding member price', price: String(facts.founders.price), priceCurrency: 'USD', priceValidUntil: facts.founders.endsOn, url: facts.founders.buy }]
+            ? [{ '@type': 'Offer', name: 'murmur Pro, founders window price', price: String(facts.founders.price), priceCurrency: 'USD', priceValidUntil: facts.founders.endsOn, url: facts.founders.buy }]
             : [])
         ],
         author: { '@id': org },
@@ -306,13 +307,15 @@ function footerHtml() {
     </footer>`
 }
 
-/** The founders price line (LaBroi, 2026-10-24), under the download on
- *  home and atop the Pro doc while the window is open; nothing after. */
+/** The founders price line (LB, 2026-10-24), under the download on
+ *  home and atop the Pro doc while the window is open; nothing after.
+ *  Every website purchase in the window makes a founding member, with
+ *  or without the code (2026-11-15). */
 function foundersHtml(onPro) {
   const f = facts.founders
   if (!f) return ''
   const pro = onPro ? 'murmur Pro' : '<a href="/docs/pro/">murmur Pro</a>, the optional one-time upgrade,'
-  return `<p class="founders"><strong>Founding member price:</strong> ${pro} is $${f.price} through ${f.ends}, then $${facts.proPrice}. Founding members keep 10% off every future paid product. <a href="${escapeHtml(f.buy)}" target="_blank" rel="noopener noreferrer">Get Pro for $${f.price}</a>, with the code ${f.code} already filled in.</p>`
+  return `<p class="founders"><strong>Founders window:</strong> ${pro} is $${f.price} with the code ${f.code} through ${f.ends}, then $${facts.proPrice}. Everyone who buys Pro on the website by then is a founding member, code or not, and keeps 10% off every future paid product we make. <a href="${escapeHtml(f.buy)}" target="_blank" rel="noopener noreferrer">Get Pro for $${f.price}</a>, with the code ${f.code} already filled in.</p>`
 }
 
 function fontPreload(font) {
@@ -334,8 +337,9 @@ function page(tokens, font) {
     PILL_BARS: pillBars(),
     FAQ: faqHtml(),
     FOUNDERS: foundersHtml(false),
-    MAC_URL: links.mac,
-    WINDOWS_URL: links.windows,
+    // Through the download counter (US-169), which forwards to the file.
+    MAC_URL: downloadPath('mac'),
+    WINDOWS_URL: downloadPath('windows'),
     WINDOWS_SCREEN_URL: links.windowsScreen.slice(SITE_URL.length),
     MACOS: facts.macos.replace(' Ventura', ''),
     WINDOWS: facts.windows
@@ -390,8 +394,10 @@ const AI_CRAWLERS = [
   'Bytespider'
 ]
 
+// Crawlers stay off the download links (US-169): a fetch there is not a
+// person downloading murmur, and it would count as one.
 function robotsTxt() {
-  const blocks = ['*', ...AI_CRAWLERS].map((agent) => `User-agent: ${agent}\nAllow: /\n`)
+  const blocks = ['*', ...AI_CRAWLERS].map((agent) => `User-agent: ${agent}\nDisallow: /download/\nAllow: /\n`)
   return `${blocks.join('\n')}\nSitemap: ${SITE_URL}/sitemap.xml\n`
 }
 
@@ -422,7 +428,7 @@ function llmsTxt(docs) {
 
 ## Facts
 - Platforms: ${facts.macos} (Apple silicon and Intel, one universal download); ${facts.windows} (x64 and ARM, one installer)
-- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)${facts.founders ? `; through ${facts.founders.ends}, it is $${facts.founders.price} with the code ${facts.founders.code}, and buyers at that price are founding members with 10% off every future paid product` : ''}
+- Price: the app is free; murmur Pro is an optional one-time purchase of $${facts.proPrice} (provider profiles, early access)${facts.founders ? `; through ${facts.founders.ends}, it is $${facts.founders.price} with the code ${facts.founders.code}, and everyone who buys it on the website by then, with or without the code, is a founding member with 10% off every future paid product Eze Media LLC makes` : ''}
 - Privacy: records only while the hotkey is held; audio goes only to the provider the user configured; history, stats, and settings stay on the computer; no account, no murmur server, no telemetry
 - Cleanup fails open: if the cleanup model errors, the plain transcript is still inserted, so a dictation is never lost
 - Current version: ${version}
@@ -556,9 +562,13 @@ const DOC_NAMES = new Set(DOCS.map(([name]) => name))
 const isQuestion = (heading) => /\?(\s*\([^)]*\))?$/.test(heading)
 
 /** A link inside a doc: another doc becomes its page here, a page's own
- *  anchors stay, the web stays the web, and any other repo file goes to
+ *  anchors stay, the web stays the web (the checkout with the founders
+ *  code while the window is open), and any other repo file goes to
  *  GitHub. */
 function resolveDocLink(href) {
+  // The docs link the plain checkout; while the founders window is open
+  // every one of those links carries the code (US-172).
+  if (href === PRO.buyUrl) return { href: facts.checkout, external: true }
   if (/^(https?:|mailto:)/.test(href)) return { href, external: /^https?:/.test(href) }
   if (href.startsWith('#')) return { href, external: false }
   const doc = /^(?:\.\/)?([a-z0-9-]+)\.md(#[^\s]*)?$/.exec(href)
@@ -838,6 +848,8 @@ function checkLinks(pages) {
       const local = href.startsWith(`${SITE_URL}/`) ? href.slice(SITE_URL.length) : href
       if (!local.startsWith('/') || local.startsWith('//')) continue
       const [target, anchor] = local.split('#')
+      // The download links are the counter function's, not pages (US-169).
+      if (DOWNLOAD_PATHS.includes(target.split('?')[0])) continue
       if (/\.[a-z0-9]+$/i.test(target)) {
         files.add(target)
         continue

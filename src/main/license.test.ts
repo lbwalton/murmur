@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { generateKeyPairSync, sign } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { verifyLicense } from './license'
+import { checkoutUrl, verifyLicense } from './license'
+import pro from '../../shared/pro.json'
 
 function b64u(buf: Buffer): string {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -58,5 +59,23 @@ describe('verifyLicense', () => {
 
   it('rejects a signed payload missing required fields', () => {
     expect(verifyLicense(issue({ to: 'x@example.com' }), PUB)).toBeNull()
+  })
+})
+
+describe('checkoutUrl (US-172)', () => {
+  const closes = Date.parse(pro.founders.closes)
+
+  it('closes at midnight Pacific at the end of December 31, 2026', () => {
+    expect(closes).toBe(Date.parse('2027-01-01T00:00:00-08:00'))
+  })
+
+  it('fills in the FOUNDERS code on the configured Payment Link while the founders window is open', () => {
+    expect(checkoutUrl(Date.parse('2026-11-16T12:00:00-08:00'))).toBe(`${pro.buyUrl}?prefilled_promo_code=FOUNDERS`)
+    expect(checkoutUrl(closes - 1)).toBe(`${pro.buyUrl}?prefilled_promo_code=FOUNDERS`)
+  })
+
+  it('opens the plain Payment Link once the window closes', () => {
+    expect(checkoutUrl(closes)).toBe(pro.buyUrl)
+    expect(checkoutUrl(Date.parse('2027-06-01T00:00:00Z'))).toBe(pro.buyUrl)
   })
 })

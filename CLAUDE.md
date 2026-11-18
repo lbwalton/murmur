@@ -6,24 +6,36 @@ Push-to-talk dictation for Windows and macOS. Widget-first: the tray pill is the
 
 The product name is always lowercase: murmur. Even at the start of a sentence, in headings, window titles, tray menus, installers, docs, and marketing copy. Never Murmur or MURMUR. Code identifiers follow normal language conventions.
 
+The owner's first and last name never appear anywhere in this repo: not in copy, docs, stories, notes, code comments, test data, or commit messages (his rule, clarified 2026-11-15). His initials are fine: write LB, and LB's. Example names use a generic name (Siobhan). The GitHub account name in links, emails, and the app id stays. `scripts/no-owner-name.test.js` scans every tracked file in `npm run test` and fails on either name (US-171).
+
+## Business model
+
+LB's model (2026-11-15). Copy, docs, and stories must not contradict it.
+
+- The desktop app, Mac and Windows, is free and open source (GPL-3.0, see `LICENSE`) and runs on your own transcription key, with every dictation feature included.
+- murmur Pro is a one-time purchase on the website: $49, or $39 with the code FOUNDERS through December 31, 2026 (`shared/pro.json` holds the price and the founders code and its closing time, which the site's checkout links and the app's Get Pro buttons share, US-172; `site/content.js` holds the founders copy).
+- On iPhone, Pro sells as the $49 one-time in-app purchase through Apple (IOS-025 in ios/prd.json, on feature/ios until it merges), and one Pro covers both devices.
+- Later, a hosted transcription service that needs no API key will be sold as a subscription inside the app (ios/prd.json IOS-028). Using your own key is free today.
+- That subscription is why copy never promises murmur is free forever: say what is free today, never that it always will be.
+
 ## Provenance (non-negotiable)
 
-This is a clean rebuild. Copyright Eze Media LLC (authored solely by LaBroi Walton on his personal machine and assigned to his LLC, 2026-09-14), GPLv3 from commit one.
+This is a clean rebuild. Copyright Eze Media LLC (authored solely by LB on his personal machine and assigned to his LLC, 2026-09-14), GPLv3 from commit one.
 
 - Never copy code, prose, specs, scripts, or assets from `~/Projects/undertone` (the prior app), `~/Projects/the-peoples-voice-flow` (VFlow, an MIT fork of OpenWhisp), or `~/Projects/OpenWhisp`. Do not open files in those repos while building this one.
 - Concepts, feature ideas, and lessons learned are fine; artifacts are not. Everything here is implemented fresh from prd.json.
-- If a task seems to need something from those repos, stop and ask LaBroi instead.
+- If a task seems to need something from those repos, stop and ask LB instead.
 
 ## Process
 
 - `prd.json` is the spec. Every change maps to a story; each story has acceptance criteria and a `passes` flag. Never set `passes: true` until every criterion is verified, and record how it was verified in `notes`.
-- Stories with `needs_human: true` require LaBroi (live mic, real API key, a Windows machine, install tests). Build and smoke-verify what you can, then add the human step to `HANDOFF.md` and move on.
-- Whenever you add or change action items in `HANDOFF.md`, also spell those same items out in your chat reply (LaBroi directive, 2026-09-22): he works in the terminal and should never have to open HANDOFF.md to find his to-dos. Write them as numbered steps in plain language, the way you would explain it to a fifth grader: what to click, what to say, and what he should see if it worked. Name the setting by where it lives on screen, not by code names.
+- Stories with `needs_human: true` require LB (live mic, real API key, a Windows machine, install tests). Build and smoke-verify what you can, then add the human step to `HANDOFF.md` and move on.
+- Whenever you add or change action items in `HANDOFF.md`, also spell those same items out in your chat reply (LB directive, 2026-09-22): he works in the terminal and should never have to open HANDOFF.md to find his to-dos. Write them as numbered steps in plain language, the way you would explain it to a fifth grader: what to click, what to say, and what he should see if it worked. Name the setting by where it lives on screen, not by code names.
 - Verify with `npm run smoke` after any main-process or preload change. It boots every subsystem headlessly and prints `SMOKE_RESULT` JSON; it must stay green and new subsystems get a check added.
 - `npm run typecheck` and `npm run test` must be green before any commit.
 - After changing prd.json, run `npm run roadmap` so ROADMAP.md stays true.
 - `git pull --rebase` before every commit; parallel sessions may run on other machines.
-- Review gate (LaBroi directive, 2026-09-05): before a story's push, an independent reviewer agent examines the full uncommitted diff against these rules and reports findings; confirmed findings get fixed and re-verified before the push. The reviewer never edits, the builder never skips the gate. Findings the builder disputes, and anything needing human judgment, escalate to LaBroi instead of being quietly dropped.
+- Review gate (LB directive, 2026-09-05): before a story's push, an independent reviewer agent examines the full uncommitted diff against these rules and reports findings; confirmed findings get fixed and re-verified before the push. The reviewer never edits, the builder never skips the gate. Findings the builder disputes, and anything needing human judgment, escalate to LB instead of being quietly dropped.
 
 ## Security
 
@@ -42,32 +54,32 @@ Follow `security.mdc`, and run the `security-hardening` skill before shipping. `
 
 ## Design system (do not drift)
 
-Night studio: ink `#0F0E11`, panels `#17161B`, warm text `#ECE9E4`, brand gold `#D9A441` for headlines, micro-labels, and static highlights (the icon's metal at label luminance; LaBroi direction 2026-09-07), signal amber `#F0A44B` reserved for live/active states only and always brighter than the brand gold, red `#E5484D` for record/error and the button that confirms a delete (LaBroi, 2026-10-08), founder gold `#E0B64F` for founder identity marks only, mono (Cascadia Mono / SF Mono) for equipment-style micro-labels. The waveform pill is the signature; keep everything else quiet.
+Night studio: ink `#0F0E11`, panels `#17161B`, warm text `#ECE9E4`, brand gold `#D9A441` for headlines, micro-labels, and static highlights (the icon's metal at label luminance; LB direction 2026-09-07), signal amber `#F0A44B` reserved for live/active states only and always brighter than the brand gold, red `#E5484D` for record/error and the button that confirms a delete (LB, 2026-10-08), founder gold `#E0B64F` for founder identity marks only, mono (Cascadia Mono / SF Mono) for equipment-style micro-labels. The waveform pill is the signature; keep everything else quiet.
 
-Glass over your desktop (LaBroi direction 2026-11-08, picks 2026-11-11; US-150; full rules in DESIGN.md): murmur is always dark to the system, and the window shows the desktop through it (macOS vibrancy, the `hud` material; Windows 11 acrylic is built but off until proven on a PC) under 1 sheet of ink at 50% (Clear, his pick of 2026-11-12). There is 1 glass: every card, the sidebar and the top bar are the same pane at 62%, and a group's well is darker glass. Gold is a thread: time back, the sidebar line you are on, and the header of the day you are on (Today's until you move into the days; LaBroi, 2026-11-14); names are cream until picked. Where the system cannot, or Reduce transparency is on, the window is solid with a gold glow. This replaces flat panels on purpose. Every text keeps 4.5 to 1 over a white page behind the window, held by `src/shared/look.test.ts`: grey and gold text always sit on a card, never on the bare window, and no row in a list is ever blurred.
+Glass over your desktop (LB direction 2026-11-08, picks 2026-11-11; US-150; full rules in DESIGN.md): murmur is always dark to the system, and the window shows the desktop through it (macOS vibrancy, the `hud` material; Windows 11 acrylic is built but off until proven on a PC) under 1 sheet of ink at 50% (Clear, his pick of 2026-11-12). There is 1 glass: every card, the sidebar and the top bar are the same pane at 62%, and a group's well is darker glass. Gold is a thread: time back, the sidebar line you are on, and the header of the day you are on (Today's until you move into the days; LB, 2026-11-14); names are cream until picked. Where the system cannot, or Reduce transparency is on, the window is solid with a gold glow. This replaces flat panels on purpose. Every text keeps 4.5 to 1 over a white page behind the window, held by `src/shared/look.test.ts`: grey and gold text always sit on a card, never on the bare window, and no row in a list is ever blurred.
 
-## Art direction: brushwork (LaBroi direction 2026-10-01; full rules in DESIGN.md)
+## Art direction: brushwork (LB direction 2026-10-01; full rules in DESIGN.md)
 
-murmur has its own brand and is exempt from LaBroi's global Deep Green defaults in `~/CLAUDE.md`. Never apply those here.
+murmur has its own brand and is exempt from LB's global Deep Green defaults in `~/CLAUDE.md`. Never apply those here.
 
-On top of night studio, murmur is adding a painterly motion layer, modeled on expressive digital brush paintings LaBroi picked: dry-brush streaks with visible bristles, explosive paint splatter, vermilion and orange on charcoal or off-white paper, a sharp subject at the center with chaos at the edges. The idea: your voice is the brush. Sound paints a stroke, and the stroke lands where your cursor is.
+On top of night studio, murmur is adding a painterly motion layer, modeled on expressive digital brush paintings LB picked: dry-brush streaks with visible bristles, explosive paint splatter, vermilion and orange on charcoal or off-white paper, a sharp subject at the center with chaos at the edges. The idea: your voice is the brush. Sound paints a stroke, and the stroke lands where your cursor is.
 
-- Decided (LaBroi's picks from the preview artifact, 2026-10-01):
-  - Paint level: brushwork (the middle of ink wash, brushwork, full splatter). The one exception is a painting a day, which grows heavier with rank: LaBroi asked for heavier ink washes and splatter at the higher belts (2026-10-08, US-098).
+- Decided (LB's picks from the preview artifact, 2026-10-01):
+  - Paint level: brushwork (the middle of ink wash, brushwork, full splatter). The one exception is a painting a day, which grows heavier with rank: LB asked for heavier ink washes and splatter at the higher belts (2026-10-08, US-098).
   - The mark: the ensō pill, the pill drawn as one open brush loop with the amber live dot inside. At 32 px and below (tray, small icons) it is a clean drawn version, never brushed.
   - Belt promotions get the full ceremony: one big stroke in the new belt's color, splatter, the rank set large.
   - Display face: Bricolage Grotesque, condensed and heavy, on the website, the film, and the share cards only (the belt card and the painting card, as the painting preview showed). The app keeps system fonts because a font file is a binary.
   - The film: "One drop", 15 seconds, no voiceover. Drop hits the key, splash ring becomes the pill, the stroke writes the first letter of the dictated sentence and settles into the typeface, the splatter gathers into a ball that bounces through apps, the ball bounces into the logo and cools from ember to amber.
   - Paint is code-drawn only. No painted figure illustrations.
   - Ink overlay styles: all four ship, one per belt: dabs (ink bars) at white, flecks (ink speckle) at blue, rings (ink pulse) at purple, ribbon (new, one continuous stroke) at brown. They work in the pill, compact, and bare looks.
-  - The website hero becomes the visitor's to paint once its paint-in finishes, with colors and a poster to save and post (LaBroi, 2026-10-01, US-079).
-- App refresh (LaBroi's picks from the app refresh preview, 2026-10-02): the window gets small painted touches where something happened, and only there.
+  - The website hero becomes the visitor's to paint once its paint-in finishes, with colors and a poster to save and post (LB, 2026-10-01, US-079).
+- App refresh (LB's picks from the app refresh preview, 2026-10-02): the window gets small painted touches where something happened, and only there.
   - The note receipt ships all three surfaces: a clickable notification, Open last note in the tray menu, and a last note row on Home (US-082).
   - Look: the waveform setting becomes a grid of live mini pills, locked ones dimmed with the belt that unlocks them (US-084).
   - Home: one gold stroke under back today, today against a typical day (US-085).
   - Every tab gets its own title; the how-to block stays on Home only until the first few dictations (US-086).
   - Analytics in ink: the fourteen days as brush dabs, the activity wall as blots, numbers unchanged (US-087).
-  - Wrap-up: a painting a day (US-098, replacing US-088's abstract card): every take adds the next stroke of the day's painting, sized to a typical day, its subject seeded from many (fourteen so far; LaBroi asked for a multitude, 2026-10-09) and new each day, its detail climbing with rank, with a seal when it finishes, stamped in the color of the belt it was painted at (ember before the first belt; US-101, LaBroi's pick 2026-10-09), the light of the hours it was painted in coming in with it (a dawn sun, a pale day sun, a setting sun, or a crescent moon and stars; US-100, his pick the same day), a portrait Save card, and Save the week, the seven days ending today as one long scroll (US-102, also his pick). Higher belts paint it richer (washes from blue, splatter from purple, a second motif from brown, the heaviest from black); LaBroi asked for heavier ink washes and splatter at the higher belts (2026-10-08), and the steps between are a design call he can change.
+  - Wrap-up: a painting a day (US-098, replacing US-088's abstract card): every take adds the next stroke of the day's painting, sized to a typical day, its subject seeded from many (fourteen so far; LB asked for a multitude, 2026-10-09) and new each day, its detail climbing with rank, with a seal when it finishes, stamped in the color of the belt it was painted at (ember before the first belt; US-101, LB's pick 2026-10-09), the light of the hours it was painted in coming in with it (a dawn sun, a pale day sun, a setting sun, or a crescent moon and stars; US-100, his pick the same day), a portrait Save card, and Save the week, the seven days ending today as one long scroll (US-102, also his pick). Higher belts paint it richer (washes from blue, splatter from purple, a second motif from brown, the heaviest from black); LB asked for heavier ink washes and splatter at the higher belts (2026-10-08), and the steps between are a design call he can change.
   - Empty states: one dry grey mark and a sentence with the real hotkey (US-089).
   - A painted belt insignia and a gold brush tab marker (US-090).
   - The Journey, painted, builds as shown (US-076).
@@ -76,13 +88,13 @@ On top of night studio, murmur is adding a painterly motion layer, modeled on ex
 - The paint colors smoke, rice paper, and ember live in `tokens.css` (US-073). The brush engine is `src/renderer/brush.ts`.
 - Night studio stays the ground. Paint is a layer over it, never a reason to recolor existing UI.
 - Every brush mark is generated by code (seeded, deterministic, like the icons). The reference images are described here in words; no painted images go in the repo.
-- Paint goes where moments are: the website hero, the logo, the Journey (belts, the path, promotions), the share card, launch videos, the header Pro mark (its daily brush fill, US-107; LaBroi, 2026-10-23; every other Pro mark stays solid gold, so filled reads as yours at 16 px), and an optional ink style for the pill. Settings gets only the small touches above, where something happened (a dictation landing, a day adding up, a belt earned); controls, forms, errors, and the tray icon stay clean, except the waveform tiles, which are live previews of the pill itself (US-084), and the loop level tile under Double-tap for hands-free, a still preview of your own locked pill with its loop at the slider's level (US-117; LaBroi, 2026-11-01), and copy on a dictation's row, which answers with 1 gold brushed check (US-166; LaBroi, 2026-11-12).
+- Paint goes where moments are: the website hero, the logo, the Journey (belts, the path, promotions), the share card, launch videos, the header Pro mark (its daily brush fill, US-107; LB, 2026-10-23; every other Pro mark stays solid gold, so filled reads as yours at 16 px), and an optional ink style for the pill. Settings gets only the small touches above, where something happened (a dictation landing, a day adding up, a belt earned); controls, forms, errors, and the tray icon stay clean, except the waveform tiles, which are live previews of the pill itself (US-084), and the loop level tile under Double-tap for hands-free, a still preview of your own locked pill with its loop at the slider's level (US-117; LB, 2026-11-01), and copy on a dictation's row, which answers with 1 gold brushed check (US-166; LB, 2026-11-12).
 - Errors never splatter. Red stays clean red; paint is for progress and celebration.
 - Reduced motion always gets a still, finished painting, never a blank space.
 
 ## Documentation
 
-Documentation is a product surface, kept thorough on purpose (LaBroi directive, 2026-09-05): it serves users directly, and it is how LLMs, answer engines, and search learn to recommend murmur (AEO and SEO). Rules:
+Documentation is a product surface, kept thorough on purpose (LB directive, 2026-09-05): it serves users directly, and it is how LLMs, answer engines, and search learn to recommend murmur (AEO and SEO). Rules:
 
 - Every user-facing setting and scenario gets documented in `docs/` as it ships, not later. Provider setup (base URL, keys, model ids per provider) is the flagship example.
 - Structure for answer engines: headings phrased as the questions users actually ask, short direct answers first, details after.

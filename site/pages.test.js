@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { content } from './content'
 import { FINGERPRINTED_PATHS } from './headers'
@@ -14,14 +14,14 @@ const SITE = 'https://murmurapp.app'
 const EMAIL = 'support@murmurapp.app'
 const plain = (pieces) => pieces.map((p) => (typeof p === 'string' ? p : p.text)).join('')
 const allText = (items) => items.map((item) => [item.q, plain(item.a), ...(item.points ?? []).map(([lead, rest]) => `${lead} ${plain(rest)}`)].join(' ')).join(' ')
+const files = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
+  )
 
 describe('fingerprinted files (US-121)', () => {
   const dist = mkdtempSync(join(tmpdir(), 'murmur-cache-'))
   afterAll(() => rmSync(dist, { recursive: true, force: true }))
-  const files = (dir) =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-      entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]
-    )
 
   it('are never linked without their fingerprint, or a year of cache would serve the old copy', () => {
     const run = spawnSync(process.execPath, ['site/build.js'], {
@@ -59,7 +59,7 @@ describe('the privacy page', () => {
   })
 
   it('names everything that leaves a device, on every platform', () => {
-    for (const fact of ['no server', 'provider you chose', 'your own key', 'GitHub', 'update', 'offline', 'Stripe', 'Apple', 'keyboard sends nothing', 'Keychain', 'no analytics', 'no cookies']) {
+    for (const fact of ['no server', 'provider you chose', 'your own key', 'GitHub', 'update', 'offline', 'Stripe', 'Apple', 'keyboard sends nothing', 'Keychain', 'no analytics', 'no cookies on visitors']) {
       expect(text).toContain(fact)
     }
     // Found by the review gate: each of these leaves a device too.
@@ -81,6 +81,58 @@ describe('the privacy page', () => {
 
   it('gives the support address for privacy questions', () => {
     expect(text).toContain(EMAIL)
+  })
+
+  it('says Pro buyers may get emails about the purchase and founding member perks, who sends them, and how to stop them', () => {
+    const points = privacy.items.flatMap((item) => item.points ?? [])
+    const point = (lead) => {
+      const found = points.find(([l]) => l === lead)
+      expect(found, lead).toBeDefined()
+      return plain(found[1])
+    }
+    const buying = point('Buying murmur Pro.')
+    for (const fact of ['email you about your purchase and any founding member perks', 'a discount code when a new product launches', 'your license key included', 'Resend, an email delivery service', 'reply to one', EMAIL]) {
+      expect(buying).toContain(fact)
+    }
+    expect(point('Eze Media LLC.')).toContain('go through Resend, and the purchase and perk emails stop when you ask')
+    for (const fact of ['no analytics', 'no tracking', 'Nothing is sold']) expect(text).toContain(fact)
+  })
+})
+
+// US-169: the site counts download clicks, never who, and visitors get
+// no cookie; every line that says what the site does stays true.
+describe('what the site says about counting downloads', () => {
+  const { privacy, security } = content(SITE, { supportEmail: EMAIL })
+  const answer = (info, q) => {
+    const item = info.items.find((i) => i.q === q)
+    expect(item, q).toBeDefined()
+    return plain(item.a)
+  }
+
+  it('answers Does this website track me? with what is counted and what never is', () => {
+    const text = answer(privacy, 'Does this website track me?')
+    for (const fact of ['counts clicks on its download buttons', 'which link sent them', '?ref=reddit', 'never records who', 'no IP address', 'no cookies on visitors', 'no analytics', 'The only cookie is 1 we set on our own browsers']) {
+      expect(text).toContain(fact)
+    }
+    expect(text).not.toContain('no cookies of its own')
+    // The owner's first and last name, never spelled out here (US-168, US-171).
+    expect(text).not.toMatch(/la\s*bro[iy]|wal[t]on/i)
+  })
+
+  it('says in the summary that visitors get no cookie, and names the 1 that exists', () => {
+    const cookies = privacy.summary.find(([lead]) => lead === 'Cookies.')
+    expect(plain(cookies[1])).toContain('Visitors get none')
+    expect(plain(cookies[1])).toContain('The only cookie is 1 we set on our own browsers')
+    expect(plain(cookies[1])).not.toContain('The site sets none')
+  })
+
+  it('tells security reviewers the download links count clicks, never who', () => {
+    const text = answer(security, 'How is this website protected?')
+    for (const fact of ['download links, which count each click', 'never who', 'Visitors get no cookies', 'no analytics']) {
+      expect(text).toContain(fact)
+    }
+    expect(text).not.toMatch(/static, with no cookies/)
+    expect(security.updated).toBe('2026-11-15')
   })
 })
 
@@ -210,14 +262,45 @@ describe('the site build (IOS-026)', () => {
       }
     })
 
+    it('sends both download buttons through the counter, and keeps crawlers off it (US-169)', () => {
+      const home = read('index.html')
+      expect(home).toContain('<a class="btn" href="/download/mac">Download for Mac</a>')
+      expect(home).toContain('<a class="btn" href="/download/windows">Download for Windows</a>')
+      expect(home).not.toContain('href="https://github.com/lbwalton/murmur/releases/latest/download/')
+      // Machines read the files themselves, so they never count as a click.
+      expect(read('llms.txt')).toContain('https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg')
+      expect(home).toContain('"downloadUrl":["https://github.com/lbwalton/murmur/releases/latest/download/murmur-mac.dmg"')
+      const robots = read('robots.txt')
+      expect(robots.match(/^Disallow: \/download\/$/gm)).toHaveLength(robots.match(/^User-agent:/gm).length)
+    })
+
     it('forwards /pro and /pro/ to the Pro doc for good', () => {
       const redirects = read('_redirects')
       expect(redirects).toContain('/pro /docs/pro/ 301')
       expect(redirects).toContain('/pro/ /docs/pro/ 301')
     })
 
-    it('puts the checkout link on the Pro page 3 times', () => {
-      expect(read('docs/pro/index.html').split(`href="${PRO.buyUrl}"`).length - 1).toBe(3)
+    it('puts the checkout link on the Pro page 3 times, with the founders code filled in while the window is open (US-172)', () => {
+      const html = read('docs/pro/index.html')
+      const count = (href) => html.split(`href="${href}"`).length - 1
+      const { founders } = content(SITE).facts
+      if (founders) {
+        // The doc's 3 links, plus the founders line above them.
+        expect(count(founders.buy)).toBe(4)
+        expect(count(PRO.buyUrl)).toBe(0)
+      } else {
+        expect(count(PRO.buyUrl)).toBe(3)
+      }
+    })
+
+    // The build reads today's date, so the founders lines show only while
+    // the window is open.
+    it.skipIf(!content(SITE).facts.founders)('says wherever it names the window that any website purchase in it makes a founding member', () => {
+      for (const file of ['index.html', 'docs/pro/index.html', 'llms.txt', 'llms-full.txt']) {
+        expect(read(file), file).toContain('with or without the code')
+        expect(read(file), file).toContain('every future paid product we make')
+        expect(read(file), file).not.toMatch(/at that price|founding member price/i)
+      }
     })
 
     it('answers the iPhone question on home, linking the iPhone doc, without claiming the App Store has it', () => {
@@ -227,6 +310,70 @@ describe('the site build (IOS-026)', () => {
       expect(home).toContain('on its way to the App Store')
       expect(home).not.toMatch(/apps\.apple\.com|free on the App Store|Download on the App Store/)
       expect(read('llms.txt')).toContain('Is there a murmur app for iPhone?')
+    })
+
+    // The site never names the person who makes murmur (US-168): not in the
+    // structured data, the pages, llms.txt, or any other file a visitor or
+    // a crawler reads. The company is Eze Media LLC. Comments in the
+    // stylesheets and scripts are code, and the GitHub repo's address
+    // carries the account name, so both are left out of the check.
+    describe('never names the founder (US-168)', () => {
+      const BINARY = /\.(?:png|jpe?g|gif|webp|ico|woff2?|mp4|webm)$/
+      // Either part of the name, spaced or run together, and the misheard
+      // spelling an example once used beside it. The initials are allowed:
+      // the owner uses them on purpose where a personal touch helps
+      // (2026-11-15); only the first and last name are off limits.
+      // A failure shows the text around each match with every match in it
+      // masked, so the CI log never prints the name (US-171).
+      const NAME = /(?<![a-z])la\s*bro[iy](?![a-z])|wal[t]on/gi
+      const named = (text) => {
+        const masked = text.replace(NAME, (match) => '#'.repeat(match.length))
+        return [...text.matchAll(NAME)].map((match) =>
+          masked.slice(Math.max(0, match.index - 40), match.index + match[0].length + 40)
+        )
+      }
+      // Block comments in stylesheets and scripts, and whole line comments
+      // in scripts, the same cut the fingerprint check makes.
+      const visible = (file) => {
+        const text = readFileSync(file, 'utf8').replaceAll('lbwalton/murmur', 'REPO/murmur')
+        if (file.endsWith('.css')) return text.replace(/\/\*[\s\S]*?\*\//g, '')
+        if (file.endsWith('.js')) return text.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+        return text
+      }
+      const path = (file) => relative(dist, file).split(sep).join('/')
+
+      it('in any text file the build writes', () => {
+        const scanned = files(dist).filter((file) => !BINARY.test(file))
+        const written = scanned.map(path)
+        for (const file of ['index.html', 'docs/iphone/index.html', 'llms.txt', 'llms-full.txt', 'sitemap.xml', 'robots.txt', '.well-known/security.txt', '_headers', '_redirects']) {
+          expect(written).toContain(file)
+        }
+        const found = scanned.flatMap((file) => named(visible(file)).map((context) => `${path(file)}: ${context}`))
+        expect(found).toEqual([])
+      })
+
+      it('in the structured data, which names only the company', () => {
+        const pages = files(dist).filter((file) => file.endsWith('.html'))
+        const blocks = pages.flatMap((file) =>
+          [...readFileSync(file, 'utf8').matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]))
+        )
+        expect(blocks.length).toBeGreaterThan(pages.length / 2)
+        const people = []
+        const walk = (node) => {
+          if (Array.isArray(node)) return node.forEach(walk)
+          if (!node || typeof node !== 'object') return
+          if ('founder' in node || node['@type'] === 'Person') people.push(JSON.stringify(node).slice(0, 120))
+          Object.values(node).forEach(walk)
+        }
+        walk(blocks)
+        expect(people).toEqual([])
+        expect(named(JSON.stringify(blocks).replaceAll('lbwalton/murmur', 'REPO/murmur'))).toEqual([])
+        const home = blocks.find((block) => block['@graph']?.some((node) => node['@type'] === 'Organization'))
+        const org = home['@graph'].find((node) => node['@type'] === 'Organization')
+        expect(org.name).toBe('Eze Media LLC')
+        expect(org.contactPoint.email).toBe(EMAIL)
+        expect(org.sameAs).toEqual(['https://github.com/lbwalton/murmur'])
+      })
     })
   })
 
@@ -245,7 +392,7 @@ describe('the site build (IOS-026)', () => {
   }, 60_000)
 })
 
-describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {
+describe("the Pro doc's checkout links (LB, 2026-11-01)", () => {
   const md = readFileSync(join(__dirname, '..', 'docs', 'pro.md'), 'utf8')
   const { founders } = content(SITE, { now: Date.parse('2026-12-31T23:00:00-08:00') }).facts
 
@@ -263,6 +410,16 @@ describe("the Pro doc's checkout links (LaBroi, 2026-11-01)", () => {
     expect(md).toContain(`$${PRO.price} once`)
     expect(md).toContain(`the code ${founders.code}`)
   })
+
+  // 2026-11-15: buying on the website in the window makes a founding
+  // member, whether or not the code went in.
+  it('makes every website buyer in the founders window a founding member, code or not', () => {
+    const answer = md.split('## What is a founding member?')[1].split('\n## ')[0]
+    expect(answer).toContain('Everyone who buys Pro on the website before the founders window ends')
+    expect(answer).toContain(`whether or not they enter the code ${founders.code}`)
+    expect(answer).toContain('every future paid product we make')
+    expect(md).not.toMatch(/buys Pro with the code|you become a founding member/)
+  })
 })
 
 describe('the founders price', () => {
@@ -275,6 +432,18 @@ describe('the founders price', () => {
     expect(founders.price).toBe(39)
     expect(founders.buy).toMatch(/^https:\/\/buy\.stripe\.com\/.+\?prefilled_promo_code=FOUNDERS$/)
     expect(cost(before)).toContain('Through December 31, 2026, Pro is $39 with the code FOUNDERS')
+  })
+
+  it('makes everyone who buys on the website by then a founding member, with or without the code', () => {
+    expect(cost(before)).toContain('Everyone who buys Pro on the website by then is a founding member, with or without the code')
+    expect(cost(before)).toContain('10% off every future paid product we make')
+    expect(cost(before)).not.toContain('at that price')
+  })
+
+  it('sends every checkout link to the code filled in through December 31, and to the plain checkout after (US-172)', () => {
+    expect(content(SITE, { now: before }).facts.checkout).toBe(`${PRO.buyUrl}?prefilled_promo_code=FOUNDERS`)
+    expect(content(SITE, { now: before }).facts.founders.buy).toBe(content(SITE, { now: before }).facts.checkout)
+    expect(content(SITE, { now: after }).facts.checkout).toBe(PRO.buyUrl)
   })
 
   it('says nothing once the window closes', () => {

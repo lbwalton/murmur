@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The hands-free ring (US-117, LaBroi's pick A, 2026-10-30): while murmur
+// The hands-free ring (US-117, LB's pick A, 2026-10-30): while murmur
 // holds the mic, one brush stroke paints the pill's own outline all the
 // way round and a little past its start, closing the loop the icon
 // leaves open. Pure geometry and timing; LockRing.tsx paints it.

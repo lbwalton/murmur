@@ -634,15 +634,15 @@ describe('polishTranscript', () => {
     }) as typeof fetch
     await polishTranscript(INPUT, cfg, {
       fetchImpl,
-      hints: ['Preferred spellings, apply ONLY where these words already occur: "labroy" is written "LaBroi".']
+      hints: ['Preferred spellings, apply ONLY where these words already occur: "shivon" is written "Siobhan".']
     })
     const messages = sent!.messages as Array<{ role: string; content: string }>
-    expect(messages[0].content).toContain('LaBroi')
+    expect(messages[0].content).toContain('Siobhan')
     expect(messages[1].content).toBe(INPUT)
   })
 
   it('fails open when the model echoes the hint text instead of cleaning', async () => {
-    const hint = 'Preferred spellings, apply ONLY where these words already occur: "labroy" is written "LaBroi".'
+    const hint = 'Preferred spellings, apply ONLY where these words already occur: "shivon" is written "Siobhan".'
     const fetchImpl = (async () => chatResponse(hint)) as typeof fetch
     // The echo differs wildly in shape from the input: validators reject,
     // so hint text can never reach the user's document.

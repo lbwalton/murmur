@@ -2,8 +2,8 @@
 // Asks in place before something is deleted (US-096, US-099): the
 // question names the count, keep them has focus (so Enter, Escape, or a
 // double click never deletes), and the button that deletes is red, the
-// one use of red beside recording and errors (LaBroi, 2026-10-08).
-// While it asks, the rest of its section dims (US-157, LaBroi's pick
+// one use of red beside recording and errors (LB, 2026-10-08).
+// While it asks, the rest of its section dims (US-157, LB's pick
 // 2026-11-09), so the eye goes straight to the question.
 import { useEffect, useRef } from 'react'
 

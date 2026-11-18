@@ -24,7 +24,7 @@ const OPENROUTER = 'https://openrouter.ai/api/v1'
 const withChanges = (patch: Record<string, unknown>, base: Settings = DEFAULT_SETTINGS): Settings =>
   mergeSettings(base, patch)
 
-// Groq speech, Luna cleanup on OpenRouter: LaBroi's second setup.
+// Groq speech, Luna cleanup on OpenRouter: LB's second setup.
 const lunaSetup = withChanges({
   polish: { enabled: true, baseUrl: OPENROUTER, llmModel: 'openai/gpt-6-luna' },
   notes: { sort: true },

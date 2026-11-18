@@ -49,7 +49,7 @@ export function zoomActionForKey(input: ZoomKeyInput): ZoomAction | null {
   return null
 }
 
-/** The smallest the settings window goes at 100 percent (LaBroi,
+/** The smallest the settings window goes at 100 percent (LB,
  *  2026-11-12: dragged narrower, the tabs stacked and cards ran off the
  *  edge). At this size the tabs fit on 1 line and buttons stay in
  *  their cards. */

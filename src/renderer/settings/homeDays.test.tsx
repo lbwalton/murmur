@@ -541,7 +541,7 @@ describe('the last note card (board 18, pick D)', () => {
 describe('the window itself never scrolls', () => {
   it('pins the shell, so a jump to a day cannot push the top bar out of the window', () => {
     // A line hidden for screen readers inside the page box sits outside
-    // its scroll (LaBroi's screenshot, 2026-11-12: the tabs were gone).
+    // its scroll (LB's screenshot, 2026-11-12: the tabs were gone).
     expect(read('styles.css')).toMatch(/\.shell \{\s*position: fixed;\s*inset: 0;/)
   })
 })

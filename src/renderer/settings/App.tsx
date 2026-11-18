@@ -403,7 +403,7 @@ export function App(): React.JSX.Element {
     void updatePro({ offerDone: true, thanksPending: true })
   }
 
-  // The marks roll in from the top of the window down (LaBroi, 2026-10-23):
+  // The marks roll in from the top of the window down (LB, 2026-10-23):
   // the header's mark starts at once, then each mark on screen one step
   // after the one above it. Set before paint, so none starts out of turn.
   // The 3 marks that can arrive (the rail, Profiles, the section title)
@@ -1789,7 +1789,7 @@ function ProSection(props: {
     if (next.pro) props.onActivated()
   }
 
-  // The free user's Pro section is one confident block (US-107, LaBroi's
+  // The free user's Pro section is one confident block (US-107, LB's
   // pick from the canvas): why Pro exists, what it adds, the price, and
   // the key field at the foot. Still a row, so search finds it.
   return (

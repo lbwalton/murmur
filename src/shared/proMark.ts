@@ -36,7 +36,7 @@ export function calendarDaysSince(fromMs: number, nowMs: number): number {
   return Math.round((startB - startA) / 86_400_000)
 }
 
-/** The Home offer waits this many calendar days after installing (LaBroi, 2026-10-19). */
+/** The Home offer waits this many calendar days after installing (LB, 2026-10-19). */
 export const OFFER_AFTER_DAYS = 30
 
 /**
@@ -85,7 +85,7 @@ export function thanksDue(status: ProFacts | null, pending: boolean): boolean {
 
 /**
  * Timing for the moment the window opens (the motion designer's tuning,
- * LaBroi's pick 2026-10-22): wait for the window to settle in front,
+ * LB's pick 2026-10-22): wait for the window to settle in front,
  * lift to 2x with a small overshoot, paint while big, hold, settle back.
  * A click, a key, or the window losing focus skips to the end.
  */
@@ -104,7 +104,7 @@ export const LIFT = {
 } as const
 
 /**
- * The moment you buy, rolled from the top of the window down (LaBroi's
+ * The moment you buy, rolled from the top of the window down (LB's
  * pick on canvas board 2, 2026-10-23): the header's mark starts at once,
  * each outlined mark below it fills one step later than the one above,
  * and every mark glows bright gold as it fills, then fades.
@@ -179,7 +179,7 @@ function seeded(seed: number): () => number {
 const STEEP = [-36, -24, -14, 14, 24, 36]
 
 /**
- * The day's strokes, seeded by its date (LaBroi's picks on canvas board
+ * The day's strokes, seeded by its date (LB's picks on canvas board
  * 7, 2026-10-22): 3 or 4 slashing strokes, 1 shallow stroke laying the
  * ground and the rest cutting in steeper, each from its own side, over
  * about 3 seconds. They stay as they land: dry ends and small gaps are

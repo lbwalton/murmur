@@ -365,7 +365,7 @@ export function NotesPanel(props: {
   const lastSave = status?.lastSave ?? null
 
   // Until a notes folder is set, Notes is 1 step: the chord and the
-  // folder. Everything else shows once the folder is picked (LaBroi's
+  // folder. Everything else shows once the folder is picked (LB's
   // pick, 2026-11-11, with its cost: search cannot find those rows
   // until then). 1 tree for both states, so the 2 rows keep their
   // place and the keyboard keeps its focus when the folder is picked.

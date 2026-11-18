@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The icons on a dictation's row (US-166): what you said, report and
 // copy. Each is drawn here, in code, like every other mark in murmur;
-// none is taken from an icon set. They carry no box (LaBroi,
+// none is taken from an icon set. They carry no box (LB,
 // 2026-11-12), so the row stays about the words; each says its name
 // beside it the moment it is pointed at or focused (HomeView).
 import { cachedBrush, path, stroke, tokenColor } from '../brush'
@@ -76,7 +76,7 @@ const CHECK: ReadonlyArray<readonly [number, number]> = [
   [0.88, 0.17]
 ]
 
-/** Copy's answer: 1 gold brush stroke draws a check (LaBroi,
+/** Copy's answer: 1 gold brush stroke draws a check (LB,
  *  2026-11-12). The stroke is seeded, so it is the same check every
  *  time, and reduced motion gets it finished at once (PaintCanvas). */
 export function CopyCheck(): React.JSX.Element {

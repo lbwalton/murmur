@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The top of Provider and keys (US-154, LaBroi's pick B, 2026-11-08):
+// The top of Provider and keys (US-154, LB's pick B, 2026-11-08):
 // what runs right now, then the saved profiles. A switch changes every
 // setting a profile holds at once. When the setup moves away from the
 // active profile, a bar offers Save, Save as new, and Undo, and the card
@@ -7,7 +7,7 @@
 // them and the setup below is 1 unnamed one. Rename sits beside Delete,
 // and a double-click on a card renames it too (US-157, 2026-11-09).
 //
-// Many profiles stay small (US-160, LaBroi's pick 2026-11-10): the card
+// Many profiles stay small (US-160, LB's pick 2026-11-10): the card
 // in use, then 1 row of names that keeps its height at any count, with
 // Show all to see every card and fold back. Or, his carousel idea as a
 // view you pick (US-161): the cards on an arc, the front one large.

@@ -14,7 +14,7 @@ export const MAC_VIBRANCY = 'hud' as const
 /** murmur is always dark, whatever the system is set to. Without this a
  *  Mac in its light look hands the window the light material, and night
  *  studio over a white frost is flat grey with a white title bar
- *  (LaBroi's Mac, 2026-11-12). Electron's `nativeTheme.themeSource`. */
+ *  (LB's Mac, 2026-11-12). Electron's `nativeTheme.themeSource`. */
 export const THEME_SOURCE = 'dark' as const
 /** Windows 11: the acrylic background material (BrowserWindow
  *  `backgroundMaterial`), which Electron supports from 22H2 up. */

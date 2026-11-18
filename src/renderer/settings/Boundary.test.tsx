@@ -115,6 +115,6 @@ describe('a part that hit a problem (US-163)', () => {
 
   it('names no one and keeps murmur lowercase', () => {
     const text = Object.values(CRASH_TEXT).map((t) => t.title + ' ' + t.detail).join(' ')
-    expect(text).not.toMatch(/LaBroi|Walton|\bLB\b|Murmur/)
+    expect(text).not.toMatch(/La[B]roi|Wal[t]on|\bLB\b|Murmur/)
   })
 })

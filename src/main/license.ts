@@ -116,13 +116,23 @@ export function removeLicense(): LicenseStatus {
   return readStatus()
 }
 
+/** Where Get Pro goes: the configured Payment Link, with the FOUNDERS
+ *  code already filled in until the founders window closes (US-172), so
+ *  its $10 off is applied without typing it. Empty when no link is set. */
+export function checkoutUrl(now = Date.now()): string {
+  if (!pro.buyUrl) return ''
+  if (now >= Date.parse(pro.founders.closes)) return pro.buyUrl
+  return `${pro.buyUrl}?prefilled_promo_code=${encodeURIComponent(pro.founders.code)}`
+}
+
 export function initLicense(): void {
   ipc.handle('license:status', () => readStatus())
   ipc.handle('license:buy', async () => {
     // Only ever the configured Payment Link, never an arbitrary URL.
-    if (!pro.buyUrl) return
+    const url = checkoutUrl()
+    if (!url) return
     const { shell } = await import('electron')
-    await shell.openExternal(pro.buyUrl)
+    await shell.openExternal(url)
   })
   ipc.handle('license:set', (_event, key: unknown) => {
     if (typeof key !== 'string' || key.length > MAX_KEY_CHARS) return readStatus()

@@ -85,7 +85,7 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     expect(app.match(/disabled=\{needsFull !== undefined\}/g)).toHaveLength(2)
   })
 
-  it('groups each section the way LaBroi approved on 2026-11-11', () => {
+  it('groups each section the way LB approved on 2026-11-11', () => {
     expect(groupsOf('provider')).toEqual(['speech', 'cleanup', 'keys', 'cost'])
     expect(groupsOf('dictation')).toEqual(['hotkey', 'microphone', 'formatting', 'landing', 'Try it'])
     expect(groupsOf('dictionary')).toEqual(['Custom words', 'Expansions'])
@@ -192,7 +192,7 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     expect(app).not.toContain('under Advanced')
   })
 
-  it('finds all 4 shortcuts when you search shortcut, hotkey or chord (LaBroi, 2026-11-11)', () => {
+  it('finds all 4 shortcuts when you search shortcut, hotkey or chord (LB, 2026-11-11)', () => {
     const keywords = (source: string, anchorOrLabel: string): string => {
       const at = source.indexOf(anchorOrLabel)
       return /keywords="([^"]+)"/.exec(source.slice(at))?.[1] ?? ''
@@ -213,7 +213,7 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
   it('steps the type 28, 20, then a gold label per card, 14, and keeps row labels a dimmer cream from the tokens', () => {
     expect(css).toMatch(/\.settings-content \.page-title h1 \{\s+font-size: 28px;\s+font-weight: 700;/)
     expect(css).toMatch(/\.sec-title \{\s+font-size: 20px;\s+font-weight: 700;/)
-    // A card is named by the gold label every page uses (LaBroi's pick B,
+    // A card is named by the gold label every page uses (LB's pick B,
     // board 19, 2026-11-14); a GroupRow's name stays a row label.
     expect(css).toMatch(/\.group-title \{\s+margin: 0;\s+font-family: var\(--font-mono\);\s+font-size: 11px;\s+font-weight: 400;\s+letter-spacing: 0\.18em;\s+color: var\(--brand\);/)
     expect(css).toMatch(/\.group-title\.row-label \{\s+font-family: inherit;\s+font-size: 15px;\s+font-weight: 600;\s+letter-spacing: 0;\s+color: var\(--text\);/)

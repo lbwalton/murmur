@@ -2,7 +2,7 @@
 // Settings, History (US-148): how long murmur keeps your dictations,
 // whether their words are encrypted on disk, Hide words, and Clear all.
 // These lived at the bottom of Home, under every dictation, where almost
-// nobody found them (LaBroi, 2026-11-08). The asks and their wording are
+// nobody found them (LB, 2026-11-08). The asks and their wording are
 // unchanged: a shorter keep and Clear all still ask first.
 import { useEffect, useRef, useState } from 'react'
 import { KEEP_24_HOURS, KEEP_NO_TEXT, type SealStatus } from '../../shared/history'

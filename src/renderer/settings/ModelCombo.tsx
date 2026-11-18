@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// The Model field as a searchable list (US-158, LaBroi's pick 2026-11-09):
+// The Model field as a searchable list (US-158, LB's pick 2026-11-09):
 // our suggestions on top, then every text model the provider offers, read
 // from the provider when the list first opens. Any typed id still saves,
 // so a model the list does not show is never out of reach. Keyboard: the

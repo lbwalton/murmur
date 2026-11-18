@@ -224,7 +224,7 @@ export function SectionGuard(props: { id: string; title: string; children: React
  * A group of rows inside a Section (US-154, US-155): a heading a step
  * below the section's, a line on what the group does when that adds a
  * fact, and its rows inset in a well a step darker than the panel, so
- * what belongs together reads as 1 thing (LaBroi's pick, rows in a
+ * what belongs together reads as 1 thing (LB's pick, rows in a
  * well, 2026-11-08). A section with 4 rows or fewer is 1 Group with no
  * title (his pick, 2026-11-11).
  */
@@ -275,7 +275,7 @@ export function Group(props: {
  * A setting that is 1 big box (a list, the practice box): the setting's
  * name is the group heading, its description the group line, and the
  * well holds the box itself, so nothing sits in a box inside a box
- * (LaBroi's pick, 2026-11-11). It is still a row to search and to
+ * (LB's pick, 2026-11-11). It is still a row to search and to
  * jumps: same id, label, description and keywords.
  */
 export function GroupRow(props: {

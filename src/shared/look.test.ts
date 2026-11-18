@@ -197,7 +197,7 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
       expect(rgb(th['ink-clear'])).toEqual(rgb(th.ink))
       // Helper text on the window is the theme's own cream.
       expect(th['text-dim-window']).toEqual(th.text)
-      // Clear (LaBroi's pick, 2026-11-12): half sheet, cards at 62%.
+      // Clear (LB's pick, 2026-11-12): half sheet, cards at 62%.
       expect(th['glass-window'].a).toBe(0.5)
       expect(th['glass-card'].a).toBe(0.62)
       expect(th['glass-card-solid'].a).toBe(0.85)

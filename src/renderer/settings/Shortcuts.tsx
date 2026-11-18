@@ -3,7 +3,7 @@
 // listens for on 1 screen. The 4 you can set are the same settings
 // their own sections show (Dictation, Notes, Transform), so a change
 // in either place is a change in both; the built-in keys are listed to
-// read, not to set (LaBroi's pick, 2026-11-11).
+// read, not to set (LB's pick, 2026-11-11).
 import { useState } from 'react'
 import type { HotkeysStatus, SettingsApi } from '../../preload/settings'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'

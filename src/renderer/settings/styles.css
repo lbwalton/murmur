@@ -35,7 +35,7 @@ body {
    hidden for screen readers inside the page box (.visually-hidden) is
    placed outside the box's scroll, and before this pin it made the
    window's own page a little taller than the window, so a jump to a
-   day pushed the top bar out of sight (LaBroi, 2026-11-12). */
+   day pushed the top bar out of sight (LB, 2026-11-12). */
 .shell {
   position: fixed;
   inset: 0;
@@ -442,7 +442,7 @@ body {
 }
 
 /* A row's icons (US-166): what you said and report after the numbers,
-   copy at the right edge. No box (LaBroi, 2026-11-12). The hit area is
+   copy at the right edge. No box (LB, 2026-11-12). The hit area is
    28 px though the glyph is 16. */
 .row-acts {
   display: inline-flex;
@@ -617,7 +617,7 @@ body {
 }
 
 /* The waiting card's 4 buttons share 1 width, so retry lines up with
-   discard down the card and with retry all above (LaBroi, 2026-11-12).
+   discard down the card and with retry all above (LB, 2026-11-12).
    delete audio?, the longer name discard takes on, grows past it. */
 .waiting-strip .waiting-actions .btn {
   min-width: 96px;
@@ -625,7 +625,7 @@ body {
 }
 
 /* The reason sits where a dictation's words would, at their size, and
-   the buttons are the size of every other button on Home (LaBroi,
+   the buttons are the size of every other button on Home (LB,
    2026-11-12). */
 .waiting-reason {
   margin: 0;
@@ -645,8 +645,8 @@ body {
 
 /* Asking before a delete (US-096, US-099): the count in words, keep
    them first and focused, and the deleting button in red, the one use
-   of red beside recording and errors (LaBroi, 2026-10-08). Since US-157
-   (LaBroi's pick, 2026-11-09) the box is gold fog glass that glows once
+   of red beside recording and errors (LB, 2026-10-08). Since US-157
+   (LB's pick, 2026-11-09) the box is gold fog glass that glows once
    as it opens and then keeps a faint steady glow, and the rest of its
    section dims while it is open, so the eye knows where to look. */
 .ask-first {
@@ -1917,7 +1917,7 @@ details[open] > .ladder-summary::after {
   }
 }
 
-/* The header's painted mark (LaBroi's picks on canvas board 7): the
+/* The header's painted mark (LB's picks on canvas board 7): the
    day's brush strokes and PRO both drawn on a canvas, PRO in ink where
    paint lands and gold where the ground is bare. The CSS word stays only
    to size the pill. The button lifts it close (scripted, ProMark.tsx);
@@ -2686,7 +2686,7 @@ textarea.entry-field {
 /* A short choice shown whole. Outer radius 8 = inner 6 + 2 padding.
    Every option is as wide as the widest, and the picked one is lifted,
    edged in gold, and checked, so it reads at a glance and without color
-   (US-149, LaBroi's style C, 2026-11-08). */
+   (US-149, LB's style C, 2026-11-08). */
 .seg {
   display: inline-grid;
   grid-auto-flow: column;
@@ -3135,7 +3135,7 @@ textarea.well-multiline {
   text-align: right;
 }
 
-/* Home with a rail (US-147, LaBroi's pick B, 2026-11-08). The rail is
+/* Home with a rail (US-147, LB's pick B, 2026-11-08). The rail is
    the Settings rail's parts; the page beside it reads as zones: the
    title line, takes waiting, time back beside the last note, then your
    dictations under their own heading, a day at a time. */
@@ -3285,7 +3285,7 @@ textarea.well-multiline {
 }
 
 /* A take waiting to retry is a card like the rest, marked by a red
-   dot beside its label and in the sidebar (LaBroi, 2026-11-12: the red
+   dot beside its label and in the sidebar (LB, 2026-11-12: the red
    edge it had shouted louder than its place on the page). */
 .waiting-strip {
   scroll-margin-top: 8px;
@@ -3370,7 +3370,7 @@ textarea.well-multiline {
 }
 
 /* The card's name is a gold label, like waiting to retry, back today
-   and last note (LaBroi, 2026-11-12); the line under it says what is
+   and last note (LB, 2026-11-12); the line under it says what is
    kept. */
 .history-head h2 {
   margin-bottom: 0;
@@ -3520,7 +3520,7 @@ textarea.well-multiline {
   }
 }
 
-/* Rows in a well (US-154, LaBroi's pick 2026-11-08; US-155 brings it to
+/* Rows in a well (US-154, LB's pick 2026-11-08; US-155 brings it to
    every section). Each group is a panel with its own title a step below
    the section's, and the group's rows sit inset in a well a step darker
    than the panel. A section with 4 rows or fewer is 1 group with no
@@ -3539,7 +3539,7 @@ textarea.well-multiline {
 }
 
 /* A card in Settings is named by the gold label every page uses
-   (LaBroi's pick B, board 19, 2026-11-14): 1 cream title for the page and
+   (LB's pick B, board 19, 2026-11-14): 1 cream title for the page and
    each section, 1 gold label for each card. The names are written in
    lowercase in the source, so macOS keeps its capitals. A setting that is
    1 big box (GroupRow) keeps its name as a row label: it is a setting. */
@@ -3592,7 +3592,7 @@ textarea.well-multiline {
 
 /* A row label inside a well is a setting, not a heading: regular weight
    in a slightly dimmer cream, so it never reads like the group title
-   (LaBroi, 2026-11-08). Mixed from the theme's own text and ground. */
+   (LB, 2026-11-08). Mixed from the theme's own text and ground. */
 .group-rows .row-label {
   font-size: 14px;
   font-weight: 400;
@@ -3684,7 +3684,7 @@ textarea.well-multiline {
 
 /* A setting that is 1 box (a list, the practice box): its name is the
    group heading, and the well is the box itself, so no box sits inside
-   a box (LaBroi's pick, 2026-11-11). Still a .row to search and jumps. */
+   a box (LB's pick, 2026-11-11). Still a .row to search and jumps. */
 .group-row,
 .sec .group-row {
   display: block;
@@ -3769,7 +3769,7 @@ textarea.well-multiline {
   color: var(--text-dim);
 }
 
-/* The Key rows (US-157, LaBroi's pick 2026-11-09): the controls set in
+/* The Key rows (US-157, LB's pick 2026-11-09): the controls set in
    under the label on a thin line, the key field growing, the buttons on
    the right edge, and the test's answer under them. */
 .sec .row-block.row-indent .row-control {
@@ -3794,7 +3794,7 @@ textarea.well-multiline {
 }
 
 /* Test, the optional action (US-157): fog glass at 30% so it stands
-   apart from the other buttons (LaBroi, 2026-11-09), set a little
+   apart from the other buttons (LB, 2026-11-09), set a little
    further off, with a sheen only while a test runs. */
 .btn.btn-test {
   margin-left: 8px;
@@ -4572,7 +4572,7 @@ textarea.well-multiline {
   width: min(440px, 100%);
 }
 
-/* Glass over your desktop (US-150; LaBroi's round 3 picks 2026-11-08,
+/* Glass over your desktop (US-150; LB's round 3 picks 2026-11-08,
    wells as darker glass 2026-11-11, round 2 on 2026-11-12). Main picks
    the look and the page wears it on <html data-look>: glass where the
    system shows the desktop through the window, solid with a gold glow
@@ -4744,14 +4744,14 @@ html[data-look] :is(.ask-first, .btn.btn-test) {
 }
 
 /* A group's well is a darker pane of the same glass, never a solid hole
-   (LaBroi's pick, board 12 option 2). Controls stay solid and clean. */
+   (LB's pick, board 12 option 2). Controls stay solid and clean. */
 html[data-look] :is(.well, .group-rows) {
   background: var(--glass-well);
   border-color: var(--glass-well-edge);
 }
 
 /* Gold by role: 1 strong gold card per page, for what is yours right
-   now (US-156, LaBroi's picks of 2026-11-14). Home: time back. Analytics:
+   now (US-156, LB's picks of 2026-11-14). Home: time back. Analytics:
    this month. Journey: the belt you hold. Settings: the setup running
    now. Wrap-up has none; its painting is the hero. Text on gold is cream;
    the card's title wears an ink tag (US-173, below). */
@@ -4793,7 +4793,7 @@ html[data-look] .history {
    the same day the sidebar's gold line is on, and Today while you are
    above the days (homeMark). The band is painted behind the header's
    words and changes nothing about its box, so the gold can move from
-   date to date without a single pixel of the list moving (LaBroi,
+   date to date without a single pixel of the list moving (LB,
    2026-11-14). It sits 4 px inside the header's top and bottom and
    reaches 8 px past the column on each side, into the card's padding. */
 html[data-look] .day-head-on {

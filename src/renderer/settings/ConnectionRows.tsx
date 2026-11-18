@@ -72,14 +72,14 @@ const strip = (u: string): string => u.replace(/\/$/, '')
 
 /** A connection after picking a preset: its address and its suggested
  *  model, or no model at all. A model id left over from another
- *  provider would fail every call (LaBroi, 2026-11-08, US-152). */
+ *  provider would fail every call (LB, 2026-11-08, US-152). */
 export function presetConnection<T extends ConnectionValue>(preset: CatalogProvider, value: T): T {
   return { ...value, baseUrl: preset.llmBaseUrl ?? preset.baseUrl, llmModel: preset.llmModels[0]?.id ?? '' }
 }
 
 /** How a test result reads: green when it worked, red when it failed,
  *  and a plain note when the provider answered but does not list a model.
- *  That last one is a soft warning, not an error (LaBroi, 2026-11-08): it
+ *  That last one is a soft warning, not an error (LB, 2026-11-08): it
  *  is not critical, least of all for a model the setup is not using. */
 export type VerdictTone = 'ok' | 'warn' | 'bad'
 export const VERDICT_CLASS: Record<VerdictTone, string> = {

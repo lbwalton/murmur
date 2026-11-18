@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (119/171 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (121/177 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -121,6 +121,8 @@
 - [x] **US-164** Shortcuts: every key combo in 1 place
 - [x] **US-165** Shortcuts: a way back from each shortcut's own row
 - [x] **US-166** Icons on a dictation's row, and a gold label for your dictations
+- [x] **US-171** The repo never names its owner
+- [x] **US-172** Every checkout link fills in FOUNDERS while the founders window is open
 - [x] **US-173** Titles on gold cards wear an ink tag
 - [x] **US-177** Your level reads like your other numbers
 
@@ -137,6 +139,8 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-099** Deleting asks first, in red
 - [ ] **US-109** Work networks that inspect secure traffic: every request rides Chromium's network stack
 - [ ] **US-145** Hide words
+- [ ] **US-167** Every website purchase in the founders window makes a founding member, and the privacy page names purchase emails
+- [ ] **US-168** The website never names the founder
 
 ## To do
 
@@ -180,6 +184,8 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-150** Glass over your desktop
 - [ ] **US-151** Look: themes, glass levels and motion
 - [ ] **US-159** Pro: color the fog
+- [ ] **US-169** The website counts download clicks, never who
+- [ ] **US-170** The business model is written down, and the license is stated right
 - [ ] **US-174** 5 belt themes
 - [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
 - [ ] **US-176** Day and night: a theme that follows your clock

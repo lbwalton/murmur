@@ -1,14 +1,33 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: GPL-3.0-only
 // Local preview of site/dist with the same headers Cloudflare Pages
-// sends (headers.js) and the same short addresses (redirects.js), on
-// the port claimed for it in the port registry.
-// Static files only, no dependencies; for checking, never for hosting.
+// sends (headers.js), the same short addresses (redirects.js), and the
+// download counter's function (download.js), on the port claimed for it
+// in the port registry. Counts go to this terminal, never to Cloudflare.
+// No dependencies; for checking, never for hosting.
 const { createServer } = require('node:http')
 const { createReadStream, existsSync, statSync } = require('node:fs')
 const { extname, join, normalize, sep } = require('node:path')
 const { HEADERS } = require('./headers')
 const { REDIRECTS } = require('./redirects')
+const { handleDownload, parseKey } = require('./download')
+
+// Stands in for the KV namespace the live site counts into.
+const LOCAL_COUNTS = {
+  put(key) {
+    const { day, platform, ref } = parseKey(key)
+    console.log(`site: counted a ${platform} download on ${day}${ref ? ` from ref ${ref}` : ''} (local preview only)`)
+  }
+}
+
+/** /download/... through the counter, as Pages runs it. */
+async function download(req, res, port) {
+  // The address the preview was opened at, so a same-site Referer matches.
+  const request = new Request(new URL(req.url, `http://${req.headers.host || `localhost:${port}`}`), { method: req.method, headers: req.headers })
+  const response = handleDownload(request, { DOWNLOADS: LOCAL_COUNTS })
+  const body = req.method === 'HEAD' ? '' : await response.text()
+  res.writeHead(response.status, Object.fromEntries(response.headers)).end(body)
+}
 
 const root = join(__dirname, 'dist')
 const port = Number(process.env.PORT || 4870)
@@ -31,6 +50,10 @@ createServer((req, res) => {
     path = decodeURIComponent(url.pathname)
   } catch {
     res.writeHead(400).end('bad path')
+    return
+  }
+  if (path === '/download' || path.startsWith('/download/')) {
+    download(req, res, port).catch(() => res.writeHead(500).end())
     return
   }
   const redirect = REDIRECTS.find(([from]) => from === path)

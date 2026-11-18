@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Where a control went (LaBroi, 2026-11-12): when the sidebar is hidden,
+// Where a control went (LB, 2026-11-12): when the sidebar is hidden,
 // Hide words moves beside Home's title, and 1 gold brush loop is drawn
 // around it there, then lifts. An open loop, like the mark. Reduced
 // motion gets the finished loop, still, for the same moment.

@@ -3,7 +3,7 @@
 // top of the page, or the one just clicked. Home marks it twice with
 // the same gold: the sidebar's line, and that day's header in your
 // dictations. So the gold follows you from date to date in both
-// (LaBroi, 2026-11-14: the band on Today's header never moved, which is
+// (LB, 2026-11-14: the band on Today's header never moved, which is
 // what "the gold line does not follow the date" meant all along). It
 // lives here, above the sidebar, so the header keeps following while
 // the sidebar is hidden. A date is reached 3 ways, and the gold goes
@@ -20,7 +20,7 @@ export const OLDER = 'older'
  *  the mark. A clicked day lands 16 px under the top (the box's 8 px
  *  of scroll padding and the day's own 8), and a folded day is about
  *  50 px tall, so the line sits between the day at the top and
- *  the next one: the gold is always on the day at the top (LaBroi,
+ *  the next one: the gold is always on the day at the top (LB,
  *  2026-11-12: at 84 px it ran a day or 2 ahead of folded days). */
 export const MARK_LINE = 28
 

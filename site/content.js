@@ -7,25 +7,34 @@
 // address: content(siteUrl) builds everything for one.
 
 const REPO = 'https://github.com/lbwalton/murmur'
+// The release files the download buttons forward to (US-169).
+const { TARGETS } = require('./download')
 // The Pro price lives in shared/pro.json, which the app's Get Pro button
 // reads too, so the app and the site never disagree (US-107).
 const PRO = require('../shared/pro.json')
 
-// The founders window (LaBroi, 2026-10-24): through December 31, 2026,
+// The founders window (LB, 2026-10-24): through December 31, 2026,
 // murmur Pro is $39 on the website with the Stripe code FOUNDERS, which
 // the checkout link fills in; then it is $49. Website only: the App Store
 // price stays $49. A build made after the window drops every founders
 // line, so the site is redeployed on January 1. It closes at midnight
-// Pacific time, the end of December 31 where LaBroi is.
-const FOUNDERS = { price: 39, code: 'FOUNDERS', ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse('2027-01-01T08:00:00Z') }
+// Pacific time, the end of December 31 where LB is.
+// Decided 2026-11-15: everyone who buys Pro on the website before it
+// closes is a founding member, with or without the code, and the 10%
+// covers every future paid product the company makes.
+// The code and the moment it closes live in shared/pro.json, which the
+// app's Get Pro buttons read too (US-172).
+const FOUNDERS = { price: 39, code: PRO.founders.code, ends: 'December 31, 2026', endsOn: '2026-12-31', closes: Date.parse(PRO.founders.closes) }
 
 function content(site, { supportEmail = '', now = Date.now() } = {}) {
   const links = {
     site,
     repo: REPO,
-    // US-063: permanent names that always serve the newest release.
-    mac: `${REPO}/releases/latest/download/murmur-mac.dmg`,
-    windows: `${REPO}/releases/latest/download/murmur-windows.exe`,
+    // US-063: permanent names that always serve the newest release. The
+    // buttons go through the counter at /download/<platform> instead
+    // (US-169); structured data and llms.txt name the files themselves.
+    mac: TARGETS.mac,
+    windows: TARGETS.windows,
     releases: `${REPO}/releases`,
     issues: `${REPO}/issues`,
     docs: `${site}/docs/`,
@@ -41,12 +50,17 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
   // Verified 2026-09-26: the macOS 13 and Windows 10 minimums are Electron
   // 44's (electronjs.org breaking changes; the electron/electron README's
   // platform support), and murmur Pro is $49 on the live Stripe checkout.
+  const foundersOpen = now < FOUNDERS.closes
+  const checkout = foundersOpen ? `${PRO.buyUrl}?prefilled_promo_code=${FOUNDERS.code}` : PRO.buyUrl
   const facts = {
     macos: 'macOS 13 Ventura or later',
     windows: 'Windows 10 or later',
     proPrice: PRO.price,
     // null once the window closes, so nothing says it any more.
-    founders: now < FOUNDERS.closes ? { ...FOUNDERS, buy: `${PRO.buyUrl}?prefilled_promo_code=${FOUNDERS.code}` } : null
+    founders: foundersOpen ? { ...FOUNDERS, buy: checkout } : null,
+    // Where every checkout link points (US-172): the code filled in while
+    // the window is open, the plain Payment Link after.
+    checkout
   }
 
   const title = 'murmur: free, open source dictation app for Mac and Windows'
@@ -71,7 +85,7 @@ function content(site, { supportEmail = '', now = Date.now() } = {}) {
         '.',
         ...(facts.founders
           ? [
-              ` Through ${facts.founders.ends}, Pro is $${facts.founders.price} with the code ${facts.founders.code}, and everyone who buys at that price is a founding member, with 10% off every future paid product.`
+              ` Through ${facts.founders.ends}, Pro is $${facts.founders.price} with the code ${facts.founders.code}. Everyone who buys Pro on the website by then is a founding member, with or without the code, and keeps 10% off every future paid product we make.`
             ]
           : [])
       ]
@@ -164,19 +178,22 @@ const ask = (links, supportEmail) => (supportEmail ? { text: supportEmail, href:
 // keyboard no networking API (scripts/lib/keyboard-network.test.js), the
 // desktop main process only the provider, GitHub's releases (src/main/
 // updater.ts), and the provider list on GitHub (src/main/catalog.ts); the
-// site's own policy allows nothing but its own files (site/headers.js).
+// site's own policy allows nothing but its own files (site/headers.js),
+// and its download counter keeps only the day, the platform, and the ref,
+// and cookies only a browser that opens /download/me (site/download.js,
+// US-169).
 function privacy(links, supportEmail) {
   return {
     title: 'Privacy: murmur collects nothing',
-    description: 'murmur has no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
+    description: 'The murmur apps have no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-08',
+    updated: '2026-11-18',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
       ['Your rights.', ['You can see, correct, and delete what Eze Media LLC holds about you. Nothing is sold or shared.']],
-      ['Cookies.', ['The site sets none, so it shows no cookie banner.']]
+      ['Cookies.', ['Visitors get none, so the site shows no cookie banner. The only cookie is 1 we set on our own browsers, so our own downloads are not counted.']]
     ],
     items: [
       {
@@ -213,7 +230,9 @@ function privacy(links, supportEmail) {
           [
             'Buying murmur Pro.',
             [
-              "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server."
+              "On iPhone, Apple handles the purchase and murmur reads the App Store's record of it on the phone. On Mac and Windows, Stripe handles the payment in your browser, and Eze Media LLC gets your email address and order from Stripe to send your license key, which murmur then checks offline, with no licensing server. Eze Media LLC may also email you about your purchase and any founding member perks, like a discount code when a new product launches. Its emails, your license key included, go through Resend, an email delivery service. To stop the purchase and perk emails, reply to one or write to ",
+              ask(links, supportEmail),
+              '.'
             ]
           ],
           ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address. Report this take shows you the whole email first, in your own mail app, and you can change or take out anything before you send it.']]
@@ -261,7 +280,7 @@ function privacy(links, supportEmail) {
           [
             'Eze Media LLC.',
             [
-              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It deletes them when you ask, unless the law requires keeping them. Write to ',
+              'It keeps only what a purchase or an email gives it: for a Mac or Windows purchase, your email address, your order, and the license key it sent; for help, your email. It deletes them when you ask, unless the law requires keeping them. Its emails go through Resend, and the purchase and perk emails stop when you ask. Write to ',
               ask(links, supportEmail),
               '.'
             ]
@@ -271,7 +290,7 @@ function privacy(links, supportEmail) {
       {
         q: 'Does this website track me?',
         a: [
-          'No. murmurapp.app has no analytics, no cookies of its own, and no scripts but its own. Cloudflare hosts it and handles each request as any web host does.'
+          'No. murmurapp.app counts clicks on its download buttons: how many, on which day, for Mac or Windows, and which link sent them (a tag like ?ref=reddit). It never records who: no IP address, no browser details, and no cookies on visitors. There is no analytics service and no script but its own. The only cookie is 1 we set on our own browsers, so our own downloads are left out. Cloudflare hosts the site and handles each request as any web host does.'
         ]
       },
       {
@@ -285,14 +304,14 @@ function privacy(links, supportEmail) {
 // The 1 page to send a security reviewer (US-124). It says what murmur
 // lacks as plainly as what it has. Claims were checked against the code
 // on the day in updated: src/main/updater.ts, src/main/license.ts,
-// src/renderer/audio/recorder.ts, and site/headers.js.
+// src/renderer/audio/recorder.ts, site/headers.js, and site/download.js.
 function security(links, supportEmail) {
   return {
     title: 'Security: how murmur handles your data',
     description: 'For security reviewers: what leaves the device, who processes it, how keys and updates are protected, what is signed, what murmur does not have, and how to report a problem.',
     h1: 'Security at murmur.',
-    lede: 'murmur has no server and no accounts, so there is no murmur database to breach. This page answers what a security review usually asks, including what murmur does not have.',
-    updated: '2026-11-07',
+    lede: 'The murmur apps have no server and no accounts, so there is no database of people to breach. This page answers what a security review usually asks, including what murmur does not have.',
+    updated: '2026-11-15',
     items: [
       {
         q: 'What leaves the device, and where does it go?',
@@ -367,7 +386,7 @@ function security(links, supportEmail) {
       {
         q: 'How is this website protected?',
         a: [
-          'It is static, with no cookies, no analytics, and no scripts but its own, under a strict content security policy. Checked 2026-11-05: A+ from Mozilla Observatory, Qualys SSL Labs, and securityheaders.com. A weekly check watches the live site.'
+          'It is static apart from the download links, which count each click (the day, Mac or Windows, and which link sent it, never who) and forward to the file on GitHub. Visitors get no cookies, and there is no analytics service and no script but its own, under a strict content security policy. Checked 2026-11-05: A+ from Mozilla Observatory, Qualys SSL Labs, and securityheaders.com. A weekly check watches the live site.'
         ]
       },
       {

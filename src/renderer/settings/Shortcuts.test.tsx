@@ -138,6 +138,6 @@ describe('Shortcuts: every key combo in 1 place (US-164)', () => {
 
   it('names no one and keeps murmur lowercase', () => {
     const html = draw(base)
-    expect(html).not.toMatch(/LaBroi|Walton|\bLB\b|Murmur/)
+    expect(html).not.toMatch(/La[B]roi|Wal[t]on|\bLB\b|Murmur/)
   })
 })

@@ -4,8 +4,8 @@ import { applyExpansions } from './expansions'
 
 const entries = [
   { trigger: 'insert my email', text: 'lb@example.com' },
-  { trigger: 'sign off', text: 'Best,\nLaBroi' },
-  { trigger: 'sign off formal', text: 'Sincerely,\nLaBroi Walton' }
+  { trigger: 'sign off', text: 'Best,\nLB' },
+  { trigger: 'sign off formal', text: 'Sincerely,\nLB' }
 ]
 
 describe('applyExpansions', () => {
@@ -18,12 +18,12 @@ describe('applyExpansions', () => {
   })
 
   it('longest trigger wins at the same position', () => {
-    expect(applyExpansions('Sign off formal', entries)).toBe('Sincerely,\nLaBroi Walton')
+    expect(applyExpansions('Sign off formal', entries)).toBe('Sincerely,\nLB')
   })
 
   it('expands multiple positions independently', () => {
     expect(applyExpansions('sign off and insert my email', entries)).toBe(
-      'Best,\nLaBroi and lb@example.com'
+      'Best,\nLB and lb@example.com'
     )
   })
 

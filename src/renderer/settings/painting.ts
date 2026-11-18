@@ -8,7 +8,7 @@
 // how many stalks and where, the moon's place, the ridgelines. Higher
 // tiers paint each gesture richer: washes under the big shapes from blue
 // belt, splatter on the accents from purple, a second motif from brown,
-// and the heaviest washes and splatter from black (LaBroi asked for
+// and the heaviest washes and splatter from black (LB asked for
 // heavier washes and splatter at the higher belts, 2026-10-08). Levels
 // add a bird or two. A change to a generator repaints the past too, since
 // a day keeps only its seed. Drawn only by code: landscapes, plants, and
@@ -413,7 +413,7 @@ function settled(
 }
 
 /** Past its size, a finished painting keeps growing, up to this many
- *  more strokes: every take still adds something (LaBroi, 2026-10-09). */
+ *  more strokes: every take still adds something (LB, 2026-10-09). */
 export const MAX_EXTRA = 60
 
 /** What the painting is called so far: the subject stays a surprise

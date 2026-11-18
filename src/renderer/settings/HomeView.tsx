@@ -247,7 +247,7 @@ function LastNoteRow(props: { hide: boolean }): React.JSX.Element | null {
         </button>
         {/* A link, not a second button: open does the whole thing, show in
             Finder only gets you partway, and the 2 must not read as the same
-            action (LaBroi's pick D, board 18, 2026-11-14). */}
+            action (LB's pick D, board 18, 2026-11-14). */}
         <button className="link-btn last-note-reveal" onClick={() => void act('reveal')}>
           {reveal.charAt(0).toLowerCase() + reveal.slice(1)}
         </button>
@@ -425,7 +425,7 @@ export function retriedDictationMessage(pasteLastBinding: string, pasteArmed: bo
  * keep, takes whose words reached no app (US-137). Retry runs the
  * saved audio through the normal pipeline with today's settings; the
  * words land in the log, where paste-last finds a dictation, and the
- * clipboard is left alone (LaBroi, 2026-11-01). Discard asks once, then deletes the audio.
+ * clipboard is left alone (LB, 2026-11-01). Discard asks once, then deletes the audio.
  * Discard all (US-096) asks in place, with the count, before deleting:
  * the question counts the takes listed when it opened, and only those
  * are deleted, so a take that fails while it is open is kept. Keep them
@@ -695,7 +695,7 @@ export function HomeHistory(props: {
   return (
     <section className="history" aria-labelledby="home-history-title">
       <div className="history-head">
-        {/* A gold label, like every other card on Home (LaBroi, 2026-11-12). */}
+        {/* A gold label, like every other card on Home (LB, 2026-11-12). */}
         <h2 id="home-history-title" className="micro-label">
           your dictations
         </h2>
