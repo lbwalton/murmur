@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (116/166 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (117/166 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -111,6 +111,7 @@
 - [x] **US-153** Build tool security alert, November: minimatch
 - [x] **US-154** Provider and keys, rebuilt around profiles
 - [x] **US-155** Every Settings section grouped, with rows in a well
+- [x] **US-156** The look on every page
 - [x] **US-157** Key rows, Test, asking first, and renaming profiles
 - [x] **US-158** Every model the provider offers, in the Model list
 - [x] **US-160** Profiles stay small: the card in use, then 1 row of names
@@ -176,5 +177,4 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-146** Cleanup with your ChatGPT plan
 - [ ] **US-150** Glass over your desktop
 - [ ] **US-151** Look settings for Pro
-- [ ] **US-156** The look on every page
 - [ ] **US-159** Pro: color the fog
