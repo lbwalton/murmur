@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (118/171 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (119/171 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -122,6 +122,7 @@
 - [x] **US-165** Shortcuts: a way back from each shortcut's own row
 - [x] **US-166** Icons on a dictation's row, and a gold label for your dictations
 - [x] **US-173** Titles on gold cards wear an ink tag
+- [x] **US-177** Your level reads like your other numbers
 
 ## Built, awaiting live verification
 
@@ -182,4 +183,3 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-174** 5 belt themes
 - [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
 - [ ] **US-176** Day and night: a theme that follows your clock
-- [ ] **US-177** Your level reads like your other numbers

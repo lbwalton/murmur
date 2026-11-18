@@ -2797,9 +2797,9 @@
         "Tests pin the markup and the style",
         "Live check on LB's Mac: Journey on a dark and a bright wallpaper"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Added and built 2026-11-18 from his pick A (options A a number, B a real box with a shadow, C a gold ring like the PRO mark, D bolder with no box, each on the real Journey card over a dark and a bright desktop). The share card still prints lvl. N; it was not part of the ask. The number is 22 px, as on the preview he picked, a step under the 24 px Analytics stats because it sits beside the belt."
+      "notes": "Added and built 2026-11-18 from his pick A (options A a number, B a real box with a shadow, C a gold ring like the PRO mark, D bolder with no box, each on the real Journey card over a dark and a bright desktop). The share card still prints lvl. N; it was not part of the ask. The number is 22 px, as on the preview he picked, a step under the 24 px Analytics stats because it sits beside the belt. Passed live 2026-11-18 on the notarized bd30edd test build (LB: passes)."
     }
   ]
 }

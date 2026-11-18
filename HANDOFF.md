@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-177 Your level reads like your other numbers (on the bd30edd test build, installed 2026-11-18). (1) Open murmur and click journey. (2) On the gold card, beside your belt: a big number with the word level in small letters beside it, a dotted line under the word, and no box. (3) Rest the pointer on it for a second: the note about levels opens; move away and it closes. (4) Look once over a dark wallpaper and once over a bright one: it reads easily. Tell Claude what you saw.
+- [x] US-177 Your level reads like your other numbers: passed live 2026-11-18 on the bd30edd test build (LB: passes).
 - [x] US-173 Titles on gold cards wear an ink tag: passed live 2026-11-18 on the ceba0f7 test build (LB: everything passes).
 - [ ] US-150 Glass over your desktop. Every Mac step passed (2026-11-12, the live switch to solid on the fa1abc9 test build). Left: the work PC check, after glass on Windows is turned on.
 - [x] US-147 Home with a sidebar: passed live 2026-11-14 on the cc50824 test build (LaBroi: everything passes).
