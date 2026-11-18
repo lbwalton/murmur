@@ -310,6 +310,11 @@ describe('where the look is applied', () => {
     }
     expect(look).toMatch(/\.loop-tile-wrap\s*\) \{\s*--text-dim: var\(--text-dim-surface\);/)
     expect(look).toContain("html[data-look='glass'] body::before {\n  background: var(--glass-window);")
+    // A painted theme (US-151): its own night fills the window until the
+    // painting's first frame lands, outranking the glass's see-through
+    // body, and its ink sheet lies over the painting.
+    expect(look).toContain("html[data-look][data-ground='scene'] body {\n  background: var(--scene-sky-mid);")
+    expect(look).toContain("html[data-look][data-ground='scene'] body::before {\n  background: var(--scene-sheet);")
   })
 
   it('is 1 glass: the top bar, the sidebar and your dictations are the card pane, with no faint gold wash', () => {

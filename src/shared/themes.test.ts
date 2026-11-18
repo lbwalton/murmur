@@ -37,6 +37,8 @@ describe('the themes list (shared/themes.json, US-151)', () => {
       const from = tokensCss.indexOf(`:root[data-theme='${theme.id}']`)
       const body = tokensCss.slice(from, tokensCss.indexOf('\n}\n', from))
       expect(body, theme.id).toMatch(/--scene-sheet: rgba\(/)
+      // The window's ground until the painting's first frame (styles.css).
+      expect(body, theme.id).toMatch(/--scene-sky-mid: #/)
       expect(body, theme.id).toMatch(/--scene-bright: #/)
       expect(theme.motion, theme.id).toBeTruthy()
     }

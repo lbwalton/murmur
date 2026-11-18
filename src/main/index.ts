@@ -206,6 +206,23 @@ function applyLook(win: BrowserWindow, look: WindowLook): void {
   win.webContents.send('look:changed', look)
 }
 
+/** The settings window's address: its look, and the theme, glass, and
+ *  ground it wears (US-151), by the shared wear rules. Anything that
+ *  fails leaves the theme out, and the page wears night studio. */
+async function addressFor(look: WindowLook): Promise<Record<string, string>> {
+  try {
+    const { wornLook } = await import('../shared/themes')
+    const { cosmeticsReport } = await import('./history')
+    const { readLicenseStatus } = await import('./license')
+    const cosmetics = getSettings().cosmetics
+    const earned = (await cosmeticsReport()).uiThemes.filter((t) => t.unlocked).map((t) => t.id)
+    const worn = wornLook(cosmetics, earned, readLicenseStatus().pro)
+    return { look, theme: worn.theme, glass: worn.glass, ground: worn.scene ? 'scene' : 'desktop' }
+  } catch {
+    return { look }
+  }
+}
+
 function createSettingsWindow(): BrowserWindow {
   shownLook = currentLook()
   const win = new BrowserWindow({
@@ -259,17 +276,20 @@ function createSettingsWindow(): BrowserWindow {
     }
   })
 
-  // The theme rides along too (US-151), so the first paint wears it; the
-  // page checks it against the belt and Pro once those load.
-  const { uiTheme, glass, ground } = getSettings().cosmetics
-  const query = { look: shownLook, theme: uiTheme, glass, ground }
-  const devServer = devRendererUrl()
-  if (devServer) {
-    void win.loadURL(`${devServer}/settings/index.html?${new URLSearchParams(query).toString()}`)
-  } else {
-    // The look rides in the address so the first paint already has it.
-    void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query })
-  }
+  // What the window wears rides along too (US-151), worked out here from
+  // the belt and the license with the page's own rules, so the first paint
+  // is already right (a theme locked again after Clear all, glass without
+  // Pro). The page checks again once it has both.
+  void addressFor(shownLook).then((query) => {
+    if (win.isDestroyed()) return
+    const devServer = devRendererUrl()
+    if (devServer) {
+      void win.loadURL(`${devServer}/settings/index.html?${new URLSearchParams(query).toString()}`)
+    } else {
+      // The look rides in the address so the first paint already has it.
+      void win.loadFile(join(__dirname, '../renderer/settings/index.html'), { query })
+    }
+  })
   return win
 }
 
@@ -889,13 +909,20 @@ app.whenReady().then(async () => {
     // The window's theme (US-151): a fresh profile wears night studio from
     // its first paint (the theme rides in the address), with Clear glass
     // and no painting, and the cosmetics report lists themes.json's themes.
+    // Polled like lookDefaults, so it holds wherever it runs in the order.
     const win = settingsWindow
     if (!win || win.isDestroyed()) return false
-    const worn = JSON.parse(
-      await win.webContents.executeJavaScript(
-        'JSON.stringify({ theme: document.documentElement.dataset.theme, glass: document.documentElement.dataset.glass ?? null, ground: document.documentElement.dataset.ground ?? null, address: new URLSearchParams(location.search).get("theme") })'
+    const read = async (): Promise<{ theme?: string; glass: string | null; ground: string | null; address: string | null }> =>
+      JSON.parse(
+        await win.webContents.executeJavaScript(
+          'JSON.stringify({ theme: document.documentElement.dataset.theme, glass: document.documentElement.dataset.glass ?? null, ground: document.documentElement.dataset.ground ?? null, address: new URLSearchParams(location.search).get("theme") })'
+        )
       )
-    ) as { theme?: string; glass: string | null; ground: string | null; address: string | null }
+    let worn = await read()
+    for (let i = 0; i < 30 && worn.theme !== 'ember'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      worn = await read()
+    }
     const { THEMES } = await import('../shared/themes')
     const listed = THEMES.length >= 3 && THEMES[0].id === 'ember' && THEMES.some((t) => t.scene)
     return worn.theme === 'ember' && worn.glass === null && worn.ground === null && worn.address === 'ember' && listed

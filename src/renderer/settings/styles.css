@@ -212,6 +212,18 @@ body {
   color: var(--brand);
 }
 
+/* A theme's painting behind the whole window (US-151). The canvas is
+   placed in <body> by ScenePainting.tsx, beneath the page's ink sheet. */
+.scene-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
 /* The window's theme as tiles (US-151), built like the waveform tiles:
    each previews its theme in that theme's own colors (the tile sits
    under data-theme-preview), a painted theme with a still frame. */
@@ -4766,15 +4778,12 @@ html[data-look='solid'] body::before {
 /* A theme's painting (US-151) fills the window where the desktop or the
    glow would show, under the theme's own ink sheet, so window text keeps
    4.5 to 1 over the painting's brightest color (look.test.ts). The
-   canvas sits in <body> (ScenePainting.tsx), under this sheet. */
-html[data-look] .scene-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
+   canvas sits in <body> (ScenePainting.tsx), under this sheet. Until its
+   first frame lands (the first paint, a switch to a painted theme), the
+   window is the painting's own night, never the bare desktop under the
+   lighter sheet. */
+html[data-look][data-ground='scene'] body {
+  background: var(--scene-sky-mid);
 }
 
 html[data-look][data-ground='scene'] body::before {

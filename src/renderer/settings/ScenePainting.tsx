@@ -11,6 +11,10 @@ import { type Motion, motionSpeed, sceneMoves } from '../../shared/themes'
 import { canvasDpr } from '../brush'
 import { THEME_SCENES, coverFit, readPalette, sceneRandom } from './scenes'
 
+/** The most frames a second a painting draws: its motion is slow, and a
+ *  120 Hz screen (or Windows' software drawing) need not pay for more. */
+export const SCENE_FPS = 30
+
 export function ScenePainting(props: {
   scene: string
   /** The theme whose colors it paints with; a change re-reads them. */
@@ -30,45 +34,82 @@ export function ScenePainting(props: {
     if (!canvas || !painting || !ctx) return
     if (!states.current.has(props.scene)) states.current.set(props.scene, painting.init(sceneRandom(props.scene)))
     const state = states.current.get(props.scene) as never
+    // What never moves is drawn once per size, scale and palette into a
+    // layer kept here; each frame copies it, then draws what moves.
+    const still = document.createElement('canvas')
+    const stillCtx = still.getContext('2d')
     let palette = readPalette(canvas, painting.colors)
     let box = { w: 0, h: 0, dpr: 1 }
+    const fitTo = (target: CanvasRenderingContext2D): void => {
+      const fit = coverFit(box.w, box.h)
+      target.setTransform(box.dpr * fit.scale, 0, 0, box.dpr * fit.scale, box.dpr * fit.x, box.dpr * fit.y)
+    }
+    const paintStill = (): void => {
+      if (!stillCtx) return
+      still.width = canvas.width
+      still.height = canvas.height
+      fitTo(stillCtx)
+      painting.drawStill(stillCtx, state, palette)
+    }
     const size = (): void => {
       const dpr = canvasDpr()
       box = { w: canvas.clientWidth, h: canvas.clientHeight, dpr }
       canvas.width = Math.max(1, Math.round(box.w * dpr))
       canvas.height = Math.max(1, Math.round(box.h * dpr))
+      paintStill()
     }
     const frame = (dt: number): void => {
       if (box.w === 0 || box.h === 0) return
-      const fit = coverFit(box.w, box.h)
-      ctx.setTransform(box.dpr * fit.scale, 0, 0, box.dpr * fit.scale, box.dpr * fit.x, box.dpr * fit.y)
-      painting.draw(ctx, state, palette, clock.current * 1000, dt)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(still, 0, 0)
+      fitTo(ctx)
+      painting.drawMoving(ctx, state, palette, clock.current * 1000, dt)
     }
     let raf = 0
     let last = 0
+    let drawn = 0
     const tick = (now: number): void => {
       const dt = last ? Math.min(0.05, (now - last) / 1000) * props.speed : 0
       last = now
       clock.current += dt
-      frame(dt)
+      if (!drawn || now - drawn >= 1000 / SCENE_FPS - 1) {
+        drawn = now
+        frame(dt)
+      }
       if (props.moving) raf = requestAnimationFrame(tick)
     }
     // The first frame waits a beat, so the window's theme attributes
     // (set by the page's own effects, which run after this one) are on
     // <html> before the colors are read.
     raf = requestAnimationFrame(() => {
-      size()
       palette = readPalette(canvas, painting.colors)
+      size()
       tick(performance.now())
     })
-    const sized = new ResizeObserver(() => {
+    const resized = (): void => {
       size()
       frame(0)
-    })
+    }
+    const sized = new ResizeObserver(resized)
     sized.observe(canvas)
+    // A move to a screen of another density (or a zoom step) changes the
+    // pixel ratio without changing the canvas's size.
+    let density: MediaQueryList | null = null
+    const watchDensity = (): void => {
+      density?.removeEventListener('change', onDensity)
+      density = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`)
+      density.addEventListener('change', onDensity)
+    }
+    function onDensity(): void {
+      watchDensity()
+      resized()
+    }
+    watchDensity()
     return () => {
       cancelAnimationFrame(raf)
       sized.disconnect()
+      density?.removeEventListener('change', onDensity)
     }
   }, [props.scene, props.theme, props.moving, props.speed])
 

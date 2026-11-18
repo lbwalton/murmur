@@ -32,6 +32,23 @@ interface MoonlitState {
   bolt: Array<[number, number]>
 }
 
+/** The strongest alpha each color is painted at (space.ts, peaks). */
+const PEAKS = {
+  'scene-sky-top': 1,
+  'scene-sky-mid': 1,
+  'scene-sky-low': 1,
+  'scene-star': 0.65,
+  'scene-moon-glow': 0.16,
+  'scene-moon-hi': 1,
+  'scene-moon-lo': 1,
+  'scene-moon-mottle': 0.3,
+  'scene-cloud': 0.9,
+  'scene-hill': 1,
+  'scene-bolt': 0.8,
+  'scene-petal': 0.9,
+  'scene-petal-light': 0.9
+} as const
+
 const MOON_X = 455
 const MOON_Y = 95
 const MOON_R = 78
@@ -47,24 +64,16 @@ function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, c:
 }
 
 export const moonlit: ThemeScene<MoonlitState> = {
-  colors: [
-    'scene-sky-top',
-    'scene-sky-mid',
-    'scene-sky-low',
-    'scene-star',
-    'scene-moon-glow',
-    'scene-moon-hi',
-    'scene-moon-lo',
-    'scene-moon-mottle',
-    'scene-cloud',
-    'scene-hill',
-    'scene-bolt',
-    'scene-petal',
-    'scene-petal-light'
-  ],
+  colors: Object.keys(PEAKS),
+  peaks: PEAKS,
 
   init(r) {
-    const stars = Array.from({ length: 46 }, () => ({ x: r() * SCENE_W, y: r() * 230, r: 0.3 + r() * 0.9, a: 0.2 + r() * 0.45 }))
+    const stars = Array.from({ length: 46 }, () => ({
+      x: r() * SCENE_W,
+      y: r() * 230,
+      r: 0.3 + r() * 0.9,
+      a: 0.2 + r() * (PEAKS['scene-star'] - 0.2)
+    }))
     const petals = Array.from({ length: 26 }, () => ({
       x: r() * SCENE_W,
       y: r() * SCENE_H,
@@ -92,7 +101,7 @@ export const moonlit: ThemeScene<MoonlitState> = {
     return { stars, petals, mottle, bolt }
   },
 
-  draw(ctx, s, p: Palette, tMs) {
+  drawStill(ctx, s, p: Palette) {
     const sky = ctx.createLinearGradient(0, 0, 0, SCENE_H)
     sky.addColorStop(0, rgba(p['scene-sky-top']))
     sky.addColorStop(0.6, rgba(p['scene-sky-mid']))
@@ -107,7 +116,7 @@ export const moonlit: ThemeScene<MoonlitState> = {
       ctx.fill()
     }
 
-    glow(ctx, MOON_X, MOON_Y, 190, p['scene-moon-glow'], 0.16)
+    glow(ctx, MOON_X, MOON_Y, 190, p['scene-moon-glow'], PEAKS['scene-moon-glow'])
     const disc = ctx.createRadialGradient(MOON_X - 15, MOON_Y - 15, 10, MOON_X, MOON_Y, MOON_R)
     disc.addColorStop(0, rgba(p['scene-moon-hi']))
     disc.addColorStop(1, rgba(p['scene-moon-lo']))
@@ -119,7 +128,7 @@ export const moonlit: ThemeScene<MoonlitState> = {
     ctx.beginPath()
     ctx.arc(MOON_X, MOON_Y, MOON_R, 0, Math.PI * 2)
     ctx.clip()
-    for (const m of s.mottle) glow(ctx, m.x, m.y, m.r, p['scene-moon-mottle'], 0.3)
+    for (const m of s.mottle) glow(ctx, m.x, m.y, m.r, p['scene-moon-mottle'], PEAKS['scene-moon-mottle'])
     ctx.restore()
 
     for (const [x, y, rx, ry] of [
@@ -130,7 +139,7 @@ export const moonlit: ThemeScene<MoonlitState> = {
       ctx.save()
       ctx.translate(x, y)
       ctx.scale(1, ry / rx)
-      glow(ctx, 0, 0, rx, p['scene-cloud'], 0.9)
+      glow(ctx, 0, 0, rx, p['scene-cloud'], PEAKS['scene-cloud'])
       ctx.restore()
     }
 
@@ -147,13 +156,15 @@ export const moonlit: ThemeScene<MoonlitState> = {
     ctx.save()
     ctx.strokeStyle = rgba(p['scene-bolt'], 0.5)
     ctx.lineWidth = 1.2
-    ctx.shadowColor = rgba(p['scene-bolt'], 0.8)
+    ctx.shadowColor = rgba(p['scene-bolt'], PEAKS['scene-bolt'])
     ctx.shadowBlur = 8
     ctx.beginPath()
     s.bolt.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
     ctx.stroke()
     ctx.restore()
+  },
 
+  drawMoving(ctx, s, p: Palette, tMs) {
     const sec = tMs / 1000
     for (const petal of s.petals) {
       const y = mod(petal.y + sec * petal.vy, SCENE_H + 20) - 10
@@ -161,7 +172,7 @@ export const moonlit: ThemeScene<MoonlitState> = {
       ctx.save()
       ctx.translate(x, y)
       ctx.rotate(petal.rot + sec * petal.vr)
-      ctx.fillStyle = rgba(petal.light ? p['scene-petal-light'] : p['scene-petal'], 0.9)
+      ctx.fillStyle = rgba(petal.light ? p['scene-petal-light'] : p['scene-petal'], PEAKS['scene-petal'])
       ctx.beginPath()
       ctx.ellipse(0, 0, petal.s, petal.s * 0.55, 0, 0, Math.PI * 2)
       ctx.fill()

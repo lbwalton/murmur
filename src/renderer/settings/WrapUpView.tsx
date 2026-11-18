@@ -60,7 +60,9 @@ function rememberSeen(value: string): void {
 
 function colorsNow(): PaintingColors {
   const c = journeyColors(BELT_HEX)
-  return paintingColors(tokenColor('--panel', [23, 22, 27]), c.rice, c.ember, c.gold)
+  // --pane, not --panel: under a look --panel is a glass pane cut with
+  // relative color, which no canvas parser reads (US-151 review).
+  return paintingColors(tokenColor('--pane', [23, 22, 27]), c.rice, c.ember, c.gold)
 }
 
 /** How far a painting has got: its strokes so far (past its size, the

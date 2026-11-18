@@ -427,6 +427,13 @@ export function App(): React.JSX.Element {
   // for a Pro theme, the license) allows it, else night studio; glass
   // other than Clear needs Pro. Until both are known the saved pick is
   // trusted, as the first paint wore it from the address.
+  // The window's look (glass or solid), for the Glass row: levels only
+  // change anything where the desktop shows through.
+  const [windowLook, setWindowLook] = useState<string | undefined>(() => document.documentElement.dataset.look)
+  useEffect(() => {
+    const off = bridge().onLookChanged((look) => setWindowLook(look))
+    return off
+  }, [])
   const worn = settings
     ? wornLook(
         settings.cosmetics,
@@ -1578,7 +1585,7 @@ export function App(): React.JSX.Element {
               >
                 <ThemeTiles
                   themes={cosmetics?.uiThemes ?? []}
-                  value={settings.cosmetics.uiTheme}
+                  value={worn?.theme ?? settings.cosmetics.uiTheme}
                   pro={license?.pro ?? false}
                   proMark={proMark()}
                   onPick={(uiTheme) => void update({ cosmetics: { ...settings.cosmetics, uiTheme } })}
@@ -1588,9 +1595,9 @@ export function App(): React.JSX.Element {
               {themeById(worn?.theme ?? '')?.scene && (
                 <Row
                   label="Behind the cards"
-                anchor="row-ground"
+                  anchor="row-ground"
                   keywords="ground scene painting desktop glass background"
-                  desc="The theme's painting, or your desktop through the glass in the theme's colors."
+                  desc="The theme's painting, or the plain window in the theme's colors: your desktop through the glass where it shows through, otherwise solid with the gold glow."
                 >
                   <Segmented<Ground>
                     label="Behind the cards"
@@ -1610,15 +1617,17 @@ export function App(): React.JSX.Element {
                 mark={license?.pro ? undefined : proMark()}
                 keywords="glass transparency clear soft clearest see through pro"
                 desc={
-                  license?.pro
-                    ? 'How much the cards let through. Every level keeps your words easy to read.'
-                    : 'murmur Pro: Soft, Clear, or Clearest. Without Pro the glass is Clear.'
+                  !license?.pro
+                    ? 'murmur Pro: Soft, Clear, or Clearest. Without Pro the glass is Clear.'
+                    : windowLook === 'solid'
+                      ? 'Glass levels apply when your desktop shows through the window. Here the window is solid, so the cards keep their own ink.'
+                      : 'How much the cards let through. Every level keeps your words easy to read.'
                 }
               >
                 <Segmented<GlassLevel>
                   label="Glass"
                   value={license?.pro ? settings.cosmetics.glass : 'clear'}
-                  disabled={!license?.pro}
+                  disabled={!license?.pro || windowLook === 'solid'}
                   options={[
                     { value: 'soft', label: 'Soft' },
                     { value: 'clear', label: 'Clear' },
@@ -1628,24 +1637,26 @@ export function App(): React.JSX.Element {
                 />
               </Row>
 
-              <Row
-                label="Motion"
-                anchor="row-motion"
-                keywords="motion animation movement petals still speed"
-                desc="How fast a theme's painting moves. It only moves while murmur is in front, and stays still when your system asks for less motion."
-              >
-                <Segmented<Motion>
+              {themeById(worn?.theme ?? '')?.scene && (
+                <Row
                   label="Motion"
-                  value={settings.cosmetics.motion}
-                  options={[
-                    { value: 'off', label: 'Off' },
-                    { value: 'slow', label: 'Slow' },
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'lively', label: 'Lively' }
-                  ]}
-                  onChange={(motion) => void update({ cosmetics: { ...settings.cosmetics, motion } })}
-                />
-              </Row>
+                  anchor="row-motion"
+                  keywords="motion animation movement petals still speed"
+                  desc="How fast the theme's painting moves. It only moves while murmur is in front, and stays still when your system asks for less motion."
+                >
+                  <Segmented<Motion>
+                    label="Motion"
+                    value={settings.cosmetics.motion}
+                    options={[
+                      { value: 'off', label: 'Off' },
+                      { value: 'slow', label: 'Slow' },
+                      { value: 'normal', label: 'Normal' },
+                      { value: 'lively', label: 'Lively' }
+                    ]}
+                    onChange={(motion) => void update({ cosmetics: { ...settings.cosmetics, motion } })}
+                  />
+                </Row>
+              )}
             </Group>
           </Section>
 

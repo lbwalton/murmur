@@ -359,11 +359,11 @@ The small pill that shows while you dictate keeps its own look in every theme.
 
 ## What is Behind the cards?
 
-For a painted theme like Moonlit, Settings, Look, **Behind the cards** picks what fills the window: **Painting** (the default) shows the theme's painting, and **Desktop** shows your desktop through the glass, as before, in the theme's colors.
+For a painted theme like Moonlit, Settings, Look, **Behind the cards** picks what fills the window: **Painting** (the default) shows the theme's painting, and **Desktop** shows the plain window in the theme's colors. That is your desktop through the glass where the window shows through (on a Mac), and otherwise (on Windows, or with Reduce transparency on) a solid window with a soft gold glow.
 
 ## What do the glass levels do?
 
-Settings, Look, **Glass** sets how much the cards let through: **Soft**, **Clear**, or **Clearest**. The choice is part of murmur Pro; without Pro the glass is Clear. Every level keeps your words easy to read, held to a 4.5 to 1 contrast over even a white page behind the window. That is why Clearest lets the cards show more but never thins the window's own dark sheet.
+Settings, Look, **Glass** sets how much the cards let through: **Soft**, **Clear**, or **Clearest**. The choice is part of murmur Pro; without Pro the glass is Clear. It only changes anything where your desktop shows through the window; where the window is solid (Windows for now, or Reduce transparency on), the row is greyed out and the cards keep their own ink. Every level keeps your words easy to read, held to a 4.5 to 1 contrast over even a white page behind the window. That is why Clearest lets the cards show more but never thins the window's own dark sheet.
 
 ## Can I stop the painting from moving?
 
