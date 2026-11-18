@@ -166,6 +166,8 @@ function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'sol
     ['red text in a well', red, well],
     ['text on time back, its strong corner', t.text, strongFrom],
     ['text on time back, its faint corner', t.text, strongTo],
+    // The title sits in the strong corner, on its ink tag (US-173).
+    ['the title of a gold card, on its ink tag', t.brand, stack(strongFrom, t['tag-ink'])],
     ['the gold header of the day you are on, its strong end', t.text, threadFrom],
     ['the gold header of the day you are on, its faint end', t.text, threadTo],
     ['the to fix badge, on its solid chip', red, stack(t.ink, t['red-wash'])],
@@ -177,7 +179,7 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   const t = tokens()
 
   it('finds the tokens it needs', () => {
-    for (const name of ['ink', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'glow-top', 'glow-mid']) {
+    for (const name of ['ink', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'tag-ink', 'tag-edge', 'glow-top', 'glow-mid']) {
       expect(t[name], name).toBeDefined()
     }
   })
@@ -288,6 +290,13 @@ describe('where the look is applied', () => {
     expect(src('renderer/settings/AnalyticsView.tsx')).toMatch(/<section className="panel panel-strong">\s*<p className="micro-label">this month<\/p>/)
     expect(src('renderer/settings/JourneyView.tsx')).toMatch(/<section className="panel panel-strong">\s*<div className="panel-head">\s*<p className="micro-label">the journey<\/p>/)
     expect(src('renderer/settings/WrapUpView.tsx')).not.toContain('panel-strong')
+    // A gold card's title is brand gold on its ink tag; its links stay cream (US-173).
+    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.micro-label \{[^}]*width: fit-content;[^}]*color: var\(--brand\);[^}]*background: var\(--tag-ink\);[^}]*box-shadow: inset 0 0 0 1px var\(--tag-edge\);/)
+    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.micro-label \{[^}]*border-radius: 6px;/)
+    expect(src('renderer/settings/HomeView.tsx')).toMatch(/<section className="panel home-timeback">\s*<p className="micro-label">back today<\/p>/)
+    expect(src('renderer/settings/ProfileCards.tsx')).toContain('<p className="micro-label running-kicker">running now</p>')
+    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.link-btn \{\s*color: var\(--text\);/)
+    expect(look).not.toMatch(/:is\(\.micro-label, \.link-btn\)/)
     // Settings' gold card is the running now strip (ProfileCards), held by the rule above.
     expect(src('renderer/settings/ProfileCards.tsx')).toContain('<div className="running-strip" id="running-now">')
     for (const page of ['AnalyticsView', 'JourneyView', 'HomeView']) {

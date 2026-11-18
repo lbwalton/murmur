@@ -4739,14 +4739,31 @@ html[data-look] :is(.well, .group-rows) {
 /* Gold by role: 1 strong gold card per page, for what is yours right
    now (US-156, LaBroi's picks of 2026-11-14). Home: time back. Analytics:
    this month. Journey: the belt you hold. Settings: the setup running
-   now. Wrap-up has none; its painting is the hero. Text on gold is cream. */
+   now. Wrap-up has none; its painting is the hero. Text on gold is cream;
+   the card's title wears an ink tag (US-173, below). */
 html[data-look] :is(.home-timeback, .panel-strong, .running-strip) {
   --text-dim: var(--text);
   background: linear-gradient(135deg, var(--tint-strong-from), var(--tint-strong-to)), var(--panel);
 }
 
-html[data-look] :is(.home-timeback, .panel-strong, .running-strip) :is(.micro-label, .link-btn) {
+html[data-look] :is(.home-timeback, .panel-strong, .running-strip) .link-btn {
   color: var(--text);
+}
+
+/* A gold card's title wears a small ink tag in brand gold (US-173, LB's
+   pick B on the Look preview, 2026-11-18). In cream it was the same color
+   as every other word on the card, over the wash's strongest corner, so
+   nothing said it was the title. On the tag it is the 1 dark thing on the
+   card, the same gold as every other card's label, and about 6 to 1 on
+   any wallpaper. The tag's edge lines up with the card's content. */
+html[data-look] :is(.home-timeback, .panel-strong, .running-strip) .micro-label {
+  width: fit-content;
+  padding: 3px 8px 3px 9px;
+  border-radius: 6px;
+  font-weight: 500;
+  color: var(--brand);
+  background: var(--tag-ink);
+  box-shadow: inset 0 0 0 1px var(--tag-edge);
 }
 
 /* Your dictations is a card like the rest. */

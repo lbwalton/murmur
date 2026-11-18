@@ -2419,21 +2419,24 @@
     },
     {
       "id": "US-151",
-      "title": "Look settings for Pro",
-      "description": "Pro owners can change the look themselves in Settings, Look, and it changes every window at once (LaBroi, 2026-11-08). Everyone else gets the US-150 default.",
+      "title": "Look: themes, glass levels and motion",
+      "description": "Settings, Look gets the 3 choices LB settled on the Look preview (rounds 1 and 2, 2026-11-18): a theme, the glass level, and motion. A theme is its colors plus a scene drawn in code behind the cards. Each theme is 1 entry in shared/themes.json and 1 scene module, so new themes are easy to add. Replaces the slider list this story held since 2026-11-08.",
       "acceptance": [
-        "For Pro, Settings, Look has: Start from (Yours, Suggested, Every card, and Flat for today's look); Window (Solid with glow, or Desktop shows through with How much desktop shows); Glow color (Gold, Smoke, Belt) and strength; glass blur, opacity, and edge light; Tint color (Belt, Gold, Rice paper); Which parts get it (Time back, Sidebar and top bar, Last note, Your dictations); and Time back and Everything else strengths",
-        "Without Pro the section shows the default look with a still preview of the controls and the murmur Pro mark, following US-107, and nothing changes on click",
-        "Belt follows the person's current belt color",
-        "Every change applies to every window at once and survives a restart; Start from resets to its preset",
-        "Slider ranges keep the contrast floor from US-150",
-        "The controls use the style from US-149",
-        "Tests cover the presets, saving, the Pro gate, and the contrast floor",
-        "Live check on LaBroi's Mac: set his own look, restart, and see it kept everywhere"
+        "Each theme is 1 entry in shared/themes.json: id, name, how it unlocks (none, a belt, or murmur Pro), its scene, and its motion. Its colors stay in tokens.css as a data-theme block (the single source of color, still checked by check-design.js and read by look.test.ts); themes.json names that block. Night studio and morning mist move into the list and look exactly as they do now",
+        "Settings, Look shows every theme as a tile with a live preview; a locked tile is dimmed and says what unlocks it (its belt, or murmur Pro), like the waveform grid (US-084)",
+        "A scene is drawn in code on a canvas behind the cards, seeded and deterministic like the brush engine; no image files",
+        "A theme with a scene paints it where the desktop would show. Under the theme tiles, Ground offers Scene (the default) or Desktop, which keeps the theme's colors over the glass; it is for everyone, and only the glass level needs Pro",
+        "Glass level for Pro: Soft, Clear (the default) and Clearest from board 15; without Pro it is Clear",
+        "Motion: Off, Slow, Normal (the default, the preview's speeds) and Lively; a scene moves only while its window is showing and murmur is in front, and stands still otherwise; Reduce motion always gets a still, finished scene",
+        "No scene uses signal amber or the error red; amber still means live and red still means an error",
+        "Every text and card pair keeps 4.5 to 1 in every theme and at every glass level, over a white page, a black desktop, the solid glow, and the brightest part of its scene that sits behind cards, in look.test.ts",
+        "The 3 choices apply to every window at once and survive a restart",
+        "Tests cover the themes.json shape, the belt and Pro gates, saving, contrast per theme, and motion off and Reduce motion",
+        "Live check on LB's Mac"
       ],
       "passes": false,
       "needs_human": true,
-      "notes": "Added 2026-11-08 from LaBroi's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Not started."
+      "notes": "Added 2026-11-08 from LB's picks on the Home redesign preview (3 rounds: he picked direction B, controls style C, and the round 3 look). Rewritten 2026-11-18 from his picks on the Look preview: all 5 belt themes stay and each belt unlocks its theme for everyone; Pro gets its own themes on top; motion stays subtle with a control; Day and night is Pro only; Moonlit and morning mist both stay at blue belt. The themes themselves are US-174 to US-176. Not started."
     },
     {
       "id": "US-152",
@@ -2716,6 +2719,71 @@
       "passes": true,
       "needs_human": true,
       "notes": "Built 2026-11-12 from his board 17 picks (C the name beside, the flag, titles C) and his follow-up that the icons carry no box. What you said is gold on my recommendation, which he did not object to: his to change. RowIcons.tsx draws the 3 glyphs and the check (PaintCanvas, the brush engine's stroke, seed 59). The names sit in the row after the icons and are shown with :has() on hover and focus-visible; they give way first when a row is crowded (flex shrink 100, cut short with an ellipsis), and copy is held at the right edge, so nothing moves. Copy's name stays up while it reads copied. 1 live region in the history card says copied. Probed in a scratch window at double size: names show on focus, the flag does not move (same left and right before and after), the check draws, and the shot reads as intended. The waiting card could not be shot (no sample profile has takes waiting), so the shared button width (96 px, the waiting card's 4 buttons only) is unseen until his check. Live check owed. Review gate (9 findings): the shared width moved from a floor on every card button to the waiting card's 4 only, at 96 px (88 left discard all wider, and widened open in last note and the buttons in the discard question); the names moved into the row's flow so they cannot run under copy; the gold bubble is full gold (dimmed to 86 percent it read 4.49 to 1 on a glass card); a second copy redraws its check, runs its full time and is said again; the docs' 2 old mentions of the big title are gone. 1 finding is left for LaBroi: with a short history, the last days cannot scroll up to the top, so they take the gold only when clicked. Live check by LaBroi 2026-11-14 on the 318a74d build: everything for the story passes. He asked whether the last note card's 2 buttons should share 1 width too; that is a design question for him (board 18), not part of this story. On the waiting card's 4 buttons (criterion 7): his profile had 3 takes waiting that day (his screenshot shows Waiting to retry, 3), so the card was on his screen when he passed the story, and the review gate of 2026-11-14 measured retry all, discard all, retry and discard at 96 px each in a static render at 920 and 500 px, in the glass, solid and flat looks (delete audio? grows to 108)."
+    },
+    {
+      "id": "US-173",
+      "title": "Titles on gold cards wear an ink tag",
+      "description": "On a gold card the title was the same cream as every other word on it, in thin 11 px mono over the strongest corner of the gold wash, so it blended in (LB, live check of US-156, 2026-11-18). Contrast was fine; hierarchy was missing. He picked B on the Look preview round 2: the title sits on a small ink tag in brand gold.",
+      "acceptance": [
+        "Under a look, the micro-label on Home's time back, Analytics' this month, Journey's belt card and Settings' running now strip is brand gold on a small ink tag (the theme's ink at 72%, a faint gold edge, 6 px corners), as wide as its words, its edge lined up with the card's content",
+        "Every other word on a gold card stays cream, and links on it stay cream",
+        "look.test.ts holds the title on its tag at 4.5 to 1 or better over a white page, a black desktop and the solid glow, in night studio and mist",
+        "DESIGN.md says a gold card's title wears the tag",
+        "Live check on LB's Mac: the 4 titles pop on a dark and a bright wallpaper"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added and built 2026-11-18 from his pick B (options A gold leaf, B ink tag, C lifted, rendered over the app's real glass layers on a dark and a bright ground). Tokens --tag-ink and --tag-edge in tokens.css (mist has its own --tag-ink). Shot in the solid look with the vault's made-up profile at 920 by 640: Home, Analytics, Journey and Settings each show the tag."
+    },
+    {
+      "id": "US-174",
+      "title": "5 belt themes",
+      "description": "The 5 belt themes from LB's art references, as drawn on the Look preview round 1 (2026-11-18): calm at white belt, heaviest at black, like a painting a day.",
+      "acceptance": [
+        "Rice paper (white belt): tea-stained paper, burnt edges, ink flecks and 1 vermilion drip; still. The 1 light theme, and always solid: the paper is the ground, so it has no glass and no Desktop ground. Ink text, labels in ochre (#8A5A1C or another that holds 4.5 to 1), the tab mark in vermilion; its gold card is a deeper ochre wash with ink text, and the card's title tag is ink with pale gold words. A light ground is an exception to night studio's dark ground that LB chose by keeping this theme; the window frame stays dark to the system",
+        "Moonlit (blue belt): a navy night, a big pale moon, drifting red petals, a crack of blue lightning; sits beside morning mist",
+        "Great wave (purple belt): an indigo sea, curling crests with cream foam, a red sun and far mountains; the swell rolls low, under the cards",
+        "Ember (brown belt): a charcoal ground, a fire glow from below, flame ribbons at the edges and rising sparks in ember orange",
+        "Red storm (black belt): near-black, a dim red moon, slanting rain and a dark crimson sash",
+        "Each unlocks with its belt for everyone, Pro or not, and follows US-151's rules for motion and contrast",
+        "Live check on LB's Mac: each theme on Home, Analytics, Journey and Settings"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-18. Built on US-151's engine. The references are described in words only (project rule: no images in the repo); the preview's scene code is the starting sketch."
+    },
+    {
+      "id": "US-175",
+      "title": "Pro themes: Sakura wind, Snowfall, Lantern river",
+      "description": "3 of the 4 murmur Pro themes LB kept on the Look preview round 2 (2026-11-18). Built around what he liked most: things floating, wind and rain.",
+      "acceptance": [
+        "Sakura wind: a plum dusk, a blossoming branch, and petals carried left to right in gusts that come and go",
+        "Snowfall: snowy ink-wash peaks, a pine line, and snow in 3 depths, the near flakes faster, with a slow drift",
+        "Lantern river: paper lanterns rising from a dark river at night with their light on the water, a few floating; lantern light is ember orange, never the live amber",
+        "All 3 are murmur Pro only, no belt needed, and follow US-151's rules for motion and contrast",
+        "Live check on LB's Mac"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-18 (his answer: keep all 4). Day and night, the 4th, is US-176."
+    },
+    {
+      "id": "US-176",
+      "title": "Day and night: a theme that follows your clock",
+      "description": "LB asked (2026-11-18) for a beautiful daytime backdrop that turns to sunset at the real sunset and to night when it is dark, following the computer's clock. Pro only (his pick).",
+      "acceptance": [
+        "A landscape (sky, mountains, a lake) whose light follows the computer's clock: morning, a blue noon, golden hour, sunset at today's real sunset, dusk, then night with stars and a moon",
+        "Sunrise and sunset come from the date and the time zone's coordinates (a table built from the public-domain IANA zone list, shipped as text data); murmur never asks for location",
+        "The sky changes smoothly as the minutes pass, and picks up a time zone or daylight saving change without a restart",
+        "Clouds and the lake's shimmer follow the motion setting; the sky follows the hour even with motion off or Reduce motion",
+        "Cards stay dark glass in every hour, so a bright noon sky never washes out words, and every pair keeps 4.5 to 1 at noon and at sunset",
+        "Tests: the sun math lands within 15 minutes of published sunrise and sunset for a few cities and dates, including 1 in daylight saving time",
+        "murmur Pro only",
+        "Live check on LB's Mac, including a look at his own sunset"
+      ],
+      "passes": false,
+      "needs_human": true,
+      "notes": "Added 2026-11-18. The preview estimates sunrise and sunset from the time zone offset and a fixed latitude; the app uses the zone's own coordinates."
     }
   ]
 }

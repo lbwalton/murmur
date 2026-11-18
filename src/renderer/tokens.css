@@ -79,11 +79,16 @@
      strong tint, 30% across a diagonal, and so does the sidebar line
      you are on; the header of that day in your dictations gets a
      lighter strip of the same gold (Today's, above the days). Text on
-     gold is cream, never grey or gold. */
+     gold is cream, never grey or gold, except a gold card's title,
+     on its ink tag (US-173). */
   --tint-strong-from: rgba(217, 164, 65, 0.39);
   --tint-strong-to: rgba(217, 164, 65, 0.21);
   --tint-thread-from: rgba(217, 164, 65, 0.3);
   --tint-thread-to: rgba(217, 164, 65, 0.14);
+  /* A gold card's title sits on a small ink tag (US-173): the theme's
+     ink at 72%, edged in a faint gold. */
+  --tag-ink: rgba(15, 14, 17, 0.72);
+  --tag-edge: rgba(217, 164, 65, 0.28);
   /* Red on glass: brighter than --red, which on a glass card over a
      white page reads 3.4 to 1. Still the 1 clean red. */
   --red-glass: #f47a7e;
@@ -150,6 +155,7 @@
   --glass-card-solid: rgba(25, 29, 38, 0.85);
   --red-glass: #f6878b;
   --ink-clear: rgba(16, 19, 26, 0);
+  --tag-ink: rgba(16, 19, 26, 0.72);
   --text-dim-window: #e6ebf0;
   --text-dim-surface: #9da9b4;
 }
