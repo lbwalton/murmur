@@ -4,7 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
-- [ ] US-173 Titles on gold cards wear an ink tag (on the test build installed 2026-11-18). (1) Open murmur on Home: "back today" sits on a small dark tag, in gold. (2) Click analytics: "this month" wears the same tag. (3) Click journey: "the journey" wears it too, in line with the Share card button. (4) Click settings: "running now" wears it too. (5) Every other word on those 4 cards stays cream. (6) Look once over a dark wallpaper and once over a bright one (a white page works): the 4 titles pop and read easily. Tell Claude what you saw.
+- [x] US-173 Titles on gold cards wear an ink tag: passed live 2026-11-18 on the ceba0f7 test build (LB: everything passes).
 - [ ] US-150 Glass over your desktop. Every Mac step passed (2026-11-12, the live switch to solid on the fa1abc9 test build). Left: the work PC check, after glass on Windows is turned on.
 - [x] US-147 Home with a sidebar: passed live 2026-11-14 on the cc50824 test build (LaBroi: everything passes).
 - [x] US-166 Icons on a dictation's row (passed live 2026-11-14 on the 318a74d test build; LaBroi: everything for the story passes). Icons with no box, names beside them on hover and Tab, the brushed gold check on copy, the gold label on your dictations, and the waiting card's 4 buttons at 1 width.

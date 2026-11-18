@@ -2731,9 +2731,9 @@
         "DESIGN.md says a gold card's title wears the tag",
         "Live check on LB's Mac: the 4 titles pop on a dark and a bright wallpaper"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Added and built 2026-11-18 from his pick B (options A gold leaf, B ink tag, C lifted, rendered over the app's real glass layers on a dark and a bright ground). Tokens --tag-ink and --tag-edge in tokens.css (mist has its own --tag-ink). Shot in the solid look with the vault's made-up profile at 920 by 640: Home, Analytics, Journey and Settings each show the tag."
+      "notes": "Added and built 2026-11-18 from his pick B (options A gold leaf, B ink tag, C lifted, rendered over the app's real glass layers on a dark and a bright ground). Tokens --tag-ink and --tag-edge in tokens.css (mist has its own --tag-ink). Shot in the solid look with the vault's made-up profile at 920 by 640: Home, Analytics, Journey and Settings each show the tag. Passed live 2026-11-18 on the notarized ceba0f7 test build (LB: everything looks great, everything passes for the check). His next design note from the same look: the lvl. chip on Journey's gold card has a faint outline that reads as neither there nor gone; options go to a preview."
     },
     {
       "id": "US-174",
