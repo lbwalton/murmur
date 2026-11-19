@@ -2,6 +2,30 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.18 (2026-11-18)
+
+- A new look on a Mac: the window is dark glass, and your desktop shows through it as blurred light and color. Every card, the sidebar, and the top bar are the same pane, and gold marks what matters now: your time back, the sidebar line you are on, and the day you are on in your dictations. Card titles sit on a small ink tag. Turn on Reduce transparency in your Mac's accessibility settings and the window goes solid with a soft gold glow, right away. Windows keeps the solid look for now.
+- Home has a sidebar: search every dictation (Cmd+F, Ctrl+F on Windows), jump to any day, fold the days you are done with, and hide the sidebar with Cmd+\ (Ctrl+\ on Windows).
+- What you said: when cleanup changed your words, a gold speech bubble on that take shows the words as they were heard, with anything removed struck through, and Copy what you said brings them back.
+- Report this take: 1 click on a take that came out wrong opens a message in your mail app with what you said and what was typed, which you can edit before you send it. Nothing goes anywhere unless you send it.
+- Each dictation's row has icons for what you said, report, and copy, and copy answers with a brushed gold check.
+- Hide words: 1 switch keeps your dictated words out of murmur's windows and notifications while you share your screen or film. It sits on Home, in Settings under History, and in the tray menu (the menu bar menu on a Mac).
+- Your history is encrypted on disk, with a key your system's secure storage holds (the Keychain on a Mac). It is on by default; Encrypt saved words under Settings, History turns it off.
+- Keep history for now offers 24 hours and Don't keep. Under both, your stats, belts, and paintings keep counting after the words go.
+- Settings, regrouped: the sidebar sorts sections into Essentials, Features, and App, and each section's rows sit together under a clear title. History settings, Clear all included, move from the bottom of Home to Settings, History.
+- Shortcuts: every key combo murmur listens for, in 1 place under Settings, Shortcuts. Each shortcut's own row links back to the full list.
+- Provider and keys, rebuilt around profiles: the profile you use is a card at the top, the others are a row of names, and 1 click switches speech and cleanup together. Profiles can be renamed. Speech and Cleanup each have their own group, and every saved key gets its own row with Test, like the speech key.
+- The Model list shows every model your provider offers, read from the provider itself, with murmur's suggestions on top.
+- Choices you can tell apart: in a switch like Cleanup runs on, the option you picked gets a lifted fill, a gold edge, and a check mark.
+- Apply corrections catches more: a thought you drop halfway (forget that, never mind, you know what, hold on, start over) goes, and what you said next stays.
+- Choose how updates arrive: Settings, System, Updates offers Automatic (as before), Ask first, or Off.
+- Close the mic between takes, if you like: under Settings, Dictation, Microphone, set Between takes to Open the mic only when I press. Your Mac's orange dot stays off until you press; wait for the listening sound before you speak.
+- A warning before plain http: murmur sends nothing to an http base URL until you confirm it, since your key and your voice would travel unencrypted. Your own computer (localhost) never asks.
+- A problem in 1 part of the window now shows a short note there with a way back, and everything else keeps working. Before, it could black out the whole window until murmur restarted.
+- Journey shows your level as a number, like your other stats.
+- Get Pro opens checkout with the FOUNDERS code already filled in while the founders offer runs, through December 31, 2026.
+- Safer by design: every request inside murmur proves it came from murmur's own pages, and each release now lists a checksum for every download and a parts list of what is inside, so IT teams can check what they install.
+
 ## 0.1.17 (2026-11-06)
 
 - Hands-free: tap your hotkey twice and keep talking without holding it; one more tap stops the take and pastes your words. A brush loop around the pill shows the take is locked, and Escape cancels it while keeping the take for Retry on Home. A take also stops on its own after 2 minutes of quiet, at 12 minutes, when your screen locks, or from Stop hands-free in the tray menu; then nothing pastes, and your words wait in history. If your computer sleeps or murmur quits during a take, the take waits on Home for Retry. Turn it off under Settings, Dictation, Double-tap for hands-free; Loop once it settles sets how faint the loop gets.
