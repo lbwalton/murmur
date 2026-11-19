@@ -2169,9 +2169,9 @@
         "Smoke and unit tests cover the 3 modes; the updater still fails open",
         "Live: LB sees Ask first offer a real update"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": true,
-      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen. Review gate 2026-11-06: leaving Automatic now cancels a running download, Off also stops install on quit where the platform allows it (Windows yes, Mac no, since the file is with the system once downloaded, and the docs say so), a click after Off does nothing, Ask first offers a version once, and the row refreshes. 2026-11-08 on the 6c128bf test build: LB saw Settings, System, Updates offer Automatic, Ask first, and Off (his words: passes). Ask first offering a newer version waits for the next release, so passes stays false until then."
+      "notes": "Built 2026-11-06. updatePlan decides each mode, and updater.ts reads it on every check, so Off holds from the moment it is chosen and makes no request. Unit tests cover the 3 modes and a bad value falling back to Automatic; smoke checks the wiring. Docs, /privacy/, and /security/ match. Left: the live check, since Ask first needs a real newer release, and seeing the row on screen. Review gate 2026-11-06: leaving Automatic now cancels a running download, Off also stops install on quit where the platform allows it (Windows yes, Mac no, since the file is with the system once downloaded, and the docs say so), a click after Off does nothing, Ask first offers a version once, and the row refreshes. 2026-11-08 on the 6c128bf test build: LB saw Settings, System, Updates offer Automatic, Ask first, and Off (his words: passes). Ask first offering a newer version waits for the next release, so passes stays false until then. 2026-11-19 on the published 0.1.18: with Ask first picked, a notification offered 0.1.18 and nothing downloaded until LB clicked it; after a quit and reopen Home's what's new read 0.1.18 (his words: it says 0.1.18 now, everything passes). Every criterion is now verified."
     },
     {
       "id": "US-137",
@@ -2263,9 +2263,9 @@
         "docs/download.md shows how to verify a download on Mac and Windows",
         "The next release carries both, and the sums match the published files"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. Left: the next release carries both."
+      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. v0.1.18 (2026-11-18) carries both: SHA256SUMS lists all 7 installers, murmur-0.1.18.cdx.json lists 37 packages, and every sum matches the sha256 GitHub reports for the published file (checked per file after publishing)."
     },
     {
       "id": "US-143",
