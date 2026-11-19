@@ -79,6 +79,14 @@ async function restoreClipboard(captured: Captured): Promise<void> {
 // pending restore with a fresh capture (the restore would clobber the
 // successor's text mid-paste).
 let pendingRestore: Promise<void> = Promise.resolve()
+// How many restores have not finished; an update restart waits for 0
+// (US-178), so it never quits with your dictation left on the clipboard.
+let restoresInFlight = 0
+
+/** True while a paste's clipboard restore has not finished. */
+export function clipboardRestorePending(): boolean {
+  return restoresInFlight > 0
+}
 
 // Set only while a settle sleep is pending; calling it skips the rest
 // of the sleep so a follow-on insertion is never stalled behind it.
@@ -154,9 +162,14 @@ export async function insertText(text: string): Promise<InsertOutcome> {
   // and holding the overlay in processing for the settle would only
   // delay the inserted feedback. A failed restore never breaks the
   // dictation, but it must be loud in logs.
-  pendingRestore = settleAndRestore(captured, text).catch((error) => {
-    console.error('[murmur] clipboard restore failed:', error)
-  })
+  restoresInFlight += 1
+  pendingRestore = settleAndRestore(captured, text)
+    .catch((error) => {
+      console.error('[murmur] clipboard restore failed:', error)
+    })
+    .finally(() => {
+      restoresInFlight -= 1
+    })
   return 'inserted'
 }
 

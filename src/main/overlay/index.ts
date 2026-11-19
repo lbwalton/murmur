@@ -3,7 +3,7 @@
 // bottom center of the active display. Focus stealing would break
 // insertion into the target app, so focusable stays false forever.
 import { join } from 'node:path'
-import { BrowserWindow, app, screen } from 'electron'
+import { BrowserWindow, app, autoUpdater, screen } from 'electron'
 import { ipc } from '../ipc'
 import { devRendererUrl, watchWindow, writeAppLog } from '../window-watch'
 import { reviveOnDeath } from '../revive'
@@ -259,14 +259,18 @@ export function initOverlay(): void {
   })
 
   // closable false means app.quit() can never close this window through
-  // the normal path; it must be destroyed or quitting hangs forever.
-  app.on('before-quit', () => {
+  // the normal path; it must be destroyed or quitting hangs forever. A
+  // restart to update closes every window before before-quit fires (on
+  // a Mac it waits for that), so it releases the pill first too (US-178).
+  const release = (): void => {
     if (lingerTimer) clearTimeout(lingerTimer)
     for (const timer of previewTimers) clearTimeout(timer)
     previewTimers.length = 0
     overlayWindow?.destroy()
     overlayWindow = null
-  })
+  }
+  app.on('before-quit', release)
+  autoUpdater.on('before-quit-for-update', release)
 
   ipc.handle('overlay:preview', () => {
     overlayPreviewBurst()

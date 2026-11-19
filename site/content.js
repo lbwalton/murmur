@@ -188,7 +188,7 @@ function privacy(links, supportEmail) {
     description: 'The murmur apps have no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-18',
+    updated: '2026-11-19',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -223,7 +223,7 @@ function privacy(links, supportEmail) {
           ['Test connection.', ['It asks your provider for its list of models, with your key.']],
           [
             'Updates, on Mac and Windows.',
-            ['murmur checks GitHub for an update every few hours and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit. Settings has a switch for each: Updates can be Automatic, Ask first, or Off, and Off makes no update request at all.']
+            ['murmur checks GitHub for an update every few hours, and right away when you click Check for updates, and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit. Settings has a switch for each: Updates can be Automatic, Ask first, or Off, and Off makes no update request at all.']
           ],
           ['The iPhone keyboard.', ['The murmur keyboard sends nothing anywhere. It hands your take to the murmur app on the phone and types only the words you dictated.']],
           ['Your notes, if their folder syncs.', ['Notes are files in the folder you pick. If that folder syncs, like iCloud Drive or a synced vault, the sync service carries them under its own terms.']],
