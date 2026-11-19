@@ -2263,9 +2263,9 @@
         "docs/download.md shows how to verify a download on Mac and Windows",
         "The next release carries both, and the sums match the published files"
       ],
-      "passes": false,
+      "passes": true,
       "needs_human": false,
-      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. Left: the next release carries both."
+      "notes": "Built 2026-11-06. npm run release:manifest writes the sums and a CycloneDX list cut to what ships, tested on the logic and on npm's real output. A test fails if the app imports a package the list would miss. RELEASING.md and docs/download.md have the steps. v0.1.18 (2026-11-18) carries both: SHA256SUMS lists all 7 installers, murmur-0.1.18.cdx.json lists 37 packages, and every sum matches the sha256 GitHub reports for the published file (checked per file after publishing)."
     },
     {
       "id": "US-143",

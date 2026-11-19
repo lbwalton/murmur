@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (121/177 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (122/177 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -104,6 +104,7 @@
 - [x] **US-130** Report this take
 - [x] **US-138** History encrypted on disk
 - [x] **US-140** Warn before sending over plain http
+- [x] **US-142** Checksums and a parts list with every release
 - [x] **US-147** Home with a rail: find any take fast
 - [x] **US-148** History settings move into Settings
 - [x] **US-149** Choices you can tell apart
@@ -177,7 +178,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-137** Keep history for 24 hours, or not at all
 - [ ] **US-139** Every IPC call proves where it came from
 - [ ] **US-141** Stronger fuses and fewer Mac permissions
-- [ ] **US-142** Checksums and a parts list with every release
 - [ ] **US-143** A policy file IT can deploy
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
