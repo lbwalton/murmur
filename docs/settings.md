@@ -360,10 +360,23 @@ Almost always a macOS permission. The Test button on the Daily recap row (Settin
 Settings, System, **Updates** has 3 choices:
 
 - **Automatic**, the default. murmur checks every few hours, downloads quietly, and installs when you quit.
-- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click the notification, or Download in Settings.
+- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click: the notification, Download or Check for updates in Settings, or the Download or Check for updates item in murmur's menu.
 - **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself. On a Mac, an update that had already finished downloading still installs when you quit.
 
 The provider list has its own switch, because it is a separate request to GitHub. Both are explained on the [privacy page](https://murmurapp.app/privacy/).
+
+## How do I update murmur right now?
+
+Click the murmur icon in the menu bar on a Mac, or in the tray on Windows, and pick **Check for updates**. It sits just above Quit murmur. The same item is in the murmur menu at the top left of a Mac while the Settings window is in front, and as a **Check for updates** button under Settings, System, Updates.
+
+- **A newer version exists.** It downloads right away, with Ask first too, since the click is your ask. The item reads Downloading and the version until it is done; Settings, System, Updates shows how much is in.
+- **The download is done.** The item reads **Restart to update to** and the version. Click it, and murmur closes, installs the update, and opens again by itself about 15 seconds later. The item reads Restarting while it gets ready. Settings, System, Updates has the same button as **Restart now**, and clicking the update ready notification does the same.
+- **You already have the newest version.** A notification says so.
+- **The check fails.** A notification says so; check your internet connection and try again. Dictation keeps working either way.
+
+murmur never restarts in the middle of a take. If you are recording, your words are still on their way, or a hands-free take is locked, the item reads **Restart after this take**, and murmur restarts once the words land.
+
+With Updates set to Off, the item is hidden, so murmur still asks GitHub for nothing.
 
 ## Where do I see what changed in an update?
 

@@ -15,7 +15,9 @@ import {
   handsFreeDiscard,
   handsFreeLock,
   handsFreeStop,
-  initHandsFree
+  initHandsFree,
+  isHandsFreeLocked,
+  isParking
 } from './handsfree'
 import {
   captureHotkeyViaHook,
@@ -27,10 +29,10 @@ import {
 import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initFormatter } from './formatter'
 import { initHistory } from './history'
-import { initInsertion } from './insertion'
+import { clipboardRestorePending, initInsertion } from './insertion'
 import { RotatingLog } from './logging'
 import { holdPlainHttpHops, readTrustedHttpHostsFrom } from './net'
-import { initOverlay } from './overlay'
+import { getOverlayPhase, initOverlay } from './overlay'
 import { initPermissions } from './permissions'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
@@ -41,7 +43,18 @@ import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, clickTrayHideWords, trayHideWordsChecked } from './tray'
+import {
+  createTray,
+  getTray,
+  setTrayHideWords,
+  setTrayInboxVisible,
+  setTrayLastNoteVisible,
+  setTrayUpdateItem,
+  clickTrayHideWords,
+  trayHideWordsChecked,
+  trayMenuLabels
+} from './tray'
+import { type UpdateAction, type UpdateMenuItem, takeBusy } from './updater-rules'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -293,6 +306,65 @@ function whenLoaded(win: BrowserWindow): Promise<void> {
   })
 }
 
+function runUpdateItem(action: UpdateAction | null): void {
+  if (action) void import('./updater').then((updater) => updater.runUpdateAction(action))
+}
+
+/** The Mac's menu bar menus. Minimal: macOS needs Edit roles for Cmd+V
+ *  in fields, and View holds the settings window's zoom (US-111);
+ *  everything else stays out so stray accelerators cannot surprise the
+ *  user. The murmur menu carries the update item when there is one. */
+function buildAppMenu(update: UpdateMenuItem | null): Menu {
+  return Menu.buildFromTemplate([
+    {
+      label: 'murmur',
+      submenu: [
+        { role: 'about' },
+        // The same update item as the tray (US-178).
+        ...(update
+          ? [{ label: update.label, enabled: update.action !== null, click: () => runUpdateItem(update.action) }]
+          : []),
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      // Not the zoom roles: those would zoom whichever page has
+      // focus and forget it at quit. These zoom the settings window
+      // and save the step.
+      label: 'View',
+      submenu: [
+        { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => stepSettingsZoom(settingsWindow, 'reset') },
+        { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => stepSettingsZoom(settingsWindow, 'in') },
+        // Cmd = is the key people press for zoom in; it answers too,
+        // without a second row in the menu.
+        {
+          label: 'Zoom In',
+          accelerator: 'CommandOrControl+=',
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => stepSettingsZoom(settingsWindow, 'in')
+        },
+        { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => stepSettingsZoom(settingsWindow, 'out') }
+      ]
+    },
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
+  ])
+}
+
 app.on('second-instance', () => {
   showSettingsWindow()
 })
@@ -325,55 +397,9 @@ app.whenReady().then(async () => {
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
-  // Minimal menu: macOS needs Edit roles for Cmd+V in fields, and View
-  // holds the settings window's zoom (US-111); everything else stays out
-  // so stray accelerators cannot surprise the user. Other platforms get
-  // no menu bar at all (the settings window catches Ctrl zoom itself).
-  if (process.platform === 'darwin') {
-    Menu.setApplicationMenu(
-      Menu.buildFromTemplate([
-        {
-          label: 'murmur',
-          submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'quit' }]
-        },
-        {
-          label: 'Edit',
-          submenu: [
-            { role: 'undo' },
-            { role: 'redo' },
-            { type: 'separator' },
-            { role: 'cut' },
-            { role: 'copy' },
-            { role: 'paste' },
-            { role: 'selectAll' }
-          ]
-        },
-        {
-          // Not the zoom roles: those would zoom whichever page has
-          // focus and forget it at quit. These zoom the settings window
-          // and save the step.
-          label: 'View',
-          submenu: [
-            { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => stepSettingsZoom(settingsWindow, 'reset') },
-            { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => stepSettingsZoom(settingsWindow, 'in') },
-            // Cmd = is the key people press for zoom in; it answers too,
-            // without a second row in the menu.
-            {
-              label: 'Zoom In',
-              accelerator: 'CommandOrControl+=',
-              visible: false,
-              acceleratorWorksWhenHidden: true,
-              click: () => stepSettingsZoom(settingsWindow, 'in')
-            },
-            { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => stepSettingsZoom(settingsWindow, 'out') }
-          ]
-        },
-        { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
-      ])
-    )
-  } else {
-    Menu.setApplicationMenu(null)
-  }
+  // Other platforms get no menu bar at all (the settings window catches
+  // Ctrl zoom itself).
+  Menu.setApplicationMenu(process.platform === 'darwin' ? buildAppMenu(null) : null)
 
   // First packaged launch inherits the dev profile (belts, history,
   // founder marker) so the journey continues unbroken; must run before
@@ -403,8 +429,19 @@ app.whenReady().then(async () => {
   }
   initAudio(() => settingsWindow)
   initOverlay()
-  const { initUpdater } = await import('./updater')
-  initUpdater()
+  const updater = await import('./updater')
+  updater.initUpdater({
+    busy: () =>
+      takeBusy({
+        phase: getOverlayPhase(),
+        handsFreeLocked: isHandsFreeLocked(),
+        parking: isParking(),
+        clipboardPending: clipboardRestorePending()
+      }),
+    beforeRestart: () => {
+      isQuitting = true
+    }
+  })
   const { initLicense } = await import('./license')
   initLicense()
   const { initInstallDate } = await import('./install')
@@ -596,7 +633,31 @@ app.whenReady().then(async () => {
     onToggleHideWords: (on) => {
       const settings = updateSettings({ history: { hideWords: on } })
       if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('settings:pushed', settings)
-    }
+    },
+    onUpdateAction: (action) => updater.runUpdateAction(action)
+  })
+
+  // The update item rides the tray and the Mac's murmur menu (US-178).
+  let shownUpdate: UpdateMenuItem | null = null
+  const syncUpdateItem = (): void => {
+    const item = updater.currentUpdateItem()
+    setTrayUpdateItem(item)
+    if (process.platform !== 'darwin') return
+    if (item?.label === shownUpdate?.label && item?.action === shownUpdate?.action) return
+    shownUpdate = item
+    Menu.setApplicationMenu(buildAppMenu(item))
+  }
+  updater.onUpdateOfferChanged(syncUpdateItem)
+  onSettingsChanged(syncUpdateItem)
+  syncUpdateItem()
+  registerSmokeCheck('trayUpdateItem', () => {
+    // The tray carries the item it is given, just above Quit, and drops
+    // it again; smoke has no live updater, so it shows none of its own.
+    setTrayUpdateItem({ label: 'Restart to update to 9.9.9', action: 'restart' })
+    const labels = trayMenuLabels()
+    const shown = labels[labels.length - 2] === 'Restart to update to 9.9.9'
+    setTrayUpdateItem(updater.currentUpdateItem())
+    return shown && updater.currentUpdateItem() === null && !trayMenuLabels().includes('Restart to update to 9.9.9')
   })
   setTrayHideWords(getSettings().history.hideWords)
   onSettingsChanged((s) => setTrayHideWords(s.history.hideWords))

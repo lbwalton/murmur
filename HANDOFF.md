@@ -4,6 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
+- [x] US-178 Update now from the menu: passed your live check 2026-11-20 (check, download, Restart after this take, reopened on 0.1.17 by itself). The real 0.1.18 is back on your Mac. Merging PR #49 waits on your yes.
 - [x] US-177 Your level reads like your other numbers: passed live 2026-11-18 on the bd30edd test build (LB: passes).
 - [x] US-173 Titles on gold cards wear an ink tag: passed live 2026-11-18 on the ceba0f7 test build (LB: everything passes).
 - [ ] US-150 Glass over your desktop. Every Mac step passed (2026-11-12, the live switch to solid on the fa1abc9 test build). Left: the work PC check, after glass on Windows is turned on.
