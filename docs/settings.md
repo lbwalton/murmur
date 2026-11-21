@@ -73,7 +73,7 @@ Turn on **Hide words**. Your dictated words stop showing in murmur's windows, an
 - **Copy and paste last keep working.** A copy button still copies the words, and your paste last shortcut still pastes them. What you paste shows in that app.
 - **Report is off while this is on,** because a report shows your words so you can check them before anything goes. The report button says so. Turn off Hide words to report a take.
 - **Try it, the practice box, is off** too, because what you dictate into it would show there.
-- **Notifications leave the words out.** A note receipt says where the note went, and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
+- **Notifications leave the words out.** A note receipt says where the note went (or that its sort could not finish), and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
 
 It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
