@@ -209,7 +209,7 @@ const api = {
     ipcRenderer.invoke('history:keepImpact', retentionDays),
   /** Null opens a blank message, for a report copied by hand. A problem
    *  report (US-182) goes under its own subject. */
-  openReportMail: (body: string | null, kind: 'take' | 'problem' = 'take'): Promise<void> =>
+  openReportMail: (body: string | null, kind: 'take' | 'problem' = 'take'): Promise<boolean> =>
     ipcRenderer.invoke('report:mail', body, kind),
   /** Report a problem (US-182): the details and log for where the
    *  person is looking, read fresh. */

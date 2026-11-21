@@ -369,13 +369,19 @@ export function scrubLogLine(line: string, ctx: ScrubContext): string | null {
       body = failed ? `[transcribe] ${failed[1]} detail=${safeDetail(failed[2])} ${failed[3]}${failed[4]}` : `[transcribe] ${cutMessage(text)}`
     } else if (tag === 'transform') {
       body = `[transform] ${text.replace(/ detail=(.*?)(?=$)/, (_m, d: string) => ` detail=${safeDetail(d)}`)}`
+    } else if (tag === 'sort') {
+      // A decision connection's network failure carries the raw error
+      // message (notes/decide.ts), which can name an address.
+      body = `[sort] ${text.replace(/ reason=network (.*?)(?= model=| slot=|;|$)/, (_m, d: string) => ` reason=network ${safeDetail(d)}`)}`
     } else if (tag === 'receipt') {
       body = `[receipt] ${text.replace(/ reason=(.*)$/, (_m, r: string) => ` reason=${cutMessage(r)}`)}`
     } else {
       body = `[${tag}] ${text}`
     }
   }
-  return `${stamp} ${scrubText(body, ctx)}`.slice(0, 300)
+  // A bare IPv4 address can be a custom endpoint resolved: none stays.
+  const noIps = body.replace(/(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?![\w.])/g, '[address]')
+  return `${stamp} ${scrubText(noIps, ctx)}`.slice(0, 300)
 }
 
 /** The newest lines of the log that pass the filter, at most max. */

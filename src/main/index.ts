@@ -577,7 +577,14 @@ app.whenReady().then(async () => {
     const subject = kind === 'problem' ? 'problem' : 'take'
     const text = boundedText(body, MAX_TEXT_CHARS)
     const url = text !== null ? mailtoUrl(text, subject) : blankMailtoUrl(subject)
-    if (isReportMailto(url)) await shell.openExternal(url)
+    if (!isReportMailto(url)) return false
+    // No mail app set up rejects; the page then copies the report instead.
+    try {
+      await shell.openExternal(url)
+      return true
+    } catch {
+      return false
+    }
   })
 
   ipc.handle('clipboard:copy', async (_event, text: unknown) => {

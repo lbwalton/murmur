@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SettingsApi } from '../../preload/settings'
 import type { IssueOutcome } from '../../main/problem'
-import { type ProblemFields, type ProblemView, planIssue, planMail, viewLine } from '../../shared/problem'
+import { type ProblemFields, type ProblemView, planIssue, planMail, problemText, viewLine } from '../../shared/problem'
 import { REPORT_ADDRESS } from '../../shared/report'
 import type { Settings } from '../../shared/settings'
 import { pageScroller } from './scroller'
@@ -77,7 +77,7 @@ const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimation
 
 type Sent =
   | { via: 'github'; result: IssueOutcome }
-  | { via: 'mail'; mode: 'link' | 'paste'; dropped: number; shotCopied: boolean }
+  | { via: 'mail'; mode: 'link' | 'paste' | 'failed'; dropped: number; shotCopied: boolean }
 
 export function ProblemReport(props: {
   open: ProblemOpen
@@ -165,7 +165,12 @@ export function ProblemReport(props: {
     canvas.getContext('2d')?.drawImage(shot.bitmap, 0, 0, canvas.width, canvas.height)
   }, [shot, stage])
 
+  const closed = useRef(false)
+  const stageRef = useRef(stage)
+  stageRef.current = stage
   const close = (): void => {
+    if (closed.current) return
+    closed.current = true
     dialogRef.current?.close()
     returnTo?.focus({ preventScroll: true })
     props.onClose()
@@ -223,15 +228,28 @@ export function ProblemReport(props: {
     try {
       if (plan.mode === 'link') {
         const shotCopied = shot ? await bridge().copyProblemShot(shot.png) : false
-        await bridge().openReportMail(plan.message, 'problem')
-        setSent({ via: 'mail', mode: 'link', dropped: plan.dropped, shotCopied })
-        setCopiedShot(shotCopied)
+        if (await bridge().openReportMail(plan.message, 'problem')) {
+          setSent({ via: 'mail', mode: 'link', dropped: plan.dropped, shotCopied })
+          setCopiedShot(shotCopied)
+          return
+        }
       } else {
         await bridge().copyText(plan.report)
-        await bridge().openReportMail(null, 'problem')
-        setSent({ via: 'mail', mode: 'paste', dropped: 0, shotCopied: false })
-        setCopiedShot(false)
+        if (await bridge().openReportMail(null, 'problem')) {
+          setSent({ via: 'mail', mode: 'paste', dropped: 0, shotCopied: false })
+          setCopiedShot(false)
+          return
+        }
       }
+      // No mail app opened: the whole report is copied instead.
+      await bridge().copyText(problemText(fields))
+      setSent({ via: 'mail', mode: 'failed', dropped: 0, shotCopied: false })
+      setCopiedShot(false)
+    } catch {
+      await bridge()
+        .copyText(problemText(fields))
+        .catch(() => undefined)
+      setSent({ via: 'mail', mode: 'failed', dropped: 0, shotCopied: false })
     } finally {
       setBusy(false)
     }
@@ -254,6 +272,13 @@ export function ProblemReport(props: {
           e.preventDefault()
           // Escape never throws away words you typed: Cancel does.
           if (what.trim() === '' && expected.trim() === '') close()
+        }}
+        onClose={() => {
+          // The browser can close a modal on a 2nd Escape even though the
+          // 1st was refused. Closed while it is the form, that is a
+          // Cancel, so the panel never lingers unseen and the tray item
+          // keeps working. Retake closes it too, out of the form stage.
+          if (stageRef.current === 'form') close()
         }}
       >
         <div className="share-head">
@@ -444,6 +469,11 @@ function SentNote(props: {
       )
       offerShot = props.hasShot && r.copied !== 'shot'
     }
+  } else if (sent.mode === 'failed') {
+    lines.push(
+      `No mail app opened, so murmur copied the whole report. Paste it with ${paste} into an email to ${REPORT_ADDRESS}, or press Open on GitHub instead.`
+    )
+    if (props.hasShot) lines.push('Then press Copy screenshot and paste it too, or attach it with Save screenshot.')
   } else if (sent.mode === 'link') {
     if (sent.dropped > 0) lines.push(`The ${sent.dropped} oldest log ${sent.dropped === 1 ? 'line was' : 'lines were'} left out to fit a mail link.`)
     lines.push(

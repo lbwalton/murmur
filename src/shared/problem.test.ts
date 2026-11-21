@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import bundledCatalog from '../../shared/provider-catalog.json'
@@ -22,6 +23,7 @@ import {
   planMail,
   problemText,
   scrubLog,
+  scrubLogLine,
   scrubText
 } from './problem'
 import { PROBLEM_SUBJECT, isReportMailto, mailtoUrl } from './report'
@@ -101,7 +103,9 @@ const markedLog = [
   `${T} [ipc] refused settings:get from file:`,
   `${T} [window:settings] did-finish-load`,
   `${T} [updater] restarting to install 0.1.19`,
-  `${T} [dictation] note saved under markedlan.local and MARKEDMIC AirPods by siobhan`
+  `${T} [dictation] note saved under markedlan.local and MARKEDMIC AirPods by siobhan`,
+  `${T} [sort] decision failed reason=network connect ECONNREFUSED 203.0.113.9:443 markedsortip model=sorter; falling back to the chat sorter`,
+  `${T} [sort] failed reason=network getaddrinfo ENOTFOUND markedsort2.example model=sorter slot=sort`
 ].join('\n')
 
 const input = (): ProblemInput => ({
@@ -210,6 +214,8 @@ describe('buildProblemDetails', () => {
     has('model=~/models/local.gguf key=[key] Bearer [key]')
     has('[receipt] outcome=failed kind=note reason=could not show')
     has('[dictation] note saved under [custom endpoint] and [mic] by ~')
+    has('[sort] decision failed reason=network ECONNREFUSED model=sorter; falling back to the chat sorter')
+    has('[sort] failed reason=network ENOTFOUND model=sorter slot=sort')
     // The untagged line, the unknown tag, are left out and counted; the
     // stack's lines go with their exception, uncounted.
     expect(withheld).toBe(2)
@@ -234,6 +240,11 @@ describe('scrubText', () => {
     for (const path of ['C:\\Users\\Siobhan Smith\\AppData', 'c:/users/siobhan smith/AppData', 'C:\\\\Users\\\\Siobhan Smith\\\\AppData', 'C:/Users/Siobhan%20Smith/AppData']) {
       expect(scrubText(`at ${path}\\x.js`, ctx), path).not.toMatch(/siobhan/i)
     }
+  })
+
+  it('takes a bare IPv4 address out of a log line, and leaves version numbers alone', () => {
+    const line = scrubLogLine(`${T} [dictation] reached 192.168.4.20:8080 on Chrome 152.0.7977.167 and 10.0.22631`, { ...ctx, home: '/Users/siobhan' })
+    expect(line).toBe(`${T} [dictation] reached [address] on Chrome 152.0.7977.167 and 10.0.22631`)
   })
 
   it('reduces addresses: a known host keeps its host, others are custom, files keep their name', () => {
@@ -359,6 +370,27 @@ describe('the window\'s view', () => {
 
 describe('the issue form', () => {
   const form = readFileSync(join(__dirname, '..', '..', '.github', 'ISSUE_TEMPLATE', ISSUE_TEMPLATE), 'utf8')
+  // A form that does not parse breaks every link to it, and that would
+  // only show after a merge: read it with a real YAML parser (js-yaml,
+  // already installed with the build tools).
+  const { load } = createRequire(import.meta.url)('js-yaml') as { load: (text: string) => unknown }
+  type Field = { type: string; id?: string; attributes: Record<string, unknown>; validations?: { required?: boolean } }
+  const parsed = load(form) as { name: string; description: string; title: string; labels: string[]; body: Field[] }
+
+  it('parses, with the keys GitHub requires and every element well formed', () => {
+    expect(typeof parsed.name).toBe('string')
+    expect(typeof parsed.description).toBe('string')
+    expect(parsed.title).toBe('Problem: ')
+    expect(parsed.labels).toEqual(['bug'])
+    expect(parsed.body.map((field) => field.type)).toEqual(['markdown', 'textarea', 'textarea', 'textarea', 'textarea'])
+    const byId = Object.fromEntries(parsed.body.filter((f) => f.id).map((f) => [f.id, f]))
+    for (const id of [...ISSUE_FIELDS, 'screenshot']) expect(byId[id]?.attributes.label, id).toBeTruthy()
+    expect(byId.what.validations?.required).toBe(true)
+    expect(byId.details.attributes.render).toBe('text')
+    expect(byId.what.attributes.render).toBeUndefined()
+    expect(byId.screenshot.attributes.render).toBeUndefined()
+    expect(String(parsed.body[0].attributes.value)).toMatch(/paste|drag/i)
+  })
 
   it('has a field for every id the app fills, and the screenshot box the panel names', () => {
     const ids = [...form.matchAll(/^\s+id: ([\w-]+)$/gm)].map((m) => m[1])

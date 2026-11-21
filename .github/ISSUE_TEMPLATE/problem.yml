@@ -15,6 +15,8 @@ body:
         Thanks for telling us. Issues here are public, so leave out anything private: names, keys, and the words you dictated.
 
         From murmur, use **Report a problem** in the menu bar menu on a Mac or the tray menu on Windows (or Settings, System): it fills in the details for you, and you see all of it first.
+
+        A screenshot helps: paste it into the Screenshot box below (Cmd+V on a Mac, Ctrl+V on Windows), or drag the image in.
   - type: textarea
     id: what
     attributes:
