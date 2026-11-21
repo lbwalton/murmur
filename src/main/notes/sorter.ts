@@ -222,6 +222,15 @@ function settleFor(input: SortInput, positions: readonly number[], keptLocal: re
 // and only the most recent few; the words are in the inbox either way.
 const WAITING_MAX = 5
 let waiting: SortInput[] = []
+// Moves on with every Clear all (forgetSortMemory): a sort asked for
+// before it puts nothing back.
+let memoryGeneration = 0
+
+/** The memory generation now; the receipt compares it around a sort so
+ *  a sort asked for before Clear all raises no notice. */
+export function sortMemoryGeneration(): number {
+  return memoryGeneration
+}
 
 function noteWaiting(input: SortInput, report: SortReport): void {
   waiting = waiting.filter((w) => w !== input)
@@ -642,10 +651,13 @@ const NONE = { tasks: 0, ideas: 0, notes: 0, held: 0 }
 export function sortNote(input: SortInput, options: SortOptions = {}, only?: readonly number[]): Promise<SortReport> {
   const queued = sortJobs.get(input)
   if (queued) return queued
+  // A sort asked for before Clear all may still file its lines (their
+  // words are on disk already), but puts nothing back in memory.
+  const generation = memoryGeneration
   const job: Promise<SortReport> = sortTail
-    .then(() => runSort(input, options, only))
+    .then(() => runSort(input, options, only, generation))
     .then((report) => {
-      noteWaiting(input, report)
+      if (generation === memoryGeneration) noteWaiting(input, report)
       return report
     })
     .finally(() => {
@@ -682,6 +694,9 @@ interface SortRun {
   pace: Pace
   /** ` part=N` on the log lines of a note sent in parts, else ''. */
   tag: string
+  /** The memory generation the sort was asked for in: once Clear all
+   *  moves it on, the sort keeps no held lines or topic in memory. */
+  generation: number
 }
 
 /** What 1 part of a note came to. */
@@ -699,7 +714,12 @@ interface PartResult {
   left: number
 }
 
-async function runSort(input: SortInput, options: SortOptions, only?: readonly number[]): Promise<SortReport> {
+async function runSort(
+  input: SortInput,
+  options: SortOptions,
+  only: readonly number[] | undefined,
+  generation: number
+): Promise<SortReport> {
   const settings = getSettings()
   if (!settings.notes.sort) return record('skipped', NONE, 'sorting off')
   if (isSmoke && !options.fetchImpl) return record('skipped', NONE, 'smoke')
@@ -714,11 +734,12 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // Held lines follow the note: a fresh note starts empty, and a line
   // sent again gets a fresh verdict in place of its old one.
   lastAction = null
-  if (heldFor !== input) {
+  // A sort asked for before Clear all leaves the held lines alone.
+  if (generation === memoryGeneration && heldFor !== input) {
     heldFor = input
     heldLines = []
     heldSnapshots.clear()
-  } else {
+  } else if (generation === memoryGeneration) {
     const dropped = heldLines.filter((h) => positions.includes(h.position))
     heldLines = heldLines.filter((h) => !positions.includes(h.position))
     for (const h of dropped) heldSnapshots.delete(h.id)
@@ -790,7 +811,8 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       leftMs: SORT_WAIT_BUDGET_MS,
       waitedMs: 0
     },
-    tag: ''
+    tag: '',
+    generation
   }
   const wholeChars = framing(items, itemsCap) + positions.reduce((n, p) => n + costAt[p], 0)
   if (estimateTokens(wholeChars) > budgetNow()) {
@@ -939,6 +961,9 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
   // numbers only.
   const keepCounts = sentences.map((sentence) => keepWords(sentence).length)
   const offerKeep = keepCounts.some((n) => n > 0)
+  // False once Clear all ran after this sort was asked for: it still
+  // files, but holds no line's words in memory.
+  const remembers = (): boolean => run.generation === memoryGeneration
 
   let verdict: SortVerdict | null = null
   let answeredBy = config.model
@@ -1074,7 +1099,7 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
   )
   for (const i of unsure) {
     const lead = unitLeads[i]
-    heldLines.push({
+    if (remembers()) heldLines.push({
       id: nextHeldId++,
       position: positions[i],
       text: sentences[i],
@@ -1155,7 +1180,7 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
     // A line held whole files whole: its heading lead-in, if any (a cut
     // run held whole carries its pieces bare and the run's lead-in).
     const lead = wholeLeads.get(local) ?? unitLeads[local]
-    heldLines.push({
+    if (remembers()) heldLines.push({
       id,
       position: positions[local],
       text: sentences[local],
@@ -1165,11 +1190,11 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
       match: matchOf(item),
       ...(lead ? { lead } : {})
     })
-    heldSnapshots.set(id, snapshot)
+    if (remembers()) heldSnapshots.set(id, snapshot)
   }
   for (const piece of heldPieces) {
     const id = nextHeldId++
-    heldLines.push({
+    if (remembers()) heldLines.push({
       id,
       position: positions[piece.local],
       text: piece.text,
@@ -1178,7 +1203,7 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
       match: matchOf(piece.item),
       ...(piece.lead ? { lead: piece.lead } : {})
     })
-    heldSnapshots.set(id, snapshot)
+    if (remembers()) heldSnapshots.set(id, snapshot)
   }
   heldLines.sort((a, b) => a.position - b.position || a.id - b.id)
   settleFor(input, positions, related.map((r) => r.local))
@@ -1227,7 +1252,7 @@ async function sortPart(run: SortRun, positions: readonly number[]): Promise<Par
   }
   // A note sent in parts sits under the name its first filed part got.
   const topic = askTopic ? verdict.topic : (run.topic ?? '')
-  lastTopic = topic
+  if (remembers()) lastTopic = topic
   const written = writeEntries(
     input,
     expanded.sentences,
@@ -1468,6 +1493,7 @@ export async function sortLastNote(options: SortOptions = {}): Promise<SortRepor
  *  words with them: Clear all in Settings, History calls it. The inbox
  *  files keep every word. */
 export function forgetSortMemory(): void {
+  memoryGeneration += 1
   lastInput = null
   waiting = []
   heldFor = null

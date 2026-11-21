@@ -38,6 +38,7 @@ import {
   forgetSortMemory,
   rememberForSort,
   sortNote,
+  sortMemoryGeneration,
   sortQueuedFor,
   sortWaiting
 } from './sorter'
@@ -373,7 +374,11 @@ function followSort(input: SortInput, token: LastNote | null, report: SortReport
  */
 export async function sortAgainWithReceipt(options?: SortOptions): Promise<void> {
   const token = getLastNote()
-  for (const run of await sortWaiting(options)) {
+  const generation = sortMemoryGeneration()
+  const runs = await sortWaiting(options)
+  // Clear all while it ran: no notice comes back.
+  if (generation !== sortMemoryGeneration()) return
+  for (const run of runs) {
     if (run.joined) continue
     const mine = token !== null && token.at === run.input.when.getTime() && token.inbox.relative === run.input.inboxRelative
     followSort(run.input, mine ? token : null, run.report)
@@ -388,8 +393,10 @@ export async function sortAgainWithReceipt(options?: SortOptions): Promise<void>
  */
 export async function sortWithReceipt(input: SortInput, token: LastNote | null, options?: SortOptions): Promise<SortReport> {
   const joined = sortQueuedFor(input)
+  const generation = sortMemoryGeneration()
   const report = await sortNote(input, options)
-  if (!joined) followSort(input, token, report)
+  // Clear all while it ran: no notice comes back.
+  if (!joined && generation === sortMemoryGeneration()) followSort(input, token, report)
   return report
 }
 

@@ -4,13 +4,13 @@
 // receipt, the long note's unfinished notice stays beside it, and Sort
 // again takes that notice back once the lines left have filed. The
 // system notification, settings, network, and log are stood in.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../shared/settings'
 import { forgetLastNote, noteSaved, sortAgainWithReceipt, sortWithReceipt } from './receipt'
-import { type SortInput, canSortAgain, forgetSortMemory, rememberForSort, waitingLines } from './sorter'
+import { type SortInput, canSortAgain, forgetSortMemory, getHeldLines, rememberForSort, waitingLines } from './sorter'
 
 const stage = vi.hoisted(() => ({
   dir: '',
@@ -153,6 +153,54 @@ describe('a note saved while a long sort waits', () => {
     expect(notice?.closed).toBe(true)
     expect(canSortAgain()).toBe(false)
     expect(waitingLines()).toEqual({ lines: 0, notes: 0 })
+  })
+
+  it('Clear all during a sort sticks: the sort files, but nothing comes back to memory or the screen', async () => {
+    const cfg = { baseUrl: 'https://receipt-d.local/v1', model: 'openai/gpt-oss-120b', apiKey: 'k' }
+    const todo = join(stage.dir, 'murmur', 'todo.md')
+    writeFileSync(todo, '- [ ] Call the vet\n')
+    // A repeat of a filed item in a later part, so a held line would come.
+    const text = LONG.map((line, i) => (i === 2 ? 'Call the vet today.' : line)).join(' ')
+    const a = note(text, 9, 35)
+    rememberForSort(a.input)
+    let n = 0
+    const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { messages: Array<{ content: string }> }
+      const numbered = (body.messages[1]?.content.split('\n\n')[0] ?? '').split('\n').filter((l) => /^\d+\. /.test(l))
+      const call = n++
+      // Part 2 waits out a 429 once; the last part is refused twice, so
+      // the sort stops with lines left.
+      if (call === 1 || call >= 4) {
+        return new Response(JSON.stringify({ error: { message: 'Rate limit reached. Please try again in 5s.' } }), {
+          status: 429,
+          headers: { 'retry-after': '5' }
+        })
+      }
+      const labels: Record<string, unknown> = Object.fromEntries(numbered.map((_, i) => [String(i + 1), 'task']))
+      const vet = numbered.findIndex((l) => /vet/.test(l))
+      if (vet >= 0) labels.relations = { [String(vet + 1)]: [1, 1] }
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(labels) } }] }), { status: 200 })
+    }) as typeof fetch
+    let waited = 0
+    const report = await sortWithReceipt(a.input, noteSaved(saved(a), a.input.text), {
+      fetchImpl,
+      connection: cfg,
+      partTokens: 900,
+      sleep: async () => {
+        waited += 1
+        // Clear all in Settings, History, while the sort waits.
+        if (waited === 1) forgetSortMemory()
+      }
+    })
+    expect(waited).toBeGreaterThan(0)
+    expect(report.unsorted).toBeGreaterThan(0)
+    expect(getHeldLines()).toEqual([])
+    expect(waitingLines()).toEqual({ lines: 0, notes: 0 })
+    expect(canSortAgain()).toBe(false)
+    expect(stage.shown.filter((s) => s.id === 'murmur-sort-unfinished')).toEqual([])
+    const lines = readFileSync(todo, 'utf8').split('\n').filter((l) => l.startsWith('- [ ] '))
+    expect(new Set(lines).size).toBe(lines.length)
+    expect(lines.filter((l) => l.includes('vet'))).toHaveLength(1)
   })
 
   it('stays quiet with Note receipts off', async () => {
