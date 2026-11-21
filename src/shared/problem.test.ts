@@ -110,7 +110,9 @@ const markedLog = [
   `${T} [updater] restarting to install 0.1.19`,
   `${T} [dictation] note saved under markedlan.local and MARKEDMIC AirPods by siobhan`,
   `${T} [sort] decision failed reason=network connect ECONNREFUSED 203.0.113.9:443 markedsortip model=sorter; falling back to the chat sorter`,
-  `${T} [sort] failed reason=network getaddrinfo ENOTFOUND markedsort2.example model=sorter slot=sort`
+  `${T} [sort] failed reason=network getaddrinfo ENOTFOUND markedsort2.example model=sorter slot=sort`,
+  `${T} [sort] rate limited reason=http 429 for=labels wait=7.0s model=sorter; trying once more said="Rate limit for tenant MARKEDTENANT on markedsaid.example, try in 7s"`,
+  `${T} [sort] part too large reason=http 413 sentences=12; sending it in halves said="Request too large for MARKEDSAID2"`
 ].join('\n')
 
 /** More markers, in lines the filter reads: personal details, keys, a
@@ -233,6 +235,8 @@ describe('buildProblemDetails', () => {
     has('[dictation] note saved under [custom endpoint] and [mic] by ~')
     has('[sort] decision failed reason=network ECONNREFUSED model=sorter; falling back to the chat sorter')
     has('[sort] failed reason=network ENOTFOUND model=sorter slot=sort')
+    has('[sort] rate limited reason=http 429 for=labels wait=7.0s model=sorter; trying once more said=[left out]')
+    has('[sort] part too large reason=http 413 sentences=12; sending it in halves said=[left out]')
 
     // The untagged line, the unknown tag, are left out and counted; the
     // stack's lines go with their exception, uncounted.

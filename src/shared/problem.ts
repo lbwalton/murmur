@@ -400,7 +400,12 @@ export function scrubLogLine(line: string, ctx: ScrubContext): string | null {
     } else if (tag === 'sort') {
       // A decision connection's network failure carries the raw error
       // message (notes/decide.ts), which can name an address.
-      body = `[sort] ${text.replace(/ reason=network (.*?)(?= model=| slot=|;|$)/, (_m, d: string) => ` reason=network ${safeDetail(d)}`)}`
+      // A 413 or 429 line can end in what the provider said (US-180,
+      // said="..."), which a custom endpoint can fill with its own
+      // names: a public issue never carries it.
+      body = `[sort] ${text
+        .replace(/ said=.*$/, ' said=[left out]')
+        .replace(/ reason=network (.*?)(?= model=| slot=|;|$)/, (_m, d: string) => ` reason=network ${safeDetail(d)}`)}`
     } else if (tag === 'receipt') {
       body = `[receipt] ${text.replace(/ reason=(.*)$/, (_m, r: string) => ` reason=${safeDetail(r)}`)}`
     } else {
