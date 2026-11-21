@@ -9,9 +9,11 @@ import {
   cutAtSeams,
   cutRun,
   findSeams,
+  MAX_CUTS_PER_SENTENCE,
   headingPrefix,
   holdBelow,
   ideaLine,
+  isItem,
   keepPrompt,
   keepWords,
   leadLine,
@@ -26,6 +28,7 @@ import {
   renderFiledHeading,
   sanitizeTopic,
   seamPrompt,
+  seamSides,
   settle,
   splitLeadIn,
   splitSentences,
@@ -752,5 +755,179 @@ describe('keep: file only the item (US-115)', () => {
     expect(offered.ok && offered.keep).toEqual({ 1: [5, 10] })
     // Not offered, the key is an unknown sentence, as for every reserved key.
     expect(validateSort(1, '{"1":"idea","keep":{"1":[5,10]}}')).toEqual({ ok: false, reason: 'extra sentences' })
+  })
+})
+
+describe('fragments stay with their item (US-181, issue #23)', () => {
+  const link = { time: '10:32', inboxFile: 'murmur/inbox/2026-11-04.md', tasksFile: 'murmur/todo.md', ideasFile: 'murmur/ideas.md' }
+  const at = '([10:32](inbox/2026-11-04.md))'
+  // What a sort files when the model labels every sentence a task and
+  // says yes to every cut it is shown: the worst case on a chat
+  // connection, where the votes are not trusted.
+  const fileAllYes = (text: string, starts: Record<number, number> = {}) => {
+    const { sentences, leads } = splitUnits(text)
+    const seams = sentences.map(findSeams)
+    const votes = Object.fromEntries(
+      seams.map((s, i) => [i + 1, s.map((_, j) => j + 1)] as const).filter(([, v]) => v.length > 0)
+    )
+    const labels = sentences.map((): SortLabel => 'task')
+    const split = applySplits(sentences, labels, seams, votes, starts, 'run')
+    return planFiling(split.sentences, split.labels, link, split.leads.map((l, i) => l ?? leads[i] ?? null))
+  }
+
+  it('files the garage sentence as a lead-in over 1 task, not 3 fragments', () => {
+    // Before: "For the garage project" / "remind me that after our
+    // current paint tests" / "we will try the sealant to see if it helps".
+    const garage = 'For the garage project, remind me that after our current paint tests, we will try the sealant to see if it helps.'
+    // The cut after "tests" leaves a clause that "that after" opened and
+    // never finished, so it is not even offered.
+    expect(findSeams(garage).map((seam) => seamSides(garage, seam).left)).toEqual(['For the garage project'])
+    const filed = [
+      `- For the garage project:\n  - [ ] remind me that after our current paint tests, we will try the sealant to see if it helps ${at}`
+    ]
+    expect(fileAllYes(garage).tasks).toEqual(filed)
+  })
+
+  it('keeps "Otherwise," with its clause, and files a lone "Otherwise." nowhere', () => {
+    // Before: "otherwise" and "they will have to do it on their own" as 2 tasks.
+    expect(fileAllYes('Next week we need the quotes. Otherwise, they will have to do it on their own.').tasks).toEqual([
+      `- [ ] Next week we need the quotes. ${at}`,
+      `- [ ] Otherwise, they will have to do it on their own. ${at}`
+    ])
+    // Said in 1 breath, the consequence never leaves its sentence.
+    expect(fileAllYes('Next week we need the quotes, otherwise they will have to do it on their own.').tasks).toEqual([
+      `- [ ] Next week we need the quotes, otherwise they will have to do it on their own. ${at}`
+    ])
+    const lone = fileAllYes('Next week we need the quotes. Otherwise.')
+    expect(lone.tasks).toEqual([`- [ ] Next week we need the quotes. ${at}`])
+    expect(lone.notes).toEqual(['Otherwise.'])
+  })
+
+  it('never files a lone "Oh." spoken as its own sentence; it stays in the inbox', () => {
+    // Before: "- [ ] Oh." in todo.md.
+    const plan = fileAllYes('Oh. Call the vet.')
+    expect(plan.tasks).toEqual([`- [ ] Call the vet. ${at}`])
+    expect(plan.notes).toEqual(['Oh.'])
+    for (const lone of ['Oh\u2026', 'Oh \u2014', 'Right.', 'Basically.', 'So, anyway.', '- Oh', '...']) {
+      expect(planFiling([lone], ['idea'], link).ideas).toEqual([])
+    }
+  })
+
+  it('never files "Oh:" as a lead-in; the filler rides with the first item', () => {
+    // Before: "- Oh:" over "buy milk" and "call Bob".
+    const s = 'Oh, buy milk, and call Bob.'
+    expect(leadWords(s, findSeams(s))).toEqual(['Oh', 'buy', 'milk'])
+    expect(fileAllYes(s, { 1: 2 }).tasks).toEqual([`- [ ] Oh, buy milk ${at}`, `- [ ] call Bob ${at}`])
+    expect(cutRun(s, findSeams(s), [1], 2)).toEqual({ lead: null, pieces: ['Oh, buy milk', 'call Bob'] })
+    // A list heading of fillers alone files its lines flat.
+    expect(planFiling(['eggs'], ['task'], link, [{ text: 'So:', group: 'heading-0' }]).tasks).toEqual([`- [ ] eggs ${at}`])
+  })
+
+  it('treats otherwise, basically, and right as fillers only when a side is nothing else', () => {
+    expect(findSeams('Right, call Bob')).toEqual([])
+    expect(findSeams('Basically, we need quotes')).toEqual([])
+    expect(findSeams('Okay\u2026 right \u2014 so, call Bob')).toEqual([])
+    const s = 'write the right address, and call Bob'
+    expect(cutAtSeams(s, findSeams(s), [1])).toEqual(['write the right address', 'call Bob'])
+    expect(isItem('turn right')).toBe(true)
+    expect(isItem('or otherwise')).toBe(true)
+    expect(isItem('Right.')).toBe(false)
+  })
+
+  it('files a task in any script', () => {
+    const plan = planFiling(['Позвонить Бобу.', '牛乳を買う。'], ['task', 'idea'], link)
+    expect(plan.tasks).toHaveLength(1)
+    expect(plan.ideas).toHaveLength(1)
+  })
+
+  it('offers no cut that leaves a clause opened and not finished', () => {
+    expect(findSeams('If it rains, cancel the picnic.')).toEqual([])
+    expect(findSeams('remind me that, after the tests, we try the sealant')).toEqual([])
+    expect(findSeams('Call Bob, because he asked.')).toEqual([])
+    expect(findSeams('Move the couch, so that the rug fits.')).toEqual([])
+    const after = 'After lunch, call Bob, and email Ann.'
+    expect(findSeams(after).map((seam) => seamSides(after, seam))).toEqual([{ left: 'After lunch, call Bob', right: 'email Ann.' }])
+    const sam = 'Tell Sam that when the paint dries, we seal it, and order more brushes.'
+    expect(findSeams(sam).map((seam) => seamSides(sam, seam).left)).toEqual(['Tell Sam that when the paint dries, we seal it'])
+    const answers = 'Call Bob, and if he answers, ask about Friday.'
+    expect(findSeams(answers).map((seam) => seamSides(answers, seam))).toEqual([
+      { left: 'Call Bob', right: 'if he answers, ask about Friday.' }
+    ])
+  })
+
+  it('still offers cuts between finished steps, whatever words they hold', () => {
+    const sides = (s: string) => findSeams(s).map((seam) => seamSides(s, seam))
+    expect(sides('call Bob when you get home, and email Ann')).toEqual([{ left: 'call Bob when you get home', right: 'email Ann' }])
+    expect(sides('Buy that, and call Bob.')).toEqual([{ left: 'Buy that', right: 'call Bob.' }])
+    expect(sides('Call Bob once, and email Ann.')).toHaveLength(1)
+    expect(sides('Wait a while, then call Bob.')).toHaveLength(1)
+    expect(sides('Move the couch so that the rug fits, and vacuum.')).toHaveLength(1)
+    expect(sides('Call Bob because he asked, and email Ann.')).toHaveLength(1)
+  })
+
+  it('takes a topic lead as the lead-in, and only a short one cut at a bare comma', () => {
+    const party = 'For the party, I need to buy chips, salsa, and plates.'
+    const seams = findSeams(party)
+    expect(cutRun(party, seams, [1, 2, 3], 8)).toEqual({ lead: 'For the party, I need to buy', pieces: ['chips', 'salsa', 'plates'] })
+    expect(cutRun(party, seams, [1, 2, 3])).toEqual({ lead: 'For the party', pieces: ['I need to buy chips', 'salsa', 'plates'] })
+    const site = 'About the website, update the pricing page.'
+    expect(cutRun(site, findSeams(site), [1])).toEqual({ lead: 'About the website', pieces: ['update the pricing page'] })
+    const so = 'So, for the party, buy chips, and plates.'
+    expect(cutRun(so, findSeams(so), [1, 2])).toEqual({ lead: 'So, for the party', pieces: ['buy chips', 'plates'] })
+    // Not topic leads: no opener, a connector cut, or too many words.
+    const plain = 'Buy milk, call Bob.'
+    expect(cutRun(plain, findSeams(plain), [1])).toEqual({ lead: null, pieces: ['Buy milk', 'call Bob'] })
+    const joined = 'For the party and the picnic, buy chips'
+    expect(cutRun(joined, findSeams(joined), [1]).lead).toBeNull()
+    const long = 'For the people who came to the party, send a note, and post photos.'
+    expect(cutRun(long, findSeams(long), [1, 2]).lead).toBeNull()
+    // A topic cut the model did not confirm leaves the sentence whole.
+    const garage = 'For the garage project, buy sealant.'
+    expect(cutRun(garage, findSeams(garage), [])).toEqual({ lead: null, pieces: [garage] })
+  })
+
+  it('cuts ordinary runs that open with for or on exactly as before', () => {
+    const all = (x: string, start?: number) => {
+      const seams = findSeams(x)
+      return cutRun(x, seams, seams.map((_, j) => j + 1), start)
+    }
+    // A verb or a subject after the opener means no topic, with a start or without.
+    expect(all('For dinner get chicken, rice, and beans.', 4)).toEqual({ lead: 'For dinner get', pieces: ['chicken', 'rice', 'beans'] })
+    expect(all('For dinner get chicken, rice, and beans.')).toEqual({ lead: null, pieces: ['For dinner get chicken', 'rice', 'beans'] })
+    expect(all('On Monday call Bob, email Ann, and book the flight.', 3)).toEqual({
+      lead: 'On Monday',
+      pieces: ['call Bob', 'email Ann', 'book the flight']
+    })
+    expect(all('On Monday call Bob, email Ann, and book the flight.').lead).toBeNull()
+    expect(all('For the party I need chips, salsa, and plates.', 6)).toEqual({ lead: 'For the party I need', pieces: ['chips', 'salsa', 'plates'] })
+    expect(all('For the party I need chips, salsa, and plates.').lead).toBeNull()
+    // A start inside a topic-shaped lead says the first item begins there.
+    expect(all('For the kids snacks, juice, and fruit.', 4)).toEqual({ lead: 'For the kids', pieces: ['snacks', 'juice', 'fruit'] })
+    expect(all('I need to buy apples, rice, and coffee.', 5)).toEqual({ lead: 'I need to buy', pieces: ['apples', 'rice', 'coffee'] })
+    expect(all('We need toner, paper, and ink.', 3)).toEqual({ lead: 'We need', pieces: ['toner', 'paper', 'ink'] })
+  })
+
+  it('files a sentence with more cuts than the cap whole', () => {
+    const ten = 'Buy eggs, milk, bread, butter, cheese, apples, rice, coffee, tea, and jam.'
+    const tenSeams = findSeams(ten)
+    expect(tenSeams).toHaveLength(MAX_CUTS_PER_SENTENCE)
+    expect(cutAtSeams(ten, tenSeams, tenSeams.map((_, j) => j + 1))).toHaveLength(10)
+    const eleven = 'Buy eggs, milk, bread, butter, cheese, apples, rice, coffee, tea, salt, and jam.'
+    const elevenSeams = findSeams(eleven)
+    const all = elevenSeams.map((_, j) => j + 1)
+    expect(all).toHaveLength(MAX_CUTS_PER_SENTENCE + 1)
+    expect(cutAtSeams(eleven, elevenSeams, all)).toEqual([eleven])
+    expect(cutRun(eleven, elevenSeams, all, 2)).toEqual({ lead: null, pieces: [eleven] })
+  })
+
+  it('stays fast on long runs of clause words and fillers', () => {
+    const started = Date.now()
+    findSeams(`remind me ${'that after '.repeat(500)}the tests, we try, and ${'me that '.repeat(500)}x`)
+    findSeams(`${'if when because '.repeat(400)}, call Bob, ${'so '.repeat(400)}`)
+    findSeams(`${'tell Sam that '.repeat(500)}, call Bob`)
+    const topic = `${'so, '.repeat(400)}for the party, buy chips, and plates.`
+    cutRun(topic, findSeams(topic), [1, 2])
+    expect(isItem(`${'okay \u2026 '.repeat(400)}`)).toBe(false)
+    expect(Date.now() - started).toBeLessThan(500)
   })
 })
