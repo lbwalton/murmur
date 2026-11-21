@@ -2,6 +2,14 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.19 (2026-11-21)
+
+- Report a problem: click the murmur icon in the menu bar (the tray on Windows) and pick Report a problem…, or find it under Settings, System. murmur takes a screenshot of its own window and fills in what we need to help: your version, your system, your providers and models, and recent log lines, with your name, folder paths, unknown web addresses, and mic names left out. You see every word before it goes. Open on GitHub opens a filled-in issue in your browser (paste the screenshot with Cmd+V, Ctrl+V on Windows), and Email it instead opens a message to support@murmurapp.app in your mail app. Nothing goes anywhere unless you send it.
+- Update from the menu: Check for updates in the menu bar menu (the tray on Windows), in the murmur menu at the top of a Mac's screen, or in Settings finds a new version and downloads it, and Restart to update closes murmur, installs it, and opens it again by itself. The restart waits until your take is done, so no words are lost.
+- Long notes sort all the way: a note of a few minutes goes to your provider in parts that fit its limits, and murmur waits out a short rate limit before it tries again. If a sort cannot finish, a notification says so (it names the note by its time, never by its words), and Sort again under Settings, Notes, Last note files just the lines left, never anything twice. A note you save while a long one sorts gets its own receipt right after.
+- 1 task you say stays 1 checkbox: a to-do with a lead-in or a condition, like "For the garage project, remind me that after our paint tests, we will try the sealant", files as 1 item under its heading, and a word like Oh or Otherwise never becomes a checkbox of its own.
+- On Windows, a long microphone name stays inside its card under Settings, Dictation: the picked name ends in ..., and the open list shows every name in full.
+
 ## 0.1.18 (2026-11-18)
 
 - A new look on a Mac: the window is dark glass, and your desktop shows through it as blurred light and color. Every card, the sidebar, and the top bar are the same pane, and gold marks what matters now: your time back, the sidebar line you are on, and the day you are on in your dictations. Card titles sit on a small ink tag. Turn on Reduce transparency in your Mac's accessibility settings and the window goes solid with a soft gold glow, right away. Windows keeps the solid look for now.
