@@ -3,9 +3,11 @@
 // the model to label the note's numbered sentences, validate the reply
 // strictly, and copy tasks and ideas into their files with links back.
 // It runs after the note is already on disk and touches no file unless
-// the whole labeling is valid, so a rejected sort costs nothing: the
-// note is in the inbox, where it already was. Nothing here logs the
-// note's text.
+// a part's whole labeling is valid, so a rejected sort costs nothing:
+// the note is in the inbox, where it already was. A long note goes out
+// in parts sized to the provider's token budget (US-180), each settling
+// on its own, so a part that fails leaves only its own lines for Sort
+// again. Nothing here logs the note's text.
 import {
   appendFileSync,
   closeSync,
@@ -22,6 +24,7 @@ import {
 import { basename, dirname, join } from 'node:path'
 import { app } from 'electron'
 import {
+  COMPARE_CAP,
   type ContextFile,
   type ContextItem,
   type HeldReason,
@@ -80,6 +83,20 @@ import {
   validateSort
 } from '../../shared/sorter'
 import { buildDecisionRequest, readDecisionAnswers } from '../../shared/decide'
+import {
+  CHARS_PER_TOKEN,
+  REQUEST_OVERHEAD_CHARS,
+  errorMessage,
+  estimateTokens,
+  itemsCapFor,
+  nextPart,
+  partBudget,
+  providerLimit,
+  providerSays,
+  retryDelayMs,
+  sentenceCosts,
+  unitBoundaries
+} from '../../shared/sort-batches'
 import type { SeamVotes, SortLabel, SortVerdict } from '../../shared/sorter'
 import { resolvePolishConnection } from '../formatter'
 import type { PolishConfig } from '../formatter/llm'
@@ -147,6 +164,16 @@ export interface SortReport {
   /** The files a filed sort wrote lines into, tasks first (US-082):
    *  the note receipt names them and opens the first. */
   places?: ReceiptPlace[]
+  /** Lines no answer covered (US-180): their part could not reach the
+   *  model, failed its checks, or was too large even alone. They stay
+   *  unsettled in the inbox, so Sort again sends just those. Absent when
+   *  every line was answered. */
+  unsorted?: number
+  /** Spoken runs filed cut without their piece-by-piece repeat check,
+   *  because that second request could not be answered (US-180). */
+  unchecked?: number
+  /** How many parts a long note went out in, when more than 1. */
+  parts?: number
 }
 
 /** What the sort connection speaks: an OpenAI-compatible chat model,
@@ -162,6 +189,11 @@ export interface SortOptions {
   protocol?: SortProtocol
   /** Smoke only: the chat connection a failed decision falls back to. */
   fallback?: PolishConfig
+  /** Tests and smoke: a part's budget in estimated tokens, in place of
+   *  the one the provider's stated limit sets (US-180). */
+  partTokens?: number
+  /** Tests and smoke: how a rate-limit wait sleeps. */
+  sleep?: (ms: number) => Promise<void>
 }
 
 let lastSort: SortReport | null = null
@@ -335,6 +367,11 @@ export function rememberForSort(input: SortInput): void {
   lastInput = input
 }
 
+/** The note Sort again would sort, so its receipt can follow (US-180). */
+export function lastSortInput(): SortInput | null {
+  return lastInput
+}
+
 export interface ResolvedSortConnection {
   config: PolishConfig
   slot: 'separate' | 'cleanup'
@@ -362,7 +399,20 @@ export function resolveSortConnection(settings: Settings): ResolvedSortConnectio
   return cleanup ? { config: cleanup, slot: 'cleanup', protocol: 'chat' } : null
 }
 
-type ModelReply = { ok: true; content: string } | { ok: false; reason: string }
+type ModelReply =
+  | { ok: true; content: string; limit?: number }
+  | {
+      ok: false
+      reason: string
+      /** The HTTP status when the provider answered with an error. */
+      status?: number
+      /** How long a 429 asked to wait, when it named a wait. */
+      retryMs?: number | null
+      /** The provider's own message, made safe for the log. */
+      said?: string
+      /** The per-minute token limit the provider stated. */
+      limit?: number
+    }
 
 /** The two target files opened for append before either is written:
  *  a folder that cannot be made or a file that cannot be opened fails
@@ -414,7 +464,27 @@ async function askModel(
       }),
       signal: controller.signal
     })
-    if (!response.ok) return { ok: false, reason: `http ${response.status}` }
+    if (!response.ok) {
+      // What the provider says about it, so a refusal says why (US-180):
+      // read for its numbers, logged only through providerSays.
+      let text = ''
+      try {
+        text = (await response.text()).slice(0, 4000)
+      } catch {
+        text = ''
+      }
+      const message = errorMessage(text)
+      return {
+        ok: false,
+        reason: `http ${response.status}`,
+        status: response.status,
+        retryMs: response.status === 429 ? retryDelayMs(response.headers, message) : null,
+        // A malformed or unprocessable request is where a provider quotes
+        // the input back, in pieces too short to catch: not logged.
+        said: response.status === 400 || response.status === 422 ? '' : providerSays(message, prompt, cfg.apiKey),
+        limit: providerLimit(response.headers, message)
+      }
+    }
     let body: unknown
     try {
       body = await response.json()
@@ -428,7 +498,7 @@ async function askModel(
         ? (body as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content
         : undefined
     if (typeof content !== 'string') return { ok: false, reason: 'response missing text' }
-    return { ok: true, content }
+    return { ok: true, content, limit: providerLimit(response.headers, '') }
   } catch (error) {
     const aborted = error instanceof Error && error.name === 'AbortError'
     return { ok: false, reason: aborted ? 'timeout' : 'network' }
@@ -437,9 +507,84 @@ async function askModel(
   }
 }
 
+// The longest 1 rate-limit wait: a full minute covers any per-minute
+// window, Groq's tokens per minute included (checked 2026-11-21).
+const RATE_WAIT_MAX_MS = 60_000
+// A 429 that names no wait gets this one.
+const RATE_WAIT_DEFAULT_MS = 5_000
+// A little past the wait asked, so the retry lands after the reset.
+const RATE_WAIT_MARGIN_MS = 500
+// All the waiting 1 sort may do. The sort holds the 1 sort slot while
+// it waits, so a long note never holds it for long: past this, the rest
+// stays in the inbox for Sort again.
+const SORT_WAIT_BUDGET_MS = 120_000
+
+/** Per-minute token limits providers stated (x-ratelimit-limit-tokens,
+ *  or Limit N in an error), by base URL and model, for this run of the
+ *  app, so the next sort sizes its parts to fit from the start. */
+const statedLimits = new Map<string, number>()
+const limitKey = (cfg: PolishConfig): string => `${cfg.baseUrl}|${cfg.model}`
+
+function noteLimit(cfg: PolishConfig, limit: number | undefined): void {
+  if (limit !== undefined) statedLimits.set(limitKey(cfg), limit)
+}
+
+/** What the sort's parts share about waiting. */
+interface Pace {
+  sleep: (ms: number) => Promise<void>
+  leftMs: number
+  waitedMs: number
+}
+
+const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`
+const saidTail = (said: string | undefined): string => (said ? ` said="${said}"` : '')
+
+/**
+ * Ask the chat model, with 1 more try after a rate limit (US-180): it
+ * waits what the 429 asked (Retry-After, then the token reset, then the
+ * message), up to a minute and within the sort's allowance, and logs the
+ * wait. Any other failure, a 429 asking for longer, or a second 429 is
+ * the caller's to report. Dictation never waits on this: a sort runs
+ * after its note is already on disk.
+ */
+async function askChat(
+  systemPrompt: string,
+  prompt: string,
+  cfg: PolishConfig,
+  via: { fetchImpl: typeof fetch; timeoutMs: number; pace: Pace; tag: string },
+  what: 'labels' | 'pieces'
+): Promise<ModelReply> {
+  const first = await askModel(systemPrompt, prompt, cfg, via.fetchImpl, via.timeoutMs)
+  noteLimit(cfg, first.limit)
+  if (first.ok || first.status !== 429) return first
+  const asked = first.retryMs ?? RATE_WAIT_DEFAULT_MS
+  const wait = asked + RATE_WAIT_MARGIN_MS
+  const base = `[sort] rate limited reason=http 429 for=${what} wait=${seconds(asked)} model=${cfg.model}`
+  if (asked > RATE_WAIT_MAX_MS || wait > via.pace.leftMs) {
+    const why = asked > RATE_WAIT_MAX_MS ? 'it asks for more than a minute' : 'this sort has waited its share'
+    writeAppLog(`${base}; not waiting, ${why}${via.tag}${saidTail(first.said)}`)
+    return first
+  }
+  writeAppLog(`${base}; trying once more${via.tag}${saidTail(first.said)}`)
+  via.pace.leftMs -= wait
+  via.pace.waitedMs += wait
+  await via.pace.sleep(wait)
+  const second = await askModel(systemPrompt, prompt, cfg, via.fetchImpl, via.timeoutMs)
+  noteLimit(cfg, second.limit)
+  return second
+}
+
 function record(
   outcome: SortOutcome,
-  counts: { tasks: number; ideas: number; notes: number; held?: number },
+  counts: {
+    tasks: number
+    ideas: number
+    notes: number
+    held?: number
+    unsorted?: number
+    unchecked?: number
+    parts?: number
+  },
   reason?: string,
   places?: ReceiptPlace[]
 ): SortReport {
@@ -466,6 +611,49 @@ export async function sortNote(
   return inFlight
 }
 
+/** What 1 sort shares across the parts of its note (US-180). */
+interface SortRun {
+  input: SortInput
+  settings: Settings
+  units: ReturnType<typeof splitUnits>
+  /** The connection the parts go to. A decision model that fails hands
+   *  this to the chat sorter for the rest of the note. */
+  via: { config: PolishConfig; slot: ResolvedSortConnection['slot']; protocol: SortProtocol }
+  fetchImpl: typeof fetch
+  timeoutMs: number
+  wantsTopic: boolean
+  /** The topic the first part to file named; the parts after it reuse
+   *  it, so the whole note sits under 1 heading. Null until 1 files. */
+  topic: string | null
+  paths: { tasksPath: ReturnType<typeof resolveTemplateOrDefault>; ideasPath: ReturnType<typeof resolveTemplateOrDefault> }
+  tasksFile: string
+  tasksText: string
+  /** The filed items, read once before any part files, so a later part
+   *  is never compared against an earlier part's own lines. */
+  items: ContextItem[]
+  itemsCap: number
+  /** Smoke only: the chat connection a failed decision falls back to. */
+  fallback?: PolishConfig
+  pace: Pace
+  /** ` part=N` on the log lines of a note sent in parts, else ''. */
+  tag: string
+}
+
+/** What 1 part of a note came to. */
+interface PartResult {
+  outcome: SortOutcome
+  counts: { tasks: number; ideas: number; notes: number; held: number }
+  reason?: string
+  places?: ReceiptPlace[]
+  /** The status of a request the provider refused. */
+  status?: number
+  /** Runs filed cut without their piece-by-piece look. */
+  unchecked: number
+  /** Lines of this part no answer covered: every line when the request
+   *  or its checks failed, the lines whose file failed on a write. */
+  left: number
+}
+
 async function runSort(input: SortInput, options: SortOptions, only?: readonly number[]): Promise<SortReport> {
   const settings = getSettings()
   if (!settings.notes.sort) return record('skipped', NONE, 'sorting off')
@@ -473,13 +661,11 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const units = splitUnits(input.text)
   const all = units.sentences
   // Sort again sends only the positions still unsettled; a fresh note
-  // sends everything. The model sees whatever it gets numbered from 1.
+  // sends everything. The plan is fixed here, once: a long note goes out
+  // in parts (US-180), each numbered from 1, and no part re-reads what
+  // is settled while the sort runs.
   const positions = only ?? all.map((_, i) => i)
-  const sentences = positions.map((i) => all[i])
-  // A list line under a heading carries that heading as its lead-in
-  // (US-062); the heading itself is never sent.
-  const unitLeads = positions.map((i) => units.leads[i] ?? null)
-  if (sentences.length === 0) return record('skipped', NONE, 'nothing to sort')
+  if (positions.length === 0) return record('skipped', NONE, 'nothing to sort')
   // Held lines follow the note: a fresh note starts empty, and a line
   // sent again gets a fresh verdict in place of its old one.
   lastAction = null
@@ -498,15 +684,198 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     : resolveSortConnection(settings)
   if (!resolved) {
     writeAppLog('[sort] failed reason=no connection; save a key for the speech, cleanup, or sort connection')
-    return record('failed', NONE, 'no connection')
+    return record('failed', { ...NONE, unsorted: positions.length }, 'no connection')
   }
-  let { config, slot, protocol } = resolved
-  const fetchImpl = options.fetchImpl ?? appFetch
-  const timeoutMs = options.timeoutMs ?? 12_000
   // Topics only mean something when a heading can carry them, and only
   // a chat model can write one.
   const wantsTopic =
     settings.notes.topicHeadings && settings.notes.filedHeadingTemplate.includes('{topic}')
+  // Filed items (US-055): what is already in the two files, read from
+  // the base this note landed in, so a dump is compared before it files.
+  let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
+  let ideasPath: ReturnType<typeof resolveTemplateOrDefault>
+  try {
+    ;({ tasksPath, ideasPath } = filedPaths(input.when))
+  } catch (error) {
+    writeAppLog(`[sort] failed reason=${errorCode(error)}`)
+    return record('failed', { ...NONE, unsorted: positions.length }, 'paths')
+  }
+  const tasksFile = join(input.base, ...tasksPath.segments)
+  const tasksText = fileText(tasksFile)
+  const ideasText = fileText(join(input.base, ...ideasPath.segments))
+
+  // Parts (US-180): what each sentence and the framing around them cost,
+  // so the note goes out in requests the provider will take.
+  const seamsAll = all.map(findSeams)
+  const costAt = sentenceCosts(all, seamsAll)
+  const boundaryAt = unitBoundaries(input.text, all, units.leads)
+  const systemChars = [
+    SORT_SYSTEM_PROMPT,
+    SORT_TOPIC_PROMPT,
+    SORT_SEAMS_PROMPT,
+    SORT_LEADS_PROMPT,
+    SORT_KEEP_PROMPT,
+    SORT_RELATIONS_PROMPT
+  ].join(' ').length
+  const budgetNow = (): number => options.partTokens ?? partBudget(statedLimits.get(limitKey(run.via.config)))
+  const framing = (items: readonly ContextItem[], cap: number): number =>
+    systemChars + contextPrompt(items, cap).length + REQUEST_OVERHEAD_CHARS
+  // A note that fits in 1 request with every recent item goes as it
+  // always did. A longer one carries fewer filed items in each part,
+  // since every part pays for them again.
+  let itemsCap = COMPARE_CAP
+  let items = buildCompareContext(tasksText, ideasText)
+  const run: SortRun = {
+    input,
+    settings,
+    units,
+    via: resolved,
+    fetchImpl: options.fetchImpl ?? appFetch,
+    timeoutMs: options.timeoutMs ?? 12_000,
+    wantsTopic,
+    topic: null,
+    paths: { tasksPath, ideasPath },
+    tasksFile,
+    tasksText,
+    items,
+    itemsCap,
+    ...(options.fallback ? { fallback: options.fallback } : {}),
+    pace: {
+      sleep: options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+      leftMs: SORT_WAIT_BUDGET_MS,
+      waitedMs: 0
+    },
+    tag: ''
+  }
+  const wholeChars = framing(items, itemsCap) + positions.reduce((n, p) => n + costAt[p], 0)
+  if (estimateTokens(wholeChars) > budgetNow()) {
+    itemsCap = itemsCapFor(tasksText, ideasText, budgetNow())
+    if (itemsCap < COMPARE_CAP) items = buildCompareContext(tasksText, ideasText, itemsCap)
+    run.items = items
+    run.itemsCap = itemsCap
+  }
+
+  let rest = [...positions]
+  // Set when the provider refused a part as too large: the smaller size
+  // holds for the rest of this sort.
+  let shrunk: number | null = null
+  let parts = 0
+  let multi = false
+  let filedAny = false
+  let lowConfidence = false
+  let writeFailed = false
+  let tooLargeInARow = 0
+  let unsorted = 0
+  let unchecked = 0
+  let trouble: { outcome: 'failed' | 'rejected'; reason: string } | null = null
+  const totals = { tasks: 0, ideas: 0, notes: 0, held: 0 }
+  const placed: ReceiptPlace[] = []
+  while (rest.length > 0) {
+    const fixed = framing(items, itemsCap)
+    const budget = shrunk ?? budgetNow()
+    const costs = rest.map((p) => costAt[p])
+    // A gap in the positions (Sort again sends what is left) reads as a
+    // paragraph break.
+    const breaks = rest.map((p, k) => (k > 0 && rest[k - 1] === p - 1 ? boundaryAt[p] : 'paragraph'))
+    const take = nextPart(costs, breaks, budget * CHARS_PER_TOKEN - fixed)
+    const part = rest.slice(0, take)
+    if (parts === 0 && take < rest.length) multi = true
+    // A part refused as too large is not a part: its halves are.
+    run.tag = multi ? ` part=${parts + 1}` : ''
+    const result = await sortPart(run, part)
+    if (result.status === 413 && part.length > 1) {
+      // Too large for the provider: send it in halves, and keep the
+      // smaller size for the rest of this sort.
+      const partChars = costs.slice(0, take).reduce((n, c) => n + c, 0)
+      shrunk = Math.max(1, Math.floor((fixed + partChars / 2) / CHARS_PER_TOKEN))
+      multi = true
+      writeAppLog(`[sort] part too large reason=http 413 sentences=${part.length}; sending it in halves${run.tag}`)
+      continue
+    }
+    parts += 1
+    rest = rest.slice(take)
+    totals.tasks += result.counts.tasks
+    totals.ideas += result.counts.ideas
+    totals.notes += result.counts.notes
+    totals.held += result.counts.held
+    unchecked += result.unchecked
+    for (const place of result.places ?? []) {
+      if (!placed.some((p) => p.kind === place.kind && p.file === place.file)) placed.push(place)
+    }
+    if (result.outcome === 'filed') {
+      filedAny = true
+      tooLargeInARow = 0
+      continue
+    }
+    if (result.outcome === 'rejected' && result.reason === 'low confidence') {
+      lowConfidence = true
+      continue
+    }
+    unsorted += result.left
+    if (trouble === null || result.outcome === 'failed') {
+      trouble = { outcome: result.outcome === 'failed' ? 'failed' : 'rejected', reason: result.reason ?? 'unknown' }
+    }
+    if (result.outcome !== 'failed') continue
+    // A line too large even alone stays in the inbox and the rest goes
+    // on, unless it happens twice running: then what is too large is
+    // what every part carries, and every line would meet the same.
+    if (result.status === 413 && ++tooLargeInARow < 2) continue
+    // Any other failure (the model unreachable, a key refused, a rate
+    // limit that did not pass, a file that would not take its lines)
+    // would meet the next part too: the rest stays for Sort again.
+    writeFailed = (result.reason ?? '').startsWith('write ')
+    if (rest.length > 0) {
+      writeAppLog(`[sort] stopped reason=${result.reason ?? 'unknown'} left=${rest.length}; the rest stays in the inbox for Sort again${run.tag}`)
+    }
+    unsorted += rest.length
+    rest = []
+  }
+  placed.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'tasks' ? -1 : 1))
+  const extra = {
+    ...(unsorted > 0 ? { unsorted } : {}),
+    ...(unchecked > 0 ? { unchecked } : {}),
+    ...(parts > 1 ? { parts } : {})
+  }
+  if (multi || unsorted > 0) {
+    writeAppLog(
+      `[sort] done parts=${parts} sentences=${positions.length} unsorted=${unsorted} waited=${seconds(run.pace.waitedMs)}${trouble ? ` reason=${trouble.reason}` : ''}`
+    )
+  }
+  if (writeFailed) return record('failed', { ...totals, ...extra }, trouble?.reason)
+  if (filedAny) return record('filed', { ...totals, ...extra }, trouble?.reason, placed)
+  if (trouble) return record(trouble.outcome, { ...totals, ...extra }, trouble.reason)
+  return record('rejected', { ...totals, ...extra }, lowConfidence ? 'low confidence' : 'unknown')
+}
+
+/**
+ * Sort 1 part of a note: the sentences at these positions, numbered from
+ * 1. Never throws. Files are written only after this part's whole
+ * labeling validated, tasks first, then ideas, and its lines settle on
+ * their own, so a part that fails leaves only its own lines unsettled.
+ */
+async function sortPart(run: SortRun, positions: readonly number[]): Promise<PartResult> {
+  const { input, settings, units, fetchImpl, timeoutMs, items, tasksFile, tasksText, wantsTopic } = run
+  const { tasksPath, ideasPath } = run.paths
+  let { config, slot, protocol } = run.via
+  const sentences = positions.map((i) => units.sentences[i])
+  // A list line under a heading carries that heading as its lead-in
+  // (US-062); the heading itself is never sent.
+  const unitLeads = positions.map((i) => units.leads[i] ?? null)
+  const done = (
+    outcome: SortOutcome,
+    counts: PartResult['counts'],
+    reason?: string,
+    extra: Partial<PartResult> = {}
+  ): PartResult => ({
+    outcome,
+    counts,
+    unchecked: 0,
+    left: outcome === 'filed' ? 0 : sentences.length,
+    ...(reason ? { reason } : {}),
+    ...extra
+  })
+  // Only the first part to file names the note; the rest reuse its name.
+  const askTopic = wantsTopic && run.topic === null
   // Seams (US-056): the code finds where a sentence could be cut and the
   // model only votes per seam; a note with no seam offers none.
   const seamsBySentence = sentences.map(findSeams)
@@ -521,19 +890,6 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   // numbers only.
   const keepCounts = sentences.map((sentence) => keepWords(sentence).length)
   const offerKeep = keepCounts.some((n) => n > 0)
-  // Filed items (US-055): what is already in the two files, read from
-  // the base this note landed in, so a dump is compared before it files.
-  let tasksPath: ReturnType<typeof resolveTemplateOrDefault>
-  let ideasPath: ReturnType<typeof resolveTemplateOrDefault>
-  try {
-    ;({ tasksPath, ideasPath } = filedPaths(input.when))
-  } catch (error) {
-    writeAppLog(`[sort] failed reason=${errorCode(error)}`)
-    return record('failed', NONE, 'paths')
-  }
-  const tasksFile = join(input.base, ...tasksPath.segments)
-  const tasksText = fileText(tasksFile)
-  const items = buildCompareContext(tasksText, fileText(join(input.base, ...ideasPath.segments)))
 
   let verdict: SortVerdict | null = null
   let answeredBy = config.model
@@ -563,23 +919,25 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       answeredBy = reply.model
     } else {
       const reason = reply.ok ? `validate: ${read && !read.ok ? read.reason : 'unknown'}` : reply.reason
-      writeAppLog(`[sort] decision failed reason=${reason} model=${config.model}; falling back to the chat sorter`)
-      const cleanup = options.fallback ?? resolvePolishConnection(settings)
+      writeAppLog(`[sort] decision failed reason=${reason} model=${config.model}; falling back to the chat sorter${run.tag}`)
+      const cleanup = run.fallback ?? resolvePolishConnection(settings)
       if (!cleanup) {
         writeAppLog('[sort] failed reason=no connection; the decision model did not answer and no chat connection has a key')
-        return record('failed', NONE, 'no connection')
+        return done('failed', NONE, 'no connection')
       }
       config = cleanup
       slot = 'cleanup'
       protocol = 'chat'
       answeredBy = cleanup.model
+      // The rest of the note goes to the chat sorter too.
+      run.via = { config, slot, protocol }
     }
   }
 
   if (verdict === null) {
     const systemPrompt = [
       SORT_SYSTEM_PROMPT,
-      ...(wantsTopic ? [SORT_TOPIC_PROMPT] : []),
+      ...(askTopic ? [SORT_TOPIC_PROMPT] : []),
       ...(offerSeams ? [SORT_SEAMS_PROMPT] : []),
       ...(offerLeads ? [SORT_LEADS_PROMPT] : []),
       ...(offerKeep ? [SORT_KEEP_PROMPT] : []),
@@ -590,23 +948,25 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       ...(offerSeams ? [`Seams:\n${seamPrompt(sentences, seamsBySentence)}`] : []),
       ...(offerLeads ? [`Lead words:\n${leadPrompt(sentences, seamsBySentence)}`] : []),
       ...(offerKeep ? [`Words:\n${keepPrompt(sentences)}`] : []),
-      ...(items.length > 0 ? [contextPrompt(items)] : [])
+      ...(items.length > 0 ? [contextPrompt(items, run.itemsCap)] : [])
     ].join('\n\n')
-    const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
+    const reply = await askChat(systemPrompt, userPrompt, config, run, 'labels')
     if (!reply.ok) {
-      writeAppLog(`[sort] failed reason=${reply.reason} model=${config.model} slot=${slot}`)
-      return record('failed', NONE, reply.reason)
+      writeAppLog(
+        `[sort] failed reason=${reply.reason} model=${config.model} slot=${slot} sentences=${sentences.length}${run.tag}${saidTail(reply.said)}`
+      )
+      return done('failed', NONE, reply.reason, reply.status !== undefined ? { status: reply.status } : {})
     }
     const chat = validateSort(sentences.length, reply.content, {
-      topic: wantsTopic,
+      topic: askTopic,
       seamCounts,
       items: items.length,
       leadCounts,
       keepCounts
     })
     if (!chat.ok) {
-      writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}`)
-      return record('rejected', NONE, chat.reason)
+      writeAppLog(`[sort] rejected reason=${chat.reason} model=${config.model} slot=${slot} sentences=${sentences.length}${run.tag}`)
+      return done('rejected', NONE, chat.reason)
     }
     verdict = chat
   }
@@ -675,8 +1035,8 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     })
   }
   if (sure.length === 0) {
-    writeAppLog(`[sort] held every line reason=low confidence held=${unsure.length} threshold=${threshold} model=${answeredBy}`)
-    return record('rejected', { ...NONE, held: unsure.length }, 'low confidence')
+    writeAppLog(`[sort] held every line reason=low confidence held=${unsure.length} threshold=${threshold} model=${answeredBy}${run.tag}`)
+    return done('rejected', { ...NONE, held: unsure.length }, 'low confidence', { left: 0 })
   }
 
   // Related lines (US-055): a line the vote tied to a filed item (a
@@ -704,9 +1064,12 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const compared = [...cut, ...keptRuns].sort((a, b) => a.local - b.local)
   const comparedKept = new Set<number>()
   let comparedLeads = 0
+  // Runs filed cut without that look, because it could not be answered:
+  // the report carries the count so the degrade is never silent (US-180).
+  let unchecked = 0
   if (compared.length > 0) {
     const flat = flattenPieces(compared)
-    const second = await askRelations(flat.sentences, items, { config, protocol, fetchImpl, timeoutMs })
+    const second = await askRelations(flat.sentences, items, { config, protocol, run })
     if (second.ok) {
       ;({ held: heldPieces, filed: filedPieces } = assignPieceVotes(compared, second.relations, items))
       cutFiled = compared.length
@@ -717,7 +1080,10 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       )
     } else {
       const fallback = cut.length > 0 ? 'holding the whole line' : 'filing the runs as cut'
-      writeAppLog(`[sort] piece compare failed reason=${second.reason} model=${answeredBy}; ${fallback}`)
+      unchecked = keptRuns.length
+      writeAppLog(
+        `[sort] piece compare failed reason=${second.reason} model=${answeredBy}; ${fallback}${unchecked > 0 ? ` unchecked=${unchecked}` : ''}${run.tag}`
+      )
       for (const set of cut) {
         const line = related.find((r) => r.local === set.local)
         if (line) whole.push(line)
@@ -810,12 +1176,14 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       expanded.leads.push(piece.lead)
     }
   }
-  lastTopic = verdict.topic
+  // A note sent in parts sits under the name its first filed part got.
+  const topic = askTopic ? verdict.topic : (run.topic ?? '')
+  lastTopic = topic
   const written = writeEntries(
     input,
     expanded.sentences,
     expanded.labels,
-    verdict.topic,
+    topic,
     { tasksPath, ideasPath },
     expanded.leads
   )
@@ -824,27 +1192,28 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
     // lines whose file failed stay pending in the verbatim inbox
     // (review gate 2026-09-22).
     const landed = written.landed
-    settleFor(
-      input,
-      positions,
-      kept.filter((_, k) => {
-        const label = keptLabels[k]
-        return label === 'note' || (label === 'task' && landed.tasks > 0) || (label === 'idea' && landed.ideas > 0)
-      })
-    )
-    return record('failed', { ...landed, held: heldCount }, written.reason)
+    const landedLocal = kept.filter((_, k) => {
+      const label = keptLabels[k]
+      return label === 'note' || (label === 'task' && landed.tasks > 0) || (label === 'idea' && landed.ideas > 0)
+    })
+    settleFor(input, positions, landedLocal)
+    return done('failed', { ...landed, held: heldCount }, written.reason, {
+      unchecked,
+      left: kept.length - landedLocal.length
+    })
   }
   // Everything kept is settled for this note; unsure lines stay
   // pending so Sort again can send them alone.
   settleFor(input, positions, kept)
+  if (askTopic) run.topic = verdict.topic
   const counts = { ...written.counts, held: heldCount }
   const topicNote = wantsTopic && protocol === 'decide' ? ' topic=unavailable' : ''
   const heldNote =
     heldCount > 0 ? ` held=${heldCount} unsure=${unsure.length} related=${relatedHeld} threshold=${threshold}` : ''
   writeAppLog(
-    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}${trimmed > 0 ? ` trimmed=${trimmed}` : ''}`
+    `[sort] filed tasks=${counts.tasks} ideas=${counts.ideas} notes=${counts.notes} split=${splitCount} protocol=${protocol} model=${answeredBy} slot=${slot}${heldNote}${topicNote}${leadCount > 0 ? ` leads=${leadCount}` : ''}${trimmed > 0 ? ` trimmed=${trimmed}` : ''}${unchecked > 0 ? ` unchecked=${unchecked}` : ''}${run.tag}`
   )
-  return record('filed', counts, undefined, written.places)
+  return done('filed', counts, undefined, { places: written.places, unchecked })
 }
 
 /**
@@ -857,9 +1226,10 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
 async function askRelations(
   pieces: readonly string[],
   items: readonly ContextItem[],
-  via: { config: PolishConfig; protocol: SortProtocol; fetchImpl: typeof fetch; timeoutMs: number }
+  via: { config: PolishConfig; protocol: SortProtocol; run: SortRun }
 ): Promise<{ ok: true; relations: RelationVotes } | { ok: false; reason: string }> {
-  const { config, protocol, fetchImpl, timeoutMs } = via
+  const { config, protocol, run } = via
+  const { fetchImpl, timeoutMs } = run
   const noSeams = pieces.map(() => 0)
   if (protocol === 'decide') {
     const reply = await askDecision(
@@ -874,8 +1244,8 @@ async function askRelations(
     return { ok: true, relations: read.relations }
   }
   const systemPrompt = [SORT_SYSTEM_PROMPT, SORT_RELATIONS_PROMPT].join(' ')
-  const userPrompt = [numberedList([...pieces]), contextPrompt(items)].join('\n\n')
-  const reply = await askModel(systemPrompt, userPrompt, config, fetchImpl, timeoutMs)
+  const userPrompt = [numberedList([...pieces]), contextPrompt(items, run.itemsCap)].join('\n\n')
+  const reply = await askChat(systemPrompt, userPrompt, config, run, 'pieces')
   if (!reply.ok) return { ok: false, reason: reply.reason }
   const chat = validateSort(pieces.length, reply.content, { seamCounts: noSeams, items: items.length })
   if (!chat.ok) return { ok: false, reason: chat.reason }
@@ -2126,6 +2496,116 @@ export function initSorter(): void {
     } finally {
       ringClearKey(sortUrl)
       updateSettings({ notes: { connection: before.notes.connection } })
+    }
+  })
+
+  registerSmokeCheck('noteSortParts', async () => {
+    // US-180: a note too large for 1 request goes again in halves, a 429
+    // waits what it asked and tries once more, every line files once,
+    // and after a second 429 the lines left stay in the inbox and Sort
+    // again sends only those. The provider's reason reaches the log
+    // without its organization id.
+    const before = getSettings().notes
+    const vault = join(app.getPath('userData'), 'smoke-vault-parts')
+    const todo = join(vault, 'murmur', 'todo.md')
+    const read = (file: string): string => (existsSync(file) ? readFileSync(file, 'utf8') : '')
+    // Its own connection, so the limit it states is not the other checks'.
+    const partsCfg: PolishConfig = { baseUrl: 'https://mock-parts.local/v1', model: 'smoke-parts', apiKey: 'k' }
+    const base = { base: vault, inboxRelative: 'murmur/inbox/2026-09-18.md', when: probeMoment }
+    const supplier = Array.from({ length: 12 }, (_, i) => `Call the supplier about crate ${i + 1} today.`)
+    const printer = supplier.map((line) => line.replace('supplier', 'printer'))
+    const sent: string[][] = []
+    const model = (refuse: (n: number) => 413 | 429 | null): typeof fetch => {
+      let n = 0
+      return (async (_url: unknown, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ content: string }> }
+        const user = body.messages?.[1]?.content ?? ''
+        const numbered = (user.split('\n\n')[0] ?? '').split('\n').filter((line) => /^\d+\. /.test(line))
+        sent.push(numbered.map((line) => line.replace(/^\d+\. /, '')))
+        const refused = refuse(n++)
+        if (refused === 413) {
+          const message =
+            'Request too large for model `smoke-parts` in organization `org_smoke123` on tokens per minute (TPM): Limit 8000, Requested 9000'
+          return new Response(JSON.stringify({ error: { message, type: 'tokens' } }), { status: 413 })
+        }
+        if (refused === 429) {
+          const message = 'Rate limit reached for model `smoke-parts`. Please try again in 2s.'
+          return new Response(JSON.stringify({ error: { message } }), { status: 429, headers: { 'retry-after': '2' } })
+        }
+        const labels = Object.fromEntries(numbered.map((_, i) => [String(i + 1), 'task']))
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(labels) } }] }), { status: 200 })
+      }) as typeof fetch
+    }
+    const waits: number[] = []
+    const sleep = async (ms: number): Promise<void> => {
+      waits.push(ms)
+    }
+    const once = (text: string, lines: readonly string[]): boolean => lines.every((line) => text.split(line).length === 2)
+    try {
+      mkdirSync(join(vault, 'murmur', 'inbox'), { recursive: true })
+      updateSettings({ notes: { folder: vault, sort: true, ...layout } })
+      const logFile = join(app.getPath('userData'), 'logs', 'murmur.log')
+      const logBefore = read(logFile).length
+      // The estimate says the whole note fits; the provider says not.
+      const whole = await sortNote(
+        { ...base, text: supplier.join(' ') },
+        { fetchImpl: model((n) => (n === 0 ? 413 : n === 2 ? 429 : null)), connection: partsCfg, partTokens: 100_000, sleep }
+      )
+      const wholeOk =
+        whole.outcome === 'filed' &&
+        whole.tasks === 12 &&
+        whole.unsorted === undefined &&
+        (whole.parts ?? 0) >= 3 &&
+        sent[0]?.length === 12 &&
+        (sent[1]?.length ?? 99) <= 6 &&
+        waits.join() === '2500' &&
+        once(read(todo), supplier)
+
+      // Each part about 4 lines; the second part is refused twice.
+      const later: SortInput = { ...base, text: printer.join(' ') }
+      rememberForSort(later)
+      sent.length = 0
+      const partial = await sortNote(later, {
+        fetchImpl: model((n) => (n === 1 || n === 2 ? 429 : null)),
+        connection: partsCfg,
+        partTokens: 1300,
+        sleep
+      })
+      const firstPart = sent[0] ?? []
+      const left = printer.slice(firstPart.length)
+      const partialOk =
+        firstPart.length > 0 &&
+        firstPart.length < 12 &&
+        partial.outcome === 'filed' &&
+        partial.tasks === firstPart.length &&
+        partial.unsorted === left.length &&
+        partial.reason === 'http 429' &&
+        canSortAgain()
+      sent.length = 0
+      const again = await sortLastNote({ fetchImpl: model(() => null), connection: partsCfg, partTokens: 1300, sleep })
+      const againOk =
+        again?.outcome === 'filed' &&
+        again.tasks === left.length &&
+        again.unsorted === undefined &&
+        JSON.stringify(sent.flat()) === JSON.stringify(left) &&
+        !canSortAgain() &&
+        once(read(todo), printer)
+      const log = read(logFile).slice(logBefore)
+      const logOk =
+        log.includes('[sort] part too large reason=http 413 sentences=12; sending it in halves') &&
+        log.includes('said="Request too large for model `smoke-parts` in organization `org_…`') &&
+        !log.includes('org_smoke123') &&
+        log.includes('[sort] rate limited reason=http 429 for=labels wait=2.0s model=smoke-parts; trying once more') &&
+        log.includes('[sort] stopped reason=http 429 left=') &&
+        !log.includes('crate')
+      const conditions = { wholeOk, partialOk, againOk, logOk }
+      const failed = Object.entries(conditions)
+        .filter(([, ok]) => !ok)
+        .map(([name]) => name)
+      if (failed.length > 0) console.error(`smoke noteSortParts: failed=${failed.join(',')}`)
+      return failed.length === 0
+    } finally {
+      updateSettings({ notes: before })
     }
   })
 }

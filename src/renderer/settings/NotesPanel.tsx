@@ -146,7 +146,15 @@ export function HeldLines(props: {
 function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
   const held = report.held > 0 ? `, ${plural(report.held, 'line', 'lines')} held in the inbox` : ''
   if (report.outcome === 'filed') {
-    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${held}`
+    // A long note goes out in parts (US-180); a part that could not be
+    // sorted leaves its lines for Sort again, and a run filed without
+    // its repeat check says so.
+    const parts = (report.parts ?? 0) > 1 ? ` in ${report.parts} parts` : ''
+    const unchecked = report.unchecked ? `, ${plural(report.unchecked, 'list', 'lists')} filed without the repeat check` : ''
+    const left = report.unsorted
+      ? `; ${plural(report.unsorted, 'line', 'lines')} not sorted yet (${report.reason ?? 'unknown'}), and Sort again sends just those`
+      : ''
+    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${parts}${held}${unchecked}${left}`
   }
   if (report.outcome === 'rejected' && report.reason === 'low confidence') {
     return `held every line in the inbox as unsure (${plural(report.held, 'line', 'lines')}), nothing filed`
@@ -586,7 +594,7 @@ export function NotesPanel(props: {
               label="Note receipts"
               anchor="row-note-receipts"
               keywords="notification receipt open link finder explorer"
-              desc={`A notification after each note names where it landed; click it to open the note. Off or on, Open last note under the ${
+              desc={`A notification after each note names where it landed, or says when its sort could not finish; click it to open the note. Off or on, Open last note under the ${
                 navigator.platform.toLowerCase().includes('mac') ? 'menu bar' : 'tray'
               } icon and the last note on Home still take you there.`}
             >

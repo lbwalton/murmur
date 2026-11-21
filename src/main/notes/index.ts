@@ -19,7 +19,7 @@ import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
 import { probeDecision } from './decide'
 import { openableNote } from './safe-fs'
-import { initReceipts } from './receipt'
+import { initReceipts, sortAgainWithReceipt } from './receipt'
 import { initReminders } from './reminders'
 import {
   type HeldLine,
@@ -31,7 +31,6 @@ import {
   getLastSort,
   initSorter,
   skipHeldLine,
-  sortLastNote,
   tickHeldMatch
 } from './sorter'
 
@@ -196,7 +195,8 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   ipc.handle(IpcChannels.notesStatus, () => getNotesStatus())
   ipc.handle(IpcChannels.notesOpenToday, () => openTodayNote())
   ipc.handle(IpcChannels.notesSortLast, async () => {
-    await sortLastNote()
+    // The receipt follows Sort again (US-180).
+    await sortAgainWithReceipt()
     return getNotesStatus()
   })
   // The three held-line actions: every one is a click, and every one
