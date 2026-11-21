@@ -4,6 +4,7 @@ Live-verification items land here as stories complete. Check them off, then tell
 
 ## Now
 
+- [ ] US-179 a long mic name stays inside the Microphone card (issue #50, built 2026-11-21 on fix/settings-select-overflow). Once it ships in a release or a test build is on the work PC: (1) open murmur, click settings, then Dictation in the left rail, and find Microphone. (2) The list sits inside its card. (3) Open the list: each name shows in full. Pick your Elgato: a long name ends in ... and still stays inside the card; the line under Microphone names the mic in use. (4) Set it back to the mic you had. Tell Claude what you saw.
 - [x] US-178 Update now from the menu: passed your live check 2026-11-20 (check, download, Restart after this take, reopened on 0.1.17 by itself). The real 0.1.18 is back on your Mac. Merging PR #49 waits on your yes.
 - [x] US-177 Your level reads like your other numbers: passed live 2026-11-18 on the bd30edd test build (LB: passes).
 - [x] US-173 Titles on gold cards wear an ink tag: passed live 2026-11-18 on the ceba0f7 test build (LB: everything passes).
