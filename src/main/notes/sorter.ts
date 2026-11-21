@@ -65,6 +65,7 @@ import {
   findSeams,
   headingPrefix,
   holdBelow,
+  isFileable,
   keepPrompt,
   keepWords,
   leadPrompt,
@@ -903,7 +904,11 @@ export function fileHeldLine(id: number): { ok: boolean; reason?: string } {
   const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
   if (entry.label === 'note') return setAction({ ok: false, reason: 'a note stays in the inbox; tick its match, or skip it' })
-  const lines = entry.pieces && entry.pieces.length > 1 ? entry.pieces : [entry.text]
+  // A held run lands its pieces; a topic over 1 item lands that item
+  // under its lead-in, never the whole sentence a second time (US-181).
+  const lines = entry.pieces && (entry.pieces.length > 1 || entry.lead) ? entry.pieces : [entry.text]
+  // Fillers alone ("Oh.") file nothing, so saying it landed would be untrue.
+  if (!lines.some(isFileable)) return setAction({ ok: false, reason: 'only a filler, so it stays in the inbox; skip it' })
   const written = writeEntries(
     input,
     lines,

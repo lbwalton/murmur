@@ -154,7 +154,7 @@ export function buildDecisionRequest(
         type: 'noul',
         instructions: {
           question:
-            'Does this cut separate two distinct items the speaker would act on separately, rather than falling inside one thought, one item, or a figure of speech?',
+            'Does this cut separate two distinct items the speaker would act on separately, each side a complete thing to do or a complete idea on its own, rather than falling inside one thought, one item, a condition, a reason, or a figure of speech?',
           sentence: n,
           left,
           right
