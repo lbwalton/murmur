@@ -39,6 +39,8 @@ export interface TrayHandlers {
   onToggleHideWords?: (on: boolean) => void
   /** The update item (US-178): check, download, or restart to install. */
   onUpdateAction?: (action: UpdateAction) => void
+  /** Report a problem (US-182): opens the report panel in the window. */
+  onReportProblem?: () => void
 }
 
 let trayHandlers: TrayHandlers | null = null
@@ -82,6 +84,9 @@ function buildMenu(): Menu {
         ]
       : []),
     { type: 'separator' as const },
+    // Report a problem sits with updates and Quit, the app's own items
+    // (US-182); the update item stays just above Quit.
+    ...(handlers.onReportProblem ? [{ label: 'Report a problem…', click: handlers.onReportProblem }] : []),
     // Updates sit beside Quit, where people look for them (US-178).
     ...(update && handlers.onUpdateAction
       ? [
