@@ -102,3 +102,19 @@ describe('flattenPieces and assignPieceVotes', () => {
     expect(filed).toHaveLength(4)
   })
 })
+
+describe('a topic over 1 item (US-181)', () => {
+  const garage = 'For the garage project, remind me that after our current paint tests, we will try the sealant.'
+  const rest = 'remind me that after our current paint tests, we will try the sealant'
+
+  it('a held line keeps its topic as the lead-in', () => {
+    const related: RelatedLine[] = [{ local: 0, vote: vet, item: items[0] }]
+    const { cut, whole } = piecesToCompare(related, [garage], ['task'], [findSeams(garage)], { 1: [1] }, {}, 'piece')
+    expect(cut).toEqual([{ local: 0, label: 'task', pieces: [rest], lead: { text: 'For the garage project', group: 'piece-1' } }])
+    expect(whole).toEqual([])
+  })
+
+  it('a kept one is not looked at again: the sentence vote already judged its 1 item', () => {
+    expect(runsToCompare([0], [garage], ['task'], [findSeams(garage)], { 1: [1] })).toEqual([])
+  })
+})
