@@ -884,6 +884,36 @@ describe('fragments stay with their item (US-181, issue #23)', () => {
     expect(filed('If you can pick up milk, eggs, and bread.', 7)).toEqual(['If you can pick up milk', 'eggs', 'bread'])
   })
 
+  it('keeps a list a later fronted run opens, and ignores a start inside a fronted clause (review gate 2026-11-21, round 3)', () => {
+    const filed = (x: string, start?: number) => {
+      const seams = findSeams(x)
+      const run = cutRun(x, seams, seams.map((_, j) => j + 1), start)
+      return [...(run.lead ? [`${run.lead}:`] : []), ...run.pieces]
+    }
+    expect(filed('Call Bob, and after work buy milk, eggs, and bread.')).toEqual(['Call Bob', 'after work buy milk', 'eggs', 'bread'])
+    // A list shape needs at least 4 words before the comma: "If it rains" is a condition, not a list.
+    expect(filed('If it rains, stay, and read.')).toEqual(['If it rains, stay', 'read'])
+    expect(filed('If you see Ann, Bob, and Sue, say hi.')).toEqual(['If you see Ann', 'Bob', 'Sue', 'say hi'])
+    // A start among a fronted clause's first 3 words points into the clause.
+    expect(filed('If it rains, cancel the picnic, and buy chips.', 3)).toEqual(['If it rains, cancel the picnic', 'buy chips'])
+    expect(filed('If you can pick up paper towels, dish soap, and trash bags.', 6)).toEqual([
+      'If you can pick up:',
+      'paper towels',
+      'dish soap',
+      'trash bags'
+    ])
+    // Known limit: with no start, a list of 2-word items after a fronted run keeps its first 2 items on 1 line.
+    expect(filed('If you can pick up paper towels, dish soap, and trash bags.')).toEqual([
+      'If you can pick up paper towels, dish soap',
+      'trash bags'
+    ])
+  })
+
+  it('keeps otherwise on its piece, so an either/or stays readable', () => {
+    const s = 'Call Bob, otherwise, email Ann.'
+    expect(cutAtSeams(s, findSeams(s), findSeams(s).map((_, j) => j + 1))).toEqual(['Call Bob, otherwise', 'email Ann.'])
+  })
+
   it('keeps a reason set off by commas with its task, and the next task its own (review gate 2026-11-21)', () => {
     const filed = (x: string) => {
       const seams = findSeams(x)
@@ -995,6 +1025,18 @@ describe('fragments stay with their item (US-181, issue #23)', () => {
     cutAtSeams(filler, findSeams(filler), findSeams(filler).map((_, j) => j + 1))
     // Linear code does all of this in a few milliseconds; a backtracking
     // pattern takes seconds to minutes, so the margin is wide on purpose.
+    expect(Date.now() - started).toBeLessThan(3000)
+  })
+
+  it('stays fast on a clause that and keeps open for a long time (review gate 2026-11-21, round 3)', () => {
+    // Testing the whole open run at every cut took 13 s here; reading
+    // only its opening and its end takes about 0.2 s.
+    const started = Date.now()
+    const ands = `if x${' and x'.repeat(20000)}`
+    const seams = findSeams(ands)
+    expect(seams).toHaveLength(20000)
+    expect(cutRun(ands, seams, seams.map((_, j) => j + 1), 3).pieces).toEqual([ands])
+    expect(findSeams(`remind me that after x${' and x'.repeat(20000)}, go`)).toEqual([])
     expect(Date.now() - started).toBeLessThan(3000)
   })
 })

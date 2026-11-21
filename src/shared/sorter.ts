@@ -353,6 +353,14 @@ interface SeamScan {
   fronted: Map<number, number>
 }
 
+// The clause tests read a run's opening or its last words, never the
+// whole of a long run: a run that "and" keeps open can grow to the
+// length of the sentence, and testing it whole at every cut was
+// quadratic (review gate 2026-11-21: 0.64 s on 5,000 ands). A clause
+// opener or a that opener is a few words long, so these windows lose
+// nothing a speaker says.
+const RUN_WINDOW = 120
+
 /**
  * Walk a sentence's possible cuts once. A run is the left side's words
  * since the previous cut that ends one: a comma always does, and a
@@ -360,32 +368,66 @@ interface SeamScan {
  * one, so "If you see Ann and Bob" is still 1 clause when the comma
  * comes (review gate 2026-11-21).
  */
-function scanSeams(sentence: string): SeamScan {
+function walkSeams(sentence: string): SeamScan {
   const scan: SeamScan = { seams: [], fronted: new Map() }
   if (LIST_LINE.test(sentence)) return scan
   let previous = 0
   let afterTie = false
+  // Whether the current run already holds a that opener followed by a
+  // clause opener, and how far into the sentence that was looked for.
+  let thatOpen = false
+  let looked = 0
   for (const match of sentence.matchAll(SEAM)) {
     const start = match.index ?? 0
     const end = start + match[0].length
     const left = sentence.slice(0, start)
     const right = sentence.slice(end)
-    const run = sentence.slice(previous, start).trim()
+    const opening = sentence.slice(previous, Math.min(start, previous + RUN_WINDOW)).trim()
+    const tail = sentence.slice(wordStartBefore(sentence, start - RUN_WINDOW, previous), start).trim()
+    if (!thatOpen) {
+      thatOpen = THAT_THEN_CLAUSE.test(sentence.slice(wordStartBefore(sentence, looked - RUN_WINDOW, previous), start))
+      looked = start
+    }
     const tie = afterTie
     afterTie = false
-    const ties = BARE_SEAM.test(match[0]) && TIES_BACK.test(right.trim())
-    const refused =
-      !hasWords(left) || !hasWords(right) || insideQuoteOrParen(left) || OPEN_AT_END.test(run) || THAT_THEN_CLAUSE.test(run) || ties
+    const ties = BARE_SEAM.test(match[0]) && TIES_BACK.test(right.trimStart().slice(0, RUN_WINDOW))
+    const refused = !hasWords(left) || !hasWords(right) || insideQuoteOrParen(left) || OPEN_AT_END.test(tail) || thatOpen || ties
     // A reason set off by commas is no fronted clause: in "Call Bob,
     // since he asked, and email Ann" it hangs off Call Bob.
-    const fronted = !refused && FRONTED_CLAUSE.test(run) && !(tie && JOINED_SEAM.test(match[0]))
+    const fronted = !refused && FRONTED_CLAUSE.test(opening) && !(tie && JOINED_SEAM.test(match[0]))
     if (!refused) {
       scan.seams.push({ start, end })
       if (fronted) scan.fronted.set(start, previous)
     }
     afterTie = ties
-    if (/[,;]/.test(match[0]) || (!refused && !fronted)) previous = end
+    if (/[,;]/.test(match[0]) || (!refused && !fronted)) {
+      previous = end
+      thatOpen = false
+      looked = end
+    }
   }
+  return scan
+}
+
+/** Where a word begins at or after `at`, never before `floor`, so a
+ *  window never starts halfway through a word. */
+function wordStartBefore(sentence: string, at: number, floor: number): number {
+  if (at <= floor) return floor
+  const space = sentence.lastIndexOf(' ', at)
+  return space < floor ? floor : space + 1
+}
+
+// findSeams runs on every sentence before the model answers and cutRun
+// on the same sentence after, so the walk is kept for a few sentences.
+const SCAN_MEMO_MAX = 64
+const scanMemo = new Map<string, SeamScan>()
+
+function scanSeams(sentence: string): SeamScan {
+  const known = scanMemo.get(sentence)
+  if (known) return known
+  const scan = walkSeams(sentence)
+  if (scanMemo.size >= SCAN_MEMO_MAX) scanMemo.clear()
+  scanMemo.set(sentence, scan)
   return scan
 }
 
@@ -399,7 +441,7 @@ function scanSeams(sentence: string): SeamScan {
  *  off the left after a bare comma ("because it leaks"). A cut after a
  *  fronted clause ("If it rains,") is offered and cutRun decides. */
 export function findSeams(sentence: string): Seam[] {
-  return scanSeams(sentence).seams
+  return scanSeams(sentence).seams.map((seam) => ({ ...seam }))
 }
 
 /** A vote the cutter will act on: every number names a seam that
@@ -444,7 +486,11 @@ export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: 
 }
 
 // A filler set off at a piece's end by a comma: ", so", ", okay.".
-const TRAILING_FILLER = new RegExp(`[,;]\\s*(?:${FILLER_WORDS})[\\s.!?\\u2026\\u2014\\u2013-]*$`, 'i')
+// otherwise stays: "Call Bob, otherwise" keeps its either/or.
+const TRAILING_FILLER = new RegExp(
+  `[,;]\\s*(?:${FILLER_WORDS.split('|').filter((w) => w !== 'otherwise').join('|')})[\\s.!?\\u2026\\u2014\\u2013-]*$`,
+  'i'
+)
 
 /** A piece as it is filed: trimmed, its joining comma gone, and, once
  *  the sentence was cut, any fillers a comma left at its end, as long
@@ -837,33 +883,64 @@ function wordCount(text: string): number {
 }
 
 /**
- * The confirmed cuts murmur acts on, in order (US-181, review gate
- * 2026-11-21). A cut right after a fronted clause ("If it rains,",
- * "After the paint tests,") goes, so the clause rides with what it
- * governs. The sentence's first cut stays when its run, opening the
- * sentence, also holds its main clause, as in "Before the party buy
- * chips, salsa, and plates": the model's start points inside the run
- * ("chips"), or, with no such start, the next piece is a single word
- * with another cut after it, the shape of a list.
+ * The confirmed cuts murmur acts on, in order, and the start it honors
+ * (US-181, review gate 2026-11-21). A cut right after a fronted clause
+ * ("If it rains,", "After the paint tests,") goes, so the clause rides
+ * with what it governs. The cut stays when its run opens its piece and
+ * also holds its own verb, as in "Before the party buy chips, salsa,
+ * and plates" or "Call Bob, and after work buy milk, eggs, and bread":
+ * the model's start points inside the run's own words (the first piece
+ * only, where a lead-in can be), or the run is at least 4 words, ends
+ * at a comma, and the next piece is a single word, the shape of a list. A start among the
+ * first 3 words of a fronted clause that opens the sentence points into
+ * the clause, not at an item, so it is ignored, as inside a topic.
  */
 function keptCuts(
   sentence: string,
   seams: readonly Seam[],
   confirmed: readonly number[],
   pointed: number | undefined
-): number[] {
+): { votes: number[]; start: number | undefined } {
   const votes = [...new Set(confirmed)].sort((a, b) => a - b)
   const { fronted } = scanSeams(sentence)
-  const kept = votes.filter((n) => n === 1 || !fronted.has(seams[n - 1].start))
-  const runStart = kept[0] === 1 ? fronted.get(seams[0].start) : undefined
-  if (runStart === undefined) return kept
-  const opens = !isItem(sentence.slice(0, runStart))
-  const from = wordCount(sentence.slice(0, runStart))
-  const to = wordCount(sentence.slice(0, seams[0].start))
-  const next = kept[1]
-  const inside = pointed !== undefined && pointed > from + 1 && pointed <= to
-  const list = next !== undefined && wordCount(sentence.slice(seams[0].end, seams[next - 1].start)) === 1
-  return opens && (inside || list) ? kept : kept.slice(1)
+  // Word numbers by position, counted once: counting the words before
+  // every cut afresh was quadratic on a long run of ands.
+  const wordStarts = [...sentence.matchAll(WORD)].map((m) => m.index ?? 0)
+  const wordsBefore = (at: number): number => {
+    let lo = 0
+    let hi = wordStarts.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (wordStarts[mid] < at) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  }
+  let start = pointed
+  const first = seams.length > 0 ? fronted.get(seams[0].start) : undefined
+  if (start !== undefined && first !== undefined && !isItem(sentence.slice(0, first))) {
+    if (start <= wordsBefore(first) + 3) start = undefined
+  }
+  const kept: number[] = []
+  votes.forEach((n, k) => {
+    const seam = seams[n - 1]
+    const runStart = fronted.get(seam.start)
+    if (runStart === undefined) {
+      kept.push(n)
+      return
+    }
+    const pieceStart = kept.length > 0 ? seams[kept[kept.length - 1] - 1].end : 0
+    if (isItem(sentence.slice(pieceStart, runStart))) return
+    const from = wordsBefore(runStart)
+    const to = wordsBefore(seam.start)
+    const inside = kept.length === 0 && start !== undefined && start > from + 1 && start <= to
+    const next = votes[k + 1]
+    // A list's cuts are commas; a bare and inside a clause is no list.
+    const comma = /[,;]/.test(sentence.slice(seam.start, seam.end))
+    const list = comma && to - from >= 4 && next !== undefined && wordsBefore(seams[next - 1].start) - wordsBefore(seam.end) === 1
+    if (inside || list) kept.push(n)
+  })
+  return { votes: kept, start }
 }
 
 /**
@@ -890,10 +967,10 @@ export function cutRun(
 ): { lead: string | null; pieces: string[] } {
   if (!trustedVote(seams, confirmed)) return { lead: null, pieces: [sentence] }
   const offered = leadWords(sentence, seams).length
-  const pointed = start !== undefined && Number.isInteger(start) && start >= 2 && start <= offered ? start : undefined
+  const given = start !== undefined && Number.isInteger(start) && start >= 2 && start <= offered ? start : undefined
   // The words up to the end of the first seam: a topic lead and its comma.
   const reach = seams.length > 0 ? wordCount(sentence.slice(0, seams[0].end)) : 0
-  const votes = keptCuts(sentence, seams, confirmed, pointed)
+  const { votes, start: pointed } = keptCuts(sentence, seams, confirmed, given)
   const onlyTopic = votes.length === 1 && votes[0] === 1
   const topic = topicCut(sentence, seams, votes) && (pointed === undefined || pointed > reach || onlyTopic)
   const pieces = cutAtSeams(sentence, seams, topic ? votes.filter((n) => n !== 1) : votes)
