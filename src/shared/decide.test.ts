@@ -237,3 +237,13 @@ describe('keep question (US-116)', () => {
     expect(verdict).not.toHaveProperty('keep')
   })
 })
+
+describe('fewer, safer cuts on a decision connection (US-181)', () => {
+  it('never asks about a cut that would leave an unfinished clause, and asks for whole sides', () => {
+    const garage = 'For the garage project, remind me that after our current paint tests, we will try the sealant to see if it helps.'
+    const req = buildDecisionRequest('jev-latest', [garage], [findSeams(garage)])
+    expect(req.questions.seam_1_1?.instructions).toMatchObject({ left: 'For the garage project' })
+    expect(req.questions.seam_1_2).toBeUndefined()
+    expect((req.questions.seam_1_1?.instructions as { question: string }).question).toContain('each side a complete thing to do')
+  })
+})

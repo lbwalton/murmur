@@ -21,7 +21,9 @@ export interface PieceSet {
 }
 
 // One sentence cut into its run, or null when it is not a task or idea
-// with confirmed cuts that yield more than one piece.
+// with confirmed cuts that yield more than one piece or a lead-in. A
+// topic lead over 1 item (US-181) is a set too, so a held line keeps it.
+// Only a lone piece with no lead-in is the sentence as spoken.
 function cutSet(
   local: number,
   sentences: readonly string[],
@@ -35,7 +37,7 @@ function cutSet(
   const confirmed = votes[local + 1]
   if ((label !== 'task' && label !== 'idea') || !confirmed || confirmed.length === 0) return null
   const run = cutRun(sentences[local] ?? '', seamsBySentence[local] ?? [], confirmed, starts[local + 1])
-  if (run.pieces.length < 2) return null
+  if (run.pieces.length < 2 && run.lead === null) return null
   const lead = run.lead ? { text: run.lead, group: `${group}-${local + 1}` } : null
   return { local, label, pieces: run.pieces, lead }
 }
@@ -83,7 +85,9 @@ export function runsToCompare(
   const out: PieceSet[] = []
   for (const local of kept) {
     const set = cutSet(local, sentences, labels, seamsBySentence, votes, starts, group)
-    if (set) out.push(set)
+    // A lone item under its topic is no mix of filed and new items: the
+    // sentence-level vote already judged it.
+    if (set && set.pieces.length > 1) out.push(set)
   }
   return out
 }

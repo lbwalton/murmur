@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (124/181 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (124/182 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -190,6 +190,7 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-174** 5 belt themes
 - [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
 - [ ] **US-176** Day and night: a theme that follows your clock
+- [ ] **US-181** A spoken task stays 1 item: no lone fillers, topic leads, or half clauses as checkboxes
 - [ ] **US-180** A long note sorts in parts
 - [ ] **US-182** Report a problem
 - [ ] **US-179** A long mic name stays inside the Microphone card

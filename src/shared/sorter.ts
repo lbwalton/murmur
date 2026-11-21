@@ -271,12 +271,73 @@ const SEAM = new RegExp(`[,;]\\s+(?:${CONNECTOR}\\s+)?|\\s+${CONNECTOR}\\s+`, 'g
 // separator belongs to one quantifier only, so a long run of repeated
 // fillers is matched in linear time (review gate 2026-10-27: leading
 // whitespace inside the repeat backtracked 2^n on "okay, okay, ...").
-const NOT_AN_ITEM =
-  /^[\s.,;!?]*(?:(?:and|then|also|oh|ah|um|uhm|uh|uhh|erm|hmm|mhm|well|so|okay|ok|yeah|anyway|actually)\b[\s.,;!?]*)+$/i
+// otherwise, basically, and right joined the list with US-181 (issue
+// #23: "Otherwise" filed as a task of its own), and the punctuation
+// around them takes a colon, an ellipsis, and dashes too. It only ever
+// matches a text made ENTIRELY of these words, so "write the right
+// address" and "or otherwise" inside a real item are untouched.
+const FILLER_WORDS =
+  'and|then|also|oh|ah|um|uhm|uh|uhh|erm|hmm|mhm|well|so|okay|ok|yeah|anyway|anyways|actually|basically|otherwise|right|alright'
+const FILLER_GAP = '[\\s.,;:!?\\u2026\\u2014\\u2013-]'
+const NOT_AN_ITEM = new RegExp(`^${FILLER_GAP}*(?:(?:${FILLER_WORDS})\\b${FILLER_GAP}*)+$`, 'i')
 
 function hasWords(side: string): boolean {
   return /\w/.test(side) && !NOT_AN_ITEM.test(side)
 }
+
+/** Whether a text could be an item at all: it holds a letter or a digit
+ *  in any script and is more than fillers and joining words (US-181).
+ *  A task or idea sentence that is not ("Oh.", "Otherwise.") files
+ *  nothing and stays in the inbox, and a lead-in that is not is no
+ *  lead-in. */
+export function isItem(text: string): boolean {
+  return /[\p{L}\p{N}]/u.test(text) && !NOT_AN_ITEM.test(text)
+}
+
+/** Whether a task or idea line would file anything at all: its words,
+ *  less any list marker, are an item. */
+export function isFileable(sentence: string): boolean {
+  return isItem(bare(sentence))
+}
+
+// A clause the speaker has opened but not finished cannot stand alone
+// (US-181, issue #23: "remind me that after our current paint tests"
+// filed as a checkbox). These open one; the longer phrases come first
+// so "so that" wins over a filler "so".
+const SUBORDINATOR =
+  '(?:so that|as soon as|as long as|in case|even if|even though|after|before|if|when|whenever|because|unless|until|till|while|once|since|although|though|whether)'
+// "that" opens a clause after an object or a reporting word ("remind
+// me that", "tell Sam that", "make sure that"), never as a plain
+// pointer ("buy that").
+const THAT_OPENS =
+  '(?:(?:tell|told|remind|reminded|ask|asked|warn|warned|show|showed|promise|promised|assure|inform|convince)\\s+\\S+|me|us|him|her|them|you|sure|think|thought|know|knew|hope|say|said|mean|means|remember|realize|realized|decided|agreed|believe|guess|note|feel|felt|forget|forgot)\\s+that'
+// The run before a cut opens with a fronted clause ("If it rains",
+// "After the paint tests", "and when you get home"): its main clause
+// usually comes after the cut. The cut is still offered, since the same
+// run can hold its main clause too ("Before the party buy chips, salsa,
+// and plates"); cutRun decides (review gate 2026-11-21).
+const FRONTED_CLAUSE = new RegExp(`^(?:(?:${FILLER_WORDS})\\b[\\s,]*)*${SUBORDINATOR}\\b`, 'i')
+// The run ends with a clause opened and not begun ("remind me that",
+// "call me if"), or a "that" clause starts with a fronted clause of its
+// own ("remind me that after our current paint tests"): its verb comes
+// after the cut. Words that also end a clause as an adverb or a noun
+// ("call Bob once", "wait a while", "the day after") are not in the
+// first list.
+const OPEN_AT_END = new RegExp(
+  `\\b(?:so that|as soon as|as long as|in case|even if|even though|if|when|whenever|because|unless|until|although|whether|${THAT_OPENS})$`,
+  'i'
+)
+const THAT_THEN_CLAUSE = new RegExp(`\\b${THAT_OPENS}\\s+${SUBORDINATOR}\\b`, 'i')
+// After a bare comma, a right side opening with one of these hangs off
+// the left ("because it leaks", "otherwise they wait", "which is
+// cheaper", "so we know"). After "and" or "then" it starts a new step
+// ("and if he answers, ask about Friday"), so only a bare cut is refused.
+const TIES_BACK = new RegExp(`^(?:${SUBORDINATOR}|otherwise|which|whereas|so)\\b`, 'i')
+
+/** A seam's punctuation alone, no joining word: ", " or "; ". */
+const BARE_SEAM = /^[,;]\s+$/
+/** A seam that joins with and or then after its comma: ", and ". */
+const JOINED_SEAM = /^[,;]\s+(?:and|then)\b/i
 
 function insideQuoteOrParen(left: string): boolean {
   const opens = (left.match(/\(/g) ?? []).length
@@ -285,22 +346,108 @@ function insideQuoteOrParen(left: string): boolean {
   return opens > closes || quotes % 2 === 1
 }
 
-/** Candidate seams, in order. None inside a list line (its items are
- *  already lines), none where either side has no words of its own, and
- *  none inside a quote or parenthesis. A comma inside a number never
- *  matches because it has no space after it. */
-export function findSeams(sentence: string): Seam[] {
-  if (LIST_LINE.test(sentence)) return []
-  const seams: Seam[] = []
+interface SeamScan {
+  seams: Seam[]
+  /** Offered seams whose left run opens with a fronted clause, by the
+   *  seam's start: where that run begins. */
+  fronted: Map<number, number>
+}
+
+// The clause tests read a run's opening or its last words, never the
+// whole of a long run: a run that "and" keeps open can grow to the
+// length of the sentence, and testing it whole at every cut was
+// quadratic (review gate 2026-11-21: 0.64 s on 5,000 ands). A clause
+// opener or a that opener is a few words long, so these windows lose
+// nothing a speaker says.
+const RUN_WINDOW = 120
+
+/**
+ * Walk a sentence's possible cuts once. A run is the left side's words
+ * since the previous cut that ends one: a comma always does, and a
+ * bare "and" or "then" does only when its cut is offered as an ordinary
+ * one, so "If you see Ann and Bob" is still 1 clause when the comma
+ * comes (review gate 2026-11-21).
+ */
+function walkSeams(sentence: string): SeamScan {
+  const scan: SeamScan = { seams: [], fronted: new Map() }
+  if (LIST_LINE.test(sentence)) return scan
+  let previous = 0
+  let afterTie = false
+  // Whether the current run already holds a that opener followed by a
+  // clause opener, and how far into the sentence that was looked for.
+  let thatOpen = false
+  let looked = 0
   for (const match of sentence.matchAll(SEAM)) {
     const start = match.index ?? 0
     const end = start + match[0].length
     const left = sentence.slice(0, start)
     const right = sentence.slice(end)
-    if (!hasWords(left) || !hasWords(right) || insideQuoteOrParen(left)) continue
-    seams.push({ start, end })
+    const opening = sentence.slice(previous, Math.min(start, previous + RUN_WINDOW)).trim()
+    const tail = sentence.slice(wordStartBefore(sentence, start - RUN_WINDOW, previous), start).trim()
+    if (!thatOpen) {
+      thatOpen = THAT_THEN_CLAUSE.test(sentence.slice(wordStartBefore(sentence, looked - RUN_WINDOW, previous), start))
+      looked = start
+    }
+    const tie = afterTie
+    afterTie = false
+    const ties = BARE_SEAM.test(match[0]) && TIES_BACK.test(right.trimStart().slice(0, RUN_WINDOW))
+    const refused = !hasWords(left) || !hasWords(right) || insideQuoteOrParen(left) || OPEN_AT_END.test(tail) || thatOpen || ties
+    // A reason set off by commas is no fronted clause: in "Call Bob,
+    // since he asked, and email Ann" it hangs off Call Bob.
+    const fronted = !refused && FRONTED_CLAUSE.test(opening) && !(tie && JOINED_SEAM.test(match[0]))
+    if (!refused) {
+      scan.seams.push({ start, end })
+      if (fronted) scan.fronted.set(start, previous)
+    }
+    afterTie = ties
+    if (/[,;]/.test(match[0]) || (!refused && !fronted)) {
+      previous = end
+      thatOpen = false
+      looked = end
+    }
   }
-  return seams
+  return scan
+}
+
+/** Where a word begins at or after `at`, never before `floor`, so a
+ *  window never starts halfway through a word. */
+function wordStartBefore(sentence: string, at: number, floor: number): number {
+  if (at <= floor) return floor
+  const space = sentence.lastIndexOf(' ', at)
+  return space < floor ? floor : space + 1
+}
+
+// findSeams runs on every sentence before the model answers and cutRun
+// on the same sentence after, so the walk is kept for a few sentences.
+const SCAN_MEMO_MAX = 64
+const scanMemo = new Map<string, SeamScan>()
+
+function scanSeams(sentence: string): SeamScan {
+  const known = scanMemo.get(sentence)
+  if (known) return known
+  const scan = walkSeams(sentence)
+  if (scanMemo.size >= SCAN_MEMO_MAX) scanMemo.clear()
+  scanMemo.set(sentence, scan)
+  return scan
+}
+
+/** Candidate seams, in order. None inside a list line (its items are
+ *  already lines), none where either side has no words of its own, and
+ *  none inside a quote or parenthesis. A comma inside a number never
+ *  matches because it has no space after it. Nor is a cut offered that
+ *  would leave a side unable to stand alone (US-181): a left side
+ *  ending inside a clause it opened ("remind me that", "remind me that
+ *  after our current paint tests"), or a right side that only hangs
+ *  off the left after a bare comma ("because it leaks"). A cut after a
+ *  fronted clause ("If it rains,") is offered and cutRun decides. */
+export function findSeams(sentence: string): Seam[] {
+  return scanSeams(sentence).seams.map((seam) => ({ ...seam }))
+}
+
+/** A vote the cutter will act on: every number names a seam that
+ *  exists. */
+function trustedVote(seams: readonly Seam[], confirmed: readonly number[]): boolean {
+  return !confirmed.some((n) => !Number.isInteger(n) || n < 1 || n > seams.length)
 }
 
 /** The two sides of a seam, for a prompt or a decision question. */
@@ -313,9 +460,11 @@ export function seamSides(sentence: string, seam: Seam): { left: string; right: 
  *  is the boundary every backend's votes cross, so it enforces the rule
  *  itself: a vote naming a seam that does not exist leaves the whole
  *  sentence as one line, never a partial cut. A joining comma left at
- *  the end of a piece by doubled punctuation is trimmed. */
+ *  the end of a piece by doubled punctuation is trimmed, and so are
+ *  fillers a comma left hanging there ("Buy milk, so" files "Buy
+ *  milk"; US-181): they stay in the inbox. */
 export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: readonly number[]): string[] {
-  if (confirmed.some((n) => !Number.isInteger(n) || n < 1 || n > seams.length)) return [sentence]
+  if (!trustedVote(seams, confirmed)) return [sentence]
   let chosen = [...new Set(confirmed)].map((n) => seams[n - 1]).sort((a, b) => a.start - b.start)
   // Fillers alone between two cuts ("buy milk, oh well, call Bob") are
   // no item either: the cut after them goes, so they ride with the
@@ -332,7 +481,29 @@ export function cutAtSeams(sentence: string, seams: readonly Seam[], confirmed: 
     cursor = seam.end
   }
   pieces.push(sentence.slice(cursor))
-  return pieces.map((p) => p.trim().replace(/[,;]+$/, '').trim()).filter((p) => p.length > 0)
+  const cut = chosen.length > 0
+  return pieces.map((p) => trimPiece(p, cut)).filter((p) => p.length > 0)
+}
+
+// A filler set off at a piece's end by a comma: ", so", ", okay.".
+// otherwise stays: "Call Bob, otherwise" keeps its either/or.
+const TRAILING_FILLER = new RegExp(
+  `[,;]\\s*(?:${FILLER_WORDS.split('|').filter((w) => w !== 'otherwise').join('|')})[\\s.!?\\u2026\\u2014\\u2013-]*$`,
+  'i'
+)
+
+/** A piece as it is filed: trimmed, its joining comma gone, and, once
+ *  the sentence was cut, any fillers a comma left at its end, as long
+ *  as an item remains. "dig the well" keeps its well: no comma. */
+function trimPiece(piece: string, cut: boolean): string {
+  let text = piece.trim().replace(/[,;]+$/, '').trim()
+  if (!cut) return text
+  for (let m = TRAILING_FILLER.exec(text); m !== null; m = TRAILING_FILLER.exec(text)) {
+    const rest = text.slice(0, m.index).trim()
+    if (!isItem(rest)) break
+    text = rest.replace(/[,;]+$/, '').trim()
+  }
+  return text
 }
 
 /** The first piece between chosen cuts that holds words but no item
@@ -380,6 +551,7 @@ function readSeamVotes(raw: unknown, seamCounts: readonly number[]): SeamVotes {
 export const SORT_SEAMS_PROMPT = [
   'Some sentences list seams below, numbered N.M, each showing the sentence cut into a left side and a right side.',
   'A seam separates two distinct items the speaker would act on separately (errands, purchases, steps). A seam inside one thought, one item, or a figure of speech does not.',
+  'Confirm a seam only when each side, read alone, is a complete thing to do or a complete idea. Never confirm one where a side is only a condition or a time (if it rains, after the tests), a reason or a consequence (because it leaks, otherwise they wait), or a filler. When unsure, leave the seam out: fewer cuts are safer.',
   'Also include the key "seams": an object mapping a sentence number to the list of its seam numbers that separate distinct items, for example {"3":[1,2]}. Include only sentences with at least one such seam. Seam numbers only, never text.'
 ].join(' ')
 
@@ -588,7 +760,11 @@ export function rekeyVotes(votes: SeamVotes, kept: readonly number[]): SeamVotes
  * Copy each sentence into its bucket, in spoken order, untouched. An
  * item with a lead-in (US-062) nests under it: the first item of a run
  * in a file carries the lead line in front of it, so the plan stays one
- * entry per item and every count downstream stays an item count.
+ * entry per item and every count downstream stays an item count. A task
+ * or idea that is no item at all ("Oh.", "Otherwise.") files nothing
+ * and stays in the inbox like a note, and a lead-in of fillers alone is
+ * no lead-in (US-181). This is the one door every filed line passes, the
+ * sort and File it anyway alike.
  */
 export function planFiling(
   sentences: string[],
@@ -602,12 +778,13 @@ export function planFiling(
   const open: Record<'task' | 'idea', string | null> = { task: null, idea: null }
   sentences.forEach((sentence, i) => {
     const label = labels[i]
-    if (label !== 'task' && label !== 'idea') {
+    if ((label !== 'task' && label !== 'idea') || !isFileable(sentence)) {
       plan.notes.push(sentence)
       return
     }
     const line = label === 'task' ? taskLine(sentence, link.time, taskLink) : ideaLine(sentence, link.time, ideaLink)
-    const lead = leads[i] ?? null
+    const given = leads[i] ?? null
+    const lead = given !== null && isItem(given.text) ? given : null
     let entry = line
     if (lead === null) {
       open[label] = null
@@ -669,11 +846,118 @@ export function splitLeadIn(piece: string, start: number): { lead: string; item:
   return { lead, item }
 }
 
+// A topic lead names what the rest of its sentence is about: "For the
+// garage project,", "About the website,", "On the paint front,". It is
+// never an item of its own (US-181, issue #23). A lead line has no
+// checkbox, so a real task must not pass for one: the openers are a
+// closed list, only a bare comma ends the lead, and what follows the
+// opener is a short name (1 or 2 words, or up to 5 behind the, my, this,
+// and the like) holding no subject and no common verb, so "For dinner
+// get chicken" or "On Monday call Bob" is never a topic. Spoken fillers
+// may come first ("So, for the party").
+const TOPIC_LEAD = new RegExp(
+  `^(?:(?:${FILLER_WORDS})\\b[\\s,]*)*(for|about|on|regarding|re|concerning|as for|as to)\\s([^,;:.!?"()]+)$`,
+  'i'
+)
+const TOPIC_NAMED = /^(?:the|a|an|my|our|your|his|her|their|its|this|that|these|those|next|last|each|every|all|both|some|any|\d\S*)\s/i
+const NOT_A_TOPIC =
+  /\b(?:i|we|you|he|she|they|to|need|needs|get|gets|buy|call|have|has|had|want|wants|must|should|will|would|can|could|let|make|pick|grab|order|book|send|email|text|check|ask|tell|remind|is|are|was|were|be|do|does|did|go|going|take|bring|try|pay|fix|clean|finish|start)\b/i
+
+/** Whether the vote cuts right after a topic lead: the sentence's first
+ *  seam is confirmed, is a bare comma, and what comes before it is a
+ *  topic lead. */
+function topicCut(sentence: string, seams: readonly Seam[], confirmed: readonly number[]): boolean {
+  const first = seams[0]
+  if (!first || !confirmed.includes(1)) return false
+  if (!/^,\s+$/.test(sentence.slice(first.start, first.end))) return false
+  const lead = TOPIC_LEAD.exec(sentence.slice(0, first.start).trim())
+  if (lead === null) return false
+  const name = lead[2].trim()
+  const words = (name.match(WORD) ?? []).length
+  if (NOT_A_TOPIC.test(name)) return false
+  return words <= 2 || (words <= 5 && TOPIC_NAMED.test(name))
+}
+
+function wordCount(text: string): number {
+  return (text.match(WORD) ?? []).length
+}
+
+/**
+ * The confirmed cuts murmur acts on, in order, and the start it honors
+ * (US-181, review gate 2026-11-21). A cut right after a fronted clause
+ * ("If it rains,", "After the paint tests,") goes, so the clause rides
+ * with what it governs. The cut stays when its run opens its piece and
+ * also holds its own verb, as in "Before the party buy chips, salsa,
+ * and plates" or "Call Bob, and after work buy milk, eggs, and bread":
+ * the model's start points inside the run's own words (the first piece
+ * only, where a lead-in can be), or the run is at least 4 words, ends
+ * at a comma, and the next piece is a single word, the shape of a list. A start among the
+ * first 3 words of a fronted clause that opens the sentence points into
+ * the clause, not at an item, so it is ignored, as inside a topic.
+ */
+function keptCuts(
+  sentence: string,
+  seams: readonly Seam[],
+  confirmed: readonly number[],
+  pointed: number | undefined
+): { votes: number[]; start: number | undefined } {
+  const votes = [...new Set(confirmed)].sort((a, b) => a - b)
+  const { fronted } = scanSeams(sentence)
+  // Word numbers by position, counted once: counting the words before
+  // every cut afresh was quadratic on a long run of ands.
+  const wordStarts = [...sentence.matchAll(WORD)].map((m) => m.index ?? 0)
+  const wordsBefore = (at: number): number => {
+    let lo = 0
+    let hi = wordStarts.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (wordStarts[mid] < at) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  }
+  let start = pointed
+  const first = seams.length > 0 ? fronted.get(seams[0].start) : undefined
+  if (start !== undefined && first !== undefined && !isItem(sentence.slice(0, first))) {
+    if (start <= wordsBefore(first) + 3) start = undefined
+  }
+  const kept: number[] = []
+  votes.forEach((n, k) => {
+    const seam = seams[n - 1]
+    const runStart = fronted.get(seam.start)
+    if (runStart === undefined) {
+      kept.push(n)
+      return
+    }
+    const pieceStart = kept.length > 0 ? seams[kept[kept.length - 1] - 1].end : 0
+    if (isItem(sentence.slice(pieceStart, runStart))) return
+    const from = wordsBefore(runStart)
+    const to = wordsBefore(seam.start)
+    const inside = kept.length === 0 && start !== undefined && start > from + 1 && start <= to
+    const next = votes[k + 1]
+    // A list's cuts are commas; a bare and inside a clause is no list.
+    const comma = /[,;]/.test(sentence.slice(seam.start, seam.end))
+    const list = comma && to - from >= 4 && next !== undefined && wordsBefore(seams[next - 1].start) - wordsBefore(seam.end) === 1
+    if (inside || list) kept.push(n)
+  })
+  return { votes: kept, start }
+}
+
 /**
  * Cut a sentence at its confirmed seams and, when that makes a run of
  * two or more items, take the lead-in the model pointed at and trim the
  * run's final period so the items match. Every word lands once: in the
  * lead-in or in an item. A sentence left whole is returned as it was.
+ *
+ * A confirmed cut right after a topic lead is not a cut (US-181): the
+ * lead becomes the lead-in for the rest of the sentence, even when the
+ * rest is a single item, and a start past it still wins. When other
+ * cuts are confirmed too, a start the model pointed at inside the lead
+ * says an item begins there, so it is no topic lead and the sentence
+ * cuts as before; with the topic cut alone there is nothing else to
+ * begin, so the topic leads. A cut right after a fronted clause goes
+ * too (see keptCuts). A lead-in of fillers alone ("Oh,") is no lead-in;
+ * its words ride with the first item, as fillers between cuts do.
  */
 export function cutRun(
   sentence: string,
@@ -681,8 +965,16 @@ export function cutRun(
   confirmed: readonly number[],
   start?: number
 ): { lead: string | null; pieces: string[] } {
-  const pieces = cutAtSeams(sentence, seams, confirmed)
-  if (pieces.length < 2) return { lead: null, pieces }
+  if (!trustedVote(seams, confirmed)) return { lead: null, pieces: [sentence] }
+  const offered = leadWords(sentence, seams).length
+  const given = start !== undefined && Number.isInteger(start) && start >= 2 && start <= offered ? start : undefined
+  // The words up to the end of the first seam: a topic lead and its comma.
+  const reach = seams.length > 0 ? wordCount(sentence.slice(0, seams[0].end)) : 0
+  const { votes, start: pointed } = keptCuts(sentence, seams, confirmed, given)
+  const onlyTopic = votes.length === 1 && votes[0] === 1
+  const topic = topicCut(sentence, seams, votes) && (pointed === undefined || pointed > reach || onlyTopic)
+  const pieces = cutAtSeams(sentence, seams, topic ? votes.filter((n) => n !== 1) : votes)
+  if (pieces.length < 2 && !topic) return { lead: null, pieces }
   // The run's final period goes, unless it belongs to an ellipsis or
   // an abbreviation ("etc.", "Dr."): that period is part of the word
   // (review gate 2026-09-23, the same class as the 2026-09-20 "Dr." fix).
@@ -691,8 +983,12 @@ export function cutRun(
     const trimmed = pieces[last].replace(/(?<!\.)\.$/, '').trim()
     if (trimmed.length > 0) pieces[last] = trimmed
   }
-  const offered = leadWords(sentence, seams).length
-  const split = start !== undefined && start <= offered ? splitLeadIn(pieces[0], start) : null
+  const honored = pointed !== undefined && !(topic && pointed <= reach) ? pointed : undefined
+  let split = honored !== undefined ? splitLeadIn(pieces[0], honored) : null
+  // The first piece still starts at the sentence's first word, so a
+  // word number means the same word in both.
+  if (topic && split === null) split = splitLeadIn(pieces[0], reach + 1)
+  if (split && !isItem(split.lead)) split = null
   if (split) pieces[0] = split.item
   return { lead: split ? split.lead : null, pieces }
 }
