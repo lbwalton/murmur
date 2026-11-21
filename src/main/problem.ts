@@ -25,6 +25,7 @@ import {
   asProblemView,
   buildProblemDetails,
   isProblemIssueUrl,
+  issueLimitFor,
   planIssue,
   problemText
 } from '../shared/problem'
@@ -50,7 +51,11 @@ let deps: ProblemDeps | null = null
 
 /** What a tray click left for the window: the screenshot taken before
  *  the window came forward, if it was showing. The page takes it once. */
-let pending: { shot: Uint8Array | null; hidden: boolean } | null = null
+let pending: { shot: Uint8Array | null; why: NoShot | null } | null = null
+
+/** Why a tray click brought no picture: the window was closed (or
+ *  hidden), or it was minimized. */
+export type NoShot = 'closed' | 'minimized'
 
 function logFile(): string {
   return join(app.getPath('userData'), 'logs', 'murmur.log')
@@ -180,8 +185,11 @@ export type IssueOutcome =
 async function openIssue(value: unknown, shot: unknown): Promise<IssueOutcome> {
   const fields = fieldsFrom(value)
   if (!fields) return { outcome: 'refused' }
-  const plan = planIssue(fields)
-  if (!isProblemIssueUrl(plan.url)) {
+  // Windows opens links through ShellExecute, which can fail silently on
+  // a long one, so its links stay shorter (issueLimitFor).
+  const max = issueLimitFor(process.platform)
+  const plan = planIssue(fields, max)
+  if (!isProblemIssueUrl(plan.url, max)) {
     writeAppLog('[problem] refused a link that is not the issue form')
     return { outcome: 'refused' }
   }
@@ -212,16 +220,19 @@ async function openIssue(value: unknown, shot: unknown): Promise<IssueOutcome> {
  *  hidden window gets no picture: the panel says how to take one. */
 export async function reportProblemFromTray(): Promise<void> {
   if (!deps) return
-  const shown = showing(liveWindow())
+  const win = liveWindow()
+  const minimized = win !== null && win.isMinimized()
+  const shown = showing(win)
   const shot = shown ? await captureSettingsWindow() : null
+  const why: NoShot | null = shown ? null : minimized ? 'minimized' : 'closed'
   deps.showSettingsWindow()
-  handProblemToWindow(shot, !shown)
+  handProblemToWindow(shot, why)
 }
 
 /** Leaves the tray's picture for the page and tells it. A page still
  *  loading asks for it as it mounts. */
-export function handProblemToWindow(shot: Uint8Array | null, hidden: boolean): void {
-  pending = { shot, hidden }
+export function handProblemToWindow(shot: Uint8Array | null, why: NoShot | null): void {
+  pending = { shot, why }
   const target = liveWindow()
   if (target && !target.webContents.isLoading()) target.webContents.send('problem:open')
 }
@@ -242,15 +253,21 @@ export function initProblem(input: ProblemDeps): void {
     const image = shotImage(shot)
     // Parented to the settings window, so it never opens buried (US-047).
     const target = liveWindow()
-    if (!image || !target) return false
+    if (!image || !target) return 'failed'
     const { writeFile } = await import('node:fs/promises')
     const { canceled, filePath } = await dialog.showSaveDialog(target, {
       defaultPath: `murmur-problem-${new Date().toISOString().slice(0, 10)}.png`,
       filters: [{ name: 'PNG image', extensions: ['png'] }]
     })
-    if (canceled || !filePath) return false
-    await writeFile(filePath, image.toPNG())
-    return true
+    if (canceled || !filePath) return 'canceled'
+    // A full disk or a folder without write access says so in the panel.
+    try {
+      await writeFile(filePath, image.toPNG())
+      return 'saved'
+    } catch (error) {
+      writeAppLog(`[problem] screenshot save failed reason=${(error as NodeJS.ErrnoException | null)?.code ?? 'unknown'}`)
+      return 'failed'
+    }
   })
 
   registerSmokeCheck('problemReport', async () => {
@@ -281,6 +298,7 @@ export function initProblem(input: ProblemDeps): void {
       (home.length < 2 || !everything.includes(home)) &&
       plan.mode === 'link' &&
       isProblemIssueUrl(plan.url) &&
+      planIssue({ what: 'smoke', expected: '', details: draft.details, log: draft.log.join('\n') }, issueLimitFor('win32')).url.length <= 2000 &&
       !isProblemIssueUrl(plan.url.replace('lbwalton/murmur', 'lbwalton/murmurx')) &&
       trayMenuLabels().includes(TRAY_LABEL) &&
       // Smoke's window is hidden, so the tray's rule gives no picture.

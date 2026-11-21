@@ -298,7 +298,7 @@ export function App(): React.JSX.Element {
           id: ++problemSeq.current,
           view: problemView(),
           shot: left.shot,
-          noShot: left.shot ? null : left.hidden ? 'closed' : 'failed',
+          noShot: left.shot ? null : (left.why ?? 'failed'),
           hiddenAtShot: placeRef.current.hideWords
         })
         return

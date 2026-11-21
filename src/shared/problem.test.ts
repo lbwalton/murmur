@@ -17,14 +17,19 @@ import {
   type ProblemInput,
   asProblemView,
   buildProblemDetails,
+  cutText,
+  detailsBlock,
+  issueLimitFor,
   issueTitle,
+  issueUrl,
   isProblemIssueUrl,
   planIssue,
   planMail,
   problemText,
   scrubLog,
   scrubLogLine,
-  scrubText
+  scrubText,
+  wellFormed
 } from './problem'
 import { PROBLEM_SUBJECT, isReportMailto, mailtoUrl } from './report'
 import { DEFAULT_SETTINGS, type Settings } from './settings'
@@ -108,6 +113,18 @@ const markedLog = [
   `${T} [sort] failed reason=network getaddrinfo ENOTFOUND markedsort2.example model=sorter slot=sort`
 ].join('\n')
 
+/** More markers, in lines the filter reads: personal details, keys, a
+ *  note's words, and the home folder spelled with encoded slashes. */
+const plantedLog = [
+  `${T} [transcribe] plain http to markedold.host is not confirmed`,
+  `${T} [dictation] sent a copy to siobhan.smith+MARKED@example.com`,
+  `${T} [dictation] license MURMUR-eyJNARKEDpayload.MARKEDsignature0`,
+  `${T} [dictation] key status gsk_••••MARKED12 for the ring`,
+  `${T} [receipt] outcome=failed kind=note reason=buy MARKEDNOTE milk at the store`,
+  `${T} [dictation] wrote %2FUsers%2Fsiobhan%2Fencoded.md and /Users/siobhan/slash.md`,
+  `${T} [dictation] path %2Fhome%2Fsiobhan%2Fx`
+].join('\n')
+
 const input = (): ProblemInput => ({
   settings: markedSettings(),
   catalog,
@@ -168,8 +185,8 @@ describe('buildProblemDetails', () => {
   })
 
   it('never lets keys, base URLs, custom hosts, the dictionary, expansions, mic names, history, or the home folder in', () => {
-    const marked = { ...input(), apiKey: 'sk-MARKEDKEY', history: [{ rawText: 'MARKEDHISTORY' }], audio: 'MARKEDAUDIO' }
-    const draft = buildProblemDetails(marked as ProblemInput)
+    // Every marker sits in a setting or a log line the builder reads.
+    const draft = buildProblemDetails(input())
     const fields = fieldsFrom(draft)
     const issue = planIssue(fields)
     const mail = planMail(fields)
@@ -212,10 +229,11 @@ describe('buildProblemDetails', () => {
     has('[window:settings] preload-error Cannot find module')
     has('[hardening] navigation refused to [custom endpoint]')
     has('model=~/models/local.gguf key=[key] Bearer [key]')
-    has('[receipt] outcome=failed kind=note reason=could not show')
+    has('[receipt] outcome=failed kind=note reason=[left out]')
     has('[dictation] note saved under [custom endpoint] and [mic] by ~')
     has('[sort] decision failed reason=network ECONNREFUSED model=sorter; falling back to the chat sorter')
     has('[sort] failed reason=network ENOTFOUND model=sorter slot=sort')
+
     // The untagged line, the unknown tag, are left out and counted; the
     // stack's lines go with their exception, uncounted.
     expect(withheld).toBe(2)
@@ -230,6 +248,93 @@ describe('buildProblemDetails', () => {
     expect(lines).toHaveLength(LOG_LINES)
     expect(lines[0]).toContain('words=20')
     expect(lines[LOG_LINES - 1]).toContain('words=49')
+  })
+})
+
+describe('planted values, read the way a person would read them', () => {
+  it('takes personal details, keys, note words and encoded paths out of the lines it keeps', () => {
+    const { log, withheld } = buildProblemDetails({ ...input(), log: plantedLog })
+    for (const part of [
+      '[dictation] sent a copy to [email]',
+      '[dictation] license [license key]',
+      '[dictation] key status [key] for the ring',
+      '[receipt] outcome=failed kind=note reason=[left out]',
+      '[dictation] path /home/~/x'
+    ]) {
+      expect(log.some((line) => line.includes(part)), part).toBe(true)
+    }
+    // The [transcribe] line is in a shape the filter does not know.
+    expect(withheld).toBe(1)
+  })
+
+  // On Windows, with the home folder spelled every way a log can spell it.
+  const windows = (): ProblemInput => {
+    const base = input()
+    base.settings.provider.llmModel = 'C:\\Users\\siobhan\\models\\local.gguf'
+    return {
+      ...base,
+      facts: { ...facts, platform: 'win32', osVersion: '10.0.26100', home: 'C:\\Users\\siobhan', username: 'siobhan' },
+      log: [
+        plantedLog,
+        `${T} [dictation] wrote C:\\Users\\siobhan\\AppData\\Roaming\\murmur\\x`,
+        `${T} [dictation] wrote C:/Users/siobhan/AppData/y and C%3A%2FUsers%2Fsiobhan%2FAppData%2Fz`,
+        `${T} [dictation] wrote C:\\\\Users\\\\siobhan\\\\w`
+      ].join('\n')
+    }
+  }
+
+  const mac = (): ProblemInput => ({ ...input(), log: plantedLog })
+  for (const [name, build] of [['a Mac', mac], ['Windows', windows]] as const) {
+    it(`on ${name}, keeps every planted value out of the final link and the email`, () => {
+      const draft = buildProblemDetails(build())
+      const fields = fieldsFrom(draft)
+      for (const max of [issueLimitFor('darwin'), issueLimitFor('win32')]) {
+        const issue = planIssue(fields, max)
+        const link = new URL(issue.url).searchParams
+        const mail = planMail(fields)
+        const text = [
+          link.get('title'),
+          link.get('what'),
+          link.get('expected'),
+          link.get('details'),
+          issue.mode === 'paste' ? issue.report : '',
+          mail.mode === 'link' ? new URL(mailtoUrl(mail.message, 'problem')).searchParams.get('body') : mail.report,
+          problemText(fields)
+        ].join('\n')
+        expect(text).not.toMatch(/MARKED|marked/)
+        expect(text).not.toMatch(/siobhan/i)
+        // A path under Users keeps nothing but ~ after it.
+        expect(text).not.toMatch(/@example|MURMUR-|gsk_|••|buy .*milk|Users[\\/]+(?!~)/)
+      }
+    })
+  }
+})
+
+describe('the cuts never split an emoji', () => {
+  const what = `The pill froze again and again!!!${'😡'.repeat(20)}`
+
+  it('titles by code points, and the link and the email build without throwing', () => {
+    const title = issueTitle(what)
+    expect(title).toBe(wellFormed(title))
+    expect(() => planIssue({ what, expected: what, details: 'd', log: '' })).not.toThrow()
+    const plan = planIssue({ what, expected: '', details: 'd', log: '' })
+    expect(new URL(plan.url).searchParams.get('what')).toBe(what)
+    expect(() => planMail({ what, expected: '', details: 'd', log: '' })).not.toThrow()
+  })
+
+  it('turns half an emoji someone cut by hand into a replacement mark', () => {
+    const half = '😡'.slice(0, 1)
+    const plan = planIssue({ what: `broken ${half} here`, expected: half, details: half, log: `${T} [dictation] ${half}` })
+    expect(new URL(plan.url).searchParams.get('what')).toBe('broken \uFFFD here')
+    expect(() => mailtoUrl(`x ${half}`, 'problem')).not.toThrow()
+    expect(cutText('ab😡cd', 3)).toBe('ab😡')
+  })
+
+  it('cuts long log lines without splitting one', () => {
+    const ctx = { home: '/Users/siobhan', username: 'siobhan', known: [], custom: [], micLabels: [] }
+    const line = scrubLogLine(`${T} [dictation] ${'😡'.repeat(400)}`, ctx) ?? ''
+    expect(line).toBe(wellFormed(line))
+    expect(Array.from(line)).toHaveLength(300)
   })
 })
 
@@ -312,6 +417,46 @@ describe('the GitHub link', () => {
     const long = issueTitle('word '.repeat(40))
     expect(long.length).toBeLessThanOrEqual('Problem: '.length + 61)
     expect(long.endsWith('…')).toBe(true)
+  })
+})
+
+describe('the link on Windows', () => {
+  it('stays at or under 2000 characters there, and 7000 on a Mac', () => {
+    expect(issueLimitFor('win32')).toBe(2000)
+    expect(issueLimitFor('darwin')).toBe(MAX_ISSUE_URL_CHARS)
+    const draft = buildProblemDetails(input())
+    const fields = fieldsFrom(draft)
+    const mac = planIssue(fields, issueLimitFor('darwin'))
+    const win = planIssue(fields, issueLimitFor('win32'))
+    expect(mac.mode).toBe('link')
+    expect(win.mode).toBe('link')
+    if (mac.mode !== 'link' || win.mode !== 'link') return
+    expect(win.url.length).toBeLessThanOrEqual(2000)
+    expect(win.dropped).toBeGreaterThan(mac.dropped)
+    expect(isProblemIssueUrl(win.url, 2000)).toBe(true)
+    expect(isProblemIssueUrl(mac.url, 2000)).toBe(mac.url.length <= 2000)
+  })
+
+  it('copies the whole report on Windows sooner', () => {
+    const plan = planIssue({ what: 'x'.repeat(2500), expected: '', details: 'd', log: '' }, issueLimitFor('win32'))
+    expect(plan.mode).toBe('paste')
+    expect(plan.url.length).toBeLessThanOrEqual(2000)
+    expect(isProblemIssueUrl(plan.url, 2000)).toBe(true)
+  })
+
+  it('finds the same number of log lines by halving as by counting down', () => {
+    const log = Array.from({ length: 30 }, (_, i) => `${T} [dictation] delivered words=${i} ${'y'.repeat(i * 7)}`).join('\n')
+    for (const max of [1200, 2000, 3500, 7000]) {
+      const plan = planIssue({ what: 'w', expected: '', details: 'd', log }, max)
+      if (plan.mode !== 'link') continue
+      expect(plan.url.length).toBeLessThanOrEqual(max)
+      // 1 more line would not fit.
+      if (plan.dropped > 0) {
+        const lines = log.split('\n')
+        const more = issueUrl({ title: issueTitle('w'), what: 'w', expected: '', details: detailsBlock('d', lines.slice(lines.length - (30 - plan.dropped + 1))) })
+        expect(more.length).toBeGreaterThan(max)
+      }
+    }
   })
 })
 

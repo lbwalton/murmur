@@ -1067,7 +1067,7 @@ app.whenReady().then(async () => {
     // The tray's way in: main leaves what it took (here, nothing, as for
     // a closed window) and tells the page, which opens the panel saying
     // how to add a picture.
-    handProblemToWindow(null, true)
+    handProblemToWindow(null, 'closed')
     const tray = (await win.webContents.executeJavaScript(`(async () => {
       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
       const q = (name) => document.querySelector('[data-problem="' + name + '"]')

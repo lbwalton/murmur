@@ -27,6 +27,27 @@ export const TITLE_PREFIX = 'Problem: '
 /** GitHub turns a link over its server limit away (414 URI Too Long);
  *  this keeps the whole link well under it. */
 export const MAX_ISSUE_URL_CHARS = 7000
+/** Windows hands a link to the browser through ShellExecute, which can
+ *  fail without a word on a very long one, so Windows links stay short. */
+export const MAX_ISSUE_URL_CHARS_WINDOWS = 2000
+
+/** The longest link to open on a platform (process.platform's names). */
+export function issueLimitFor(platform: string): number {
+  return platform === 'win32' ? MAX_ISSUE_URL_CHARS_WINDOWS : MAX_ISSUE_URL_CHARS
+}
+
+/** Lone halves of a surrogate pair (half an emoji) become U+FFFD, so
+ *  encodeURIComponent can never throw on what a person typed or cut. */
+export function wellFormed(text: string): string {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD')
+}
+
+/** The first max characters, counted as people see them (code points),
+ *  so a cut never splits an emoji. */
+export function cutText(text: string, max: number): string {
+  const points = Array.from(wellFormed(text))
+  return points.length <= max ? points.join('') : points.slice(0, max).join('')
+}
 /** How many log lines a report carries, at most. */
 export const LOG_LINES = 30
 
@@ -241,7 +262,12 @@ function reduceUrls(text: string, known: Set<string>): string {
  *  of any text. Used on every log line and on the details too, since a
  *  model name can be a path on a local server. */
 export function scrubText(text: string, ctx: ScrubContext): string {
-  let out = reduceUrls(text, new Set(ctx.known))
+  // An encoded slash or backslash would hide a path from the rules below.
+  let out = reduceUrls(wellFormed(text).replace(/%2F/gi, '/').replace(/%5C/gi, '\\').replace(/%3A/gi, ':'), new Set(ctx.known))
+  out = out
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
+    .replace(/\bMURMUR-[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[license key]')
+    .replace(/\S*[•●]{2,}\S*/g, '[key]')
   // Nothing writes a key to the log; this is the belt with the braces.
   out = out.replace(/\bBearer\s+\S+/gi, 'Bearer [key]').replace(/\b(?:sk|gsk|xai|pk|rk|key)[-_][A-Za-z0-9_-]{8,}/g, '[key]')
   for (const spelling of homeSpellings(ctx.home)) {
@@ -292,7 +318,7 @@ const STAMP = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z) (.*)$/
 /** An error message cut before anything it quotes or any path, the way
  *  the window's crash line is (Boundary.tsx). */
 function cutMessage(message: string): string {
-  return message.split(/["'`/\\]/)[0].replace(/\s+/g, ' ').trim().slice(0, 100)
+  return cutText(message.split(/["'`/\\]/)[0].replace(/\s+/g, ' ').trim(), 100)
 }
 
 /** A transcription failure's detail, kept only in a shape known to hold
@@ -320,10 +346,10 @@ const MIC_SENTENCES: Array<[RegExp, string]> = [
  *  murmur sentence with its mic names taken out, or the error's kind. */
 function rendererMessage(message: string): string {
   const crash = /\[settings\] problem in .*/.exec(message)
-  if (crash) return crash[0].slice(0, 160)
+  if (crash) return cutText(crash[0], 160)
   if (message.startsWith('[murmur] ')) {
     for (const [pattern, replacement] of MIC_SENTENCES) {
-      if (pattern.test(message)) return message.replace(pattern, replacement).slice(0, 160)
+      if (pattern.test(message)) return cutText(message.replace(pattern, replacement), 160)
     }
     return `[murmur] ${cutMessage(message.slice('[murmur] '.length))}`
   }
@@ -366,7 +392,9 @@ export function scrubLogLine(line: string, ctx: ScrubContext): string | null {
       // The base URL stays for the address rule below to reduce: a
       // catalog provider keeps its host, anything else is a custom endpoint.
       const failed = /^(failed kind=\S+) detail=(.*) (model=\S* baseUrl=\S*)(.*)$/.exec(text)
-      body = failed ? `[transcribe] ${failed[1]} detail=${safeDetail(failed[2])} ${failed[3]}${failed[4]}` : `[transcribe] ${cutMessage(text)}`
+      // Any other shape could carry a raw error message: left out, counted.
+      if (!failed) return null
+      body = `[transcribe] ${failed[1]} detail=${safeDetail(failed[2])} ${failed[3]}${failed[4]}`
     } else if (tag === 'transform') {
       body = `[transform] ${text.replace(/ detail=(.*?)(?=$)/, (_m, d: string) => ` detail=${safeDetail(d)}`)}`
     } else if (tag === 'sort') {
@@ -374,14 +402,14 @@ export function scrubLogLine(line: string, ctx: ScrubContext): string | null {
       // message (notes/decide.ts), which can name an address.
       body = `[sort] ${text.replace(/ reason=network (.*?)(?= model=| slot=|;|$)/, (_m, d: string) => ` reason=network ${safeDetail(d)}`)}`
     } else if (tag === 'receipt') {
-      body = `[receipt] ${text.replace(/ reason=(.*)$/, (_m, r: string) => ` reason=${cutMessage(r)}`)}`
+      body = `[receipt] ${text.replace(/ reason=(.*)$/, (_m, r: string) => ` reason=${safeDetail(r)}`)}`
     } else {
       body = `[${tag}] ${text}`
     }
   }
   // A bare IPv4 address can be a custom endpoint resolved: none stays.
   const noIps = body.replace(/(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?![\w.])/g, '[address]')
-  return `${stamp} ${scrubText(noIps, ctx)}`.slice(0, 300)
+  return cutText(`${stamp} ${scrubText(noIps, ctx)}`, 300)
 }
 
 /** The newest lines of the log that pass the filter, at most max. */
@@ -455,10 +483,11 @@ export function buildProblemDetails(input: ProblemInput): ProblemDraft {
 
 /** The issue's title: the first line of what happened, cut short. */
 export function issueTitle(what: string): string {
-  const first = what.trim().split('\n')[0].replace(/\s+/g, ' ').trim()
+  const first = wellFormed(what).trim().split('\n')[0].replace(/\s+/g, ' ').trim()
   if (first === '') return `${TITLE_PREFIX}(no summary)`
-  if (first.length <= 60) return `${TITLE_PREFIX}${first}`
-  const cut = first.slice(0, 60)
+  if (Array.from(first).length <= 60) return `${TITLE_PREFIX}${first}`
+  // Cut by code points, so an emoji is never split in half.
+  const cut = cutText(first, 60)
   const space = cut.lastIndexOf(' ')
   return `${TITLE_PREFIX}${(space > 30 ? cut.slice(0, space) : cut).trimEnd()}…`
 }
@@ -492,10 +521,26 @@ export function problemText(fields: ProblemFields, keepLog?: number): string {
 
 /** The link that opens the form with its fields filled in. */
 export function issueUrl(parts: { title: string; what: string; expected: string; details: string }): string {
-  const query = [`template=${encodeURIComponent(ISSUE_TEMPLATE)}`, `title=${encodeURIComponent(parts.title)}`, `what=${encodeURIComponent(parts.what)}`]
-  if (parts.expected.trim() !== '') query.push(`expected=${encodeURIComponent(parts.expected)}`)
-  if (parts.details.trim() !== '') query.push(`details=${encodeURIComponent(parts.details)}`)
+  const enc = (value: string): string => encodeURIComponent(wellFormed(value))
+  const query = [`template=${enc(ISSUE_TEMPLATE)}`, `title=${enc(parts.title)}`, `what=${enc(parts.what)}`]
+  if (parts.expected.trim() !== '') query.push(`expected=${enc(parts.expected)}`)
+  if (parts.details.trim() !== '') query.push(`details=${enc(parts.details)}`)
   return ISSUE_BASE + query.join('&')
+}
+
+/** The most log lines (0 to total) for which fits holds, by halving:
+ *  more lines only ever make a link longer. Null when even 0 do not fit. */
+function mostLinesThatFit(total: number, fits: (keep: number) => boolean): number | null {
+  if (fits(total)) return total
+  if (!fits(0)) return null
+  let low = 0
+  let high = total
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2)
+    if (fits(mid)) low = mid
+    else high = mid
+  }
+  return low
 }
 
 /** How a report goes to GitHub: the whole of it in the link, with the
@@ -505,13 +550,14 @@ export type IssuePlan =
   | { mode: 'link'; url: string; dropped: number }
   | { mode: 'paste'; url: string; report: string }
 
-export function planIssue(fields: ProblemFields): IssuePlan {
+/** max is the platform's limit: issueLimitFor(process.platform). */
+export function planIssue(fields: ProblemFields, max: number = MAX_ISSUE_URL_CHARS): IssuePlan {
   const title = issueTitle(fields.what)
   const log = logLines(fields.log)
-  for (let keep = log.length; keep >= 0; keep--) {
-    const url = issueUrl({ title, what: fields.what, expected: fields.expected, details: detailsBlock(fields.details, log.slice(log.length - keep)) })
-    if (url.length <= MAX_ISSUE_URL_CHARS) return { mode: 'link', url, dropped: log.length - keep }
-  }
+  const urlFor = (keep: number): string =>
+    issueUrl({ title, what: fields.what, expected: fields.expected, details: detailsBlock(fields.details, log.slice(log.length - keep)) })
+  const keep = mostLinesThatFit(log.length, (n) => urlFor(n).length <= max)
+  if (keep !== null) return { mode: 'link', url: urlFor(keep), dropped: log.length - keep }
   return { mode: 'paste', url: issueUrl({ title, what: PASTE_NOTE, expected: '', details: '' }), report: problemText(fields) }
 }
 
@@ -521,17 +567,15 @@ export type MailPlan = { mode: 'link'; message: string; dropped: number } | { mo
 
 export function planMail(fields: ProblemFields, kind: ReportKind = 'problem'): MailPlan {
   const total = logLines(fields.log).length
-  for (let keep = total; keep >= 0; keep--) {
-    const message = problemText(fields, keep)
-    if (fitsMailto(message, kind)) return { mode: 'link', message, dropped: total - keep }
-  }
+  const keep = mostLinesThatFit(total, (n) => fitsMailto(problemText(fields, n), kind))
+  if (keep !== null) return { mode: 'link', message: problemText(fields, keep), dropped: total - keep }
   return { mode: 'paste', report: problemText(fields) }
 }
 
 /** The main process opens a problem link only when this holds: exactly
  *  murmur's own new issue page, and under the length GitHub accepts. */
-export function isProblemIssueUrl(url: string): boolean {
-  if (!url.startsWith(ISSUE_BASE) || url.length > MAX_ISSUE_URL_CHARS || /[\s#]/.test(url)) return false
+export function isProblemIssueUrl(url: string, max: number = MAX_ISSUE_URL_CHARS): boolean {
+  if (!url.startsWith(ISSUE_BASE) || url.length > max || /[\s#]/.test(url)) return false
   try {
     const parsed = new URL(url)
     return parsed.origin === 'https://github.com' && parsed.pathname === '/lbwalton/murmur/issues/new' && parsed.searchParams.get('template') === ISSUE_TEMPLATE

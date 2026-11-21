@@ -218,7 +218,7 @@ const api = {
   /** A picture of this window as it is drawn now, or null. */
   captureProblemShot: (): Promise<Uint8Array | null> => ipcRenderer.invoke('problem:capture'),
   /** What a click on the tray's Report a problem… left, taken once. */
-  takePendingProblem: (): Promise<{ shot: Uint8Array | null; hidden: boolean } | null> =>
+  takePendingProblem: (): Promise<{ shot: Uint8Array | null; why: import('../main/problem').NoShot | null } | null> =>
     ipcRenderer.invoke('problem:pending'),
   /** Main builds the link from these words, checks it, and opens it. */
   openProblemIssue: (
@@ -226,7 +226,7 @@ const api = {
     shot: Uint8Array | null
   ): Promise<import('../main/problem').IssueOutcome> => ipcRenderer.invoke('problem:openIssue', fields, shot),
   copyProblemShot: (shot: Uint8Array): Promise<boolean> => ipcRenderer.invoke('problem:copyShot', shot),
-  saveProblemShot: (shot: Uint8Array): Promise<boolean> => ipcRenderer.invoke('problem:saveShot', shot),
+  saveProblemShot: (shot: Uint8Array): Promise<'saved' | 'canceled' | 'failed'> => ipcRenderer.invoke('problem:saveShot', shot),
   onProblemOpen: (cb: () => void): (() => void) => {
     const handler = (): void => cb()
     ipcRenderer.on('problem:open', handler)

@@ -4,10 +4,10 @@
 // murmur's own window, and the details and log murmur adds. It goes only
 // through the person's own browser (a GitHub issue) or mail app, by
 // their click there. murmur sends nothing.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SettingsApi } from '../../preload/settings'
 import type { IssueOutcome } from '../../main/problem'
-import { type ProblemFields, type ProblemView, planIssue, planMail, problemText, viewLine } from '../../shared/problem'
+import { type ProblemFields, type ProblemView, issueLimitFor, planIssue, planMail, problemText, viewLine } from '../../shared/problem'
 import { REPORT_ADDRESS } from '../../shared/report'
 import type { Settings } from '../../shared/settings'
 import { pageScroller } from './scroller'
@@ -21,9 +21,9 @@ export interface ProblemOpen {
   id: number
   view: ProblemView
   shot: Uint8Array | null
-  /** Why there is no picture: the window was closed when the tray item
-   *  was clicked, or the capture came back empty. */
-  noShot: 'closed' | 'failed' | null
+  /** Why there is no picture: the window was closed or minimized when
+   *  the tray item was clicked, or the capture came back empty. */
+  noShot: 'closed' | 'minimized' | 'failed' | null
   /** Whether Hide words was on when the picture was taken. */
   hiddenAtShot: boolean
 }
@@ -104,7 +104,12 @@ export function ProblemReport(props: {
   const [sent, setSent] = useState<Sent | null>(null)
   const [busy, setBusy] = useState(false)
   const [copiedShot, setCopiedShot] = useState(false)
+  // A plain line when something did not work; the words stay.
+  const [trouble, setTrouble] = useState<string | null>(null)
+  const [saveNote, setSaveNote] = useState<string | null>(null)
   const isMac = navigator.platform.toLowerCase().includes('mac')
+  // The same limit main uses: Windows links stay short (issueLimitFor).
+  const limit = issueLimitFor(navigator.platform.toLowerCase().startsWith('win') ? 'win32' : 'darwin')
   const paste = isMac ? 'Cmd+V' : 'Ctrl+V'
   const hideWords = props.settings.history.hideWords
 
@@ -128,8 +133,8 @@ export function ProblemReport(props: {
       })
     } else {
       setShotNote(
-        props.open.noShot === 'closed'
-          ? "No screenshot: murmur's window was closed. To add one, go to the page with the problem and press Retake."
+        props.open.noShot === 'closed' || props.open.noShot === 'minimized'
+          ? `No screenshot: murmur's window was ${props.open.noShot}. To add one, go to the page with the problem and press Retake.`
           : 'murmur could not take a screenshot of its window. Press Retake to try again.'
       )
     }
@@ -166,6 +171,8 @@ export function ProblemReport(props: {
   }, [shot, stage])
 
   const closed = useRef(false)
+  const typedRef = useRef(false)
+  typedRef.current = what.trim() !== '' || expected.trim() !== ''
   const stageRef = useRef(stage)
   stageRef.current = stage
   const close = (): void => {
@@ -197,8 +204,18 @@ export function ProblemReport(props: {
 
   const fields: ProblemFields = { what, expected, details, log }
   const ready = loaded && what.trim() !== ''
-  const issuePlan = ready ? planIssue(fields) : null
-  const mailPlan = ready ? planMail(fields) : null
+  // Worked out once per change of the words, not on every paint.
+  const plans = useMemo(() => {
+    if (!ready) return { issue: null, mail: null }
+    try {
+      const f = { what, expected, details, log }
+      return { issue: planIssue(f, limit), mail: planMail(f) }
+    } catch {
+      return { issue: null, mail: null }
+    }
+  }, [ready, what, expected, details, log, limit])
+  const issuePlan = plans.issue
+  const mailPlan = plans.mail
   // Said before anything goes: what will not fit a link, and what happens instead.
   const fitNote = [
     issuePlan?.mode === 'paste'
@@ -213,19 +230,23 @@ export function ProblemReport(props: {
 
   const openGitHub = async (): Promise<void> => {
     setBusy(true)
+    setTrouble(null)
     try {
       const result = await bridge().openProblemIssue(fields, shot?.png ?? null)
       setSent({ via: 'github', result })
       setCopiedShot(result.outcome === 'opened' && result.copied === 'shot')
+    } catch {
+      setTrouble('murmur could not open GitHub just now. Your report is still here: try again, or press Email it instead.')
     } finally {
       setBusy(false)
     }
   }
 
   const openMail = async (): Promise<void> => {
-    const plan = planMail(fields)
     setBusy(true)
+    setTrouble(null)
     try {
+      const plan = planMail(fields)
       if (plan.mode === 'link') {
         const shotCopied = shot ? await bridge().copyProblemShot(shot.png) : false
         if (await bridge().openReportMail(plan.message, 'problem')) {
@@ -275,10 +296,13 @@ export function ProblemReport(props: {
         }}
         onClose={() => {
           // The browser can close a modal on a 2nd Escape even though the
-          // 1st was refused. Closed while it is the form, that is a
-          // Cancel, so the panel never lingers unseen and the tray item
-          // keeps working. Retake closes it too, out of the form stage.
-          if (stageRef.current === 'form') close()
+          // 1st was refused. Closed while it is the form, the panel comes
+          // back if you typed anything, so no words are lost, and is a
+          // Cancel if not, so it never lingers unseen. Retake closes it
+          // too, out of the form stage.
+          if (stageRef.current !== 'form' || closed.current) return
+          if (typedRef.current) dialogRef.current?.showModal()
+          else close()
         }}
       >
         <div className="share-head">
@@ -323,12 +347,11 @@ export function ProblemReport(props: {
                 aria-label="Screenshot of murmur's window, as it will be copied"
                 data-problem="shot"
               />
-              {!shot.hiddenWords && (
-                <p className="row-note problem-note">
-                  Your dictated words show in this picture wherever they were on screen. To leave them out, turn on Hide
-                  words, then press Retake.
-                </p>
-              )}
+              <p className="row-note problem-note">
+                {shot.hiddenWords
+                  ? 'This picture shows what was on screen, such as masked keys and server addresses on Provider and keys. Remove or Retake it if it shows anything private.'
+                  : 'This picture shows what was on screen: your dictated words, and masked keys and server addresses on Provider and keys. Turn on Hide words and press Retake to leave out words, or Remove it.'}
+              </p>
             </>
           ) : (
             <p className="row-note problem-note" data-problem="no-shot">
@@ -352,9 +375,25 @@ export function ProblemReport(props: {
               Retake
             </button>
             {shot && (
-              <button className="btn quiet-btn" onClick={() => void bridge().saveProblemShot(shot.png)}>
+              <button
+                className="btn quiet-btn"
+                onClick={() => {
+                  setSaveNote(null)
+                  void bridge()
+                    .saveProblemShot(shot.png)
+                    .then((outcome) =>
+                      setSaveNote(outcome === 'saved' ? 'Screenshot saved.' : outcome === 'failed' ? 'murmur could not save the screenshot there. Try another folder.' : null)
+                    )
+                    .catch(() => setSaveNote('murmur could not save the screenshot there. Try another folder.'))
+                }}
+              >
                 Save screenshot…
               </button>
+            )}
+            {saveNote && (
+              <span className="mono-inline dim" aria-live="polite">
+                {saveNote}
+              </span>
             )}
           </p>
         </div>
@@ -399,6 +438,19 @@ export function ProblemReport(props: {
         {!sent && fitNote !== '' && (
           <p className="row-note problem-note" aria-live="polite">
             {fitNote}
+          </p>
+        )}
+
+        {trouble && (
+          <p className="row-note problem-note" role="alert" data-problem="trouble">
+            {trouble}
+          </p>
+        )}
+
+        {!sent && (
+          <p className="row-note problem-note">
+            Open on GitHub and Email it instead put the screenshot (or the report) on your clipboard, in place of what is
+            there.
           </p>
         )}
 

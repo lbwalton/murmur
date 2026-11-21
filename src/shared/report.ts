@@ -52,7 +52,9 @@ export function reportBody(input: ReportInput): string {
 }
 
 export function mailtoUrl(body: string, kind: ReportKind = 'take'): string {
-  return `${blankMailtoUrl(kind)}&body=${encodeURIComponent(body)}`
+  // Half an emoji (a lone surrogate) would make encodeURIComponent throw.
+  const whole = body.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD')
+  return `${blankMailtoUrl(kind)}&body=${encodeURIComponent(whole)}`
 }
 
 /** A blank message to the same address, for a report copied by hand. */
