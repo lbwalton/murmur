@@ -15,6 +15,7 @@ import {
   resolveNotePath
 } from '../../shared/notes'
 import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
+import { waitingWords } from '../../shared/sort-notice'
 import { openTasksLine } from '../../shared/todo'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
@@ -38,6 +39,8 @@ function timeOf(at: number): string {
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
+
+const capitalize = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`
 
 /** Why a line was held, in the panel's own words, with the item it was
  *  tied to quoted from the file. */
@@ -146,17 +149,29 @@ export function HeldLines(props: {
 function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
   const held = report.held > 0 ? `, ${plural(report.held, 'line', 'lines')} held in the inbox` : ''
   if (report.outcome === 'filed') {
-    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${held}`
+    // A long note goes out in parts (US-180); a part that could not be
+    // sorted leaves its lines for Sort again, and a run filed without
+    // its repeat check says so.
+    const parts = (report.parts ?? 0) > 1 ? ` in ${report.parts} parts` : ''
+    const unchecked = report.unchecked ? `, ${plural(report.unchecked, 'list', 'lists')} filed without the repeat check` : ''
+    const left = report.unsorted
+      ? `; ${plural(report.unsorted, 'line', 'lines')} not sorted yet (${report.reason ?? 'unknown'}), and Sort again sends just those`
+      : ''
+    return `filed ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')}${parts}${held}${unchecked}${left}`
   }
   if (report.outcome === 'rejected' && report.reason === 'low confidence') {
     return `held every line in the inbox as unsure (${plural(report.held, 'line', 'lines')}), nothing filed`
   }
-  if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed`
+  // What a sort left in the inbox for Sort again (US-180).
+  const left = report.unsorted
+    ? `; ${plural(report.unsorted, 'line', 'lines')} left in the inbox, and Sort again sends just those`
+    : ''
+  if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed${left}`
   if (report.outcome === 'failed') {
     const landed = report.tasks + report.ideas
     return landed > 0
-      ? `sort failed (${report.reason ?? 'unknown'}) after ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')} landed; check the files`
-      : `sort failed (${report.reason ?? 'unknown'}), nothing filed`
+      ? `sort failed (${report.reason ?? 'unknown'}) after ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')} landed; check the files${left}`
+      : `sort failed (${report.reason ?? 'unknown'}), nothing filed${left}`
   }
   return `sort skipped (${report.reason ?? 'unknown'})`
 }
@@ -464,7 +479,7 @@ export function NotesPanel(props: {
                       : "saved to murmur's data folder because the notes folder was unreachable"
                   }: ${lastSave.relative}${
                     notes.sort && status?.lastSort ? `. Then ${sortSummary(status.lastSort)}.` : ''
-                  }`
+                  }${notes.sort && status && status.waiting.lines > 0 ? ` ${capitalize(waitingWords(status.waiting))}.` : ''}`
                 : 'No note since launch. Hold the chord and speak.'
             }
           >
@@ -586,7 +601,7 @@ export function NotesPanel(props: {
               label="Note receipts"
               anchor="row-note-receipts"
               keywords="notification receipt open link finder explorer"
-              desc={`A notification after each note names where it landed; click it to open the note. Off or on, Open last note under the ${
+              desc={`A notification after each note names where it landed, or says when its sort could not finish; click it to open the note. Off or on, Open last note under the ${
                 navigator.platform.toLowerCase().includes('mac') ? 'menu bar' : 'tray'
               } icon and the last note on Home still take you there.`}
             >
