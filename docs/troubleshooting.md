@@ -16,7 +16,7 @@ Click the murmur icon in the menu bar on a Mac, or in the tray on Windows, and p
 
 **GitHub issues are public:** anyone can read them, and they stay up. Check the screenshot and the details first, and use email if you would rather not post in public. You can edit your issue on GitHub after you post it. We read every report. An emailed report is kept 90 days, then cleared within about 30 days, the same as a reported take.
 
-A link has a length limit (GitHub turns away a link past it, and on Windows a very long link can fail to open at all, so murmur keeps links to 2,000 characters there and 7,000 on a Mac), so a long report leaves out its oldest log lines first. If it is still too long, murmur copies the whole report and opens a short form, or a blank message, for you to paste it into, and the panel tells you before you click. Facts about GitHub's issue links were checked against GitHub's docs on 2026-11-21.
+A link has a length limit (GitHub turns away a link past it), so murmur keeps links to 7,000 characters on a Mac and, to be safe, 2,000 on Windows, where a very long link has not been tested. A long report leaves out its oldest log lines first. If it is still too long, murmur copies the whole report and opens a short form, or a blank message, for you to paste it into, and the panel tells you before you click. Facts about GitHub's issue links were checked against GitHub's docs on 2026-11-21.
 
 ## What if Settings says "This section hit a problem"?
 

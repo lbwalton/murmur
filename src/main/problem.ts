@@ -185,8 +185,9 @@ export type IssueOutcome =
 async function openIssue(value: unknown, shot: unknown): Promise<IssueOutcome> {
   const fields = fieldsFrom(value)
   if (!fields) return { outcome: 'refused' }
-  // Windows opens links through ShellExecute, which can fail silently on
-  // a long one, so its links stay shorter (issueLimitFor).
+  // Windows opens links through ShellExecute, and how it handles a very
+  // long one is untested, so as a precaution its links stay shorter
+  // (issueLimitFor).
   const max = issueLimitFor(process.platform)
   const plan = planIssue(fields, max)
   if (!isProblemIssueUrl(plan.url, max)) {
