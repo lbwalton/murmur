@@ -207,8 +207,31 @@ const api = {
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard:copy', text),
   getKeepImpact: (retentionDays: number): Promise<{ takes: number; recordings: number }> =>
     ipcRenderer.invoke('history:keepImpact', retentionDays),
-  /** Null opens a blank message, for a report copied by hand. */
-  openReportMail: (body: string | null): Promise<void> => ipcRenderer.invoke('report:mail', body),
+  /** Null opens a blank message, for a report copied by hand. A problem
+   *  report (US-182) goes under its own subject. */
+  openReportMail: (body: string | null, kind: 'take' | 'problem' = 'take'): Promise<void> =>
+    ipcRenderer.invoke('report:mail', body, kind),
+  /** Report a problem (US-182): the details and log for where the
+   *  person is looking, read fresh. */
+  getProblemDraft: (view: import('../shared/problem').ProblemView): Promise<import('../shared/problem').ProblemDraft> =>
+    ipcRenderer.invoke('problem:draft', view),
+  /** A picture of this window as it is drawn now, or null. */
+  captureProblemShot: (): Promise<Uint8Array | null> => ipcRenderer.invoke('problem:capture'),
+  /** What a click on the tray's Report a problem… left, taken once. */
+  takePendingProblem: (): Promise<{ shot: Uint8Array | null; hidden: boolean } | null> =>
+    ipcRenderer.invoke('problem:pending'),
+  /** Main builds the link from these words, checks it, and opens it. */
+  openProblemIssue: (
+    fields: import('../shared/problem').ProblemFields,
+    shot: Uint8Array | null
+  ): Promise<import('../main/problem').IssueOutcome> => ipcRenderer.invoke('problem:openIssue', fields, shot),
+  copyProblemShot: (shot: Uint8Array): Promise<boolean> => ipcRenderer.invoke('problem:copyShot', shot),
+  saveProblemShot: (shot: Uint8Array): Promise<boolean> => ipcRenderer.invoke('problem:saveShot', shot),
+  onProblemOpen: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('problem:open', handler)
+    return () => ipcRenderer.removeListener('problem:open', handler)
+  },
   getAnalytics: (): Promise<import('../shared/analytics').AnalyticsSummary> => {
     return ipcRenderer.invoke('analytics:summary')
   },

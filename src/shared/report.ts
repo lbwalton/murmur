@@ -8,6 +8,14 @@
 export const REPORT_ADDRESS = 'support@murmurapp.app'
 /** The 90 day cleanup finds a report by this start of the subject. */
 export const REPORT_SUBJECT = 'murmur report: a take came out wrong'
+/** Report a problem (US-182) sends its email to the same address, with
+ *  a subject that starts the same way, so the same cleanup finds it. */
+export const PROBLEM_SUBJECT = 'murmur report: a problem'
+
+/** Which report a message is: 1 take, or a problem with the app. */
+export type ReportKind = 'take' | 'problem'
+
+const SUBJECTS: Record<ReportKind, string> = { take: REPORT_SUBJECT, problem: PROBLEM_SUBJECT }
 /** Beyond this some mail apps cut a mailto link short, so the person
  *  copies the report and pastes it instead. */
 const MAX_MAILTO_CHARS = 1900
@@ -43,21 +51,25 @@ export function reportBody(input: ReportInput): string {
   ].join('\n')
 }
 
-export function mailtoUrl(body: string): string {
-  return `mailto:${REPORT_ADDRESS}?subject=${encodeURIComponent(REPORT_SUBJECT)}&body=${encodeURIComponent(body)}`
+export function mailtoUrl(body: string, kind: ReportKind = 'take'): string {
+  return `${blankMailtoUrl(kind)}&body=${encodeURIComponent(body)}`
 }
 
 /** A blank message to the same address, for a report copied by hand. */
-export function blankMailtoUrl(): string {
-  return `mailto:${REPORT_ADDRESS}?subject=${encodeURIComponent(REPORT_SUBJECT)}`
+export function blankMailtoUrl(kind: ReportKind = 'take'): string {
+  return `mailto:${REPORT_ADDRESS}?subject=${encodeURIComponent(SUBJECTS[kind])}`
 }
 
-export function fitsMailto(body: string): boolean {
-  return mailtoUrl(body).length <= MAX_MAILTO_CHARS
+export function fitsMailto(body: string, kind: ReportKind = 'take'): boolean {
+  return mailtoUrl(body, kind).length <= MAX_MAILTO_CHARS
 }
 
-/** The main process opens only these 2 shapes, so no page can turn the
- *  mail handler into a general way to open links. */
+/** The main process opens only these shapes (a filled or a blank
+ *  message, for each of the 2 subjects), so no page can turn the mail
+ *  handler into a general way to open links. */
 export function isReportMailto(url: string): boolean {
-  return url.startsWith(`mailto:${REPORT_ADDRESS}?subject=${encodeURIComponent(REPORT_SUBJECT)}`)
+  return (Object.keys(SUBJECTS) as ReportKind[]).some((kind) => {
+    const blank = blankMailtoUrl(kind)
+    return url === blank || url.startsWith(`${blank}&body=`)
+  })
 }

@@ -1,0 +1,45 @@
+# Report a problem (US-182). murmur's Report a problem button opens this
+# form with what, expected and details filled in through the link, by
+# these field ids (src/shared/problem.ts, ISSUE_FIELDS). Keep the ids in
+# step with it; src/shared/problem.test.ts fails if they drift. Labels
+# live here, not in the link: a link's labels only work for people with
+# permission to set them. Blank issues stay allowed (no config.yml).
+name: Report a problem
+description: Something in murmur did not work the way it should.
+title: "Problem: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for telling us. Issues here are public, so leave out anything private: names, keys, and the words you dictated.
+
+        From murmur, use **Report a problem** in the menu bar menu on a Mac or the tray menu on Windows (or Settings, System): it fills in the details for you, and you see all of it first.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, and what murmur did.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: "Optional. Click here and paste (Cmd+V on a Mac, Ctrl+V on Windows), or drag an image in. Check it shows nothing private first."
+    validations:
+      required: false
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: "murmur's version, your system, and its recent log, which never holds your words or keys. murmur fills this in."
+      render: text
+    validations:
+      required: false

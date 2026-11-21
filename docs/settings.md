@@ -316,6 +316,10 @@ Quiet blips confirm what murmur is doing without you looking: a rising two-tone 
 
 Turn on Start at login under Settings, System, and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
 
+## Where do I report a problem?
+
+Under Settings, System, in the help group, next to Diagnostics: **Report a problem…** takes a screenshot of the page you are on and opens a panel where you say what happened, see every detail murmur adds, and send it as a GitHub issue or an email from your own browser or mail app. The same item is in the tray menu (the menu bar menu on a Mac). What goes, and what never does, is in [How do I report a problem?](troubleshooting.md#how-do-i-report-a-problem).
+
 ## What happens if murmur crashes?
 
 The error is written to a small rotating log in murmur's data folder under `logs/`, and the app relaunches itself exactly once. If the relaunched instance hits trouble too, it stays running in a visibly degraded state instead of looping, and the log has the story. Your dictation history and settings are untouched by any of this.

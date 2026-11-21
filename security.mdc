@@ -57,6 +57,7 @@ node scripts/posture-check.mjs https://murmurapp.app --repo .
 - A new thing leaving the device changes the privacy page and the App Store label first.
 - Never commit a real dictation, a scan report, or a vendor's review. `security-audits/` stays local.
 - A take someone reports becomes a test case only with their yes, rewritten without names or details.
+- A problem report (US-182) is built from an allowlist and a filtered log, and leaves only by the person's own click in their own browser or mail app. The main process opens only `https://github.com/lbwalton/murmur/issues/new?` links it built itself (`isProblemIssueUrl`) and the 2 report mailto subjects.
 
 ## Recurring
 

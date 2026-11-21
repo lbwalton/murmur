@@ -34,6 +34,7 @@ import { RotatingLog } from './logging'
 import { holdPlainHttpHops, readTrustedHttpHostsFrom } from './net'
 import { getOverlayPhase, initOverlay } from './overlay'
 import { initPermissions } from './permissions'
+import { handProblemToWindow, initProblem, reportProblemFromTray } from './problem'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
 import { getLastNote, onLastNoteChanged, openLastNote, withdrawReceipt } from './notes/receipt'
@@ -217,6 +218,16 @@ function applyLook(win: BrowserWindow, look: WindowLook): void {
   if (process.platform === 'win32') win.setBackgroundMaterial(look === 'glass' ? WIN_MATERIAL : 'none')
   win.setBackgroundColor(pageBackground(look, process.platform))
   win.webContents.send('look:changed', look)
+}
+
+/** Why the window is solid, in words a report can carry (US-182). */
+function solidReason(): string | null {
+  if (isolatedRun && !isSmoke && asLook(process.env.MURMUR_LOOK) === 'solid') return 'picked for a capture'
+  if (nativeTheme.prefersReducedTransparency) return 'Reduce transparency is on'
+  if (process.platform === 'win32') {
+    return process.env.MURMUR_WINDOWS_GLASS === '1' ? 'this Windows version has no glass' : 'glass is off on Windows for now'
+  }
+  return process.platform === 'darwin' ? null : 'this system has no glass'
 }
 
 function createSettingsWindow(): BrowserWindow {
@@ -465,6 +476,13 @@ app.whenReady().then(async () => {
   initTransform()
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
+  // Report a problem (US-182): a picture of this window, the details, and
+  // the person's own browser or mail app. murmur sends nothing itself.
+  initProblem({
+    settingsWindow: () => settingsWindow,
+    showSettingsWindow,
+    look: () => ({ look: shownLook, reason: shownLook === 'solid' ? solidReason() : null })
+  })
 
   // Hands-free (US-117) rides the dictation and note chords: a hold
   // works as before, a double-tap locks the take. Transform holds only.
@@ -551,11 +569,14 @@ app.whenReady().then(async () => {
   // Copy for the history view: sandboxed renderers route through main.
   // Report this take (US-130): the person's own mail app, to 1 address.
   // murmur sends nothing, and this cannot open anything else.
-  ipc.handle('report:mail', async (_event, body: unknown) => {
+  // Report a problem (US-182) sends its email the same way, under its own
+  // subject that starts murmur report too.
+  ipc.handle('report:mail', async (_event, body: unknown, kind: unknown) => {
     const { shell } = await import('electron')
     const { blankMailtoUrl, isReportMailto, mailtoUrl } = await import('../shared/report')
+    const subject = kind === 'problem' ? 'problem' : 'take'
     const text = boundedText(body, MAX_TEXT_CHARS)
-    const url = text !== null ? mailtoUrl(text) : blankMailtoUrl()
+    const url = text !== null ? mailtoUrl(text, subject) : blankMailtoUrl(subject)
     if (isReportMailto(url)) await shell.openExternal(url)
   })
 
@@ -634,7 +655,11 @@ app.whenReady().then(async () => {
       const settings = updateSettings({ history: { hideWords: on } })
       if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('settings:pushed', settings)
     },
-    onUpdateAction: (action) => updater.runUpdateAction(action)
+    onUpdateAction: (action) => updater.runUpdateAction(action),
+    // Report a problem… (US-182): a picture of the window if it is showing.
+    onReportProblem: () => {
+      void reportProblemFromTray()
+    }
   })
 
   // The update item rides the tray and the Mac's murmur menu (US-178).
@@ -978,6 +1003,78 @@ app.whenReady().then(async () => {
       return { rail: true, parts, hidden, back, title }
     })()`)) as { rail: boolean; parts?: boolean; hidden?: boolean; back?: boolean; title?: string } | null
     return probe !== null && probe.rail && probe.parts === true && probe.hidden === true && probe.back === true && probe.title === 'Home'
+  })
+
+  registerSmokeCheck('problemPanel', async () => {
+    // Report a problem (US-182) from its row in Settings, System: the
+    // panel opens with the details and log filled in from main, sending
+    // waits for what happened, and Cancel closes it. Smoke's window is
+    // hidden, so the panel says it has no screenshot. Registered after
+    // homeRail, which ends on the settings tab.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const probe = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const q = (name) => document.querySelector('[data-problem="' + name + '"]')
+      const open = q('open')
+      if (!open) return { open: false }
+      open.click()
+      let details = ''
+      for (let i = 0; i < 40 && details === ''; i++) {
+        await wait(100)
+        details = q('details')?.value ?? ''
+      }
+      const shown = q('panel')?.open === true
+      const log = q('log')?.value ?? ''
+      const noShot = q('no-shot') !== null
+      const waits = q('github')?.disabled === true && q('mail')?.disabled === true
+      const field = q('what')
+      const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set
+      setValue.call(field, 'smoke: the pill froze')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+      await wait(100)
+      const ready = q('github')?.disabled === false
+      q('cancel').click()
+      await wait(100)
+      return { open: true, shown, details, log, noShot, waits, ready, closed: q('panel') === null }
+    })()`)) as {
+      open: boolean
+      shown?: boolean
+      details?: string
+      log?: string
+      noShot?: boolean
+      waits?: boolean
+      ready?: boolean
+      closed?: boolean
+    }
+    const ok =
+      probe.open &&
+      probe.shown === true &&
+      (probe.details ?? '').startsWith(`murmur ${app.getVersion()} on `) &&
+      (probe.details ?? '').includes('Showing: Settings') &&
+      (probe.log ?? '').includes('[window:settings] did-finish-load') &&
+      probe.noShot === true &&
+      probe.waits === true &&
+      probe.ready === true &&
+      probe.closed === true
+    // The tray's way in: main leaves what it took (here, nothing, as for
+    // a closed window) and tells the page, which opens the panel saying
+    // how to add a picture.
+    handProblemToWindow(null, true)
+    const tray = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const q = (name) => document.querySelector('[data-problem="' + name + '"]')
+      for (let i = 0; i < 30 && !q('panel')?.open; i++) await wait(100)
+      const note = q('no-shot')?.textContent ?? ''
+      q('cancel')?.click()
+      await wait(100)
+      return { note, closed: q('panel') === null }
+    })()`)) as { note: string; closed: boolean }
+    const fromTray = tray.note.includes("murmur's window was closed") && tray.closed
+    if (!ok || !fromTray) {
+      console.error(`smoke problemPanel: ${JSON.stringify({ ...probe, details: probe.details?.slice(0, 120), log: probe.log?.length, tray })}`)
+    }
+    return ok && fromTray
   })
 
   registerSmokeCheck('settingsZoomSharp', async () => {

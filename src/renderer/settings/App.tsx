@@ -37,6 +37,7 @@ import { UpdatesRow } from './UpdatesRow'
 import { MicRow } from './MicRow'
 import { ShortcutsSection } from './Shortcuts'
 import { NotesPanel } from './NotesPanel'
+import { type ProblemOpen, ProblemReport, sectionInView } from './ProblemReport'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
@@ -273,6 +274,48 @@ export function App(): React.JSX.Element {
   const [wizardOpen, setWizardOpen] = useState(false)
   const offeredWizard = useRef(false)
   const autoTested = useRef(false)
+  // Report a problem (US-182): open from the System row or the tray.
+  const [problem, setProblem] = useState<ProblemOpen | null>(null)
+  const problemSeq = useRef(0)
+  const problemOpenRef = useRef(false)
+  problemOpenRef.current = problem !== null
+  const placeRef = useRef({ page, wizardOpen, hideWords: false })
+  placeRef.current = { page, wizardOpen, hideWords: settings?.history.hideWords ?? false }
+  /** Where the person is looking: the page, and the section on Settings. */
+  const problemView = useCallback(() => {
+    const place = placeRef.current
+    if (place.wizardOpen) return { page: 'wizard', section: null }
+    return { page: place.page, section: place.page === 'setup' ? sectionInView() : null }
+  }, [])
+  const openProblem = useCallback(
+    async (from: 'row' | 'tray'): Promise<void> => {
+      // From the tray, main took the picture before the window came
+      // forward; the page takes what it left, once.
+      if (from === 'tray') {
+        const left = await bridge().takePendingProblem()
+        if (!left || problemOpenRef.current) return
+        setProblem({
+          id: ++problemSeq.current,
+          view: problemView(),
+          shot: left.shot,
+          noShot: left.shot ? null : left.hidden ? 'closed' : 'failed',
+          hiddenAtShot: placeRef.current.hideWords
+        })
+        return
+      }
+      // From the row, the picture is taken before the panel covers the page.
+      const view = problemView()
+      const shot = await bridge().captureProblemShot()
+      setProblem({ id: ++problemSeq.current, view, shot, noShot: shot ? null : 'failed', hiddenAtShot: placeRef.current.hideWords })
+    },
+    [problemView]
+  )
+  useEffect(() => {
+    // A tray click on a window still loading leaves it waiting: ask once
+    // on mount, then each time main says there is one.
+    void openProblem('tray')
+    return bridge().onProblemOpen(() => void openProblem('tray'))
+  }, [openProblem])
 
   const refresh = useCallback(async () => {
     const b = bridge()
@@ -524,6 +567,13 @@ export function App(): React.JSX.Element {
 
   if (!settings) return <main className="shell" />
 
+  // Over every page and the wizard too: first-run people report problems.
+  const problemPanel = problem && (
+    <Boundary kind="section" where="report a problem">
+      <ProblemReport key={problem.id} open={problem} settings={settings} view={problemView} onClose={() => setProblem(null)} />
+    </Boundary>
+  )
+
   // Catalog-derived view of the active connections: which preset the
   // base URLs match, the model rate entries, and the pace-aware cost
   // preview. All local math; nothing here leaves the machine.
@@ -579,6 +629,7 @@ export function App(): React.JSX.Element {
           />
         </div>
         </div>
+        {problemPanel}
       </main>
     )
   }
@@ -1668,6 +1719,16 @@ export function App(): React.JSX.Element {
                 </div>
               </Row>
 
+              <Row
+                label="Report a problem"
+                keywords="bug issue feedback problem report screenshot github broken"
+                desc="Fills in a GitHub issue or an email with a screenshot of this window and the details. You see and can change every word first, and nothing goes until you send it. Also in the tray menu (the menu bar menu on a Mac)."
+              >
+                <button className="btn" data-problem="open" onClick={() => void openProblem('row')}>
+                  Report a problem…
+                </button>
+              </Row>
+
               <Row label="Setup wizard" keywords="onboarding guide" desc="Walk the guided setup again anytime.">
                 <button className="btn" onClick={() => setWizardOpen(true)}>
                   Run wizard
@@ -1701,6 +1762,7 @@ export function App(): React.JSX.Element {
         · copyright Eze Media LLC
       </footer>
       </div>
+      {problemPanel}
     </main>
   )
 }
