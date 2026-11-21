@@ -73,7 +73,7 @@ Turn on **Hide words**. Your dictated words stop showing in murmur's windows, an
 - **Copy and paste last keep working.** A copy button still copies the words, and your paste last shortcut still pastes them. What you paste shows in that app.
 - **Report is off while this is on,** because a report shows your words so you can check them before anything goes. The report button says so. Turn off Hide words to report a take.
 - **Try it, the practice box, is off** too, because what you dictate into it would show there.
-- **Notifications leave the words out.** A note receipt says where the note went, and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
+- **Notifications leave the words out.** A note receipt says where the note went (or that its sort could not finish), and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
 
 It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
@@ -315,6 +315,10 @@ Quiet blips confirm what murmur is doing without you looking: a rising two-tone 
 ## Does murmur start automatically at login?
 
 Turn on Start at login under Settings, System, and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
+
+## Where do I report a problem?
+
+Under Settings, System, in the help group, next to Diagnostics: **Report a problem…** takes a screenshot of the page you are on and opens a panel where you say what happened, see every detail murmur adds, and send it as a GitHub issue or an email from your own browser or mail app. The same item is in the tray menu (the menu bar menu on a Mac). What goes, and what never does, is in [How do I report a problem?](troubleshooting.md#how-do-i-report-a-problem).
 
 ## What happens if murmur crashes?
 

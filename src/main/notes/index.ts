@@ -19,7 +19,7 @@ import { writeAppLog } from '../window-watch'
 import { appendEntry, errorCode, fallbackDir, notesBases, resolveTemplateOrDefault } from './files'
 import { probeDecision } from './decide'
 import { openableNote } from './safe-fs'
-import { initReceipts } from './receipt'
+import { initReceipts, sortAgainWithReceipt } from './receipt'
 import { initReminders } from './reminders'
 import {
   type HeldLine,
@@ -31,8 +31,8 @@ import {
   getLastSort,
   initSorter,
   skipHeldLine,
-  sortLastNote,
-  tickHeldMatch
+  tickHeldMatch,
+  waitingLines
 } from './sorter'
 
 export type NoteLocation = 'folder' | 'fallback'
@@ -59,6 +59,9 @@ export interface NotesStatus {
   /** The newest sort's outcome (US-051), or null before any sort. */
   lastSort: SortReport | null
   canSortAgain: boolean
+  /** Lines of older notes a sort stopped on, still waiting for Sort
+   *  again, and how many notes they come from (US-180). */
+  waiting: { lines: number; notes: number }
   /** Lines the newest sort held, with what each was tied to (US-055). */
   heldLines: HeldLine[]
   /** Set after a held-line action so the panel can say what happened;
@@ -143,6 +146,7 @@ export function getNotesStatus(): NotesStatus {
     lastSave,
     lastSort: getLastSort(),
     canSortAgain: canSortAgain(),
+    waiting: waitingLines(),
     heldLines: getHeldLines(),
     lastAction: getLastAction()
   }
@@ -196,7 +200,8 @@ export function initNotes(settingsWindow: () => BrowserWindow | null): void {
   ipc.handle(IpcChannels.notesStatus, () => getNotesStatus())
   ipc.handle(IpcChannels.notesOpenToday, () => openTodayNote())
   ipc.handle(IpcChannels.notesSortLast, async () => {
-    await sortLastNote()
+    // The receipt follows Sort again (US-180).
+    await sortAgainWithReceipt()
     return getNotesStatus()
   })
   // The three held-line actions: every one is a click, and every one
