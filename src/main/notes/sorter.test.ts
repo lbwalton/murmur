@@ -10,6 +10,23 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../shared/settings'
 import {
+  CHARS_PER_TOKEN,
+  ITEMS_SHARE,
+  PART_SHARE_OF_LIMIT,
+  REQUEST_OVERHEAD_CHARS,
+  partBudget,
+  sentenceCosts
+} from '../../shared/sort-batches'
+import {
+  SORT_KEEP_PROMPT,
+  SORT_LEADS_PROMPT,
+  SORT_SEAMS_PROMPT,
+  SORT_SYSTEM_PROMPT,
+  SORT_TOPIC_PROMPT,
+  findSeams
+} from '../../shared/sorter'
+import { SORT_RELATIONS_PROMPT } from '../../shared/compare'
+import {
   type SortInput,
   canSortAgain,
   forgetSortMemory,
@@ -97,11 +114,26 @@ const limited = (retryAfter = '7'): Response =>
     { status: 429, headers: { 'retry-after': retryAfter } }
   )
 
-// A part's budget that holds about 5 of these sentences beside the
-// prompts' own framing.
-const PART = 1350
 // 30 short sentences, none with a comma, so no piece look follows.
 const SENTENCES = Array.from({ length: 30 }, (_, i) => `Call Siobhan about invoice ${i + 1} today.`)
+// The prompts' own framing, measured the way the sorter measures it, so
+// a longer prompt (US-181 tightened them) never quietly changes how
+// many sentences these tests' parts hold. 300 characters cover the
+// empty files' context block.
+const FRAMING =
+  [SORT_SYSTEM_PROMPT, SORT_TOPIC_PROMPT, SORT_SEAMS_PROMPT, SORT_LEADS_PROMPT, SORT_KEEP_PROMPT, SORT_RELATIONS_PROMPT].join(' ')
+    .length +
+  REQUEST_OVERHEAD_CHARS +
+  300
+const SENTENCE_COST = Math.max(...sentenceCosts(SENTENCES, SENTENCES.map(findSeams)))
+// A part's budget that holds about 5 of these sentences beside the framing.
+const PART = Math.ceil((FRAMING + 5.5 * SENTENCE_COST) / CHARS_PER_TOKEN)
+// A stated limit whose parts hold about 5 of them too, after the filed
+// items a long note's later parts carry (a part is 75% of the limit,
+// and the items take up to 15% of a part).
+const STATED = Math.ceil(
+  (FRAMING + 6 * SENTENCE_COST) / (CHARS_PER_TOKEN * (1 - ITEMS_SHARE)) / PART_SHARE_OF_LIMIT
+)
 let urlCount = 0
 
 function setup(text = SENTENCES.join(' ')): {
@@ -373,25 +405,27 @@ describe('parts sized by the provider', () => {
     const { input, todo, cfg } = setup(sentences.join(' '))
     const stated = (): Response | null => null
     const model = fakeModel(stated)
-    // The fake states 8000; this provider states 2000, so parts shrink.
+    // The fake states 8000; this provider states STATED, so parts shrink.
     const small = ((url: unknown, init?: RequestInit) =>
       model.fetchImpl(url as string, init).then(async (response) => {
         const headers = new Headers(response.headers)
-        headers.set('x-ratelimit-limit-tokens', '2000')
+        headers.set('x-ratelimit-limit-tokens', String(STATED))
         return new Response(await response.text(), { status: response.status, headers })
       })) as typeof fetch
     const report = await sortNote(input, { fetchImpl: small, connection: cfg })
     expect(report).toMatchObject({ outcome: 'filed', tasks: 200 })
     expect(model.calls[0].sentences.length).toBeGreaterThan(50)
     for (const call of model.calls.slice(1)) {
-      expect(call.size).toBeLessThanOrEqual(1500 * 3 + 600)
-      expect(call.sentences.length).toBeGreaterThan(1)
+      expect(call.size).toBeLessThanOrEqual(partBudget(STATED) * CHARS_PER_TOKEN + 600)
     }
+    // Every part but the last is full enough to hold more than 1 line;
+    // the last holds whatever is left, which can be 1.
+    for (const call of model.calls.slice(1, -1)) expect(call.sentences.length).toBeGreaterThan(1)
     expect(filedLines(todo)).toEqual(sentences)
     const before = model.calls.length
     const next = setup('Call the vet today. Email Ann the deck. Pay the rent on time.')
     await sortNote({ ...next.input, base: stage.dir }, { fetchImpl: small, connection: cfg })
-    expect(model.calls[before].size).toBeLessThanOrEqual(1500 * 3 + 600)
+    expect(model.calls[before].size).toBeLessThanOrEqual(partBudget(STATED) * CHARS_PER_TOKEN + 600)
   })
 })
 
