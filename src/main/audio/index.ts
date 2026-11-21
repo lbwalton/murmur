@@ -27,6 +27,14 @@ let readyResolvers: Array<() => void> = []
 let ready = false
 // What the capture window last said about the inputs, for the picker.
 let micReport: MicReport = { devices: [], current: '', standIn: false, open: false, openMs: null }
+// Every mic name the capture window has named this run, so a problem
+// report (US-182) can take them out of the log it shows.
+const heardMicNames = new Set<string>()
+
+/** The mic names murmur has heard of this run, for scrubbing only. */
+export function knownMicNames(): string[] {
+  return [...heardMicNames]
+}
 
 function whenAudioReady(): Promise<void> {
   if (ready) return Promise.resolve()
@@ -73,6 +81,9 @@ export function initAudio(settingsWindow: () => BrowserWindow | null = () => nul
   ipc.on(IpcChannels.audioMics, (event, report: unknown) => {
     if (event.sender !== aliveAudio()?.webContents) return
     micReport = sanitizeMicReport(report)
+    for (const name of [micReport.current, ...micReport.devices.map((d) => d.label)]) {
+      if (name.trim() !== '') heardMicNames.add(name.replace(/^(Default|Communications) - /, ''))
+    }
     const win = settingsWindow()
     if (win && !win.isDestroyed()) win.webContents.send(IpcChannels.micsChanged)
   })
