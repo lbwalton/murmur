@@ -35,11 +35,10 @@ import {
   type SortOptions,
   type SortReport,
   canSortAgain,
-  lastSortInput,
   rememberForSort,
-  sortInFlight,
-  sortLastNote,
-  sortNote
+  sortNote,
+  sortQueuedFor,
+  sortWaiting
 } from './sorter'
 
 /** What a note save hands the receipt; the shape saveNote returns. */
@@ -65,10 +64,18 @@ interface ShownReceipt {
 // One fixed id: macOS and Windows replace a delivered notification that
 // shares it, so Notification Center never fills up with receipts.
 const RECEIPT_ID = 'murmur-note-receipt'
+// The notice that a sort could not finish (US-180) has its own fixed id:
+// it is about lines still waiting, so it stays beside the newest note's
+// receipt until Sort again files them, and a note saved meanwhile keeps
+// its own receipt.
+const UNFINISHED_ID = 'murmur-sort-unfinished'
 
 let lastNote: LastNote | null | undefined
 let current: Notification | null = null
 let lastShown: ShownReceipt | null = null
+let unfinished: Notification | null = null
+let unfinishedFor: SortInput | null = null
+let lastUnfinished: ShownReceipt | null = null
 let shownCount = 0
 const listeners = new Set<(note: LastNote | null) => void>()
 let chooseFolder: () => Promise<void> = async () => undefined
@@ -141,6 +148,7 @@ export function forgetLastNote(): void {
     say(`forget failed reason=${errorCode(error)}`)
   }
   withdrawReceipt()
+  withdrawUnfinished()
   lastShown = null
   say('forgotten')
   notify(null)
@@ -197,27 +205,17 @@ export function revealLastNote(via: string): 'shown' | 'refused' | 'none' {
   return note ? revealNote(receiptTarget(note).file, via) : 'none'
 }
 
-/** A sort that could not finish (US-180): its words, from sort-notice,
- *  in place of the receipt's own. They never carry the note's words. */
-interface SortTroubleWords {
-  title: string
-  body: string
-}
-
-function showReceipt(note: LastNote, trouble?: SortTroubleWords): void {
-  // A sort that could not finish points at the inbox, where every word
-  // of the note still is.
-  const target = trouble ? note.inbox : receiptTarget(note)
-  const actions: ReceiptAction[] =
-    !trouble && note.location === 'fallback' && note.sorted.length === 0 ? ['choose', 'reveal'] : ['reveal']
-  const kind = trouble ? 'unsorted' : note.sorted.length > 0 ? 'sorted' : 'saved'
+function showReceipt(note: LastNote): void {
+  const target = receiptTarget(note)
+  const actions: ReceiptAction[] = note.location === 'fallback' && note.sorted.length === 0 ? ['choose', 'reveal'] : ['reveal']
+  const kind = note.sorted.length > 0 ? 'sorted' : 'saved'
   if (!getSettings().notes.receipts) {
     say(`outcome=off kind=${kind}`)
     return
   }
   const receipt: ShownReceipt = {
-    title: trouble?.title ?? receiptTitle(note),
-    body: trouble?.body ?? receiptBody(note, getSettings().history.hideWords),
+    title: receiptTitle(note),
+    body: receiptBody(note, getSettings().history.hideWords),
     file: target.file,
     actions
   }
@@ -287,61 +285,115 @@ export function noteSaved(saved: SavedNote, text: string): LastNote | null {
 }
 
 /** A sort filed lines out of the note: the receipt follows them. A
- *  sort that left lines unsorted (US-180) says so instead, and where
- *  Sort again is, whether or not some lines filed. */
+ *  write that failed after earlier parts filed still names their files;
+ *  Sort again adds to the files the note already filed into. */
 export function noteSorted(token: LastNote, report: SortReport): void {
   if (getLastNote() !== token) return
-  const places = report.outcome === 'filed' ? (report.places ?? []) : []
-  const troubled = sortTrouble(report)
-  if (places.length === 0 && !troubled) return
-  // Sort again adds to what the note already filed into, tasks first.
+  const places = report.places ?? []
+  if (places.length === 0) return
   const sorted = [...token.sorted, ...places.filter((p) => !token.sorted.some((s) => s.file === p.file))].sort(
     (a, b) => (a.kind === b.kind ? 0 : a.kind === 'tasks' ? -1 : 1)
   )
-  const note: LastNote = places.length > 0 ? { ...token, sorted } : token
-  if (places.length > 0) setLastNote(note)
-  showReceipt(note, troubled ? { title: sortTroubleTitle(report), body: sortTroubleBody(report) } : undefined)
+  const note: LastNote = { ...token, sorted }
+  setLastNote(note)
+  showReceipt(note)
+}
+
+/** Take back the notice that a sort could not finish. */
+function withdrawUnfinished(): void {
+  unfinished?.close()
+  unfinished = null
+  unfinishedFor = null
+  lastUnfinished = null
+}
+
+/** Say that a sort of this note left lines in the inbox (US-180): why,
+ *  in plain words, and where Sort again is. A click opens that note's
+ *  inbox file, where every word still is. Never any of the note's words,
+ *  so Hide words has nothing to take out; Note receipts off silences it. */
+function showUnfinished(input: SortInput, report: SortReport): void {
+  if (!getSettings().notes.receipts) {
+    say('outcome=off kind=unsorted')
+    return
+  }
+  const file = join(input.base, ...input.inboxRelative.split(/[\\/]/).filter((s) => s !== ''))
+  const notice: ShownReceipt = { title: sortTroubleTitle(report), body: sortTroubleBody(report), file, actions: ['reveal'] }
+  lastUnfinished = notice
+  unfinishedFor = input
+  if (isSmoke) return
+  if (!Notification.isSupported()) {
+    say('outcome=suppressed reason=unsupported kind=unsorted')
+    return
+  }
+  unfinished?.close()
+  const notification = new Notification({
+    id: UNFINISHED_ID,
+    title: notice.title,
+    body: notice.body,
+    silent: true,
+    actions: [{ type: 'button' as const, text: revealLabel(process.platform) }]
+  })
+  notification.on('click', () => {
+    void openNote(file, 'unfinished')
+  })
+  notification.on('action', () => {
+    revealNote(file, 'unfinished')
+  })
+  notification.on('failed', (_event, error) => {
+    say(`outcome=failed kind=unsorted reason=${error.replace(/\s+/g, ' ').slice(0, 80)}`)
+  })
+  notification.on('show', () => {
+    say(`outcome=shown kind=unsorted lines=${report.unsorted ?? 0}`)
+  })
+  unfinished = notification
+  notification.show()
 }
 
 /**
- * Sort again (Settings, Notes, Last note), with the receipt following
- * it (US-180): once the lines a sort left file, the notice that it did
- * not finish gives way to the usual receipt, and a second stop says so
- * again. It follows only when a sort really runs for the note the
- * receipt is about.
+ * After a sort of a note: the receipt follows what it filed (for the
+ * newest note only), and the unfinished notice says whether lines are
+ * still waiting. A sort that leaves none takes back a notice about the
+ * same note, or any notice once nothing waits anywhere.
+ */
+function followSort(input: SortInput, token: LastNote | null, report: SortReport): void {
+  if (token) noteSorted(token, report)
+  if (sortTrouble(report)) showUnfinished(input, report)
+  else if (unfinishedFor === input || !canSortAgain()) withdrawUnfinished()
+}
+
+/**
+ * Sort again (Settings, Notes, Last note), with the receipts following
+ * it (US-180): every note with lines waiting sorts in turn, and once a
+ * note's lines file its notice gives way to the usual receipt.
  */
 export async function sortAgainWithReceipt(options?: SortOptions): Promise<void> {
   const token = getLastNote()
-  const input = lastSortInput()
-  const follows =
-    token !== null &&
-    input !== null &&
-    !sortInFlight() &&
-    canSortAgain() &&
-    token.at === input.when.getTime() &&
-    token.inbox.relative === input.inboxRelative
-  const report = await sortLastNote(options)
-  if (follows && report) noteSorted(token, report)
+  for (const run of await sortWaiting(options)) {
+    if (run.joined) continue
+    const mine = token !== null && token.at === run.input.when.getTime() && token.inbox.relative === run.input.inboxRelative
+    followSort(run.input, mine ? token : null, run.report)
+  }
 }
 
 /**
- * Sort a note and let its receipt follow. A sort already running when
- * this one is asked for answers with ITS report, which belongs to the
- * note that started it, so the receipt is left alone then.
+ * Sort a note and let its receipt follow. A sort of another note still
+ * running makes this one wait its turn and get its own report (US-180);
+ * asking again for a note already sorting joins that sort, whose owner
+ * the receipt follows.
  */
 export async function sortWithReceipt(input: SortInput, token: LastNote | null, options?: SortOptions): Promise<SortReport> {
-  const joined = sortInFlight()
+  const joined = sortQueuedFor(input)
   const report = await sortNote(input, options)
-  if (token && !joined) noteSorted(token, report)
+  if (!joined) followSort(input, token, report)
   return report
 }
 
 /**
  * Smoke: a real (mocked) sort of note A is still running when note B is
- * saved and asks to sort. B joins A's sort and gets A's report, so B's
- * receipt must not change; A's own report arrives after B took over, so
- * it is stale. Then a sort of B alone replaces B's receipt with the
- * files it filed into, tasks first.
+ * saved and asks to sort. B waits its turn and gets its own sort and
+ * report (US-180; it used to join A's and never be sorted). A's report
+ * arrives after B took over, so it is stale and leaves B's receipt be;
+ * B's receipt then names the file B filed into.
  */
 async function joinedSortStep(vault: string): Promise<Record<string, boolean>> {
   const { saveNote } = await import('./index')
@@ -369,20 +421,21 @@ async function joinedSortStep(vault: string): Promise<Record<string, boolean>> {
   const savedB = saveNote('Maybe a darker pill.', whenB)
   const tokenB = noteSaved(savedB, 'Maybe a darker pill.')
   const titleB = lastShown?.title
-  const joinedReport = await sortWithReceipt(inputOf(savedB, 'Maybe a darker pill.', whenB), tokenB, {
-    fetchImpl: slowReply('{"1":"idea"}', 10),
-    connection: cfg
+  let staleLeftB = false
+  void sortA.then(() => {
+    // A finished first: its stale report left B's record and receipt be.
+    staleLeftB = getLastNote() === tokenB && lastShown?.title === titleB
   })
-  const reportA = await sortA
-  const untouched = getLastNote() === tokenB && lastShown?.title === titleB
   const own = await sortWithReceipt(inputOf(savedB, 'Maybe a darker pill.', whenB), tokenB, {
     fetchImpl: slowReply('{"1":"idea"}', 10),
     connection: cfg
   })
+  const reportA = await sortA
   const after = getLastNote()
   return {
-    joinedGotOthersReport: joinedReport === reportA && reportA.outcome === 'filed' && reportA.places?.[0]?.kind === 'tasks',
-    joinedLeftReceipt: untouched,
+    queuedOwnReport:
+      own !== reportA && reportA.outcome === 'filed' && reportA.places?.[0]?.kind === 'tasks' && own.places?.[0]?.kind === 'ideas',
+    staleLeftB,
     ownSortFollowed:
       own.outcome === 'filed' &&
       after?.inbox.file === savedB.file &&
@@ -507,30 +560,42 @@ export function initReceipts(options: {
       // words; a sort that filed part of the note keeps the files it
       // filed into for Home and the tray.
       const troubleText = 'Call the plumber about the leak.'
-      const troubleSaved = saveNote(troubleText, new Date(2026, 9, 2, 9, 18))
+      const troubleWhen = new Date(2026, 9, 2, 9, 18)
+      const troubleSaved = saveNote(troubleText, troubleWhen)
       const troubleToken = noteSaved(troubleSaved, troubleText)
-      if (troubleToken) {
-        noteSorted(troubleToken, { ...filed, outcome: 'failed', tasks: 0, ideas: 0, places: undefined, reason: 'http 429', unsorted: 3 })
-      }
-      const unfinished = lastShown
-      const unfinishedKept = getLastNote() === troubleToken
-      if (troubleToken) noteSorted(troubleToken, { ...filed, reason: 'http 413', unsorted: 2 })
-      const partial = lastShown
+      const troubleReceipt = lastShown
+      const troubleInput: SortInput = { text: troubleText, base: vault, inboxRelative: troubleSaved.relative, when: troubleWhen }
+      followSort(troubleInput, troubleToken, {
+        ...filed,
+        outcome: 'failed',
+        tasks: 0,
+        ideas: 0,
+        places: undefined,
+        reason: 'http 429',
+        unsorted: 3
+      })
+      const unfinishedNotice = lastUnfinished
+      const receiptKept = getLastNote() === troubleToken && lastShown === troubleReceipt
+      followSort(troubleInput, troubleToken, { ...filed, reason: 'http 413', unsorted: 2 })
+      const partialNotice = lastUnfinished
       const unfinishedOk =
-        unfinishedKept &&
-        unfinished?.title === 'Sort did not finish' &&
-        unfinished.file === troubleSaved.file &&
-        unfinished.body ===
-          "Your note is safe in the inbox. The provider's rate limit ran out; give it a minute. Sort again is under Settings, Notes, Last note." &&
-        !unfinished.body.includes('plumber')
+        receiptKept &&
+        unfinishedNotice?.title === 'Sort did not finish' &&
+        unfinishedNotice.file === troubleSaved.file &&
+        unfinishedNotice.body ===
+          "Your note is safe in the inbox. The provider's rate limit ran out for now. Sort again is under Settings, Notes, Last note." &&
+        !unfinishedNotice.body.includes('plumber')
       const partialOk =
-        partial?.title === 'Sorted part of your note' &&
-        partial.file === troubleSaved.file &&
-        partial.body.startsWith('2 lines are still only in the inbox.') &&
+        partialNotice?.title === 'Sorted part of your note' &&
+        partialNotice.file === troubleSaved.file &&
+        partialNotice.body.startsWith('2 lines are still only in the inbox.') &&
+        // The receipt itself names the files the part filed into.
+        lastShown?.title === 'Sorted into todo.md and 1 more' &&
         getLastNote()?.inbox.file === troubleSaved.file &&
         getLastNote()?.sorted.length === 2
-      // Sort again lets the receipt follow: a sort that stopped says so,
-      // and once Sort again files the rest the usual receipt replaces it.
+      // Sort again lets the receipts follow: a sort that stopped says so,
+      // and once Sort again files the rest the notice is taken back and
+      // the usual receipt names the file.
       updateSettings({ notes: { sort: true } })
       const againText = 'Email the landlord about the lease. Book the plumber.'
       const againWhen = new Date(2026, 9, 2, 9, 19)
@@ -543,7 +608,7 @@ export function initReceipts(options: {
         fetchImpl: (async () => new Response('{}', { status: 503 })) as typeof fetch,
         connection: againCfg
       })
-      const stoppedTitle = lastShown?.title
+      const stoppedNotice = lastUnfinished
       await sortAgainWithReceipt({
         fetchImpl: (async () =>
           new Response(JSON.stringify({ choices: [{ message: { content: '{"1":"task","2":"task"}' } }] }), {
@@ -552,7 +617,9 @@ export function initReceipts(options: {
         connection: againCfg
       })
       const againOk =
-        stoppedTitle === 'Sort did not finish' &&
+        stoppedNotice?.title === 'Sort did not finish' &&
+        stoppedNotice.file === againSaved.file &&
+        lastUnfinished === null &&
         lastShown?.title === 'Sorted into todo.md' &&
         lastShown.file === tasks &&
         getLastNote()?.inbox.file === againSaved.file &&

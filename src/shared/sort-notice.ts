@@ -29,15 +29,21 @@ export function sortTrouble(report: SortTroubleReport): boolean {
 /** Why, in a sentence, from a sort reason. */
 export function sortWhy(reason = ''): string {
   if (reason === 'http 413') return 'The provider said it was too large to send, even 1 line at a time.'
-  if (reason === 'http 429' || reason === 'rate limit') return "The provider's rate limit ran out; give it a minute."
+  // Neutral on purpose: the limit may be per minute or per day.
+  if (reason === 'http 429' || reason === 'rate limit') return "The provider's rate limit ran out for now."
   if (reason === 'timeout') return 'The model took too long to answer.'
   if (reason === 'network' || reason.startsWith('network ')) return 'murmur could not reach the model.'
   if (reason === 'http 401' || reason === 'http 403' || reason.startsWith('auth ')) return 'The provider turned the key down.'
   if (/^http 5\d\d$/.test(reason) || reason === 'overloaded') return 'The provider had a problem on its side.'
   if (reason === 'no connection') return 'No connection has a key to sort with.'
+  if (/^http 4\d\d$/.test(reason)) return 'The provider turned the request down.'
   if (reason.startsWith('write ')) return 'A tasks or ideas file could not be written.'
-  if (CHECK_REASONS.has(reason) || reason.startsWith('response ')) return "The model's answer did not pass murmur's checks."
-  return reason === '' ? 'The sort stopped.' : `The sort stopped (${reason}).`
+  if (reason === 'paths') return 'The tasks or ideas file layout in settings could not be used.'
+  if (CHECK_REASONS.has(reason) || reason.startsWith('response ') || reason.startsWith('validate')) {
+    return "The model's answer did not pass murmur's checks."
+  }
+  // Plain words only: a code the list above does not know stays in the log.
+  return 'The sort stopped.'
 }
 
 export function sortTroubleTitle(report: SortTroubleReport): string {

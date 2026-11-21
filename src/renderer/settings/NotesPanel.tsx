@@ -159,12 +159,16 @@ function sortSummary(report: NonNullable<NotesStatus['lastSort']>): string {
   if (report.outcome === 'rejected' && report.reason === 'low confidence') {
     return `held every line in the inbox as unsure (${plural(report.held, 'line', 'lines')}), nothing filed`
   }
-  if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed`
+  // What a sort left in the inbox for Sort again (US-180).
+  const left = report.unsorted
+    ? `; ${plural(report.unsorted, 'line', 'lines')} left in the inbox, and Sort again sends just those`
+    : ''
+  if (report.outcome === 'rejected') return `sort rejected (${report.reason ?? 'unknown'}), nothing filed${left}`
   if (report.outcome === 'failed') {
     const landed = report.tasks + report.ideas
     return landed > 0
-      ? `sort failed (${report.reason ?? 'unknown'}) after ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')} landed; check the files`
-      : `sort failed (${report.reason ?? 'unknown'}), nothing filed`
+      ? `sort failed (${report.reason ?? 'unknown'}) after ${plural(report.tasks, 'task', 'tasks')} and ${plural(report.ideas, 'idea', 'ideas')} landed; check the files${left}`
+      : `sort failed (${report.reason ?? 'unknown'}), nothing filed${left}`
   }
   return `sort skipped (${report.reason ?? 'unknown'})`
 }

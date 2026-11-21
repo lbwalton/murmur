@@ -19,7 +19,7 @@ describe('the words', () => {
     const report = { outcome: 'failed' as const, reason: 'http 429', unsorted: 30 }
     expect(sortTroubleTitle(report)).toBe('Sort did not finish')
     expect(sortTroubleBody(report)).toBe(
-      "Your note is safe in the inbox. The provider's rate limit ran out; give it a minute. Sort again is under Settings, Notes, Last note."
+      "Your note is safe in the inbox. The provider's rate limit ran out for now. Sort again is under Settings, Notes, Last note."
     )
   })
 
@@ -41,7 +41,10 @@ describe('the words', () => {
     expect(sortWhy('response not json')).toBe("The model's answer did not pass murmur's checks.")
     expect(sortWhy('write ENOSPC')).toBe('A tasks or ideas file could not be written.')
     expect(sortWhy('no connection')).toBe('No connection has a key to sort with.')
-    expect(sortWhy('http 418')).toBe('The sort stopped (http 418).')
+    expect(sortWhy('http 418')).toBe('The provider turned the request down.')
+    expect(sortWhy('paths')).toBe('The tasks or ideas file layout in settings could not be used.')
+    // A code it does not know never reaches the screen.
+    expect(sortWhy('something new')).toBe('The sort stopped.')
   })
 
   it('keeps to the writing rules', () => {

@@ -198,27 +198,40 @@ export interface SortOptions {
 
 let lastSort: SortReport | null = null
 let lastInput: SortInput | null = null
-// Which sentence positions of the newest note a sort has settled (filed
-// as a task or idea, or kept as a note). Sort again re-runs only the
-// rest, so a landed line is never filed twice (review gate 2026-09-20,
-// made per-line by US-058 so a held line can be retried on its own).
-let settledFor: SortInput | null = null
-let settled = new Set<number>()
+// Which sentence positions of each note a sort has settled (filed as a
+// task or idea, or kept as a note). Sort again re-runs only the rest, so
+// a landed line is never filed twice (review gate 2026-09-20, made
+// per-line by US-058 so a held line can be retried on its own). Each
+// note keeps its own set (US-180): a long note's sort can wait minutes
+// while a newer note is saved, and a status read for the newer note must
+// never wipe what the running sort has settled. Weakly held, so a note
+// nothing remembers any more takes its set with it.
+const settledByNote = new WeakMap<SortInput, Set<number>>()
 
-// Invariant that keeps this one-slot memory honest: sorts run one at a
-// time (inFlight), and every input that reaches here is the current or
-// a former lastInput, so a read for another note resetting the slot can
-// never race a sort that is still settling lines.
 function settledSetFor(input: SortInput): Set<number> {
-  if (settledFor !== input) {
-    settledFor = input
-    settled = new Set()
-  }
-  return settled
+  return settledByNote.get(input) ?? new Set()
 }
 
 function settleFor(input: SortInput, positions: readonly number[], keptLocal: readonly number[]): void {
-  settled = settle(settledSetFor(input), positions, keptLocal)
+  settledByNote.set(input, settle(settledSetFor(input), positions, keptLocal))
+}
+
+// Older notes whose newest sort left lines no answer covered (US-180),
+// oldest first, so Sort again reaches them after a newer note took the
+// newest slot. Their text stays in memory only while lines are waiting,
+// and only the most recent few; the words are in the inbox either way.
+const WAITING_MAX = 5
+let waiting: SortInput[] = []
+
+function noteWaiting(input: SortInput, report: SortReport): void {
+  waiting = waiting.filter((w) => w !== input)
+  if ((report.unsorted ?? 0) > 0) waiting = [...waiting, input].slice(-WAITING_MAX)
+}
+
+/** The notes Sort again would send, oldest first, the newest last. */
+function notesToSortAgain(): SortInput[] {
+  const older = waiting.filter((w) => w !== lastInput)
+  return [...older, ...(lastInput ? [lastInput] : [])].filter((note) => pendingFor(note).length > 0)
 }
 
 // Held lines belong to the note they came from, like the settled set.
@@ -340,26 +353,36 @@ function writeEntries(
 function pendingFor(input: SortInput): number[] {
   return remainingSentences(splitSentences(input.text).length, settledSetFor(input))
 }
-// One sort at a time: a Sort again click during the model round trip
-// joins the running sort instead of starting a second one that would
-// append every line twice.
-let inFlight: Promise<SortReport> | null = null
+// One sort at a time, in the order asked. A second ask for a note that
+// is already running or waiting its turn (a Sort again click during the
+// model round trip) joins that sort instead of appending every line
+// twice. Another note waits its turn and gets its own sort and its own
+// report (US-180): a long note's waits used to make a note saved during
+// them join the long note's sort and never be sorted at all.
+const sortJobs = new Map<SortInput, Promise<SortReport>>()
+let sortTail: Promise<unknown> = Promise.resolve()
 
-/** A sort is running: a new call joins it and gets ITS report, which
- *  belongs to the note that started it (the receipt checks this). */
+/** A sort is running or waiting its turn. */
 export function sortInFlight(): boolean {
-  return inFlight !== null
+  return sortJobs.size > 0
+}
+
+/** A sort of this very note is running or waiting its turn: asking
+ *  again joins it and gets its report. */
+export function sortQueuedFor(input: SortInput): boolean {
+  return sortJobs.has(input)
 }
 
 export function getLastSort(): SortReport | null {
   return lastSort
 }
 
-/** Sort again is offered only while the newest note has lines a sort
- *  has not settled: everything after a rejection, the held lines after
- *  a partial filing, nothing after a full one. */
+/** Sort again is offered only while the newest note, or an older one a
+ *  sort left lines of, has lines a sort has not settled: everything after
+ *  a rejection, the held lines after a partial filing, nothing after a
+ *  full one. */
 export function canSortAgain(): boolean {
-  return lastInput !== null && pendingFor(lastInput).length > 0
+  return notesToSortAgain().length > 0
 }
 
 /** Keep the newest note so Sort again can re-run it after a reject. */
@@ -479,9 +502,10 @@ async function askModel(
         reason: `http ${response.status}`,
         status: response.status,
         retryMs: response.status === 429 ? retryDelayMs(response.headers, message) : null,
-        // A malformed or unprocessable request is where a provider quotes
-        // the input back, in pieces too short to catch: not logged.
-        said: response.status === 400 || response.status === 422 ? '' : providerSays(message, prompt, cfg.apiKey),
+        // Only a size or rate refusal is logged in the provider's words:
+        // other refusals (a malformed request above all) are where a
+        // provider quotes the input back.
+        said: response.status === 413 || response.status === 429 ? providerSays(message, prompt, cfg.apiKey) : '',
         limit: providerLimit(response.headers, message)
       }
     }
@@ -599,16 +623,21 @@ const NONE = { tasks: 0, ideas: 0, notes: 0, held: 0 }
  * line with a reason. Files are written only after the whole labeling
  * validated, tasks first, then ideas.
  */
-export async function sortNote(
-  input: SortInput,
-  options: SortOptions = {},
-  only?: readonly number[]
-): Promise<SortReport> {
-  if (inFlight) return inFlight
-  inFlight = runSort(input, options, only).finally(() => {
-    inFlight = null
-  })
-  return inFlight
+export function sortNote(input: SortInput, options: SortOptions = {}, only?: readonly number[]): Promise<SortReport> {
+  const queued = sortJobs.get(input)
+  if (queued) return queued
+  const job: Promise<SortReport> = sortTail
+    .then(() => runSort(input, options, only))
+    .then((report) => {
+      noteWaiting(input, report)
+      return report
+    })
+    .finally(() => {
+      if (sortJobs.get(input) === job) sortJobs.delete(input)
+    })
+  sortJobs.set(input, job)
+  sortTail = job.catch(() => undefined)
+  return job
 }
 
 /** What 1 sort shares across the parts of its note (US-180). */
@@ -772,7 +801,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
   const placed: ReceiptPlace[] = []
   while (rest.length > 0) {
     const fixed = framing(items, itemsCap)
-    const budget = shrunk ?? budgetNow()
+    // A limit the provider states mid-sort can only make parts smaller
+    // than the size a 413 taught.
+    const budget = shrunk === null ? budgetNow() : Math.min(shrunk, budgetNow())
     const costs = rest.map((p) => costAt[p])
     // A gap in the positions (Sort again sends what is left) reads as a
     // paragraph break.
@@ -841,7 +872,9 @@ async function runSort(input: SortInput, options: SortOptions, only?: readonly n
       `[sort] done parts=${parts} sentences=${positions.length} unsorted=${unsorted} waited=${seconds(run.pace.waitedMs)}${trouble ? ` reason=${trouble.reason}` : ''}`
     )
   }
-  if (writeFailed) return record('failed', { ...totals, ...extra }, trouble?.reason)
+  // A write that failed after earlier parts filed still names the files
+  // they filed into, for the receipt and Home.
+  if (writeFailed) return record('failed', { ...totals, ...extra }, trouble?.reason, placed.length > 0 ? placed : undefined)
   if (filedAny) return record('filed', { ...totals, ...extra }, trouble?.reason, placed)
   if (trouble) return record(trouble.outcome, { ...totals, ...extra }, trouble.reason)
   return record('rejected', { ...totals, ...extra }, lowConfidence ? 'low confidence' : 'unknown')
@@ -1268,7 +1301,7 @@ function dropHeld(entry: HeldLine): void {
 /** Land one held line, with its link, under the newest sort's heading.
  *  A cut sentence held whole lands one line per piece. */
 export function fileHeldLine(id: number): { ok: boolean; reason?: string } {
-  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  if (sortInFlight()) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
   const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
@@ -1292,7 +1325,7 @@ export function fileHeldLine(id: number): { ok: boolean; reason?: string } {
 
 /** Drop a held line: it stays in the inbox and is not sent again. */
 export function skipHeldLine(id: number): { ok: boolean; reason?: string } {
-  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  if (sortInFlight()) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
   const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
@@ -1338,7 +1371,7 @@ function backup(file: string): void {
  * refused. Only a checkbox in the tasks file can be ticked.
  */
 export function tickHeldMatch(id: number): { ok: boolean; reason?: string } {
-  if (inFlight) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
+  if (sortInFlight()) return setAction({ ok: false, reason: 'a sort is running; try again in a moment' })
   const input = heldFor
   const entry = takeHeld(id)
   if (!input || !entry) return setAction({ ok: false, reason: 'nothing is held at that line' })
@@ -1390,14 +1423,35 @@ export function tickHeldMatch(id: number): { ok: boolean; reason?: string } {
   return setAction({ ok: true })
 }
 
-/** Re-run the sort on the newest note (Sort again in settings): only
- *  the lines no sort has settled, never beside a running sort. */
+/** What Sort again sorted: each note, its report, and whether the ask
+ *  joined a sort of that note already running (its owner follows it). */
+export interface SortAgainRun {
+  input: SortInput
+  report: SortReport
+  joined: boolean
+}
+
+/** Sort again (in settings): the lines no sort has settled, of the
+ *  newest note and of any older note a sort left lines of (US-180),
+ *  oldest first, each in its turn and never twice at once. */
+export async function sortWaiting(options: SortOptions = {}): Promise<SortAgainRun[]> {
+  const queued = notesToSortAgain().map((input) => {
+    const joined = sortQueuedFor(input)
+    return { input, joined, report: sortNote(input, options, joined ? undefined : pendingFor(input)) }
+  })
+  return Promise.all(queued.map(async (run) => ({ ...run, report: await run.report })))
+}
+
+/** Sort again, answering with the newest report. */
 export async function sortLastNote(options: SortOptions = {}): Promise<SortReport | null> {
-  if (inFlight) return inFlight
-  if (!lastInput) return lastSort
-  const pending = pendingFor(lastInput)
-  if (pending.length === 0) return lastSort
-  return sortNote(lastInput, options, pending)
+  const runs = await sortWaiting(options)
+  return runs.at(-1)?.report ?? lastSort
+}
+
+/** Tests only: forget every note the sorter remembers. */
+export function forgetSortMemoryForTests(): void {
+  lastInput = null
+  waiting = []
 }
 
 export function initSorter(): void {
@@ -2593,7 +2647,7 @@ export function initSorter(): void {
       const log = read(logFile).slice(logBefore)
       const logOk =
         log.includes('[sort] part too large reason=http 413 sentences=12; sending it in halves') &&
-        log.includes('said="Request too large for model `smoke-parts` in organization `org_…`') &&
+        log.includes('said="Request too large for model … in organization … on tokens per minute (TPM): Limit 8000, Requested 9000"') &&
         !log.includes('org_smoke123') &&
         log.includes('[sort] rate limited reason=http 429 for=labels wait=2.0s model=smoke-parts; trying once more') &&
         log.includes('[sort] stopped reason=http 429 left=') &&

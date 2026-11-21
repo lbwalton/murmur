@@ -177,8 +177,10 @@ export function retryDelayMs(headers: HeaderReader | null, message: string, now 
   if (after) {
     const seconds = /^\d+(?:\.\d+)?$/.test(after) ? Math.round(Number(after) * 1000) : null
     if (seconds !== null) return seconds
+    // Only a date still ahead counts; one that parses into the past ("12
+    // 1" reads as a year long gone) or not at all is no header.
     const date = Date.parse(after)
-    if (Number.isFinite(date)) return Math.max(0, date - now)
+    if (Number.isFinite(date) && date > now) return date - now
   }
   const reset = headers?.get('x-ratelimit-reset-tokens')
   if (reset) {
@@ -190,10 +192,13 @@ export function retryDelayMs(headers: HeaderReader | null, message: string, now 
 }
 
 /** The provider's per-minute token limit when it states one: the
- *  x-ratelimit-limit-tokens header, or "Limit 8000" in its message. */
+ *  x-ratelimit-limit-tokens header, or "Limit 8000" in a message about
+ *  tokens per minute. A per-day limit (tokens or requests per day) is
+ *  never read as one, or every later part would shrink to a line. */
 export function providerLimit(headers: HeaderReader | null, message: string): number | undefined {
   const raw = Number(headers?.get('x-ratelimit-limit-tokens') ?? Number.NaN)
   if (Number.isFinite(raw) && raw > 0) return raw
+  if (!/tokens per minute|\bTPM\b/i.test(message)) return undefined
   const said = /\bLimit\s+(\d+)/.exec(message)
   const n = said ? Number(said[1]) : Number.NaN
   return Number.isFinite(n) && n > 0 ? n : undefined
@@ -226,23 +231,26 @@ const ECHO_WINDOW = 16
 export const SAID_WITHHELD = 'withheld: it repeated the request'
 
 /**
- * A provider's message made fit for the log, on 1 line: an organization
- * id becomes org_…, the key and anything shaped like a key become
- * [redacted], and it is cut at 200 characters. A message that repeats
- * any run of the request's text (a provider that quotes the input back)
- * is withheld whole, so no word of a note ever reaches the log.
+ * A provider's message made fit for the log, on 1 line. Anything in
+ * quotes or backticks goes first (a provider quotes the input back in
+ * quotes, in pieces too short to recognize), then an organization id
+ * (org_… or org-…), the key, and anything shaped like a key or masked
+ * with * become [redacted], and it is cut at 200 characters. A message
+ * that still repeats any run of the request's text is withheld whole, so
+ * no word of a note ever reaches the log.
  */
 export function providerSays(message: string, request: string, apiKey = ''): string {
-  const line = message.replace(/\s+/g, ' ').trim()
+  let line = message.replace(/\s+/g, ' ').trim()
+  if (apiKey.length >= 8) line = line.split(apiKey).join('[redacted]')
+  line = line.replace(/`[^`]*`|"[^"]*"|“[^”]*”|‘[^’]*’|(?<![A-Za-z])'[^']*'(?![A-Za-z])/g, '…').trim()
   if (line === '') return ''
   const flat = request.replace(/\s+/g, ' ')
   for (let i = 0; i + ECHO_WINDOW <= line.length; i++) {
     if (flat.includes(line.slice(i, i + ECHO_WINDOW))) return SAID_WITHHELD
   }
-  let safe = apiKey.length >= 8 ? line.split(apiKey).join('[redacted]') : line
-  safe = safe
-    .replace(/\borg_[A-Za-z0-9]+/g, 'org_…')
-    .replace(/[A-Za-z0-9_*-]{24,}/g, (run) => (/\d/.test(run) && /[A-Za-z]/.test(run) ? '[redacted]' : run))
-    .replace(/"/g, "'")
+  const safe = line
+    .replace(/\borg[_-][A-Za-z0-9]+/g, 'org_…')
+    .replace(/\S*\*\S*/g, '[redacted]')
+    .replace(/[A-Za-z0-9_-]{24,}/g, (run) => (/\d/.test(run) && /[A-Za-z]/.test(run) ? '[redacted]' : run))
   return safe.length > SAID_MAX ? `${safe.slice(0, SAID_MAX - 1)}…` : safe
 }
