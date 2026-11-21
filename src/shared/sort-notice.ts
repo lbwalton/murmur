@@ -50,14 +50,29 @@ export function sortTroubleTitle(report: SortTroubleReport): string {
   return report.outcome === 'filed' ? 'Sorted part of your note' : 'Sort did not finish'
 }
 
-export function sortTroubleBody(report: SortTroubleReport): string {
+/** The notice's words. `time` names the note (09:30), never its words,
+ *  so a notice about an older note can be told from the newest's. */
+export function sortTroubleBody(report: SortTroubleReport, time = ''): string {
   const left = report.unsorted ?? 0
-  const lines = left === 1 ? '1 line is' : `${left} lines are`
+  const which = time ? `your note from ${time}` : 'your note'
+  const lines = left === 1 ? `1 line of ${which} is` : `${left} lines of ${which} are`
   const lead =
-    report.outcome === 'filed' ? `${lines} still only in the inbox.` : 'Your note is safe in the inbox.'
+    report.outcome === 'filed'
+      ? `${lines} still only in the inbox.`
+      : `${which.charAt(0).toUpperCase()}${which.slice(1)} is safe in the inbox.`
   const how =
     report.outcome === 'filed'
       ? `Sort again under ${SORT_AGAIN_WHERE} sends just those.`
       : `Sort again is under ${SORT_AGAIN_WHERE}.`
   return `${lead} ${sortWhy(report.reason)} ${how}`
+}
+
+/** The Last note line's words for lines of older notes still waiting
+ *  (US-180), so they are never only in a notice; '' when none. */
+export function waitingWords(waiting: { lines: number; notes: number }): string {
+  if (waiting.lines === 0) return ''
+  const lines = waiting.lines === 1 ? '1 line' : `${waiting.lines} lines`
+  const from = waiting.notes === 1 ? 'an earlier note' : `${waiting.notes} earlier notes`
+  const verb = waiting.lines === 1 ? 'is' : 'are'
+  return `${lines} from ${from} ${verb} still waiting in the inbox, and Sort again sends ${waiting.lines === 1 ? 'it' : 'them'} too`
 }

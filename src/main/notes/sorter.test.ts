@@ -12,11 +12,12 @@ import { DEFAULT_SETTINGS } from '../../shared/settings'
 import {
   type SortInput,
   canSortAgain,
-  forgetSortMemoryForTests,
+  forgetSortMemory,
   getHeldLines,
   rememberForSort,
   sortLastNote,
-  sortNote
+  sortNote,
+  waitingLines
 } from './sorter'
 
 const stage = vi.hoisted(() => ({ dir: '', settings: null as unknown, logs: [] as string[] }))
@@ -130,7 +131,7 @@ const filedLines = (file: string): string[] =>
     .map((line) => line.replace(/^- \[ \] /, '').replace(/ \(\[.*$/, ''))
 
 beforeEach(() => {
-  forgetSortMemoryForTests()
+  forgetSortMemory()
   stage.dir = mkdtempSync(join(tmpdir(), 'murmur-sort-'))
   stage.logs = []
   stage.settings = { ...DEFAULT_SETTINGS, notes: { ...DEFAULT_SETTINGS.notes, sort: true, folder: stage.dir } }
@@ -502,8 +503,10 @@ describe('a note saved while a long sort waits', () => {
     expect(reportB).toMatchObject({ outcome: 'filed', tasks: 2 })
     // B ran only once A was done.
     expect(order.lastIndexOf('A')).toBeLessThan(order.indexOf('B'))
-    // B is the newest note, and Sort again still sends A's lines left.
+    // B is the newest note, and its clean filing does not hide A's
+    // lines: the count the Last note line shows says they wait.
     expect(canSortAgain()).toBe(true)
+    expect(waitingLines()).toEqual({ lines: 30 - firstPart.length, notes: 1 })
     const before = modelA.calls.length
     await sortLastNote({ fetchImpl: modelA.fetchImpl, connection: a.cfg, partTokens: PART })
     expect(modelA.calls.slice(before).flatMap((c) => c.sentences)).toEqual(SENTENCES.slice(firstPart.length))
@@ -512,5 +515,23 @@ describe('a note saved while a long sort waits', () => {
     expect(lines.filter((l) => SENTENCES.includes(l))).toEqual(SENTENCES)
     expect(lines.filter((l) => l === 'Call the vet today.')).toHaveLength(1)
     expect(canSortAgain()).toBe(false)
+    expect(waitingLines()).toEqual({ lines: 0, notes: 0 })
+  })
+
+  it('keeps up to 5 older notes waiting, and logs the 1 it lets go', async () => {
+    const { cfg } = setup()
+    const notes: SortInput[] = Array.from({ length: 6 }, (_, i) => ({
+      text: `Call the plumber about job ${i + 1}. Email Ann about job ${i + 1}.`,
+      base: stage.dir,
+      inboxRelative: `murmur/inbox/2026-11-0${i + 1}.md`,
+      when: new Date(2026, 10, i + 1, 9, 30)
+    }))
+    const refuse = fakeModel(() => new Response('{}', { status: 503 }))
+    for (const n of notes) await sortNote(n, { fetchImpl: refuse.fetchImpl, connection: cfg })
+    rememberForSort(setup('A newer note.').input)
+    expect(waitingLines()).toEqual({ lines: 10, notes: 5 })
+    const drop = stage.logs.find((l) => l.startsWith('[sort] dropped an older note from Sort again')) ?? ''
+    expect(drop).toBe('[sort] dropped an older note from Sort again lines=2 kept=5; its lines stay in its inbox file')
+    expect(stage.logs.join('\n')).not.toContain('plumber')
   })
 })

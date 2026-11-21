@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // What the receipt says when a sort could not finish (US-180).
 import { describe, expect, it } from 'vitest'
-import { sortTrouble, sortTroubleBody, sortTroubleTitle, sortWhy } from './sort-notice'
+import { sortTrouble, sortTroubleBody, sortTroubleTitle, sortWhy, waitingWords } from './sort-notice'
 
 describe('sortTrouble', () => {
   it('speaks up only when lines were left unsorted', () => {
@@ -27,9 +27,26 @@ describe('the words', () => {
     const report = { outcome: 'filed' as const, reason: 'http 413', unsorted: 1 }
     expect(sortTroubleTitle(report)).toBe('Sorted part of your note')
     expect(sortTroubleBody(report)).toBe(
-      '1 line is still only in the inbox. The provider said it was too large to send, even 1 line at a time. Sort again under Settings, Notes, Last note sends just those.'
+      '1 line of your note is still only in the inbox. The provider said it was too large to send, even 1 line at a time. Sort again under Settings, Notes, Last note sends just those.'
     )
-    expect(sortTroubleBody({ ...report, unsorted: 12 })).toMatch(/^12 lines are still only in the inbox\./)
+    expect(sortTroubleBody({ ...report, unsorted: 12 })).toMatch(/^12 lines of your note are still only in the inbox\./)
+  })
+
+  it('names the note by its time, never its words', () => {
+    expect(sortTroubleBody({ outcome: 'failed', reason: 'timeout', unsorted: 3 }, '09:30')).toMatch(
+      /^Your note from 09:30 is safe in the inbox\./
+    )
+    expect(sortTroubleBody({ outcome: 'filed', reason: 'timeout', unsorted: 3 }, '14:05')).toMatch(
+      /^3 lines of your note from 14:05 are still only in the inbox\./
+    )
+  })
+
+  it('counts the lines older notes still have waiting', () => {
+    expect(waitingWords({ lines: 0, notes: 0 })).toBe('')
+    expect(waitingWords({ lines: 1, notes: 1 })).toBe('1 line from an earlier note is still waiting in the inbox, and Sort again sends it too')
+    expect(waitingWords({ lines: 12, notes: 2 })).toBe(
+      '12 lines from 2 earlier notes are still waiting in the inbox, and Sort again sends them too'
+    )
   })
 
   it('names each reason in plain words', () => {

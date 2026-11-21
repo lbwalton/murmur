@@ -225,7 +225,23 @@ let waiting: SortInput[] = []
 
 function noteWaiting(input: SortInput, report: SortReport): void {
   waiting = waiting.filter((w) => w !== input)
-  if ((report.unsorted ?? 0) > 0) waiting = [...waiting, input].slice(-WAITING_MAX)
+  if ((report.unsorted ?? 0) === 0) return
+  waiting = [...waiting, input]
+  while (waiting.length > WAITING_MAX) {
+    const dropped = waiting.shift() as SortInput
+    // Never silent: the log says a note left Sort again, with no words.
+    writeAppLog(
+      `[sort] dropped an older note from Sort again lines=${pendingFor(dropped).length} kept=${WAITING_MAX}; its lines stay in its inbox file`
+    )
+  }
+}
+
+/** Lines of older notes still waiting for Sort again, and how many
+ *  notes they come from: the newest note is not counted, its own line
+ *  says what its sort did (US-180). */
+export function waitingLines(): { lines: number; notes: number } {
+  const older = notesToSortAgain().filter((note) => note !== lastInput)
+  return { lines: older.reduce((n, note) => n + pendingFor(note).length, 0), notes: older.length }
 }
 
 /** The notes Sort again would send, oldest first, the newest last. */
@@ -1448,10 +1464,16 @@ export async function sortLastNote(options: SortOptions = {}): Promise<SortRepor
   return runs.at(-1)?.report ?? lastSort
 }
 
-/** Tests only: forget every note the sorter remembers. */
-export function forgetSortMemoryForTests(): void {
+/** Forget every note the sorter holds in memory, and the held lines'
+ *  words with them: Clear all in Settings, History calls it. The inbox
+ *  files keep every word. */
+export function forgetSortMemory(): void {
   lastInput = null
   waiting = []
+  heldFor = null
+  heldLines = []
+  heldSnapshots.clear()
+  lastTopic = ''
 }
 
 export function initSorter(): void {

@@ -15,6 +15,7 @@ import {
   resolveNotePath
 } from '../../shared/notes'
 import { DEFAULT_FILED_HEADING_TEMPLATE, renderFiledHeading } from '../../shared/sorter'
+import { waitingWords } from '../../shared/sort-notice'
 import { openTasksLine } from '../../shared/todo'
 import type { Settings } from '../../shared/settings'
 import { ConnectionRows } from './ConnectionRows'
@@ -38,6 +39,8 @@ function timeOf(at: number): string {
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
+
+const capitalize = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`
 
 /** Why a line was held, in the panel's own words, with the item it was
  *  tied to quoted from the file. */
@@ -476,7 +479,7 @@ export function NotesPanel(props: {
                       : "saved to murmur's data folder because the notes folder was unreachable"
                   }: ${lastSave.relative}${
                     notes.sort && status?.lastSort ? `. Then ${sortSummary(status.lastSort)}.` : ''
-                  }`
+                  }${notes.sort && status && status.waiting.lines > 0 ? ` ${capitalize(waitingWords(status.waiting))}.` : ''}`
                 : 'No note since launch. Hold the chord and speak.'
             }
           >

@@ -9,8 +9,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS } from '../../shared/settings'
-import { noteSaved, sortAgainWithReceipt, sortWithReceipt } from './receipt'
-import { type SortInput, forgetSortMemoryForTests, rememberForSort } from './sorter'
+import { forgetLastNote, noteSaved, sortAgainWithReceipt, sortWithReceipt } from './receipt'
+import { type SortInput, canSortAgain, forgetSortMemory, rememberForSort, waitingLines } from './sorter'
 
 const stage = vi.hoisted(() => ({
   dir: '',
@@ -86,7 +86,7 @@ const saved = (n: { input: SortInput; file: string }): Parameters<typeof noteSav
 })
 
 beforeEach(() => {
-  forgetSortMemoryForTests()
+  forgetSortMemory()
   stage.dir = mkdtempSync(join(tmpdir(), 'murmur-receipt-'))
   mkdirSync(join(stage.dir, 'murmur', 'inbox'), { recursive: true })
   stage.shown = []
@@ -124,7 +124,7 @@ describe('a note saved while a long sort waits', () => {
     // A's own notice, beside B's receipt, with none of A's words.
     expect(notices).toHaveLength(1)
     expect(notices[0].title).toBe('Sorted part of your note')
-    expect(notices[0].body).toMatch(/^\d+ lines are still only in the inbox\. The provider's rate limit ran out for now\./)
+    expect(notices[0].body).toMatch(/^\d+ lines of your note from 09:30 are still only in the inbox\. The provider's rate limit ran out for now\./)
     expect(notices[0].body).not.toContain('Siobhan')
     expect(notices[0].closed).toBe(false)
 
@@ -132,6 +132,27 @@ describe('a note saved while a long sort waits', () => {
     await sortAgainWithReceipt({ fetchImpl: model(), connection: cfg, partTokens: 1350 })
     expect(notices[0].closed).toBe(true)
     expect(stage.shown.filter((s) => s.id === 'murmur-sort-unfinished')).toHaveLength(1)
+  })
+
+  it('Clear all takes the notice back and forgets the notes Sort again kept', async () => {
+    const cfg = { baseUrl: 'https://receipt-c.local/v1', model: 'openai/gpt-oss-120b', apiKey: 'k' }
+    const a = note(LONG.join(' '), 7, 33)
+    const b = note('Call the vet today. Email Ann the deck.', 8, 34)
+    rememberForSort(a.input)
+    await sortWithReceipt(a.input, noteSaved(saved(a), a.input.text), {
+      fetchImpl: model((n) => n >= 1),
+      connection: cfg,
+      partTokens: 1350,
+      sleep: async () => undefined
+    })
+    rememberForSort(b.input)
+    await sortWithReceipt(b.input, noteSaved(saved(b), b.input.text), { fetchImpl: model(), connection: cfg })
+    expect(waitingLines().lines).toBeGreaterThan(0)
+    const notice = stage.shown.find((s) => s.id === 'murmur-sort-unfinished')
+    forgetLastNote()
+    expect(notice?.closed).toBe(true)
+    expect(canSortAgain()).toBe(false)
+    expect(waitingLines()).toEqual({ lines: 0, notes: 0 })
   })
 
   it('stays quiet with Note receipts off', async () => {

@@ -31,7 +31,8 @@ import {
   getLastSort,
   initSorter,
   skipHeldLine,
-  tickHeldMatch
+  tickHeldMatch,
+  waitingLines
 } from './sorter'
 
 export type NoteLocation = 'folder' | 'fallback'
@@ -58,6 +59,9 @@ export interface NotesStatus {
   /** The newest sort's outcome (US-051), or null before any sort. */
   lastSort: SortReport | null
   canSortAgain: boolean
+  /** Lines of older notes a sort stopped on, still waiting for Sort
+   *  again, and how many notes they come from (US-180). */
+  waiting: { lines: number; notes: number }
   /** Lines the newest sort held, with what each was tied to (US-055). */
   heldLines: HeldLine[]
   /** Set after a held-line action so the panel can say what happened;
@@ -142,6 +146,7 @@ export function getNotesStatus(): NotesStatus {
     lastSave,
     lastSort: getLastSort(),
     canSortAgain: canSortAgain(),
+    waiting: waitingLines(),
     heldLines: getHeldLines(),
     lastAction: getLastAction()
   }

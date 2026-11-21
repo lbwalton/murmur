@@ -50,7 +50,7 @@ Click **discard all** at the top of **waiting to retry** on the home tab (it sho
 
 ## Why did my note not sort, or sort only part of it?
 
-Your note is safe either way: a sort runs after the note is written to your inbox, and a sort that stops never removes or changes a word there. The note receipt says "Sort did not finish" or "Sorted part of your note" with the reason, and Settings, Notes, Last note says how many lines are left. Click Sort again there to send just those lines.
+Your note is safe either way: a sort runs after the note is written to your inbox, and a sort that stops never removes or changes a word there. A notification beside the note receipt says "Sort did not finish" or "Sorted part of your note", with the note's time and the reason, and Settings, Notes, Last note says how many lines are left, an older note's included. Click Sort again there to send just those lines.
 
 The usual reason for a long note is the provider's size or rate limit: Groq's free plan allows 8,000 tokens a minute on its gpt-oss models (the Free Plan tab of Groq's rate limits page, verified 2026-11-21), and a long brain dump asks for more. murmur sends a long note in parts, splits a part the provider calls too large, and waits out a rate limit once per part, up to 2 minutes for the whole note; what is still left after that waits for Sort again. If it keeps stopping with http 429, wait a minute and click Sort again, or put the sort on its own provider under Settings, Notes, Sorting. The diagnostics log has the provider's own words for each refusal (`[sort] failed reason=http 413 ... said="..."`), and [Notes](./notes.md) explains every step.
 

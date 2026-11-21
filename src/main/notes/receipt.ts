@@ -24,7 +24,7 @@ import {
 import { KEEP_NO_TEXT } from '../../shared/history'
 import { sortTrouble, sortTroubleBody, sortTroubleTitle } from '../../shared/sort-notice'
 import { IpcChannels } from '../../shared/ipc'
-import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE } from '../../shared/notes'
+import { DEFAULT_NOTE_ENTRY_TEMPLATE, DEFAULT_NOTE_PATH_TEMPLATE, noteMoment } from '../../shared/notes'
 import { getSettings, updateSettings } from '../settings'
 import { isSmoke, registerSmokeCheck } from '../smoke'
 import { writeAppLog } from '../window-watch'
@@ -35,6 +35,7 @@ import {
   type SortOptions,
   type SortReport,
   canSortAgain,
+  forgetSortMemory,
   rememberForSort,
   sortNote,
   sortQueuedFor,
@@ -149,6 +150,8 @@ export function forgetLastNote(): void {
   }
   withdrawReceipt()
   withdrawUnfinished()
+  // The notes Sort again keeps in memory go too (US-180).
+  forgetSortMemory()
   lastShown = null
   say('forgotten')
   notify(null)
@@ -317,7 +320,9 @@ function showUnfinished(input: SortInput, report: SortReport): void {
     return
   }
   const file = join(input.base, ...input.inboxRelative.split(/[\\/]/).filter((s) => s !== ''))
-  const notice: ShownReceipt = { title: sortTroubleTitle(report), body: sortTroubleBody(report), file, actions: ['reveal'] }
+  // Named by its time, never its words.
+  const time = noteMoment(input.when).time
+  const notice: ShownReceipt = { title: sortTroubleTitle(report), body: sortTroubleBody(report, time), file, actions: ['reveal'] }
   lastUnfinished = notice
   unfinishedFor = input
   if (isSmoke) return
@@ -583,12 +588,12 @@ export function initReceipts(options: {
         unfinishedNotice?.title === 'Sort did not finish' &&
         unfinishedNotice.file === troubleSaved.file &&
         unfinishedNotice.body ===
-          "Your note is safe in the inbox. The provider's rate limit ran out for now. Sort again is under Settings, Notes, Last note." &&
+          "Your note from 09:18 is safe in the inbox. The provider's rate limit ran out for now. Sort again is under Settings, Notes, Last note." &&
         !unfinishedNotice.body.includes('plumber')
       const partialOk =
         partialNotice?.title === 'Sorted part of your note' &&
         partialNotice.file === troubleSaved.file &&
-        partialNotice.body.startsWith('2 lines are still only in the inbox.') &&
+        partialNotice.body.startsWith('2 lines of your note from 09:18 are still only in the inbox.') &&
         // The receipt itself names the files the part filed into.
         lastShown?.title === 'Sorted into todo.md and 1 more' &&
         getLastNote()?.inbox.file === troubleSaved.file &&
