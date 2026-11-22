@@ -102,6 +102,12 @@
      ink at 72%, edged in a faint gold. */
   --tag-ink: rgb(from var(--ink) r g b / 0.72);
   --tag-edge: rgba(217, 164, 65, 0.28);
+  /* The title's words on that tag: brand gold, except where a theme's
+     tag is not ink-dark (rice paper, US-174). */
+  --tag-text: var(--brand);
+  /* The brushed mark under the tab you are on (TabStroke): gold, except
+     on rice paper, where it is vermilion (US-174). */
+  --tab-mark: var(--brand);
   /* Red on glass: brighter than --red, which on a glass card over a
      white page reads 3.4 to 1. Still the 1 clean red. */
   --red-glass: #f47a7e;
@@ -150,6 +156,88 @@
      outline. LB picked this over a hard outline and a smoke cloud
      from a live preview, 2026-09-25. */
   --ink-edge: rgba(15, 14, 17, 0.55);
+}
+
+/* Rice paper (US-174, the white belt theme, the calmest): tea-stained
+   paper, burnt edges, ink flecks and 1 vermilion drip, from LB's
+   parchment and ink-wash references (described in words only). The 1
+   light theme, which LB chose by keeping it: the paper is the window's
+   ground (themes.json solid), so it has no glass and no Desktop ground,
+   while the window frame stays dark to the system. Ink text, labels in
+   ochre, the tab mark in vermilion; its gold card is a deeper ochre wash
+   with ink text, and the card's title tag is ink with pale gold words.
+   Every token that assumes a dark ground is turned over here: the cream
+   hairlines and lifts become ink at the same strength, and the paint's
+   chalk (--rice) becomes ink on paper. scene-dark is the painting's
+   darkest color (an ink fleck), which look.test.ts holds window text to
+   under the thin paper sheet (scenes/rice.ts). */
+:root[data-theme='rice'],
+[data-theme-preview='rice'] {
+  --ink: #ece3cc;
+  --panel: #f8f3e8;
+  --pane: #f8f3e8;
+  --panel-lift: #fffcf4;
+  --panel-glass: rgba(248, 243, 232, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.12);
+  --text: #211d14;
+  --text-dim: #5e5546;
+  --cream-06: rgba(33, 29, 20, 0.06);
+  --cream-14: rgba(33, 29, 20, 0.12);
+  --cream-22: rgba(33, 29, 20, 0.2);
+  --cream-25: rgba(33, 29, 20, 0.22);
+  --cream-35: rgba(33, 29, 20, 0.32);
+  --cream-55: rgba(33, 29, 20, 0.5);
+  --cream-60: rgba(33, 29, 20, 0.55);
+  --brand: #8a5a1c;
+  --brand-edge: rgba(138, 90, 28, 0.5);
+  --brand-edge-strong: rgba(138, 90, 28, 0.72);
+  --brand-glow: rgba(176, 125, 42, 0.8);
+  --brand-glow-fade: rgba(176, 125, 42, 0.5);
+  --tab-mark: #c4461f;
+  --fog-highlight: rgba(255, 255, 255, 0.55);
+  --fog-test: rgba(33, 29, 20, 0.07);
+  --fog-test-hover: rgba(33, 29, 20, 0.11);
+  --fog-test-sheen: rgba(255, 255, 255, 0.6);
+  --fog-ask: rgba(176, 125, 42, 0.12);
+  --fog-ask-glow: rgba(176, 125, 42, 0.16);
+  --fog-ask-glow-peak: rgba(176, 125, 42, 0.36);
+  --glass-card-a: 0.9;
+  --glass-edge: rgba(33, 29, 20, 0.14);
+  --glass-light: rgba(255, 255, 255, 0.6);
+  --glass-well: rgba(33, 29, 20, 0.05);
+  --glass-well-edge: rgba(33, 29, 20, 0.1);
+  --text-dim-window: #211d14;
+  --text-dim-surface: #5e5546;
+  --text-dim-surface-clearest: #5e5546;
+  --tint-strong-from: rgba(176, 125, 42, 0.32);
+  --tint-strong-to: rgba(176, 125, 42, 0.18);
+  --tint-thread-from: rgba(176, 125, 42, 0.24);
+  --tint-thread-to: rgba(176, 125, 42, 0.11);
+  --tag-ink: rgba(33, 29, 20, 0.88);
+  --tag-edge: rgba(176, 125, 42, 0.45);
+  --tag-text: #f0d9a0;
+  --red-glass: #a8282d;
+  --red-glass-clearest: #a8282d;
+  --red-wash: rgba(168, 40, 45, 0.08);
+  --red-edge: rgba(168, 40, 45, 0.35);
+  --ok: #3d6b29;
+  --ok-clearest: #3d6b29;
+  --ok-edge: rgba(61, 107, 41, 0.4);
+  --amber: #a85a00;
+  --amber-soft: rgba(168, 90, 0, 0.55);
+  --smoke: #d3c7aa;
+  --rice: #3a3328;
+  --heat-invert-bg: #fffcf4;
+  --scene-sky-top: #e6dbc1;
+  --scene-sky-mid: #efe6d2;
+  --scene-paper-light: #faf5e8;
+  --scene-stain: #8a5c2c;
+  --scene-burn: #603a18;
+  --scene-wash: #2e2a24;
+  --scene-fleck: #211d14;
+  --scene-drip: #c4461f;
+  --scene-sheet: rgba(248, 243, 232, 0.45);
+  --scene-dark: #484336;
 }
 
 /* Unlockable theme: morning mist. Cooler ground, same signals. */

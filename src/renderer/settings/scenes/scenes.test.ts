@@ -67,7 +67,7 @@ describe('theme paintings (US-151)', () => {
   })
 
   it('never paints brighter than its --scene-bright, each color at its peak over its lightest sky', () => {
-    for (const theme of painted) {
+    for (const theme of painted.filter((t) => themeBlock(t.id)['scene-bright'])) {
       const painting = THEME_SCENES[theme.scene ?? '']
       const block = themeBlock(theme.id)
       const bright = parseColor(block['scene-bright'])
@@ -82,13 +82,33 @@ describe('theme paintings (US-151)', () => {
     }
   })
 
+  it('never paints a light painting darker than its --scene-dark, each color at its peak over its darkest paper', () => {
+    const light = painted.filter((t) => themeBlock(t.id)['scene-dark'])
+    expect(light.map((t) => t.id)).toEqual(['rice'])
+    for (const theme of light) {
+      const painting = THEME_SCENES[theme.scene ?? '']
+      const block = themeBlock(theme.id)
+      const dark = parseColor(block['scene-dark'])
+      const skies = Object.keys(block).filter((n) => n.startsWith('scene-sky'))
+      const darkestSky = skies.map((n) => parseColor(block[n])).sort((a, b) => brightness(a) - brightness(b))[0]
+      for (const [name, alpha] of Object.entries(painting.peaks)) {
+        const seen = stack(darkestSky, { ...parseColor(block[name]), a: alpha })
+        expect(brightness(seen), `${theme.id} --${name} at ${alpha}`).toBeGreaterThanOrEqual(brightness(dark) - 1e-9)
+      }
+    }
+  })
+
   it('keeps every painting color well away from signal amber and the error reds', () => {
     // At least as far as the ember paint sits from the error red (about 26).
     const MIN_DISTANCE = 24
-    const signals = ['amber', 'red', 'red-glass'].map((n) => ({ n, c: parseColor(rootValue(n)) }))
+    const rootSignals = ['amber', 'red', 'red-glass'].map((n) => ({ n, c: parseColor(rootValue(n)) }))
     const distance = (a: Rgba, b: Rgba): number => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b)
     for (const theme of painted) {
       const block = themeBlock(theme.id)
+      // A theme that brings its own amber or error red (rice paper's are
+      // darker, to read on paper) is held to those too.
+      const own = ['amber', 'red-glass'].filter((n) => block[n]).map((n) => ({ n: `${n} (its own)`, c: parseColor(block[n]) }))
+      const signals = [...rootSignals, ...own]
       for (const name of Object.keys(block).filter((n) => n.startsWith('scene-'))) {
         if (!/^(#|rgba?\()/.test(block[name])) continue
         for (const s of signals) {
@@ -98,8 +118,10 @@ describe('theme paintings (US-151)', () => {
     }
   })
 
-  it('draws a still layer and a moving one', () => {
+  it('draws a still layer and a moving one, and a still painting draws nothing that moves', () => {
     for (const [id, painting] of Object.entries(THEME_SCENES)) {
+      const theme = painted.find((t) => t.scene === id)
+      expect(theme, id).toBeDefined()
       const state = painting.init(sceneRandom(id))
       const palette = Object.fromEntries(painting.colors.map((c) => [c, [10, 20, 30] as [number, number, number]]))
       const still = fakeContext()
@@ -108,7 +130,8 @@ describe('theme paintings (US-151)', () => {
       const moving = fakeContext()
       painting.drawMoving(moving, state, palette, 0, 0)
       painting.drawMoving(moving, state, palette, 5000, 1 / 30)
-      expect(moving.calls.length, id).toBeGreaterThan(0)
+      if (theme?.motion) expect(moving.calls.length, id).toBeGreaterThan(0)
+      else expect(moving.calls, id).toEqual([])
     }
   })
 

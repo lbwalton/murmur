@@ -191,7 +191,7 @@ function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'sol
     ['text on time back, its strong corner', t.text, strongFrom],
     ['text on time back, its faint corner', t.text, strongTo],
     // The title sits in the strong corner, on its ink tag (US-173).
-    ['the title of a gold card, on its ink tag', t.brand, stack(strongFrom, t['tag-ink'])],
+    ['the title of a gold card, on its ink tag', t['tag-text'], stack(strongFrom, t['tag-ink'])],
     ['the gold header of the day you are on, its strong end', t.text, threadFrom],
     ['the gold header of the day you are on, its faint end', t.text, threadTo],
     ['the to fix badge, on its solid chip', red, stack(t.ink, t['red-wash'])],
@@ -203,7 +203,7 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   const t = tokens()
 
   it('finds the tokens it needs', () => {
-    for (const name of ['ink', 'pane', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'tag-ink', 'tag-edge', 'glow-top', 'glow-mid']) {
+    for (const name of ['ink', 'pane', 'text', 'brand', 'ok', 'red-glass', 'red-wash', 'text-dim-window', 'text-dim-surface', 'glass-window', 'glass-card', 'glass-card-solid', 'glass-well', 'tint-strong-from', 'tint-strong-to', 'tint-thread-from', 'tint-thread-to', 'tag-ink', 'tag-edge', 'tag-text', 'glow-top', 'glow-mid']) {
       expect(t[name], name).toBeDefined()
     }
   })
@@ -211,7 +211,10 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   // The glow is strongest at the very top of the window, so that is the
   // ground every solid pair is held to. Every theme in shared/themes.json
   // at every glass level (US-151).
-  describe.each(THEMES.map((theme) => [theme.name, theme.id, theme.scene] as const))('in %s', (_name, id, scene) => {
+  // A solid theme (rice paper, US-174) is its painting all the way
+  // through: no desktop or glow ever shows, and it is always worn at Clear
+  // (themes.ts wornLook), so only its painting is held, at Clear.
+  describe.each(THEMES.map((theme) => [theme.name, theme.id, theme.scene, theme.solid === true] as const))('in %s', (_name, id, scene, solid) => {
     const rgb = (c: Rgba): number[] => [c.r, c.g, c.b]
 
     it('has its own panes, cut from its own ground', () => {
@@ -221,47 +224,65 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
       expect(rgb(th['glass-card'])).toEqual(rgb(th.pane))
       expect(rgb(th['glass-card-solid'])).toEqual(rgb(th.pane))
       expect(rgb(th['ink-clear'])).toEqual(rgb(th.ink))
-      expect(rgb(th['tag-ink'])).toEqual(rgb(th.ink))
+      // A gold card's title tag is the theme's ink; on paper it is the
+      // ink of the words, since the paper ground is light.
+      expect(rgb(th['tag-ink'])).toEqual(rgb(solid ? th.text : th.ink))
       // Helper text on the window is the theme's own cream.
       expect(th['text-dim-window']).toEqual(th.text)
+      expect(th['glass-card-solid'].a).toBe(0.85)
+      if (solid) {
+        // Paper cards over paper: nearly opaque, a hint of the grain.
+        expect(th['glass-card'].a).toBeGreaterThanOrEqual(0.85)
+        return
+      }
       // Clear (LB's pick, 2026-11-12): half sheet, cards at 62%.
       expect(th['glass-window'].a).toBe(0.5)
       expect(th['glass-card'].a).toBe(0.62)
-      expect(th['glass-card-solid'].a).toBe(0.85)
     })
 
-    it('thickens at Soft and lets a card show more at Clearest, never thinning the sheet', () => {
+    it.skipIf(solid)('thickens at Soft and lets a card show more at Clearest, never thinning the sheet', () => {
       expect(tokens(id, 'soft')['glass-window'].a).toBe(0.58)
       expect(tokens(id, 'soft')['glass-card'].a).toBe(0.74)
       expect(tokens(id, 'clearest')['glass-window'].a).toBe(0.5)
       expect(tokens(id, 'clearest')['glass-card'].a).toBe(0.55)
     })
 
-    describe.each(GLASS_LEVELS)('at %s glass', (level) => {
+    describe.each(solid ? (['clear'] as const) : GLASS_LEVELS)('at %s glass', (level) => {
       const th = tokens(id, level)
 
-      it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
-        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-      })
+      if (!solid) {
+        it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
+          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+        })
 
-      it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black desktop: %s keeps 4.5 to 1', (_pair, text, ground) => {
-        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-      })
+        it.each(pairs(th, stack(black, th['glass-window'])))('glass over a black desktop: %s keeps 4.5 to 1', (_pair, text, ground) => {
+          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+        })
 
-      it.each(pairs(th, stack(th.ink, th['glow-top']), 'solid'))('solid with the glow at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
-        expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-      })
+        it.each(pairs(th, stack(th.ink, th['glow-top']), 'solid'))('solid with the glow at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
+          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
+        })
+      }
 
       // A painting behind the cards: every text is held over the
-      // painting's brightest color under the theme's ink sheet.
+      // painting's most extreme color under the theme's sheet: its
+      // brightest for a dark painting; for a light one its darkest, and
+      // the lightest paper there could be (white).
       if (scene) {
-        const painted = (): Rgba => stack(th['scene-bright'], th['scene-sheet'])
-        it.each(pairs(th, painted()))('glass over its painting at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
-          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-        })
-        it.each(pairs(th, painted(), 'solid'))('solid over its painting at its brightest: %s keeps 4.5 to 1', (_pair, text, ground) => {
-          expect(contrast(text, ground)).toBeGreaterThanOrEqual(FLOOR)
-        })
+        const grounds: Array<[string, Rgba]> = th['scene-dark']
+          ? [
+              ['at its darkest', stack(th['scene-dark'], th['scene-sheet'])],
+              ['at its lightest', stack(parseColor('#ffffff'), th['scene-sheet'])]
+            ]
+          : [['at its brightest', stack(th['scene-bright'], th['scene-sheet'])]]
+        for (const [where, ground] of grounds) {
+          it.each(pairs(th, ground))(`glass over its painting ${where}: %s keeps 4.5 to 1`, (_pair, text, under) => {
+            expect(contrast(text, under)).toBeGreaterThanOrEqual(FLOOR)
+          })
+          it.each(pairs(th, ground, 'solid'))(`solid over its painting ${where}: %s keeps 4.5 to 1`, (_pair, text, under) => {
+            expect(contrast(text, under)).toBeGreaterThanOrEqual(FLOOR)
+          })
+        }
       }
     })
   })
@@ -348,7 +369,7 @@ describe('where the look is applied', () => {
     expect(src('renderer/settings/JourneyView.tsx')).toMatch(/<section className="panel panel-strong">\s*<div className="panel-head">\s*<p className="micro-label">the journey<\/p>/)
     expect(src('renderer/settings/WrapUpView.tsx')).not.toContain('panel-strong')
     // A gold card's title is brand gold on its ink tag; its links stay cream (US-173).
-    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.micro-label \{[^}]*width: fit-content;[^}]*color: var\(--brand\);[^}]*background: var\(--tag-ink\);[^}]*box-shadow: inset 0 0 0 1px var\(--tag-edge\);/)
+    expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.micro-label \{[^}]*width: fit-content;[^}]*color: var\(--tag-text\);[^}]*background: var\(--tag-ink\);[^}]*box-shadow: inset 0 0 0 1px var\(--tag-edge\);/)
     expect(look).toMatch(/html\[data-look\] :is\(\.home-timeback, \.panel-strong, \.running-strip\) \.micro-label \{[^}]*border-radius: 6px;/)
     expect(src('renderer/settings/HomeView.tsx')).toMatch(/<section className="panel home-timeback">\s*<p className="micro-label">back today<\/p>/)
     expect(src('renderer/settings/ProfileCards.tsx')).toContain('<p className="micro-label running-kicker">running now</p>')
