@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (124/182 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (125/182 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -109,6 +109,7 @@
 - [x] **US-147** Home with a rail: find any take fast
 - [x] **US-148** History settings move into Settings
 - [x] **US-149** Choices you can tell apart
+- [x] **US-151** Look: themes, glass levels and motion
 - [x] **US-152** Clearer cleanup on another provider
 - [x] **US-153** Build tool security alert, November: minimatch
 - [x] **US-154** Provider and keys, rebuilt around profiles
@@ -183,7 +184,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-144** Rescan and sign off
 - [ ] **US-146** Cleanup with your ChatGPT plan
 - [ ] **US-150** Glass over your desktop
-- [ ] **US-151** Look: themes, glass levels and motion
 - [ ] **US-159** Pro: color the fog
 - [ ] **US-169** The website counts download clicks, never who
 - [ ] **US-170** The business model is written down, and the license is stated right
