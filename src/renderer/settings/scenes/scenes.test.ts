@@ -66,35 +66,54 @@ describe('theme paintings (US-151)', () => {
     }
   })
 
-  it('never paints brighter than its --scene-bright, each color at its peak over its lightest sky', () => {
+  /** What a painting can show at its extreme: each color at its peak,
+   *  and each declared stack, laid over its lightest ground (its darkest,
+   *  for a light painting). The grounds are its skies and any opaque
+   *  fills it names (a sea under its foam). */
+  function extremes(themeId: string, light: boolean): Array<[string, Rgba]> {
+    const theme = THEMES.find((t) => t.id === themeId)
+    const painting = THEME_SCENES[theme?.scene ?? '']
+    const block = themeBlock(themeId)
+    const skies = Object.keys(block).filter((n) => n.startsWith('scene-sky'))
+    expect(skies.length, themeId).toBeGreaterThan(0)
+    const names = [...skies, ...(painting.grounds ?? [])]
+    for (const name of painting.grounds ?? []) expect(painting.peaks[name], `${themeId} ground --${name} is opaque`).toBe(1)
+    const grounds = names.map((n) => parseColor(block[n])).sort((a, b) => brightness(a) - brightness(b))
+    const ground = light ? grounds[0] : grounds[grounds.length - 1]
+    const at = (name: string, alpha: number): Rgba => ({ ...parseColor(block[name]), a: alpha })
+    return [
+      ...Object.entries(painting.peaks).map(([name, alpha]): [string, Rgba] => [`--${name} at ${alpha}`, stack(ground, at(name, alpha))]),
+      ...(painting.stacks ?? []).map((layers): [string, Rgba] => [
+        layers.map(([name, alpha]) => `--${name} at ${alpha}`).join(' under '),
+        stack(ground, ...layers.map(([name, alpha]) => at(name, alpha)))
+      ])
+    ]
+  }
+
+  it('never paints brighter than its --scene-bright: each color at its peak, and each stack, over its lightest ground', () => {
     for (const theme of painted.filter((t) => themeBlock(t.id)['scene-bright'])) {
-      const painting = THEME_SCENES[theme.scene ?? '']
-      const block = themeBlock(theme.id)
-      const bright = parseColor(block['scene-bright'])
-      const skies = Object.keys(block).filter((n) => n.startsWith('scene-sky'))
-      expect(skies.length, theme.id).toBeGreaterThan(0)
-      const lightestSky = skies.map((n) => parseColor(block[n])).sort((a, b) => brightness(b) - brightness(a))[0]
-      for (const [name, alpha] of Object.entries(painting.peaks)) {
-        const color = { ...parseColor(block[name]), a: alpha }
-        const seen = stack(lightestSky, color)
-        expect(brightness(seen), `${theme.id} --${name} at ${alpha}`).toBeLessThanOrEqual(brightness(bright) + 1e-9)
+      const bright = parseColor(themeBlock(theme.id)['scene-bright'])
+      for (const [what, seen] of extremes(theme.id, false)) {
+        expect(brightness(seen), `${theme.id} ${what}`).toBeLessThanOrEqual(brightness(bright) + 1e-9)
       }
     }
   })
 
-  it('never paints a light painting darker than its --scene-dark, each color at its peak over its darkest paper', () => {
+  it('never paints a light painting darker than its --scene-dark: each color at its peak, and each stack, over its darkest paper', () => {
     const light = painted.filter((t) => themeBlock(t.id)['scene-dark'])
     expect(light.map((t) => t.id)).toEqual(['rice'])
     for (const theme of light) {
-      const painting = THEME_SCENES[theme.scene ?? '']
-      const block = themeBlock(theme.id)
-      const dark = parseColor(block['scene-dark'])
-      const skies = Object.keys(block).filter((n) => n.startsWith('scene-sky'))
-      const darkestSky = skies.map((n) => parseColor(block[n])).sort((a, b) => brightness(a) - brightness(b))[0]
-      for (const [name, alpha] of Object.entries(painting.peaks)) {
-        const seen = stack(darkestSky, { ...parseColor(block[name]), a: alpha })
-        expect(brightness(seen), `${theme.id} --${name} at ${alpha}`).toBeGreaterThanOrEqual(brightness(dark) - 1e-9)
+      const dark = parseColor(themeBlock(theme.id)['scene-dark'])
+      for (const [what, seen] of extremes(theme.id, true)) {
+        expect(brightness(seen), `${theme.id} ${what}`).toBeGreaterThanOrEqual(brightness(dark) - 1e-9)
       }
+    }
+  })
+
+  it('names stacks and grounds only from its own colors', () => {
+    for (const [id, painting] of Object.entries(THEME_SCENES)) {
+      for (const name of painting.grounds ?? []) expect(painting.colors, `${id} ground`).toContain(name)
+      for (const layers of painting.stacks ?? []) for (const [name] of layers) expect(painting.colors, `${id} stack`).toContain(name)
     }
   })
 
@@ -109,7 +128,10 @@ describe('theme paintings (US-151)', () => {
       // darker, to read on paper) is held to those too.
       const own = ['amber', 'red-glass'].filter((n) => block[n]).map((n) => ({ n: `${n} (its own)`, c: parseColor(block[n]) }))
       const signals = [...rootSignals, ...own]
-      for (const name of Object.keys(block).filter((n) => n.startsWith('scene-'))) {
+      // Every color the painting paints with; the sheet and the extremes
+      // (--scene-bright, --scene-dark) measure it and are never painted.
+      const measures = ['scene-sheet', 'scene-bright', 'scene-dark']
+      for (const name of Object.keys(block).filter((n) => n.startsWith('scene-') && !measures.includes(n))) {
         if (!/^(#|rgba?\()/.test(block[name])) continue
         for (const s of signals) {
           expect(distance(parseColor(block[name]), s.c), `${theme.id} --${name} vs --${s.n}`).toBeGreaterThanOrEqual(MIN_DISTANCE)

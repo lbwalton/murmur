@@ -1670,7 +1670,7 @@ export function App(): React.JSX.Element {
                 keywords="glass transparency clear soft clearest see through pro"
                 desc={
                   wornTheme?.solid
-                    ? `${wornTheme.name[0].toUpperCase()}${wornTheme.name.slice(1)} is paper all the way through, so it has no glass. Pick another theme to see through the window.`
+                    ? `${wornTheme.name[0].toUpperCase()}${wornTheme.name.slice(1)} is paper all the way through, so it has no glass.${windowLook === 'solid' ? '' : ' Pick another theme to see through the window.'}`
                     : !license?.pro
                     ? 'murmur Pro: Soft, Clear, or Clearest. Without Pro the glass is Clear.'
                     : windowLook === 'solid'

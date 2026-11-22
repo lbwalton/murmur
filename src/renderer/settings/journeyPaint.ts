@@ -56,6 +56,13 @@ export function sealPaint(belt: string, c: JourneyColors): Rgb | readonly [Rgb, 
 /** How light a color looks, 0 to 255. */
 const luma = (c: Rgb): number => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
 
+/** Whether a belt needs an ink rim to show (US-174): only on a light
+ *  ground (rice paper), and only for a belt about as light as it (white).
+ *  On a dark ground every belt reads as it always has, black included. */
+export function needsRim(belt: Rgb, ground: Rgb): boolean {
+  return luma(ground) > 128 && Math.abs(luma(belt) - luma(ground)) < 48
+}
+
 /** A belt's color as paint on the ink ground: the black belt lifts
  *  toward grey so it never vanishes, white reads as rice paper. */
 export function beltOnInk(belt: string, c: JourneyColors): Rgb {
@@ -112,9 +119,8 @@ export function paintBelt(
     )
   })
   // On a light ground (rice paper, US-174) a white belt would vanish into
-  // the paper, so an ink rim goes under its bands first. On the dark
-  // grounds every belt already reads, and nothing changes.
-  if (Math.abs(luma(col) - luma(c.ink)) < 48) {
+  // the paper, so an ink rim goes under its bands first (needsRim).
+  if (needsRim(col, c.ink)) {
     const rim = mix(c.text, col, 0.5)
     bands.forEach((P, k) =>
       stroke(ctx, P, cachedBrush(seed + k, 34), { width: bandH * 0.52 + Math.max(1.4, h * 0.05), rgb: rim, dry: 0.16, core: 0.92, ts: 0.015, te: 0.02 })

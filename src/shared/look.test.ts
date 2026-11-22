@@ -195,7 +195,9 @@ function pairs(t: Record<string, Rgba>, windowGround: Rgba, look: 'glass' | 'sol
     ['the gold header of the day you are on, its strong end', t.text, threadFrom],
     ['the gold header of the day you are on, its faint end', t.text, threadTo],
     ['the to fix badge, on its solid chip', red, stack(t.ink, t['red-wash'])],
-    ['the all set badge, on its solid chip', t.ok, t.ink]
+    ['the all set badge, on its solid chip', t.ok, t.ink],
+    // A hotkey field while it listens for keys (US-174).
+    ['the amber words of a hotkey field while it listens', t.amber, t['field-live']]
   ]
 }
 
@@ -303,9 +305,42 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
     expect(contrast(t['red-glass'], card)).toBeGreaterThanOrEqual(FLOOR)
   })
 
-  it('keeps the brand gold below signal amber, so no label was brightened to pass', () => {
+  it('keeps the brand gold below signal amber in every theme, so no label was brightened to pass', () => {
     const lum = (c: Rgba): number => contrast(c, black)
-    expect(lum(t.brand)).toBeLessThan(lum(t.amber))
+    for (const theme of THEMES) {
+      const th = tokens(theme.id)
+      expect(lum(th.brand), theme.id).toBeLessThan(lum(th.amber))
+    }
+  })
+
+  it('keeps a focus ring at 3 to 1 on a card, on rice paper too (US-174)', () => {
+    // Paper's card is nearly opaque, so its ring is held on the card itself.
+    const th = tokens('rice')
+    const card = stack(th['scene-sky-top'], th['scene-sheet'], th['glass-card'])
+    expect(contrast(stack(card, th['amber-soft']), card)).toBeGreaterThanOrEqual(3)
+  })
+
+  it("keeps the pill's previews in the pill's own night studio colors, which no theme sets (US-174)", () => {
+    const css = src('renderer/tokens.css')
+    const root = tokens()
+    for (const [pill, own] of [
+      ['pill-ink', 'ink'],
+      ['pill-text', 'text'],
+      ['pill-dim', 'text-dim'],
+      ['pill-amber', 'amber'],
+      ['pill-brand', 'brand'],
+      ['pill-red', 'red'],
+      ['pill-edge', 'panel-edge'],
+      ['pill-dot', 'cream-25'],
+      ['pill-glass', 'panel-glass']
+    ]) {
+      expect(root[pill], pill).toEqual(root[own])
+      expect(css.match(new RegExp(`--${pill}:`, 'g')), pill).toHaveLength(1)
+    }
+    const styles = src('renderer/settings/styles.css')
+    expect(styles).toMatch(/\.mini-pill,\n\.loop-tile-wrap \{\n  --ink: var\(--pill-ink\);\n  --text: var\(--pill-text\);\n  --text-dim: var\(--pill-dim\);\n  --amber: var\(--pill-amber\);/)
+    for (const painter of ['overlay/SpeckleWave.tsx']) expect(src(`renderer/${painter}`)).toContain('getComputedStyle(canvas)')
+    expect(src('renderer/overlay/InkWave.tsx').match(/tokenColor\('--[a-z-]+', \[[0-9, ]+\], canvas\)/g)).toHaveLength(6)
   })
 })
 

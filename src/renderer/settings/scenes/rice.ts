@@ -52,6 +52,15 @@ const FLECK_CORNERS: ReadonlyArray<[number, number]> = [
 export const rice: ThemeScene<RiceState> = {
   colors: Object.keys(PEAKS),
   peaks: PEAKS,
+  // The darkest the paper gets: a fleck on a stain at the burnt rim.
+  stacks: [
+    [
+      ['scene-burn', PEAKS['scene-burn']],
+      ['scene-stain', PEAKS['scene-stain']],
+      ['scene-wash', PEAKS['scene-wash']],
+      ['scene-fleck', PEAKS['scene-fleck']]
+    ]
+  ],
 
   init(r) {
     // Tea stains pool along the edges.

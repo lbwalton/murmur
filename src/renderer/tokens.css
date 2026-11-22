@@ -156,6 +156,26 @@
      outline. LB picked this over a hard outline and a smoke cloud
      from a live preview, 2026-09-25. */
   --ink-edge: rgba(15, 14, 17, 0.55);
+
+  /* The pill's own colors (US-174). The overlay pill keeps night studio
+     in every theme, so its previews in Settings (the waveform tiles, the
+     loop tile) wear these, which no theme sets; each equals the night
+     studio token it is named for (look.test.ts). */
+  --pill-ink: #0f0e11;
+  --pill-text: #ece9e4;
+  --pill-dim: #9a968f;
+  --pill-amber: #f0a44b;
+  --pill-brand: #d9a441;
+  --pill-red: #e5484d;
+  --pill-edge: rgba(236, 233, 228, 0.07);
+  --pill-dot: rgba(236, 233, 228, 0.25);
+  --pill-glass: rgba(23, 22, 27, 0.96);
+
+  /* A hotkey field while it listens for keys: amber words on its
+     ground (US-174: lighter than the paper on rice paper, so the amber
+     reads). Native controls in a dialog follow --scheme. */
+  --field-live: var(--ink);
+  --scheme: dark;
 }
 
 /* Rice paper (US-174, the white belt theme, the calmest): tea-stained
@@ -224,8 +244,10 @@
   --ok-clearest: #3d6b29;
   --ok-edge: rgba(61, 107, 41, 0.4);
   --amber: #a85a00;
-  --amber-soft: rgba(168, 90, 0, 0.55);
-  --smoke: #d3c7aa;
+  --amber-soft: rgba(168, 90, 0, 0.85);
+  --field-live: #fffcf4;
+  --scheme: light;
+  --smoke: #bfb08f;
   --rice: #3a3328;
   --heat-invert-bg: #fffcf4;
   --scene-sky-top: #e6dbc1;
@@ -237,7 +259,7 @@
   --scene-fleck: #211d14;
   --scene-drip: #c4461f;
   --scene-sheet: rgba(248, 243, 232, 0.45);
-  --scene-dark: #484336;
+  --scene-dark: #382f22;
 }
 
 /* Unlockable theme: morning mist. Cooler ground, same signals. */
@@ -338,10 +360,10 @@
   --scene-wave-mid: #18394f;
   --scene-wave-low: #1f4a5a;
   --scene-wave-near: #28606a;
-  --scene-foam: #d2cdc1;
+  --scene-foam: #b6b2a8;
   --scene-mountain-far: #1f2c44;
   --scene-sheet: rgba(13, 21, 35, 0.45);
-  --scene-bright: #afaeaa;
+  --scene-bright: #a8aaa2;
 }
 
 /* Ember (US-174, the brown belt theme; id fire, since ember is night
@@ -373,8 +395,8 @@
   --scene-spark: #f88030;
   --scene-spark-deep: #e8582b;
   --scene-spark-hot: #f0b062;
-  --scene-sheet: rgba(18, 12, 10, 0.48);
-  --scene-bright: #dca15a;
+  --scene-sheet: rgba(18, 12, 10, 0.5);
+  --scene-bright: #eeae60;
 }
 
 /* Red storm (US-174, the black belt theme, the heaviest): near-black, a

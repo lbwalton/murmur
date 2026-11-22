@@ -41,6 +41,9 @@ const PEAKS = {
   'scene-spark-hot': 0.9
 } as const
 
+/** A spark's halo, as a share of its core's alpha. */
+const HALO = 0.22
+
 /** The ribbons' resting strength; the breath adds up to RIBBON_BREATH. */
 const RIBBON_REST = 0.42
 const RIBBON_BREATH = PEAKS['scene-ribbon-hot'] - RIBBON_REST
@@ -64,6 +67,17 @@ function ribbon(ctx: CanvasRenderingContext2D, rb: Ribbon, hot: Rgb, ember: Rgb,
 export const fire: ThemeScene<FireState> = {
   colors: Object.keys(PEAKS),
   peaks: PEAKS,
+  // The brightest a spark gets: its core over its own halo, over the
+  // fire's glow and a flame ribbon at full breath.
+  stacks: [
+    [
+      ['scene-fire-glow', PEAKS['scene-fire-glow']],
+      ['scene-fire-warm', PEAKS['scene-fire-warm']],
+      ['scene-ribbon-hot', PEAKS['scene-ribbon-hot']],
+      ['scene-spark-hot', PEAKS['scene-spark-hot'] * HALO],
+      ['scene-spark-hot', PEAKS['scene-spark-hot']]
+    ]
+  ],
 
   init(r) {
     const sparks = Array.from({ length: 64 }, () => {
@@ -142,7 +156,7 @@ export const fire: ThemeScene<FireState> = {
       const a = 0.45 + (PEAKS['scene-spark'] - 0.45) * Math.abs(Math.sin(sec * 3 + spark.ph))
       const c = p[`scene-${spark.tone}`]
       // A faint halo stands in for a blur.
-      ctx.fillStyle = rgba(c, a * 0.22)
+      ctx.fillStyle = rgba(c, a * HALO)
       ctx.beginPath()
       ctx.arc(x, y, spark.r * 2.6, 0, Math.PI * 2)
       ctx.fill()

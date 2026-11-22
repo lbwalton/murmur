@@ -40,12 +40,22 @@ const PEAKS = {
 
 const SEAS = ['scene-wave-far', 'scene-wave-mid', 'scene-wave-low', 'scene-wave-near'] as const
 
+/** The spray's strongest alpha: it can land on a farther swell's foam. */
+const SPRAY_PEAK = 0.5
+
 const SUN_X = 112
 const SUN_Y = 92
 
 export const wave: ThemeScene<WaveState> = {
   colors: Object.keys(PEAKS),
   peaks: PEAKS,
+  grounds: ['scene-mountain-far', 'scene-mountain', ...SEAS],
+  stacks: [
+    [
+      ['scene-foam', PEAKS['scene-foam']],
+      ['scene-foam', SPRAY_PEAK]
+    ]
+  ],
 
   init(r) {
     return {
@@ -53,7 +63,7 @@ export const wave: ThemeScene<WaveState> = {
         x: r() * 24,
         dy: 4 + r() * 16,
         r: 0.6 + r() * 1.5,
-        a: 0.4 + r() * (PEAKS['scene-foam'] - 0.4)
+        a: 0.25 + r() * (SPRAY_PEAK - 0.25)
       }))
     }
   },
@@ -123,6 +133,9 @@ export const wave: ThemeScene<WaveState> = {
       ctx.closePath()
       ctx.fill()
 
+      // The foam line and each crest's curl are 1 stroke, so a curl
+      // never lays foam over foam.
+      const crests: number[] = []
       ctx.strokeStyle = rgba(p['scene-foam'], PEAKS['scene-foam'])
       ctx.lineWidth = 1.2 + i * 0.35
       ctx.beginPath()
@@ -130,18 +143,21 @@ export const wave: ThemeScene<WaveState> = {
         if (x) ctx.lineTo(x, yAt(x))
         else ctx.moveTo(x, yAt(x))
       }
+      for (let x = 8; x < SCENE_W - 8; x += 2) {
+        const at = yAt(x)
+        if (!(at < yAt(x - 2) && at <= yAt(x + 2))) continue
+        crests.push(x)
+        const r = 3.5 + i
+        const from = Math.PI * 1.05
+        ctx.moveTo(x + 3 + r * Math.cos(from), at + 3.5 + r * Math.sin(from))
+        ctx.arc(x + 3, at + 3.5, r, from, Math.PI * 1.95)
+      }
       ctx.stroke()
 
-      // Each crest curls over, and the near swells throw a little spray.
-      ctx.lineWidth = 1.1 + i * 0.3
-      for (let x = 8; x < SCENE_W - 8; x += 2) {
-        const before = yAt(x - 2)
+      // The near swells throw a little spray off each crest.
+      if (i < 2) continue
+      for (const x of crests) {
         const at = yAt(x)
-        if (!(at < before && at <= yAt(x + 2))) continue
-        ctx.beginPath()
-        ctx.arc(x + 3, at + 3.5, 3.5 + i, Math.PI * 1.05, Math.PI * 1.95)
-        ctx.stroke()
-        if (i < 2) continue
         for (let k = i; k < s.spray.length; k += 6) {
           const drop = s.spray[k]
           ctx.fillStyle = rgba(p['scene-foam'], drop.a)
