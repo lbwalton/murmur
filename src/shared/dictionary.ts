@@ -62,14 +62,46 @@ export function enforceDictionaryCasing(text: string, entries: readonly unknown[
   return out
 }
 
+/** The most hint text 1 cleanup request carries, in characters (about
+ *  500 tokens). An imported list can hold hundreds of names (US-183),
+ *  and every pair in every request would cost a rate limit, or a 413. */
+export const HINT_BUDGET_CHARS = 2_000
+
 /**
  * One line of cleanup-model hint text, or null for an empty dictionary.
  * The "Preferred spellings" opener is load-bearing: the LLM layer uses
  * it as a sentinel to catch hint text echoed into output.
+ *
+ * A list that fits the budget goes whole, as it always has. A longer
+ * one sends the pairs whose words are in this take first, then the
+ * rest in list order while they fit. The dictionary has already run
+ * over `text` by then, so a pair in use shows by its written side.
  */
-export function dictionaryHint(entries: readonly unknown[]): string | null {
+export function dictionaryHint(
+  entries: readonly unknown[],
+  text?: string,
+  budget = HINT_BUDGET_CHARS
+): string | null {
   const usable = entries.filter(isUsableEntry)
   if (usable.length === 0) return null
-  const pairs = usable.map((e) => `"${e.from.trim()}" is written "${e.to.trim()}"`).join('; ')
-  return `Preferred spellings, apply ONLY where these words already occur: ${pairs}.`
+  const phrase = (e: DictionaryEntry): string => `"${e.from.trim()}" is written "${e.to.trim()}"`
+  const JOIN = '; '
+  let phrases = usable.map(phrase)
+  const size = phrases.reduce((sum, p) => sum + p.length, 0) + JOIN.length * (phrases.length - 1)
+  if (size > budget) {
+    const inTake = (e: DictionaryEntry): boolean =>
+      text !== undefined && (boundaryPattern(e.to.trim()).test(text) || boundaryPattern(e.from.trim()).test(text))
+    const first = new Set(usable.filter(inTake))
+    const ordered = [...first, ...usable.filter((e) => !first.has(e))].map(phrase)
+    phrases = []
+    let used = 0
+    for (const p of ordered) {
+      const cost = p.length + (phrases.length > 0 ? JOIN.length : 0)
+      if (used + cost > budget) continue
+      phrases.push(p)
+      used += cost
+    }
+    if (phrases.length === 0) return null
+  }
+  return `Preferred spellings, apply ONLY where these words already occur: ${phrases.join(JOIN)}.`
 }

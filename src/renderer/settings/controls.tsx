@@ -283,6 +283,9 @@ export function GroupRow(props: {
   desc?: React.ReactNode
   anchor?: string
   keywords?: string
+  /** Under the box, still on the group's card: a question the box's
+   *  buttons ask, and what came of it (US-183). */
+  after?: React.ReactNode
   children: React.ReactNode
 }): React.JSX.Element {
   const id = props.anchor ?? rowId(props.label)
@@ -295,6 +298,7 @@ export function GroupRow(props: {
         {props.desc && <p className="group-sub row-desc">{props.desc}</p>}
       </div>
       <div className="group-rows row-control">{props.children}</div>
+      {props.after}
     </section>
   )
 }

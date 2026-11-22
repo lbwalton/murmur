@@ -2978,6 +2978,59 @@ textarea.entry-field {
   min-width: 0;
 }
 
+/* A long list scrolls in its box: 8 words and part of the next show,
+   so it reads as more below, and the add row stays under them (US-183).
+   At the end of the list the wheel goes on to the page. */
+.well-list {
+  max-height: 416px;
+  overflow-y: auto;
+}
+
+.well-list:empty {
+  display: none;
+}
+
+/* The default scrollbar paints a bright track on ink; keep it quiet. */
+.well-list::-webkit-scrollbar {
+  width: 7px;
+  background: transparent;
+}
+
+.well-list::-webkit-scrollbar-thumb {
+  background: var(--cream-14);
+  border-radius: 4px;
+}
+
+.well-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Import and Export, the last line of the Custom words list (US-183). */
+.well-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+}
+
+.well-file-note {
+  margin-left: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* The import question and its result, under the box and on the same
+   card, so their text keeps the card behind it. */
+.well-file-after > .ask-first {
+  margin: 12px 0 0;
+}
+
+.well-file-after > .waiting-message {
+  margin: 12px 2px 0;
+}
+
 /* A snippet can span lines (sign-offs); the box grows with it. */
 textarea.well-multiline {
   field-sizing: content;

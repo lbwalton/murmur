@@ -88,7 +88,7 @@ export async function maybePolish(text: string): Promise<string> {
   if (settings.formatting.level !== 'full') return skip()
   const connection = resolvePolishConnection(settings)
   if (!connection) return skip()
-  const hint = dictionaryHint(settings.dictionary)
+  const hint = dictionaryHint(settings.dictionary, text)
   let outcome = 'cleaned'
   const polished = await polishTranscript(text, connection, {
     smartLists: settings.formatting.smartLists,

@@ -476,6 +476,9 @@ app.whenReady().then(async () => {
   initTransform()
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
+  // The dictionary as a file (US-183): import a list, export the list.
+  const { initDictionaryFile } = await import('./dictionary-file')
+  initDictionaryFile(() => settingsWindow)
   // Report a problem (US-182): a picture of this window, the details, and
   // the person's own browser or mail app. murmur sends nothing itself.
   initProblem({

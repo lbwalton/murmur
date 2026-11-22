@@ -40,6 +40,9 @@ export function AskFirst(props: {
   confirm: string
   /** The safe button's label: keep them, or keep it for one. */
   keep?: string
+  /** True for a question that deletes nothing, such as an import
+   *  (US-183): its button is plain, because red is for deleting. */
+  plain?: boolean
   busy: boolean
   onConfirm: () => void
   onKeep: () => void
@@ -69,7 +72,12 @@ export function AskFirst(props: {
         <button ref={keepRef} type="button" className="btn quiet-btn" disabled={props.busy} onClick={props.onKeep}>
           {props.keep ?? 'keep them'}
         </button>
-        <button type="button" className="btn danger-btn" disabled={props.busy} onClick={props.onConfirm}>
+        <button
+          type="button"
+          className={props.plain ? 'btn' : 'btn danger-btn'}
+          disabled={props.busy}
+          onClick={props.onConfirm}
+        >
           {props.confirm}
         </button>
       </span>
