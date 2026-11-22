@@ -165,13 +165,24 @@ describe('parseDictionaryFile, CSV', () => {
     expect(parsed.unread).toBe(1)
   })
 
-  it('counts a cell that held a line break as 1 entry it cannot use, and takes no word from its pieces', () => {
+  it('takes no word from the pieces of a cell that held a line break, and counts both lines', () => {
     const parsed = read('a,A\n"two\nlines",Broken\nc,C\n')
     expect(parsed.entries).toEqual([
       { from: 'a', to: 'A' },
       { from: 'c', to: 'C' }
     ])
-    expect(parsed.unread).toBe(1)
+    expect(parsed.unread).toBe(2)
+  })
+
+  it('never drops a row unseen after a stray quote: a row with 1 quote of its own is counted', () => {
+    const parsed = read('a,A\n"b,B\nsix inch,6"\nc,C\n')
+    expect(parsed.entries).toEqual([
+      { from: 'a', to: 'A' },
+      { from: 'c', to: 'C' }
+    ])
+    expect(parsed.unread).toBe(2)
+    // With no quote of its own, the row after a stray quote is read.
+    expect(read('"b,B\nseven inch,7\n').entries).toEqual([{ from: 'seven inch', to: '7' }])
   })
 
   it('still reads the heading after a broken first line', () => {

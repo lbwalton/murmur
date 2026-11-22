@@ -343,9 +343,13 @@ function fromCsv(text: string, extension: string): ParsedDictionary {
     if (line.trim() === '') continue
     if (open) {
       open = false
-      // A cell that held a line break ends here, on the line with the
-      // quote that closes it: the rest of 1 entry already counted.
-      if ((line.split('"').length - 1) % 2 === 1) continue
+      // A cell that held a line break ends on the line with the quote
+      // that closes it. A real row with 1 quote in it (six inch,6")
+      // looks the same, so the line is counted, never dropped unseen.
+      if ((line.split('"').length - 1) % 2 === 1) {
+        unread += 1
+        continue
+      }
     }
     const cells = cellsOf(line, delimiter)
     if (cells === null) {
