@@ -79,6 +79,41 @@ describe('the privacy page', () => {
     expect(text).not.toContain('is listed on the App Store')
   })
 
+  // US-185: with Learn from my fixes on, murmur reads the box it typed into.
+  // The page says when, what it never reads, and what it keeps. What the
+  // review gate found is held too: only learning is said to stay on the Mac
+  // (a Transform selection goes to the provider), Transform reads its
+  // selection when you finish speaking, not at the press, and words that
+  // join the dictionary go out as hints.
+  it('says when murmur looks at text in another app, and what it keeps', () => {
+    const item = privacy.items.find(({ q }) => q === 'Does murmur look at what I type in other apps?')
+    expect(item).toBeDefined()
+    const said = plain(item.a)
+    for (const fact of [
+      'On Mac and Windows, only when you ask it to',
+      'copy the text you selected when you use their shortcut',
+      'Transform sends it to your provider with what you asked for',
+      'keeps the original in your history unless you turn that off',
+      'Fix a word saves the word and the spelling you type to your dictionary',
+      'off until you turn it on',
+      'that same text box for up to 1 minute',
+      'never reads a box your Mac marks as a password',
+      'never saved or sent',
+      'only the pair of words you fixed',
+      'for as long as your history setting keeps words',
+      'That pair joins your dictionary only when you press Add',
+      'spelling hints for your providers'
+    ]) {
+      expect(said).toContain(fact)
+    }
+    // 1 thing only is said to stay put, and it is learning, after Transform is done with.
+    expect(said.match(/stays? on (your|this|the) /g)).toEqual(['stays on your '])
+    const learning = said.indexOf('Learn from my fixes')
+    expect(learning).toBeGreaterThan(said.indexOf('Transform sends it'))
+    expect(said.indexOf('That stays on your Mac')).toBeGreaterThan(learning)
+    expect(said).not.toMatch(/at the moment you press|as soon as you press/)
+  })
+
   it('gives the support address for privacy questions', () => {
     expect(text).toContain(EMAIL)
   })
