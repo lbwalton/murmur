@@ -6,8 +6,9 @@
 //
 // Learn from my fixes is off until the person turns it on, and macOS
 // only for now. When it is on, a take that was pasted is followed for
-// about a minute by the watcher in watch-script.ts, which reports only
-// the stretch of the box murmur typed, as it reads now. A fix seen in
+// about a minute by the watcher in watch-script.ts, which reports no
+// text of the box but the changes: murmur's words that went, and the
+// 1 to 3 words now in their place. A fix seen in
 // enough takes becomes a suggestion in Settings, Dictionary. murmur
 // never adds a word by itself.
 //
@@ -24,6 +25,7 @@ import {
   LEARN_WATCH_SECONDS,
   type Taught,
   countFixes,
+  fixesFromChanges,
   fixesIn,
   isSpellingFix,
   selectionToFix,
@@ -132,9 +134,10 @@ interface Watch {
   child: ChildProcess
   raw: string
   final: string
-  /** The stretch of the box where the take was, as last read. Held in
+  /** The changes to the take as the watcher last saw them: murmur's
+   *  words that went, and the 1 to 3 words in their place. Held in
    *  memory only, until the watch ends. */
-  latest: string | null
+  latest: ReadonlyArray<readonly [string, string]> | null
   why: string
   timer: NodeJS.Timeout
   done: boolean
@@ -151,7 +154,7 @@ function finish(watch: Watch): void {
   watch.latest = null
   let fixes: Fix[] = []
   try {
-    if (latest !== null && getSettings().learn.watch) fixes = fixesIn(watch.raw, watch.final, latest)
+    if (latest !== null && getSettings().learn.watch) fixes = fixesFromChanges(watch.raw, watch.final, latest)
     const fresh = recordFixes(fixes)
     writeAppLog(`[learn] watch ended why=${watch.why} fixes=${fixes.length} ready=${fresh.length}`)
   } catch (error) {
@@ -212,7 +215,7 @@ export function watchTake(take: { raw: string; final: string }): void {
   lines.on('line', (text) => {
     const line = parseWatchLine(text)
     if (line === null || watch.done) return
-    if (line.s === 'span') watch.latest = line.t.length <= words.length * 4 + 400 ? line.t : null
+    if (line.s === 'fixes') watch.latest = line.f
     else if (line.s === 'skip' || line.s === 'end') watch.why = line.why
   })
 }

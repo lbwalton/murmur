@@ -33,6 +33,9 @@ form.addEventListener('submit', (event) => {
 })
 
 window.addEventListener('keydown', (event) => {
+  // While a name is being composed (an input method's own little
+  // window), Esc belongs to that, not to the panel.
+  if (event.isComposing) return
   if (event.key === 'Escape') {
     event.preventDefault()
     if (asked !== null) window.murmurFix.cancel(asked.id)

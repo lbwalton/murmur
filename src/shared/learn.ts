@@ -27,6 +27,31 @@ export const LEARN_WATCH_SECONDS = 60
 /** The most fixes murmur remembers while it counts them. */
 export const MAX_CANDIDATES = 300
 
+/** What counts as a change to a take. The watcher script is built from
+ *  these same numbers (src/main/learn/watch-script.ts), so the script
+ *  that reads the box and the code that reads its answer cannot drift. */
+export const CHANGE_RULES = {
+  /** A change is this many words a side at most, */
+  maxWords: MAX_FIX_WORDS,
+  /** and this many characters. */
+  maxChars: MAX_FIX_CHARS,
+  /** This many of the take's words must still be there, */
+  minStay: 3,
+  /** and this share of them: less, and the text is a different one. */
+  stayShare: 0.6,
+  /** More changes than this in 1 take is a rewrite, and teaches nothing. */
+  maxChanges: MAX_FIXES_PER_TAKE,
+  /** The words in a change's place are about as long as the words that
+   *  went: at most this many times their length, or this many characters
+   *  more, whichever is longer. A clause where a name stood is no fix. */
+  growTimes: 2,
+  growBy: 8
+} as const
+
+/** Whether what stands in a change's place is short enough to be a fix. */
+export const fitsInPlace = (heard: string, written: string): boolean =>
+  written.length <= Math.max(heard.length * CHANGE_RULES.growTimes, heard.length + CHANGE_RULES.growBy)
+
 export interface Fix {
   /** What the dictionary would hear in the transcript. */
   heard: string
@@ -115,7 +140,8 @@ const COMMON = new Set(
     'could should may might must what when who whom which why how all any some one won right write buy bye up ' +
     'out about into over after before again more most very just also only even still back down get got go going ' +
     'went come came make made take took see saw say said tell told think thought want need like time day week ' +
-    'year yes yeah ok okay please thanks thank hi hello ' +
+    'year yes yeah ok okay please thanks thank hi hello every everyday everyone anyone someone maybe cannot onto ' +
+    'well way part mr ms mrs dr ' +
     // Short forms: a rule on 1 of these would undo a not, or a have.
     'won\'t can\'t don\'t isn\'t aren\'t wasn\'t weren\'t doesn\'t didn\'t hasn\'t haven\'t hadn\'t wouldn\'t ' +
     'couldn\'t shouldn\'t i\'m i\'ve i\'ll i\'d you\'ll you\'ve you\'d he\'s she\'s we\'ve we\'ll they\'ve they\'ll ' +
@@ -139,13 +165,19 @@ const CLOSED = new Set(
   ).split(' ')
 )
 
+// A word as these lists hold it: lowercase, a straight apostrophe, and
+// without its digits or dots, so 10pm and p.m. are both pm.
 const everyday = (word: string): boolean => {
   const plain = word.toLowerCase().replace(/’/g, "'")
-  return COMMON.has(plain) || CLOSED.has(plain)
+  const bare = plain.replace(/[\d.]/g, '')
+  return COMMON.has(plain) || CLOSED.has(plain) || (bare !== '' && (COMMON.has(bare) || CLOSED.has(bare)))
 }
-const digits = (text: string): string => text.replace(/\D/g, '')
+/** The numbers in a run of words, as written: 1.5 and 15 are 2 numbers. */
+const numbers = (text: string): string => (text.match(/\d[\d.,]*\d|\d/g) ?? []).join(' ')
 
 const squash = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+/** A run of words with its casing and spaces taken out, and nothing else. */
+const loose = (text: string): string => text.toLowerCase().replace(/\s+/g, '')
 
 function distance(a: string, b: string): number {
   let previous = Array.from({ length: b.length + 1 }, (_, j) => j)
@@ -162,16 +194,43 @@ function distance(a: string, b: string): number {
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
 
+const startsUpper = (text: string): boolean => /^\p{Lu}/u.test(text)
+
+/**
+ * Does the written side show it is a name or a term, and not 1 plain
+ * word put in place of another? What the dictionary is for shows it: a
+ * digit, a mark of a term (node.js, C#), a capital inside (GitHub), or
+ * a capital the heard side did not have (shiv on, Siobhan), or a heard
+ * name written small on purpose (Burma, murmur). 2 sides that both
+ * simply start with a capital show nothing at the start of a sentence,
+ * which starts that way whatever the word (Enable, Disable). A plain
+ * lowercase word in place of another (enable
+ * for disable, minutes for hours) is a change of meaning far more often
+ * than a spelling, and is left to Fix a word, where the person says so.
+ */
+function looksLikeATerm(from: string, to: string, startsSentence: boolean): boolean {
+  if (/[\p{N}._+#&/]/u.test(to)) return true
+  if (/\p{Lu}/u.test(to.slice(1).replace(/\s+\p{Lu}/gu, ' '))) return true
+  if (startsUpper(from) !== startsUpper(to)) return true
+  // Both start with a capital: in the middle of a sentence that is a
+  // name (Coopernetties, Kubernetes), and at its start it is only how
+  // sentences begin.
+  return startsUpper(to) && !startsSentence
+}
+
 /**
  * Is this pair a spelling murmur could remember? The 2 sides differ,
  * each is a short name or term on 1 line, no number changes, neither
- * side is made of everyday words, days, months or numbers alone, and
- * the written side reads like the heard one: a different word
- * altogether (meeting for lunch) is an edit of what was meant, never a
- * spelling. This is a guess from the letters, and 2 real words that
- * look alike can pass it, which is why a fix is only ever suggested.
+ * side is made of everyday words, days, months or numbers alone, the
+ * written side shows it is a name or a term, and it reads like the
+ * heard one: a different word altogether (meeting for lunch) is an
+ * edit of what was meant, never a spelling. This is a guess from the
+ * letters, and 2 names that look alike can pass it, which is why a fix
+ * is only ever suggested. `where` says whether the heard words begin a
+ * sentence of the take, when that is known: a capital there is no sign
+ * of a name.
  */
-export function isSpellingFix(heard: string, written: string): boolean {
+export function isSpellingFix(heard: string, written: string, where: { startsSentence?: boolean } = {}): boolean {
   const from = heard.trim()
   const to = written.trim()
   if (from === '' || to === '' || from === to) return false
@@ -185,25 +244,25 @@ export function isSpellingFix(heard: string, written: string): boolean {
   // that took punctuation with it.
   if (fromWords[0].start !== 0 || fromWords[fromWords.length - 1].end !== from.length) return false
   if (toWords[0].start !== 0 || toWords[toWords.length - 1].end !== to.length) return false
+  // A rule on everyday words alone rewrites ordinary sentences, however
+  // small the change (every day, everyday).
   if (fromWords.every((word) => COMMON.has(word.text.toLowerCase().replace(/’/g, "'")))) return false
-  // A number is what was meant, never how it is spelled: the heard
-  // side needs a letter, and no digit may change (2025 for 2026, v2
-  // for v3, March 3 for March 13).
-  if (!/\p{L}/u.test(from) || digits(from) !== digits(to)) return false
-  const a = squash(from)
-  const b = squash(to)
-  if (a === '' || b === '') return false
-  // Casing and spacing alone (git hub, GitHub) is always a spelling.
-  if (a === b) return true
+  // A number is what was meant, never how it is spelled: both sides
+  // need a letter, and a number the take held may not change (2025
+  // for 2026, 1.5M for 15M). A number may appear where a word stood
+  // (GPT four, GPT-4).
+  if (!/\p{L}/u.test(from) || !/\p{L}/u.test(to)) return false
+  if (numbers(from) !== '' && numbers(from) !== numbers(to)) return false
+  // Casing and spacing alone (git hub, GitHub; monday, Monday) is
+  // always a spelling. Marks are not casing: re-sign is not resign.
+  if (loose(from) === loose(to)) return true
   // A pair that starts from, or lands on, nothing but everyday words,
   // days, months, numbers or directions changes what was meant.
   if (fromWords.every((word) => everyday(word.text)) || toWords.every((word) => everyday(word.text))) return false
-  // What the dictionary is for is names and terms, and those show it:
-  // a capital, a digit, or a mark inside (Siobhan, GPT-4, node.js). A
-  // plain lowercase word in place of another (enable for disable,
-  // minutes for hours) is a change of meaning far more often than a
-  // spelling, so it is left to Fix a word, where the person says so.
-  if (!/[\p{Lu}\p{N}'’._+#&/-]/u.test(to)) return false
+  if (!looksLikeATerm(from, to, where.startsSentence === true)) return false
+  const a = squash(from)
+  const b = squash(to)
+  if (a === '' || b === '') return false
   // A short word leaves little to go on (Jon for Tom): 1 letter apart
   // at most.
   if (Math.max(a.length, b.length) <= 4) return distance(a, b) <= 1
@@ -217,9 +276,11 @@ export function isSpellingFix(heard: string, written: string): boolean {
  * the heard words alone they are the answer, and when it changed them
  * the answer is the transcript's own words in the same place. Null
  * when the transcript holds neither, so no rule is ever suggested
- * that would not have changed the take it came from.
+ * that would not have changed the take it came from. `chosen` is a
+ * pair the person typed themselves (Fix a word): it is theirs to make,
+ * so the spelling guess is not asked of it.
  */
-export function heardInTranscript(raw: string, final: string, heard: string, written: string): string | null {
+export function heardInTranscript(raw: string, final: string, heard: string, written: string, chosen = false): string | null {
   const works = (from: string): boolean =>
     from.trim() !== '' && applyDictionary(raw, [{ from, to: written }]) !== raw
   if (works(heard)) return heard.trim()
@@ -242,59 +303,93 @@ export function heardInTranscript(raw: string, final: string, heard: string, wri
   // a wider change is cleanup's rewrite, and no place to learn from.
   if (!gap || gap.a[0] !== range[0] || gap.a[1] !== range[1]) return null
   const inRaw = span(raw, rawWords, gap.b)
-  return works(inRaw) && isSpellingFix(inRaw, written) ? inRaw : null
+  if (!works(inRaw)) return null
+  return chosen || isSpellingFix(inRaw, written) ? inRaw : null
 }
 
 /**
- * The spelling fixes a person made to a take: `final` is what murmur
- * typed, `edited` is how the same words read afterward, and `raw` is
- * the transcript the dictionary ran on. Most of the take must still be
- * there, word for word, or the text is a different one and teaches
- * nothing. Words added or deleted are never fixes: only a short run of
- * words replaced by another short run, between words that stayed.
+ * The places where a take was changed: `final` is what murmur typed
+ * and `edited` is how the same words read afterward. Each change is 1
+ * to 3 of murmur's words gone and 1 to 3 words in their place; words
+ * added or deleted are no change, nor is a longer run, nor a changed
+ * number. Null when most of the take is no longer there, which makes
+ * the text a different one. The watcher script holds this same rule in
+ * its own language, and a unit test runs both on the same texts.
  */
-export function fixesIn(rawText: string, finalText: string, editedText: string): Fix[] {
-  // 1 spelling of each letter: an accent typed as its own character
-  // is the same letter as the one that carries it.
-  const raw = rawText.normalize('NFC')
-  const final = finalText.normalize('NFC')
-  const edited = editedText.normalize('NFC')
-  if (final === edited) return []
+export function changesIn(final: string, edited: string): Array<[string, string]> | null {
   const before = tokens(final)
   const after = tokens(edited)
-  if (before.length === 0 || before.length > MAX_TAKE_WORDS || after.length > MAX_TAKE_WORDS * 2) return []
+  if (after.length === 0 || after.length > before.length * 2 + 200) return null
   const pairs = align(
     before.map((word) => word.text),
     after.map((word) => word.text)
   )
-  // The same text, still: at least 2 words and half the take unchanged.
-  if (pairs.length < 2 || pairs.length < before.length / 2) return []
-  const found: Fix[] = []
+  if (pairs.length < CHANGE_RULES.minStay || pairs.length < before.length * CHANGE_RULES.stayShare) return null
+  const found: Array<[string, string]> = []
   for (const gap of gaps(pairs, before.length, after.length)) {
-    const heardCount = gap.a[1] - gap.a[0]
-    const writtenCount = gap.b[1] - gap.b[0]
-    if (heardCount === 0 || writtenCount === 0) continue
-    // A longer run is a rewrite of that part: nothing to learn there,
-    // and the rest of the take can still teach.
-    if (heardCount > MAX_FIX_WORDS || writtenCount > MAX_FIX_WORDS) continue
+    const gone = gap.a[1] - gap.a[0]
+    const came = gap.b[1] - gap.b[0]
+    if (gone < 1 || gone > CHANGE_RULES.maxWords || came < 1 || came > CHANGE_RULES.maxWords) continue
     const heard = span(final, before, gap.a)
     const written = span(edited, after, gap.b)
-    if (!isSpellingFix(heard, written)) continue
+    if (heard.length > CHANGE_RULES.maxChars || written.length > CHANGE_RULES.maxChars || CONTROL.test(written)) continue
+    if (!fitsInPlace(heard, written)) continue
+    if (numbers(heard) !== '' && numbers(heard) !== numbers(written)) continue
+    found.push([heard, written])
+  }
+  return found.length > CHANGE_RULES.maxChanges ? [] : found
+}
+
+/** Whether these words begin the take, or a sentence of it. */
+function startsSentence(final: string, heard: string): boolean {
+  const at = final.indexOf(heard)
+  if (at === -1) return false
+  const before = final.slice(0, at).trimEnd()
+  return before === '' || /[.!?:\n]$/.test(before)
+}
+
+/**
+ * The spelling fixes among a take's changes, as the dictionary would
+ * have to hear them: `raw` is the transcript the dictionary ran on,
+ * `final` what murmur typed, and each pair a change the watcher found.
+ * A change that is not a spelling, or that no rule on the transcript
+ * would have made, is dropped; a fix made twice counts once.
+ */
+export function fixesFromChanges(rawText: string, finalText: string, pairs: ReadonlyArray<readonly [string, string]>): Fix[] {
+  if (pairs.length === 0 || pairs.length > CHANGE_RULES.maxChanges) return []
+  // 1 spelling of each letter: an accent typed as its own character
+  // is the same letter as the one that carries it.
+  const raw = rawText.normalize('NFC')
+  const final = finalText.normalize('NFC')
+  const found: Fix[] = []
+  for (const pair of pairs) {
+    const heard = pair[0].normalize('NFC')
+    const written = pair[1].normalize('NFC')
+    if (!isSpellingFix(heard, written, { startsSentence: startsSentence(final, heard) })) continue
     const inRaw = heardInTranscript(raw, final, heard, written)
     if (inRaw === null) continue
     if (!found.some((fix) => fix.heard.toLowerCase() === inRaw.toLowerCase() && fix.written === written)) {
       found.push({ heard: inRaw, written })
     }
   }
-  return found.length > MAX_FIXES_PER_TAKE ? [] : found
+  return found
+}
+
+/** The spelling fixes a person made to a take, from the 2 texts whole:
+ *  what the watcher and the main process do between them. */
+export function fixesIn(raw: string, final: string, edited: string): Fix[] {
+  if (final === edited) return []
+  if (tokens(final).length > MAX_TAKE_WORDS) return []
+  const pairs = changesIn(final.normalize('NFC'), edited.normalize('NFC'))
+  return pairs === null ? [] : fixesFromChanges(raw, final, pairs)
 }
 
 /** A take worth following: long enough to tell a fix from a new
- *  message (2 words that stay and 1 that changes), and short enough to
+ *  message (3 words that stay and 1 that changes), and short enough to
  *  read. */
 export function worthWatching(final: string): boolean {
   const words = tokens(final).length
-  return words >= 3 && words <= MAX_TAKE_WORDS
+  return words > CHANGE_RULES.minStay && words <= MAX_TAKE_WORDS
 }
 
 /** What became of a pair handed to the dictionary. */
@@ -382,6 +477,9 @@ export function usableCandidates(list: unknown): Candidate[] {
     if (typeof item !== 'object' || item === null) continue
     const { heard, written, count, first, last, dismissed } = item as Record<string, unknown>
     if (typeof heard !== 'string' || typeof written !== 'string') continue
+    // A pair is kept as it would be matched: a stray space on a stored
+    // side would make it a pair no answer could name.
+    if (heard !== heard.trim() || written !== written.trim()) continue
     if (!isSpellingFix(heard, written)) continue
     if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) continue
     if (typeof first !== 'number' || typeof last !== 'number' || !Number.isFinite(first) || !Number.isFinite(last)) continue
@@ -407,9 +505,12 @@ export function countFixes(list: readonly Candidate[], fixes: readonly Fix[], no
   }
   if (next.length <= MAX_CANDIDATES) return next
   // A no is kept before a count: a turned down pair pushed out by newer
-  // fixes would be asked about again.
-  const rank = (candidate: Candidate): number => (candidate.dismissed === true ? 1 : 0)
-  return [...next].sort((a, b) => rank(b) - rank(a) || b.last - a.last).slice(0, MAX_CANDIDATES)
+  // fixes would be asked about again. Half the room, so that a long
+  // list of noes can never keep every new fix out.
+  const newest = (list: Candidate[]): Candidate[] => [...list].sort((a, b) => b.last - a.last)
+  const noes = newest(next.filter((candidate) => candidate.dismissed === true)).slice(0, MAX_CANDIDATES / 2)
+  const counts = newest(next.filter((candidate) => candidate.dismissed !== true)).slice(0, MAX_CANDIDATES - noes.length)
+  return [...noes, ...counts]
 }
 
 /** Forget fixes on the schedule Keep history for sets for words: none

@@ -104,9 +104,13 @@ function createFixWindow(): BrowserWindow {
     asking?.answer(null)
     if (!win.isDestroyed()) win.destroy()
   })
+  // A page that fails, dies, or is closed before it loads has not
+  // loaded: the wait for it must end, or the chord would hang on it.
   loaded = new Promise((resolve) => {
     win.webContents.once('did-finish-load', () => resolve(true))
     win.webContents.once('did-fail-load', () => resolve(false))
+    win.webContents.once('render-process-gone', () => resolve(false))
+    win.once('closed', () => resolve(false))
   })
   const devServer = devRendererUrl()
   if (devServer) void win.loadURL(`${devServer}/fix/index.html`)
@@ -140,7 +144,12 @@ type Answer = { written: string } | 'closed' | 'nofocus'
 async function askInPanel(heard: string): Promise<Answer> {
   if (!fixWindow || fixWindow.isDestroyed()) fixWindow = createFixWindow()
   const win = fixWindow
-  if (!(await loaded) || win.isDestroyed()) return 'nofocus'
+  if (!(await loaded) || win.isDestroyed()) {
+    // A panel whose page did not load is thrown away, so the next press
+    // tries with a new one.
+    if (!win.isDestroyed()) win.destroy()
+    return 'nofocus'
+  }
   const id = ++sequence
   return new Promise((resolve) => {
     const timer = setTimeout(() => asking?.id === id && asking.answer(null), ASK_TIMEOUT_MS)
@@ -188,7 +197,9 @@ async function forDictionary(fix: Fix): Promise<Fix> {
     const { eventToPaste } = await import('../history')
     const last = eventToPaste()
     if (last && last.rawText !== '' && last.finalText.includes(fix.heard)) {
-      const inTranscript = heardInTranscript(last.rawText, last.finalText, fix.heard, fix.written)
+      // The person typed this pair, so it is theirs to make: only the
+      // heard side is looked for, never judged.
+      const inTranscript = heardInTranscript(last.rawText, last.finalText, fix.heard, fix.written, true)
       if (inTranscript !== null) return { heard: inTranscript, written: fix.written }
     }
   } catch {
@@ -308,8 +319,10 @@ async function runFix(deps: FixDeps): Promise<FixOutcome> {
 
 /** The quit path: a window left alive would hold the quit open. */
 export function destroyFixWindow(): void {
-  asking?.answer(null)
+  // The window goes first: its closing answers an open question as
+  // closed, never as a panel that could not get the keyboard.
   if (fixWindow && !fixWindow.isDestroyed()) fixWindow.destroy()
+  asking?.answer(null)
   fixWindow = null
 }
 

@@ -7,7 +7,8 @@
 // follows that 1 box and no other.
 //
 // What it will and will not do, in order:
-//  - A password box is refused by its kind, before its text is read.
+//  - A password box is refused by its kind, before its text is read,
+//    and so is a box whose kind cannot be asked.
 //  - A box that is not a text box, or belongs to murmur, is refused.
 //  - The box must hold the exact words murmur just typed, once. If it
 //    does not, nothing is watched.
@@ -15,11 +16,12 @@
 //    still has focus in the app that was in front, and only while
 //    everything outside murmur's words is unchanged. When focus is
 //    found gone it reads the box 1 last time, and stops.
-//  - What it prints is murmur's own words as they read now, and nothing
-//    else of the box. Text typed before or after them stays in this
-//    script; where the first or last word murmur typed was itself
-//    changed, the 1 to 3 words that took its place are printed, and a
-//    longer run there is not.
+//  - It prints no text of the box at all except changes: where 1 to 3
+//    of murmur's words are gone and 1 to 3 words stand in their place,
+//    it prints those 2 short runs, each 40 characters at most and the
+//    new one about as long as the old, and never a changed number. Words murmur typed that are still there,
+//    words added with nothing taken away, and everything typed before,
+//    after or between them never leave this script.
 //  - It stops for good the moment most of murmur's words are gone: a
 //    box that was emptied, or sent, or filled with something else is
 //    never read again.
@@ -28,14 +30,14 @@
 //
 // The words to look for arrive on standard input, never in the command
 // line, where other programs on the computer could read them.
-
-import { WORD } from '../../shared/learn'
+import { CHANGE_RULES, WORD } from '../../shared/learn'
 
 /** Lines the watcher prints, 1 JSON object each. */
 export type WatchLine =
   | { s: 'skip'; why: 'untrusted' | 'nofocus' | 'own' | 'kind' | 'secure' | 'novalue' | 'big' | 'notfound' }
   | { s: 'watch' }
-  | { s: 'span'; t: string }
+  /** The changes as they stand now: [murmur's words, the words in their place]. */
+  | { s: 'fixes'; f: Array<[string, string]> }
   | { s: 'end'; why: 'focus' | 'gone' | 'anchor' | 'time' }
 
 /** The largest box the watcher reads, in characters. */
@@ -49,9 +51,14 @@ ObjC.import("ApplicationServices")
 ObjC.bindFunction('AXUIElementCopyAttributeValue', ['int', ['void *', 'id', 'void **']])
 ObjC.bindFunction('CFEqual', ['bool', ['void *', 'void *']])
 
-function attr(el, name) {
+// 1 question of 1 element: the answer, and the system's error code.
+function ask(el, name) {
   var ref = Ref()
-  return $.AXUIElementCopyAttributeValue(el, $(name), ref) === 0 ? ref[0] : null
+  var err = $.AXUIElementCopyAttributeValue(el, $(name), ref)
+  return { err: err, value: err === 0 ? ref[0] : null }
+}
+function attr(el, name) {
+  return ask(el, name).value
 }
 function text(value) {
   try {
@@ -82,9 +89,10 @@ function inFront(app) {
     return false
   }
 }
-// A word, by the rule src/shared/learn.ts uses (a unit test holds the
-// 2 to the same text).
+// What a word is and what counts as a change: the rules of
+// src/shared/learn.ts, the same text (a unit test holds the 2 together).
 var WORD = WORD_SOURCE
+var RULES = RULES_SOURCE
 function wordsOf(value) {
   var out = []
   var match
@@ -115,24 +123,44 @@ function shared(a, b) {
   }
   return pairs
 }
-// The part of the stretch that is still murmur's take, or null when
-// most of the take is gone. Words typed before the take's first word
-// or after its last never leave: the stretch is cut at the first and
-// last word that stayed. The 1 exception is an edge word murmur typed
-// that was itself changed: up to 3 words in its place are kept, since
-// that is what a fix looks like.
-function stillTake(take, stretch) {
+// The numbers in a run of words, as written.
+function numbers(run) {
+  return (run.match(/\d[\d.,]*\d|\d/g) || []).join(' ')
+}
+// The changes between the take and the stretch of the box where it
+// was: null when most of the take is gone, otherwise each place where
+// 1 to 3 of murmur's words are missing and 1 to 3 words stand instead.
+// Nothing else of the stretch is ever returned.
+function changes(takeText, take, stretch) {
   var now = wordsOf(stretch)
   if (now.length === 0 || now.length > take.length * 2 + 200) return null
   var pairs = shared(take, now)
-  if (pairs.length < 2 || pairs.length * 2 < take.length) return null
-  var first = pairs[0]
-  var last = pairs[pairs.length - 1]
-  var lead = first[1]
-  var tail = now.length - 1 - last[1]
-  var from = first[0] > 0 && lead > 0 && lead <= 3 ? now[0].s : now[first[1]].s
-  var to = last[0] < take.length - 1 && tail > 0 && tail <= 3 ? now[now.length - 1].e : now[last[1]].e
-  return stretch.slice(from, to)
+  if (pairs.length < RULES.minStay || pairs.length < take.length * RULES.stayShare) return null
+  var out = []
+  var ai = 0
+  var bi = 0
+  for (var k = 0; k <= pairs.length; k++) {
+    var pa = k < pairs.length ? pairs[k][0] : take.length
+    var pb = k < pairs.length ? pairs[k][1] : now.length
+    var gone = pa - ai
+    var came = pb - bi
+    if (gone >= 1 && gone <= RULES.maxWords && came >= 1 && came <= RULES.maxWords) {
+      var heard = takeText.slice(take[ai].s, take[pa - 1].e)
+      var written = stretch.slice(now[bi].s, now[pb - 1].e)
+      var number = numbers(heard)
+      var plain = heard.length <= RULES.maxChars && written.length <= RULES.maxChars && !/[\u0000-\u001f\u007f-\u009f]/.test(written)
+      // What stands in a change's place is about as long as what went:
+      // a clause where a name stood is no fix.
+      plain = plain && written.length <= Math.max(heard.length * RULES.growTimes, heard.length + RULES.growBy)
+      // A changed number is what was meant, never a spelling, and never
+      // murmur's to carry.
+      if (plain && (number === '' || number === numbers(written))) out.push([heard, written])
+    }
+    ai = pa + 1
+    bi = pb + 1
+  }
+  // More changes than a person makes to spellings is a rewrite.
+  return out.length > RULES.maxChanges ? [] : out
 }
 function count(haystack, needle) {
   var n = 0
@@ -157,8 +185,12 @@ function run() {
   var app = $.AXUIElementCreateApplication(pid)
   var box = attr(app, 'AXFocusedUIElement')
   if (box === null) return say({ s: 'skip', why: 'nofocus' })
-  // The kind of box, before a character of it is read.
-  if (text(attr(box, 'AXSubrole')) === 'AXSecureTextField') return say({ s: 'skip', why: 'secure' })
+  // The kind of box, before a character of it is read. A box that
+  // says it has no kind (-25212) or knows no such question (-25205) is
+  // no password box; a box that cannot be asked is treated as one.
+  var kind = ask(box, 'AXSubrole')
+  if (kind.err !== 0 && kind.err !== -25212 && kind.err !== -25205) return say({ s: 'skip', why: 'secure' })
+  if (text(kind.value) === 'AXSecureTextField') return say({ s: 'skip', why: 'secure' })
   var role = text(attr(box, 'AXRole'))
   if (role !== 'AXTextArea' && role !== 'AXTextField' && role !== 'AXComboBox') return say({ s: 'skip', why: 'kind' })
 
@@ -182,11 +214,11 @@ function run() {
   var before = value.slice(0, at)
   var after = value.slice(at + words.length)
   var take = wordsOf(words)
+  // A take too short to tell a fix from a new message is not followed.
+  if (take.length <= RULES.minStay || changes(words, take, words) === null) return say({ s: 'skip', why: 'notfound' })
   var most = words.length * 4 + 400
-  // The take as it would be printed untouched, so a take nobody
-  // touches prints nothing.
-  var last = stillTake(take, words)
-  if (last === null) return say({ s: 'skip', why: 'notfound' })
+  var seen = value
+  var last = '[]'
   say({ s: 'watch' })
 
   var started = Date.now()
@@ -198,17 +230,28 @@ function run() {
     // included: a fix made just before clicking away is still seen.
     value = text(attr(box, 'AXValue'))
     if (value === null) return say({ s: 'end', why: 'gone' })
-    var fits = value.length >= before.length + after.length && value.length <= maxBox
-    if (!fits || value.slice(0, before.length) !== before || value.slice(value.length - after.length) !== after) {
-      return say({ s: 'end', why: 'anchor' })
-    }
-    var kept = stillTake(take, value.slice(before.length, value.length - after.length).slice(0, most))
-    // Most of the take is gone: emptied, sent, or another text. Never
-    // read this box again.
-    if (kept === null) return say({ s: 'end', why: 'anchor' })
-    if (kept !== last) {
-      last = kept
-      say({ s: 'span', t: kept })
+    if (value !== seen) {
+      seen = value
+      var fits = value.length >= before.length + after.length && value.length <= maxBox
+      if (!fits || value.slice(0, before.length) !== before || value.slice(value.length - after.length) !== after) {
+        return say({ s: 'end', why: 'anchor' })
+      }
+      var stretch = value.slice(before.length, value.length - after.length)
+      if (stretch.length > most) {
+        // Cut between words, never inside 1.
+        stretch = stretch.slice(0, most)
+        var edge = stretch.search(/\s\S*$/)
+        if (edge > 0) stretch = stretch.slice(0, edge)
+      }
+      var changed = changes(words, take, stretch)
+      // Most of the take is gone: emptied, sent, or another text. Never
+      // read this box again.
+      if (changed === null) return say({ s: 'end', why: 'anchor' })
+      var key = JSON.stringify(changed)
+      if (key !== last) {
+        last = key
+        say({ s: 'fixes', f: changed })
+      }
     }
     if (!focused) return say({ s: 'end', why: 'focus' })
     if (Date.now() - started >= seconds * 1000) return say({ s: 'end', why: 'time' })
@@ -216,12 +259,17 @@ function run() {
 }
 `
 
-/** The script as osascript runs it, with the 1 rule for what a word is
- *  that the rest of murmur uses. */
-export const WATCH_SCRIPT = SCRIPT.replace('WORD_SOURCE', () => String(WORD))
+/** The script as osascript runs it, with the rules for what a word is
+ *  and what counts as a change that the rest of murmur uses. */
+export const WATCH_SCRIPT = SCRIPT.replace('WORD_SOURCE', () => String(WORD)).replace('RULES_SOURCE', () => JSON.stringify(CHANGE_RULES))
+
+const SKIPS = new Set(['untrusted', 'nofocus', 'own', 'kind', 'secure', 'novalue', 'big', 'notfound'])
+const ENDS = new Set(['focus', 'gone', 'anchor', 'time'])
 
 /** Read 1 printed line. Anything that is not a line of the watcher's
- *  is no line: the script's output is trusted for nothing. */
+ *  is no line: the script's output is trusted for nothing, and a list
+ *  of changes longer or wider than the script may print is refused
+ *  whole. */
 export function parseWatchLine(line: string): WatchLine | null {
   let parsed: unknown
   try {
@@ -230,13 +278,20 @@ export function parseWatchLine(line: string): WatchLine | null {
     return null
   }
   if (typeof parsed !== 'object' || parsed === null) return null
-  const { s, why, t } = parsed as Record<string, unknown>
+  const { s, why, f } = parsed as Record<string, unknown>
   if (s === 'watch') return { s }
-  if (s === 'span' && typeof t === 'string') return { s, t }
   if (s === 'skip' && typeof why === 'string' && SKIPS.has(why)) return { s, why } as WatchLine
   if (s === 'end' && typeof why === 'string' && ENDS.has(why)) return { s, why } as WatchLine
+  if (s === 'fixes' && Array.isArray(f) && f.length <= CHANGE_RULES.maxChanges) {
+    const pairs: Array<[string, string]> = []
+    for (const pair of f as unknown[]) {
+      if (!Array.isArray(pair) || pair.length !== 2) return null
+      const [heard, written] = pair as unknown[]
+      if (typeof heard !== 'string' || typeof written !== 'string') return null
+      if (heard.length > CHANGE_RULES.maxChars || written.length > CHANGE_RULES.maxChars) return null
+      pairs.push([heard, written])
+    }
+    return { s, f: pairs }
+  }
   return null
 }
-
-const SKIPS = new Set(['untrusted', 'nofocus', 'own', 'kind', 'secure', 'novalue', 'big', 'notfound'])
-const ENDS = new Set(['focus', 'gone', 'anchor', 'time'])

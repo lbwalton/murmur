@@ -269,6 +269,38 @@ describe('answering the panel', () => {
     mocks.loads = false
     expect(await fixWord()).toBe('nofocus')
     expect(mocks.insertText).not.toHaveBeenCalled()
+    // A panel whose page did not load is thrown away: the next press
+    // makes a new one, and works.
+    const failed = panel()
+    expect(failed.destroyed).toBe(true)
+    mocks.loads = true
+    const run = fixWord()
+    await vi.waitFor(() => expect(panel()?.shown).toBe(true))
+    expect(panel()).not.toBe(failed)
+    mocks.on.get('fix:save')?.({}, asked().id, 'Siobhan')
+    expect(await run).toBe('fixed')
+  })
+
+  it('does not hang on a page that dies before it loads', async () => {
+    mocks.loads = false
+    // Neither loaded nor failed: the page's process is gone.
+    const quiet = vi.spyOn(globalThis, 'queueMicrotask').mockImplementationOnce(() => undefined)
+    const run = fixWord()
+    await settle(10)
+    panel().webContents.emit('render-process-gone')
+    expect(await run).toBe('nofocus')
+    quiet.mockRestore()
+    expect(await fixWord({ ask: async () => 'Siobhan' })).toBe('fixed')
+  })
+
+  it('saves the transcript\'s words for a pair the person typed, whatever its casing', async () => {
+    mocks.last = { rawText: 'deploy it on cooper netties tonight please', finalText: 'Deploy it on Coopernetties tonight, please.' }
+    for (const typed of ['kubernetes', 'k8s', 'K8s']) {
+      mocks.teachPair.mockClear()
+      selected('Coopernetties')
+      expect(await fixWord({ ask: async () => typed })).toBe('fixed')
+      expect(mocks.teachPair).toHaveBeenCalledWith({ heard: 'cooper netties', written: typed }, undefined)
+    }
   })
 
   it('opens a new panel after its page dies, and answers the question that was open', async () => {

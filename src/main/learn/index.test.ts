@@ -68,7 +68,8 @@ const { updateSettings } = await import('../settings')
 const { WATCH_SCRIPT } = await import('./watch-script')
 
 const take = { raw: 'i met shiv on at the cafe today', final: 'I met shiv on at the cafe today. ' }
-const fixed = 'I met Siobhan at the cafe today.'
+/** What the watcher prints for the fix: murmur's words that went, and the word in their place. */
+const fixed: Array<[string, string]> = [['shiv on', 'Siobhan']]
 const platform = process.platform
 let dir = ''
 let children: FakeChild[] = []
@@ -158,14 +159,14 @@ describe('what a watch teaches', () => {
   it('counts the fix when the watch ends, suggests it after 2 takes, and logs counts and no words', async () => {
     watchTake(take)
     say(children[0], { s: 'watch' })
-    say(children[0], { s: 'span', t: 'I met Siob at the cafe today.' })
-    say(children[0], { s: 'span', t: fixed })
+    say(children[0], { s: 'fixes', f: [['shiv on', 'Siob']] })
+    say(children[0], { s: 'fixes', f: fixed })
     say(children[0], { s: 'end', why: 'focus' })
     await end(children[0])
     expect(state().suggestions).toEqual([])
 
     watchTake(take)
-    say(children[1], { s: 'span', t: fixed })
+    say(children[1], { s: 'fixes', f: fixed })
     say(children[1], { s: 'end', why: 'anchor' })
     await end(children[1])
     expect(state().suggestions).toEqual([{ heard: 'shiv on', written: 'Siobhan', count: 2 }])
@@ -190,7 +191,7 @@ describe('what a watch teaches', () => {
     say(children[1], { s: 'skip', why: 'secure' })
     await end(children[1])
     watchTake(take)
-    children[2].stdout.write('{"s":"span"}\nnot json\n{"s":"other","t":"I met Siobhan at the cafe today."}\n')
+    children[2].stdout.write('{"s":"fixes"}\nnot json\n{"s":"span","t":"I met Siobhan at the cafe today."}\n{"s":"other","f":[["shiv on","Siobhan"]]}\n')
     await end(children[2])
     watchTake(take)
     await end(children[3])
@@ -200,10 +201,28 @@ describe('what a watch teaches', () => {
     expect(logged()).toContain('why=secure fixes=0')
   })
 
-  it('drops a stretch longer than a fixed take could be', async () => {
+  it('takes no list of changes wider or longer than the watcher may print, and forgets a change that was undone', async () => {
     for (const child of [0, 1]) {
       watchTake(take)
-      say(children[child], { s: 'span', t: `${fixed} ${'more words here '.repeat(60)}` })
+      children[child].stdout.write(`${JSON.stringify({ s: 'fixes', f: [['shiv on', `Siobhan ${'x'.repeat(40)}`]] })}\n`)
+      children[child].stdout.write(`${JSON.stringify({ s: 'fixes', f: [['a', 'A'], ['b', 'B'], ['c', 'C'], ['d', 'D']] })}\n`)
+      await end(children[child])
+    }
+    expect(state().suggestions).toEqual([])
+    for (const child of [2, 3]) {
+      watchTake(take)
+      say(children[child], { s: 'fixes', f: fixed })
+      say(children[child], { s: 'fixes', f: [] })
+      await end(children[child])
+    }
+    expect(state().suggestions).toEqual([])
+  })
+
+  it('counts only a change that is a spelling the transcript would have taken', async () => {
+    for (const child of [0, 1]) {
+      watchTake(take)
+      // A meaning change, an everyday word, and words the take never held.
+      say(children[child], { s: 'fixes', f: [['cafe', 'office'], ['today', 'Thursday'], ['zebra crossing', 'Zebra']] })
       await end(children[child])
     }
     expect(state().suggestions).toEqual([])
@@ -211,12 +230,12 @@ describe('what a watch teaches', () => {
 
   it('ends the watch on 1 take when the next is pasted, and keeps what the first one taught', async () => {
     watchTake(take)
-    say(children[0], { s: 'span', t: fixed })
+    say(children[0], { s: 'fixes', f: fixed })
     await settle()
     watchTake(take)
     expect(children[0].kill).toHaveBeenCalledTimes(1)
     expect(mocks.spawn).toHaveBeenCalledTimes(2)
-    say(children[1], { s: 'span', t: fixed })
+    say(children[1], { s: 'fixes', f: fixed })
     await end(children[1])
     // The first process closing late teaches nothing twice.
     children[0].emit('close', null)
@@ -228,10 +247,10 @@ describe('what a watch teaches', () => {
 describe('stopping', () => {
   it('learns nothing from a watch cut off by turning the switch off, and forgets what was counted', async () => {
     watchTake(take)
-    say(children[0], { s: 'span', t: fixed })
+    say(children[0], { s: 'fixes', f: fixed })
     await end(children[0])
     watchTake(take)
-    say(children[1], { s: 'span', t: fixed })
+    say(children[1], { s: 'fixes', f: fixed })
     await settle()
     updateSettings({ learn: { watch: false } } as never)
     expect(children[1].kill).toHaveBeenCalled()
@@ -240,17 +259,17 @@ describe('stopping', () => {
     expect(state().suggestions).toEqual([])
     // And what it had counted is gone: 1 more take is the first again.
     watchTake(take)
-    say(children[2], { s: 'span', t: fixed })
+    say(children[2], { s: 'fixes', f: fixed })
     await end(children[2])
     expect(state().suggestions).toEqual([])
   })
 
   it('lets go of a box when Keep history for is set to keep no text, and keeps no fix', async () => {
     watchTake(take)
-    say(children[0], { s: 'span', t: fixed })
+    say(children[0], { s: 'fixes', f: fixed })
     await end(children[0])
     watchTake(take)
-    say(children[1], { s: 'span', t: fixed })
+    say(children[1], { s: 'fixes', f: fixed })
     await settle()
     updateSettings({ history: { retentionDays: -1 } } as never)
     expect(children[1].kill).toHaveBeenCalled()
@@ -264,16 +283,16 @@ describe('stopping', () => {
 
   it('learns nothing from a watch cut off by quitting, and Clear all forgets the fixes', async () => {
     watchTake(take)
-    say(children[0], { s: 'span', t: fixed })
+    say(children[0], { s: 'fixes', f: fixed })
     await end(children[0])
     watchTake(take)
-    say(children[1], { s: 'span', t: fixed })
+    say(children[1], { s: 'fixes', f: fixed })
     await settle()
     stopWatching()
     expect(children[1].kill).toHaveBeenCalled()
     expect(state().suggestions).toEqual([])
     watchTake(take)
-    say(children[2], { s: 'span', t: fixed })
+    say(children[2], { s: 'fixes', f: fixed })
     await end(children[2])
     expect(state().suggestions).toHaveLength(1)
     clearLearned()
@@ -285,7 +304,7 @@ describe('answering a suggestion', () => {
   const suggest = async (): Promise<void> => {
     for (const child of [0, 1]) {
       watchTake(take)
-      say(children[child], { s: 'span', t: fixed })
+      say(children[child], { s: 'fixes', f: fixed })
       await end(children[child])
     }
   }
@@ -311,7 +330,7 @@ describe('answering a suggestion', () => {
     expect(state().suggestions).toEqual([])
     expect((mocks.settings as Settings).dictionary).toEqual([])
     watchTake(take)
-    say(children[2], { s: 'span', t: fixed })
+    say(children[2], { s: 'fixes', f: fixed })
     await end(children[2])
     expect(state().suggestions).toEqual([])
   })

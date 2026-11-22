@@ -75,8 +75,10 @@ describe('fixesIn: the spellings a person fixed in a take', () => {
   })
 
   it('leaves a changed date or number alone, and still learns the name beside it', () => {
-    const said = 'shiv on moved the launch to Tuesday the 15 of June'
-    expect(fixesIn(said, said, 'Siobhan moved the launch to Thursday the 16 of July')).toEqual([{ heard: 'shiv on', written: 'Siobhan' }])
+    const said = 'I heard that shiv on moved the product launch for the whole team to Tuesday the 15 of June'
+    expect(fixesIn(said, said, 'I heard that Siobhan moved the product launch for the whole team to Thursday the 16 of July')).toEqual([
+      { heard: 'shiv on', written: 'Siobhan' }
+    ])
   })
 
   it('leaves everyday words alone, however they were changed', () => {
@@ -85,10 +87,10 @@ describe('fixesIn: the spellings a person fixed in a take', () => {
   })
 
   it('skips a rewritten stretch and still learns from the rest', () => {
-    const said = 'tell shiv on that the quarterly numbers look fine to me'
-    expect(fixesIn(said, said, 'tell Siobhan that everything in the finance report this quarter looks fine to me')).toEqual([
-      { heard: 'shiv on', written: 'Siobhan' }
-    ])
+    const said = 'please tell shiv on that the quarterly numbers look fine to me and to the rest of the board'
+    expect(
+      fixesIn(said, said, 'please tell Siobhan that everything in the finance report this quarter looks fine to me and to the rest of the board')
+    ).toEqual([{ heard: 'shiv on', written: 'Siobhan' }])
   })
 
   it('counts a fix made twice in 1 take once', () => {
@@ -219,6 +221,52 @@ describe('isSpellingFix', () => {
     expect(isSpellingFix('John', 'Jon')).toBe(true)
   })
 
+  it('refuses the meaning changes a second review got through the first rules', () => {
+    for (const [heard, written] of [
+      ['p.m', 'a.m'],
+      ['10pm', '10am'],
+      ['1.5M', '15M'],
+      ['Well', "We'll"],
+      ['every day', 'everyday'],
+      ['Mr', 'Ms'],
+      ['resign', 're-sign'],
+      ['a few', '3']
+    ]) {
+      expect(isSpellingFix(heard, written), `${heard} for ${written}`).toBe(false)
+    }
+    // A capital at the start of a sentence is how sentences begin, not a
+    // sign of a name; in the middle of 1 it is.
+    expect(isSpellingFix('Enable', 'Disable', { startsSentence: true })).toBe(false)
+    expect(isSpellingFix('Shiv on', 'Siobhan', { startsSentence: true })).toBe(false)
+    expect(isSpellingFix('Coopernetties', 'Kubernetes', { startsSentence: false })).toBe(true)
+    const said = 'Enable the new flag for the whole team before the release goes out'
+    expect(fixesIn(said, said, said.replace('Enable', 'Disable'))).toEqual([])
+  })
+
+  it('takes the names and terms a person dictating would fix', () => {
+    for (const [heard, written] of [
+      ['shiv on', 'Siobhan'],
+      ['cooper netties', 'Kubernetes'],
+      ['git hub', 'GitHub'],
+      ['open ai', 'OpenAI'],
+      ['j son', 'JSON'],
+      ['mac book', 'MacBook'],
+      ['anthropic', 'Anthropic'],
+      ['obrien', "O'Brien"],
+      ['mary jane', 'Mary-Jane'],
+      ['nasa', 'NASA'],
+      // A name murmur heard, written small on purpose.
+      ['Burma', 'murmur'],
+      // A number may appear where a word stood.
+      ['GPT four', 'GPT-4'],
+      ['node js', 'Node.js']
+    ]) {
+      expect(isSpellingFix(heard, written), `${heard} for ${written}`).toBe(true)
+    }
+    const said = 'I use Burma every day to write my notes and my emails'
+    expect(fixesIn(said, said, said.replace('Burma', 'murmur'))).toEqual([{ heard: 'Burma', written: 'murmur' }])
+  })
+
   it('refuses a side that took punctuation with it', () => {
     expect(isSpellingFix('shiv on,', 'Siobhan')).toBe(false)
     expect(isSpellingFix('(shiv on', 'Siobhan')).toBe(false)
@@ -244,9 +292,10 @@ describe('the fix a word chord (US-184)', () => {
 })
 
 describe('worthWatching', () => {
-  it('follows a take of 3 to 400 words, and no other', () => {
+  it('follows a take of 4 to 400 words, and no other', () => {
     expect(worthWatching('shiv on')).toBe(false)
-    expect(worthWatching('hi shiv on')).toBe(true)
+    expect(worthWatching('hi shiv on')).toBe(false)
+    expect(worthWatching('hi shiv on there')).toBe(true)
     expect(worthWatching(Array.from({ length: 400 }, () => 'word').join(' '))).toBe(true)
     expect(worthWatching(Array.from({ length: 401 }, () => 'word').join(' '))).toBe(false)
     expect(worthWatching('  ...  ')).toBe(false)
@@ -311,6 +360,21 @@ describe('counting fixes until they are worth a question', () => {
     expect(list).toHaveLength(MAX_CANDIDATES)
     expect(list.some((c) => c.heard === 'nayme0')).toBe(false)
     expect(list.some((c) => c.heard === `nayme${MAX_CANDIDATES + 4}`)).toBe(true)
+  })
+
+  it('always leaves room for new fixes, however many pairs were turned down', () => {
+    let list: Candidate[] = []
+    for (let n = 0; n < MAX_CANDIDATES; n++) {
+      list = countFixes(list, [{ heard: `nayme${n}`, written: `Name${n}` }], n)
+      list = settleCandidate(list, { heard: `nayme${n}`, written: `Name${n}` }, 'dismissed')
+    }
+    list = countFixes(list, [{ heard: 'shiv on', written: 'Siobhan' }], MAX_CANDIDATES + 1)
+    expect(list.length).toBeLessThanOrEqual(MAX_CANDIDATES)
+    expect(list.some((c) => c.heard === 'shiv on')).toBe(true)
+  })
+
+  it('drops a stored pair with a stray space, which no answer could name', () => {
+    expect(usableCandidates([{ heard: ' shiv on', written: 'Siobhan', count: 2, first: 1, last: 2 }])).toEqual([])
   })
 
   it('trusts nothing in a stored list', () => {

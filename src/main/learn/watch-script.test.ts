@@ -6,7 +6,7 @@
 // script would print is collected, and that is all that ever leaves it.
 import vm from 'node:vm'
 import { describe, expect, it } from 'vitest'
-import { WORD } from '../../shared/learn'
+import { CHANGE_RULES, WORD, changesIn } from '../../shared/learn'
 import { MAX_BOX_CHARS, WATCH_SCRIPT, type WatchLine, parseWatchLine } from './watch-script'
 
 interface Box {
@@ -72,7 +72,8 @@ function run(world: World, input = config()): { lines: WatchLine[]; printed: str
         }
         const box = element as Box
         if (attribute === 'AXRole') return (ref[0] = box.role ?? 'AXTextArea'), 0
-        if (attribute === 'AXSubrole') return box.subrole ? ((ref[0] = box.subrole), 0) : -25212
+        // -25204: the app did not answer in time.
+        if (attribute === 'AXSubrole') return box.subrole === 'ERROR' ? -25204 : box.subrole ? ((ref[0] = box.subrole), 0) : -25212
         if (attribute === 'AXNumberOfCharacters') return box.size === undefined ? -25205 : ((ref[0] = box.size), 0)
         if (attribute === 'AXValue') {
           if (box.value === null) return -25212
@@ -108,7 +109,11 @@ function run(world: World, input = config()): { lines: WatchLine[]; printed: str
   return { lines: lines as WatchLine[], printed, reads }
 }
 
-const spans = (lines: WatchLine[]): string[] => lines.flatMap((line) => (line.s === 'span' ? [line.t] : []))
+/** The changes as the script last printed them. */
+const fixes = (lines: WatchLine[]): Array<[string, string]> => {
+  const printed = lines.flatMap((line) => (line.s === 'fixes' ? [line.f] : []))
+  return printed.length === 0 ? [] : printed[printed.length - 1]
+}
 const last = (lines: WatchLine[]): WatchLine => lines[lines.length - 1]
 /** A box that changes as the seconds pass. */
 const typing = (start: string, later: Record<number, string | null>, over: Partial<World> = {}): World => ({
@@ -122,6 +127,12 @@ const typing = (start: string, later: Record<number, string | null>, over: Parti
 describe('before it reads a character', () => {
   it('refuses a password box by its kind, and never reads its text', () => {
     const ran = run({ box: { role: 'AXTextField', subrole: 'AXSecureTextField', value: `hunter2 ${take}` } })
+    expect(ran.lines).toEqual([{ s: 'skip', why: 'secure' }])
+    expect(ran.reads).toEqual([])
+  })
+
+  it('treats a box whose kind cannot be asked as a password box', () => {
+    const ran = run({ box: { subrole: 'ERROR', value: take } })
     expect(ran.lines).toEqual([{ s: 'skip', why: 'secure' }])
     expect(ran.reads).toEqual([])
   })
@@ -155,7 +166,8 @@ describe('before it reads a character', () => {
   it('follows a box only when it holds the exact words once', () => {
     expect(run({ box: { value: 'Something else entirely.' } }).lines).toEqual([{ s: 'skip', why: 'notfound' }])
     expect(run({ box: { value: `${take} ${take}` } }).lines).toEqual([{ s: 'skip', why: 'notfound' }])
-    expect(run({ box: { value: take.replace("'", '’').replace('shiv', 'Shiv') } }).lines).toEqual([{ s: 'skip', why: 'notfound' }])
+    // The same words in another casing are not the exact words.
+    expect(run({ box: { value: take.replace('shiv', 'Shiv') } }).lines).toEqual([{ s: 'skip', why: 'notfound' }])
     expect(run({ box: { value: null } }).lines).toEqual([{ s: 'skip', why: 'novalue' }])
   })
 
@@ -167,46 +179,104 @@ describe('before it reads a character', () => {
 })
 
 describe('what leaves the script', () => {
-  it('prints the fix, as murmur\'s own words read now', () => {
+  it('prints the change and nothing else: the words that went, and the words in their place', () => {
     const ran = run(typing(`Notes.\n${take}\nEnd.`, { 2: 'Notes.\nI met Siobhan at the cafe today.\nEnd.', 4: null }))
-    expect(spans(ran.lines)).toEqual(['I met Siobhan at the cafe today'])
-    expect(ran.printed.join('\n')).not.toMatch(/Notes|End\./)
+    expect(fixes(ran.lines)).toEqual([['shiv on', 'Siobhan']])
+    // Not the words that stayed, and not the box around them.
+    expect(ran.printed.join('\n')).not.toMatch(/Notes|End\.|cafe|today|met/)
   })
 
-  it('never prints what was typed after the take, at the end of a box', () => {
+  it('prints nothing for text typed after an untouched take, at the end of a box', () => {
     // The usual case: the take is the last thing in the box, and the
     // person goes on typing. A phone number and a door code.
-    const typed = ' Call me on 555 0142 and the door code is 4471 star, do not share it with anyone at all.'
-    const ran = run(typing(take, { 1: `I met Siobhan at the cafe today.${typed}`, 3: null }))
-    expect(spans(ran.lines)).toEqual(['I met Siobhan at the cafe today'])
-    expect(ran.printed.join('\n')).not.toMatch(/555|4471|door|share/)
+    const ran = run(typing(take, { 1: `${take} Call me on 555 0142 and the door code is 4471 star, do not share it.`, 3: null }))
+    expect(ran.lines.filter((line) => line.s === 'fixes')).toEqual([])
+    expect(ran.printed.join('\n')).not.toMatch(/555|4471|door|share|Call/)
   })
 
-  it('never prints what was typed before the take, at the start of a box', () => {
-    const ran = run(typing(take, { 1: `My card ends 9921 and expires soon. I met Siobhan at the cafe today.`, 3: null }))
-    expect(spans(ran.lines)).toEqual(['I met Siobhan at the cafe today'])
-    expect(ran.printed.join('\n')).not.toMatch(/9921|card|expires/)
+  it('prints nothing for text typed before an untouched take, at the start of a box', () => {
+    for (const typed of ['We lost 4471. ', 'My card ends 9921 and expires soon. ', 'PIN 4471 ']) {
+      const ran = run(typing(take, { 1: `${typed}${take}`, 3: null }))
+      expect(ran.lines.filter((line) => line.s === 'fixes'), typed).toEqual([])
+      expect(ran.printed.join('\n')).not.toMatch(/4471|9921|card|lost|PIN/)
+    }
+  })
+
+  it('prints only the fix when text was typed around a fixed take, even text that repeats its words', () => {
+    const after = run(typing(take, { 1: 'I met Siobhan at the cafe yesterday. I told the owner my code is 4471 today', 3: null }))
+    expect(fixes(after.lines)).toEqual([['shiv on', 'Siobhan']])
+    expect(after.printed.join('\n')).not.toMatch(/4471|owner|code|yesterday/)
+    const before = run(typing(take, { 1: 'I wrote my PIN 4471 on the wall here. I met Siobhan at the cafe today.', 3: null }))
+    expect(before.printed.join('\n')).not.toMatch(/4471|PIN|wall|wrote/)
+    const middle = run(typing(take, { 1: 'I met Siobhan, whose door code is 4471 by the way, at the cafe today.', 3: null }))
+    expect(middle.printed.join('\n')).not.toMatch(/4471|door|code|whose/)
   })
 
   it('never prints a terminal\'s output after the take', () => {
     const ran = run(typing(`$ ${take}`, { 1: `$ ${take}\nexport TOKEN=sk-live-51Habc\nready in 2s`, 3: null }))
-    expect(spans(ran.lines)).toEqual([])
+    expect(ran.lines.filter((line) => line.s === 'fixes')).toEqual([])
     expect(ran.printed.join('\n')).not.toMatch(/TOKEN|sk-live|ready/)
   })
 
-  it('keeps a fix to the take\'s own last or first word, up to 3 words, and nothing longer', () => {
-    const lastWord = run(typing('We agreed to meet with shiv on', { 1: 'We agreed to meet with Siobhan Byrne', 3: null }), config('We agreed to meet with shiv on'))
-    expect(spans(lastWord.lines)).toEqual(['We agreed to meet with Siobhan Byrne'])
-    const firstWord = run(typing('shiv on agreed to meet with us', { 1: 'Siobhan agreed to meet with us', 3: null }), config('shiv on agreed to meet with us'))
-    expect(spans(firstWord.lines)).toEqual(['Siobhan agreed to meet with us'])
-    // The last word changed and the person typed on: where the fix ends
-    // cannot be told, so the stretch stops at the last word that stayed.
-    const typedOn = run(
-      typing('We agreed to meet with shiv on', { 1: 'We agreed to meet with Siobhan and then she said the code is 4471', 3: null }),
-      config('We agreed to meet with shiv on')
+  it('never prints a changed number, a long run, or more than 40 characters a side', () => {
+    const said = 'Please send 2025 invoices to shiv on by Friday the 3'
+    const ran = run(
+      typing(said, { 1: 'Please send 2026 invoices to Siobhan by Friday the 13', 3: null }),
+      config(said)
     )
-    expect(spans(typedOn.lines)).toEqual(['We agreed to meet with'])
-    expect(typedOn.printed.join('\n')).not.toMatch(/4471|code/)
+    expect(fixes(ran.lines)).toEqual([['shiv on', 'Siobhan']])
+    expect(ran.printed.join('\n')).not.toMatch(/2026|13/)
+    // 1 word swapped for a sentence, a 278 character token, 180 symbols.
+    for (const value of [
+      take.replace('shiv on', 'the person whose door code is 4471'),
+      take.replace('shiv on', 'x'.repeat(278)),
+      take.replace('shiv on', `a ${'#$%^&*'.repeat(30)} b`),
+      take.replace('shiv on', '東京都港区六本木一丁目のビルの暗証番号は四四七一ですので誰にも言わないでください')
+    ]) {
+      const long = run(typing(take, { 1: value, 3: null }))
+      expect(long.lines.filter((line) => line.s === 'fixes'), value.slice(0, 40)).toEqual([])
+    }
+  })
+
+  it('prints at most 3 changes, each within the rules, whatever is typed', () => {
+    // Deterministic noise: take words, secrets and filler, in every order.
+    const pool = ['I', 'met', 'shiv', 'on', 'at', 'the', 'cafe', 'today', 'SECRET4471', 'alpha', 'Bravo', 'x'.repeat(50), '9', '', '\n']
+    let seed = 7
+    const pick = (): string => pool[(seed = (seed * 1103515245 + 12345) & 0x7fffffff) % pool.length]
+    for (let n = 0; n < 300; n++) {
+      const noise = (count: number): string => Array.from({ length: count }, pick).join(' ')
+      const shapes = [`${take} ${noise(12)}`, `${noise(12)} ${take}`, take.replace('at the', `at ${noise(6)} the`), `${noise(8)} ${take.replace('shiv on', noise(2))} ${noise(8)}`]
+      const ran = run(typing(take, { 1: shapes[n % shapes.length], 3: null }))
+      for (const line of ran.lines) {
+        if (line.s !== 'fixes') continue
+        expect(line.f.length).toBeLessThanOrEqual(CHANGE_RULES.maxChanges)
+        for (const [heard, written] of line.f) {
+          expect(take).toContain(heard)
+          expect(written.length).toBeLessThanOrEqual(CHANGE_RULES.maxChars)
+          expect(written.split(/\s+/).length).toBeLessThanOrEqual(CHANGE_RULES.maxWords)
+          expect(written).not.toMatch(/\n/)
+        }
+      }
+    }
+  })
+
+  it('finds the changes the rest of murmur would find, text for text', () => {
+    const cases: Array<[string, string]> = [
+      [take, 'I met Siobhan at the cafe today.'],
+      [take, 'I met Siobhan at the Cafe today, and more words typed after it.'],
+      ['push it to git hub and deploy on kubernetes tonight', 'push it to GitHub and deploy on Kubernetes tonight'],
+      [take, 'I really met shiv on at the cafe today.'],
+      [take, 'A different message altogether, about the build.'],
+      ['We agreed to meet with shiv on', 'We agreed to meet with Siobhan Byrne'],
+      ['please ask jose about the invoice today', 'please ask José about the invoice today'],
+      ['alfa bravo charly delta eko foxtrot golf hotel india juliet', 'alfa Bravo charly Delta eko Foxtrot golf Hotel india juliet']
+    ]
+    for (const [said, edited] of cases) {
+      const ran = run(typing(said, { 1: edited, 2: null }), config(said))
+      const expected = changesIn(said, edited)
+      if (expected === null) expect(last(ran.lines), edited).toEqual({ s: 'end', why: 'anchor' })
+      else expect(fixes(ran.lines), edited).toEqual(expected)
+    }
   })
 
   it('prints nothing for a take nobody touched', () => {
@@ -224,16 +294,22 @@ describe('when it stops', () => {
       typing(said, { 1: 'Thanks for the update on Siobhan', 2: '', 3: 'Thanks for the update on Apex', 4: 'Thanks for the update on Apex today' }),
       config(said)
     )
-    expect(ran.lines).toEqual([{ s: 'watch' }, { s: 'span', t: 'Thanks for the update on Siobhan' }, { s: 'end', why: 'anchor' }])
+    expect(ran.lines).toEqual([{ s: 'watch' }, { s: 'fixes', f: [['shiv on', 'Siobhan']] }, { s: 'end', why: 'anchor' }])
     expect(ran.reads.some((value) => value.includes('Apex'))).toBe(false)
   })
 
   it('stops when the box holds some other text, or most of the take is deleted', () => {
     const other = run(typing(take, { 1: 'A different message altogether, about the build.' }))
-    expect(last(other.lines)).toEqual({ s: 'end', why: 'anchor' })
-    expect(spans(other.lines)).toEqual([])
+    expect(other.lines).toEqual([{ s: 'watch' }, { s: 'end', why: 'anchor' }])
     const cut = run(typing(take, { 1: 'I met' }))
     expect(cut.lines).toEqual([{ s: 'watch' }, { s: 'end', why: 'anchor' }])
+    // A short take replaced by a message that shares 2 of its 4 words.
+    const short = run(typing('see you at five', { 1: 'meet you at Hotel Bravo' }), config('see you at five'))
+    expect(short.lines).toEqual([{ s: 'watch' }, { s: 'end', why: 'anchor' }])
+  })
+
+  it('does not follow a take too short to tell a fix from a new message', () => {
+    expect(run({ box: { value: 'hi shiv on' } }, config('hi shiv on')).lines).toEqual([{ s: 'skip', why: 'notfound' }])
   })
 
   it('stops when the text before or after murmur\'s words changes', () => {
@@ -244,17 +320,27 @@ describe('when it stops', () => {
   })
 
   it('reads 1 last time as focus leaves, so a fix made just before a click away is seen, then never again', () => {
-    const world = typing(take, { 1: 'I met Siobhan at the cafe today.', 2: 'I met Siobhan at the cafe today. And a secret typed later.' })
-    world.tick = (second, w) => {
-      if (second === 1 && w.box) {
-        w.box.value = 'I met Siobhan at the cafe today.'
-        w.focused = false
+    const world: World = {
+      box: { value: take },
+      tick: (second, w) => {
+        if (second === 1 && w.box) {
+          w.box.value = 'I met Siobhan at the cafe today.'
+          w.focused = false
+        }
+        if (second === 2 && w.box) w.box.value = 'later text'
       }
-      if (second === 2 && w.box) w.box.value = 'later text'
     }
     const ran = run(world)
-    expect(ran.lines).toEqual([{ s: 'watch' }, { s: 'span', t: 'I met Siobhan at the cafe today' }, { s: 'end', why: 'focus' }])
+    expect(ran.lines).toEqual([{ s: 'watch' }, { s: 'fixes', f: [['shiv on', 'Siobhan']] }, { s: 'end', why: 'focus' }])
     expect(ran.reads.includes('later text')).toBe(false)
+  })
+
+  it('takes back a change the person undid', () => {
+    const ran = run(typing(take, { 1: 'I met Siobhan at the cafe today.', 2: take, 4: null }))
+    expect(ran.lines.filter((line) => line.s === 'fixes')).toEqual([
+      { s: 'fixes', f: [['shiv on', 'Siobhan']] },
+      { s: 'fixes', f: [] }
+    ])
   })
 
   it('stops after its seconds, having read the box about once a second', () => {
@@ -279,22 +365,48 @@ describe('the script as written', () => {
     expect(WATCH_SCRIPT).not.toMatch(/writeToFile|NSURL|curl|doShellScript|AXUIElementSetAttributeValue|AXUIElementPerformAction|NSPasteboard/)
   })
 
-  it('reads a word the way the rest of murmur does', () => {
+  it('reads a word, and counts a change, by the rules the rest of murmur uses', () => {
     expect(WATCH_SCRIPT).toContain(`var WORD = ${String(WORD)}`)
-    expect(WATCH_SCRIPT).not.toContain('WORD_SOURCE')
+    expect(WATCH_SCRIPT).toContain(`var RULES = ${JSON.stringify(CHANGE_RULES)}`)
+    expect(WATCH_SCRIPT).not.toMatch(/WORD_SOURCE|RULES_SOURCE/)
+  })
+
+  it('has 1 place that prints text of the box, and it prints changes', () => {
+    expect(WATCH_SCRIPT.match(/say\(\{ s: 'fixes'/g)).toHaveLength(1)
+    expect(WATCH_SCRIPT).not.toMatch(/say\([^)]*\b(value|before|after|stretch|words)\b[^)]*\)/)
   })
 })
 
 describe('parseWatchLine', () => {
   it('reads the watcher\'s own lines', () => {
     expect(parseWatchLine('{"s":"watch"}')).toEqual({ s: 'watch' })
-    expect(parseWatchLine('{"s":"span","t":"I met Siobhan today."}')).toEqual({ s: 'span', t: 'I met Siobhan today.' })
+    expect(parseWatchLine('{"s":"fixes","f":[["shiv on","Siobhan"]]}')).toEqual({ s: 'fixes', f: [['shiv on', 'Siobhan']] })
+    expect(parseWatchLine('{"s":"fixes","f":[]}')).toEqual({ s: 'fixes', f: [] })
     expect(parseWatchLine('{"s":"skip","why":"secure"}')).toEqual({ s: 'skip', why: 'secure' })
     expect(parseWatchLine('{"s":"end","why":"focus"}')).toEqual({ s: 'end', why: 'focus' })
   })
 
-  it('takes nothing else for a line', () => {
-    for (const line of ['', 'not json', '[]', 'null', '7', '{"s":"span"}', '{"s":"span","t":7}', '{"s":"skip","why":"because"}', '{"s":"end","why":"secure"}', '{"s":"other"}']) {
+  it('takes nothing else for a line, and no list wider or longer than the script may print', () => {
+    const wide = JSON.stringify({ s: 'fixes', f: [['shiv on', 'x'.repeat(41)]] })
+    const many = JSON.stringify({ s: 'fixes', f: [['a', 'A'], ['b', 'B'], ['c', 'C'], ['d', 'D']] })
+    for (const line of [
+      '',
+      'not json',
+      '[]',
+      'null',
+      '7',
+      '{"s":"span","t":"I met Siobhan today."}',
+      '{"s":"fixes"}',
+      '{"s":"fixes","f":"shiv on"}',
+      '{"s":"fixes","f":[["shiv on"]]}',
+      '{"s":"fixes","f":[["shiv on","Siobhan","more"]]}',
+      '{"s":"fixes","f":[["shiv on",7]]}',
+      wide,
+      many,
+      '{"s":"skip","why":"because"}',
+      '{"s":"end","why":"secure"}',
+      '{"s":"other"}'
+    ]) {
       expect(parseWatchLine(line), line).toBeNull()
     }
     // Extra fields are dropped, never passed on.
