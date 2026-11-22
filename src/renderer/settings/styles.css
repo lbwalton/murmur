@@ -758,8 +758,9 @@ body {
 
 /* While a screenshot is retaken the report steps aside; this small bar
    stays, solid ink so it reads over anything, and goes before the
-   picture is taken. */
-.problem-aim {
+   picture is taken. Doubled, so .panel's glass (later in this file)
+   cannot win. */
+.panel.problem-aim {
   position: fixed;
   left: 50%;
   bottom: 20px;
