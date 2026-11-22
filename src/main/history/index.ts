@@ -485,6 +485,14 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     } catch (error) {
       console.error('[murmur] clear all could not forget the last note:', error)
     }
+    // The fixes being counted came from these takes, so they go too
+    // (US-185).
+    try {
+      const { clearLearned } = await import('../learn')
+      clearLearned()
+    } catch (error) {
+      console.error('[murmur] clear all could not forget the counted fixes:', (error as Error | null)?.name ?? 'error')
+    }
     return removed
   })
 

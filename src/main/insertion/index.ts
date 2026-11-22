@@ -31,7 +31,7 @@ const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
 
 type Payload = Blob | Electron.ClipboardBookmark
 
-interface Captured {
+export interface Captured {
   text: string
   items: Array<Record<string, Payload>>
 }
@@ -39,7 +39,7 @@ interface Captured {
 // Payloads must be materialized BEFORE the clipboard is overwritten:
 // getType reads lazily from the platform pasteboard, and after our
 // write there is nothing left to read.
-async function captureClipboard(): Promise<Captured> {
+export async function captureClipboard(): Promise<Captured> {
   const text = await clipboard.readText().catch(() => '')
   try {
     const items = await clipboard.read()
@@ -61,7 +61,7 @@ async function captureClipboard(): Promise<Captured> {
   }
 }
 
-async function restoreClipboard(captured: Captured): Promise<void> {
+export async function restoreClipboard(captured: Captured): Promise<void> {
   try {
     if (captured.items.length > 0) {
       await clipboard.write(captured.items.map((entry) => new ClipboardItem(entry)))

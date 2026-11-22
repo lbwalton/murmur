@@ -14,7 +14,14 @@ const base: Settings = {
   notes: { ...DEFAULT_SETTINGS.notes, binding: 'Ctrl+Alt+N' },
   transform: { ...DEFAULT_SETTINGS.transform, binding: '' }
 }
-const allGood = { hookStarted: true, bindingValid: true, pasteBindingValid: true, noteBindingValid: true, transformBindingValid: true }
+const allGood = {
+  hookStarted: true,
+  bindingValid: true,
+  pasteBindingValid: true,
+  noteBindingValid: true,
+  transformBindingValid: true,
+  fixBindingValid: true
+}
 const draw = (settings: Settings, hotkeys = allGood): string =>
   renderToStaticMarkup(
     <ShortcutsSection settings={settings} hotkeys={hotkeys} onUpdate={async () => undefined} onRefresh={async () => undefined} />
@@ -41,7 +48,7 @@ describe('the way back to Shortcuts (US-165)', () => {
     expect(read('SettingsRail.tsx')).not.toContain('row-also')
     // Every slug a link names is a row the Shortcuts section draws.
     const slugs = shortcutsOf(DEFAULT_SETTINGS, null).map((s) => s.slug)
-    expect(slugs).toEqual(['dictation', 'paste-last', 'note', 'transform'])
+    expect(slugs).toEqual(['dictation', 'paste-last', 'note', 'transform', 'fix-word'])
   })
 
   it('draws the link as its own line after the description', () => {
@@ -58,13 +65,14 @@ describe('the way back to Shortcuts (US-165)', () => {
 })
 
 describe('Shortcuts: every key combo in 1 place (US-164)', () => {
-  it('lists the 4 shortcuts with their combos, each pointing at its own section', () => {
+  it('lists the 5 shortcuts with their combos, each pointing at its own section', () => {
     const list = shortcutsOf(base, allGood)
     expect(list.map((s) => [s.kind, s.label, s.binding, s.home.anchor, s.home.name])).toEqual([
       ['dictation', 'Dictation', DEFAULT_SETTINGS.hotkey.binding, 'row-hotkey', 'Dictation'],
       ['pasteLast', 'Paste last dictation', 'Ctrl+F12', 'row-paste-last-dictation', 'Dictation'],
       ['note', 'Note', 'Ctrl+Alt+N', 'row-note-chord', 'Notes'],
-      ['transform', 'Transform', '', 'row-transform-chord', 'Transform']
+      ['transform', 'Transform', '', 'row-transform-chord', 'Transform'],
+      ['fix', 'Fix a word', '', 'row-fix-word-chord', 'Dictionary']
     ])
     expect(list.every((s) => !s.disarmed)).toBe(true)
     // The rows it points at exist where it says.
@@ -73,6 +81,7 @@ describe('Shortcuts: every key combo in 1 place (US-164)', () => {
     expect(app).toContain('label="Paste last dictation"')
     expect(read('NotesPanel.tsx')).toContain('anchor="row-note-chord"')
     expect(read('TransformPanel.tsx')).toContain('anchor="row-transform-chord"')
+    expect(read('LearnPanel.tsx')).toContain('anchor="row-fix-word-chord"')
   })
 
   it('says when a saved shortcut is not listening, and never for one that is not set', () => {
@@ -92,6 +101,7 @@ describe('Shortcuts: every key combo in 1 place (US-164)', () => {
       ['row-shortcut-paste-last', true],
       ['row-shortcut-note', true],
       ['row-shortcut-transform', true],
+      ['row-shortcut-fix-word', true],
       ['row-shortcut-hands-free', false],
       ['row-shortcut-cancel', false],
       ['row-shortcut-zoom', false]
@@ -100,7 +110,9 @@ describe('Shortcuts: every key combo in 1 place (US-164)', () => {
     expect(html).toContain('aria-label="Transform shortcut, not set. Click to change."')
     expect(html.match(/>Clear</g)).toHaveLength(2)
     expect(html).not.toContain('>Reset<')
-    expect(html.match(/also under/g)).toHaveLength(4)
+    expect(html.match(/also under/g)).toHaveLength(5)
+    expect(html).toContain('aria-label="Fix a word shortcut, not set. Click to change."')
+    expect(html).toContain('aria-label="Fix a word, under Dictionary"')
     expect(html).toContain('aria-label="Paste last dictation, under Dictation"')
     expect(html).toContain('Tap the dictation or note shortcut twice')
     const moved = draw({ ...base, hotkey: { ...base.hotkey, binding: 'Ctrl+Shift+D' } })

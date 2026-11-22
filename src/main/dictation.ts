@@ -326,6 +326,14 @@ export async function dictationStop(
       void logDictation(
         `delivered outcome=${outcome} words=${event?.words ?? 0} peak=${peak.toFixed(4)}${gateDetail}${silenceLogSuffix(result.silence)}`
       )
+      // Learn from my fixes (US-185): only a take that was pasted is
+      // followed, and only when that setting is on. Never awaited: it
+      // must not hold the pill, and its failure is not the take's.
+      if (outcome === 'inserted') {
+        void import('./learn')
+          .then(({ watchTake }) => watchTake({ raw: heardText, final: finalText }))
+          .catch(() => undefined)
+      }
       setOverlayPhase('inserted', event?.wpm ?? null)
       playCue('insert')
       // A session can change rank, and rank can change the belt accent.

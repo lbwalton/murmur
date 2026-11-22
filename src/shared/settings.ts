@@ -136,6 +136,18 @@ export interface Settings {
     heatInverted: boolean
   }
   dictionary: Array<{ from: string; to: string }>
+  /** Keeping the dictionary current (US-184, US-185). */
+  learn: {
+    /** Learn from my fixes: off until the person turns it on. After a
+     *  take is pasted, murmur looks at the box it typed into for about
+     *  a minute and counts spelling fixes; a fix seen in enough takes
+     *  becomes a suggestion, never a word added on its own. macOS only
+     *  for now: on Windows it is never read. */
+    watch: boolean
+    /** Fix a word: the chord that takes the selected word and asks how
+     *  it should be written. Empty means the chord is disarmed. */
+    fixBinding: string
+  }
   expansions: Array<{ trigger: string; text: string }>
   sounds: {
     enabled: boolean
@@ -334,6 +346,10 @@ export const DEFAULT_SETTINGS: Settings = {
     heatInverted: false
   },
   dictionary: [],
+  learn: {
+    watch: false,
+    fixBinding: ''
+  },
   expansions: [],
   sounds: {
     enabled: true,

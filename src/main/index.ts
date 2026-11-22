@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, Menu, app, clipboard, nativeTheme, systemPreferences } from 'electron'
+import { BrowserWindow, Menu, app, clipboard, nativeTheme, safeStorage, systemPreferences } from 'electron'
 import { ipc, setRendererRoot } from './ipc'
 import { MAX_TEXT_CHARS, boundedText } from './ipc-rules'
 import { initAudio } from './audio'
@@ -413,6 +413,9 @@ app.on('before-quit', (event) => {
   }
   isQuitting = true
   stopHotkeys()
+  // The fix a word panel and a box being followed end with the app.
+  void import('./fix').then(({ destroyFixWindow }) => destroyFixWindow()).catch(() => undefined)
+  void import('./learn').then(({ stopWatching }) => stopWatching()).catch(() => undefined)
   // Failsafe: if anything (a window, a native hook thread) still blocks
   // the quit two seconds from now, leave anyway. Quit must always work.
   const failsafe = setTimeout(() => app.exit(0), 2000)
@@ -503,6 +506,24 @@ app.whenReady().then(async () => {
   // The dictionary as a file (US-183): import a list, export the list.
   const { initDictionaryFile } = await import('./dictionary-file')
   initDictionaryFile(() => settingsWindow)
+  // Keeping the dictionary current (US-184, US-185): the fix a word
+  // chord, and learning from fixes, which is off until it is turned on.
+  const { initLearn } = await import('./learn')
+  initLearn({
+    dir: app.getPath('userData'),
+    wrap: {
+      available: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (plain) => safeStorage.encryptString(plain),
+      decrypt: (wrapped) => safeStorage.decryptString(wrapped)
+    },
+    settingsWindow: () => settingsWindow,
+    openDictionary: () => {
+      showSettingsWindow()
+      settingsWindow?.webContents.send('nav:goto', 'dictionary')
+    }
+  })
+  const { initFixWord, fixWord } = await import('./fix')
+  initFixWord()
   // Report a problem (US-182): a picture of this window, the details, and
   // the person's own browser or mail app. murmur sends nothing itself.
   initProblem({
@@ -520,6 +541,9 @@ app.whenReady().then(async () => {
     discard: () => handsFreeDiscard('dictation'),
     pasteLast: () => {
       void pasteLastDictation()
+    },
+    fixWord: () => {
+      void fixWord().catch((error) => console.error('[murmur] fix a word failed:', (error as Error | null)?.name ?? 'error'))
     },
     note: {
       start: () => dictationStart('note'),
@@ -629,6 +653,7 @@ app.whenReady().then(async () => {
     const forPasteLast = target === 'pasteLast'
     const forNote = target === 'note'
     const forTransform = target === 'transform'
+    const forFix = target === 'fix'
     setHotkeysSuppressed(true)
     try {
       // Prefer the global hook (the same source the trigger reads, and
@@ -657,6 +682,13 @@ app.whenReady().then(async () => {
         const problem = transformBindingProblem(outcome.binding)
         if (problem) return { ok: false, reason: problem }
         updateSettings({ transform: { binding: outcome.binding } })
+        return { ok: true, binding: outcome.binding }
+      }
+      if (forFix) {
+        const { fixBindingProblem } = await import('./hotkeys')
+        const problem = fixBindingProblem(outcome.binding)
+        if (problem) return { ok: false, reason: problem }
+        updateSettings({ learn: { fixBinding: outcome.binding } })
         return { ok: true, binding: outcome.binding }
       }
       if (!isBindingParseable(outcome.binding)) return { ok: false, reason: 'needs-modifier' }

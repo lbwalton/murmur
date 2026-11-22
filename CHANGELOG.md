@@ -5,6 +5,8 @@ All user-facing changes, newest first, in plain language. Each release's section
 ## 0.1.20 (unreleased)
 
 - Import and export your dictionary: under the list in Settings, Dictionary, Custom words, Import… adds a whole list of names from a CSV or JSON file, and Export… saves your list to a file, to keep or to carry to another computer. Import shows you first what it would add and which spellings it would change, and nothing changes until you say so. A long list scrolls in its box, and with a long list each take sends your provider the words you just said first.
+- Fix a word: select a word murmur got wrong in any app, press your Fix a word shortcut, and type how it should be written. murmur fixes it there and saves the pair to your dictionary. Set the shortcut under Settings, Dictionary, Keep it current.
+- Learn from my fixes, on a Mac: off until you turn it on under Settings, Dictionary, Keep it current. murmur looks at the text box it just typed into for up to 1 minute, on your computer only, and when it sees you make the same spelling fix in 2 takes it suggests the pair. Nothing joins your dictionary until you press Add.
 
 ## 0.1.19 (2026-11-21)
 

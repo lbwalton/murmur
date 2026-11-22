@@ -3,7 +3,7 @@
 // unit tested. Windows only ever show murmur's own pages, so in normal
 // use nothing here refuses anything.
 
-export type PageRole = 'settings' | 'audio' | 'overlay'
+export type PageRole = 'settings' | 'audio' | 'overlay' | 'fix'
 
 // All the audio window may send. Keep in step with src/preload/audio.ts;
 // a unit test reads that file and fails if they drift.
@@ -18,6 +18,10 @@ export const AUDIO_SENDS: readonly string[] = [
   'audio:result'
 ]
 
+// All the fix a word panel may send (US-184). Keep in step with
+// src/preload/fix.ts; the same unit test holds it.
+export const FIX_SENDS: readonly string[] = ['fix:cancel', 'fix:save']
+
 export interface PageBases {
   /** file:// URL of the bundled pages' folder. */
   rendererRoot: string
@@ -25,7 +29,7 @@ export interface PageBases {
   devServer?: string
 }
 
-const PAGE = /^\/(settings|audio|overlay)\/index\.html$/
+const PAGE = /^\/(settings|audio|overlay|fix)\/index\.html$/
 
 // The 2 sides spell the same path differently: pathToFileURL escapes ~,
 // [, ], and % where Chromium leaves them raw, and a Windows drive letter
@@ -65,10 +69,13 @@ export function pageRole(url: string, bases: PageBases): PageRole | null {
   return match === null ? null : (match[1] as PageRole)
 }
 
-/** The audio window sends its own short list, the overlay sends nothing,
- *  and the settings window sends everything else. */
+/** The audio window and the fix a word panel each send their own short
+ *  list, the overlay sends nothing, and the settings window sends
+ *  everything else. */
 export function channelAllowed(role: PageRole, channel: string): boolean {
   if (role === 'overlay') return false
+  if (role === 'fix') return FIX_SENDS.includes(channel)
+  if (FIX_SENDS.includes(channel)) return false
   return AUDIO_SENDS.includes(channel) === (role === 'audio')
 }
 

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (125/183 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (125/185 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -195,3 +195,5 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-182** Report a problem
 - [ ] **US-179** A long mic name stays inside the Microphone card
 - [ ] **US-183** Import and export the dictionary
+- [ ] **US-184** Fix a word: select it, press a chord, type the spelling
+- [ ] **US-185** Learn from my fixes: murmur suggests the words you keep correcting

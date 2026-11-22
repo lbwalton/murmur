@@ -50,7 +50,10 @@ export interface HotkeysStatus {
   pasteBindingValid: boolean
   noteBindingValid: boolean
   transformBindingValid: boolean
+  fixBindingValid: boolean
 }
+
+export type LearnState = import('../main/learn').LearnState
 
 export type NotesStatus = import('../main/notes').NotesStatus
 
@@ -167,7 +170,7 @@ const api = {
   },
   getHotkeysStatus: (): Promise<HotkeysStatus> => ipcRenderer.invoke('hotkeys:status'),
   captureHotkey: (
-    target: 'dictation' | 'pasteLast' | 'note' | 'transform' = 'dictation'
+    target: 'dictation' | 'pasteLast' | 'note' | 'transform' | 'fix' = 'dictation'
   ): Promise<{ ok: boolean; binding?: string; reason?: string }> => {
     return ipcRenderer.invoke('hotkeys:capture', target)
   },
@@ -285,6 +288,17 @@ const api = {
     const handler = (_e: unknown, look: 'glass' | 'solid'): void => cb(look)
     ipcRenderer.on('look:changed', handler)
     return () => ipcRenderer.removeListener('look:changed', handler)
+  },
+  /** Learn from my fixes (US-185): what murmur is ready to suggest. */
+  getLearnState: (): Promise<LearnState> => ipcRenderer.invoke('learn:state'),
+  /** Answer 1 suggestion: add it to the dictionary, or never ask again. */
+  answerSuggestion: (heard: string, written: string, how: 'add' | 'dismiss'): Promise<LearnState> => {
+    return ipcRenderer.invoke('learn:answer', heard, written, how)
+  },
+  onLearnChanged: (cb: (state: LearnState) => void): (() => void) => {
+    const handler = (_e: unknown, state: LearnState): void => cb(state)
+    ipcRenderer.on('learn:changed', handler)
+    return () => ipcRenderer.removeListener('learn:changed', handler)
   },
   onNavigate: (cb: (page: string) => void): (() => void) => {
     const handler = (_e: unknown, page: string): void => cb(page)
