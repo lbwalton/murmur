@@ -212,6 +212,121 @@ body {
   color: var(--brand);
 }
 
+/* A theme's painting behind the whole window (US-151). The canvas is
+   placed in <body> by ScenePainting.tsx, beneath the page's ink sheet. */
+.scene-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+/* The window's theme as tiles (US-151), built like the waveform tiles:
+   each previews its theme in that theme's own colors (the tile sits
+   under data-theme-preview), a painted theme with a still frame. */
+.theme-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.theme-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-tile:hover {
+  border-color: var(--cream-22);
+}
+
+.theme-tile:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.theme-tile[aria-checked='true'] {
+  border-color: var(--brand);
+}
+
+.theme-tile[aria-checked='true'] .tile-status {
+  color: var(--brand);
+}
+
+.theme-tile[aria-disabled='true'] {
+  cursor: default;
+}
+
+.theme-tile[aria-disabled='true']:hover {
+  border-color: var(--panel-edge);
+}
+
+.theme-tile[aria-disabled='true'] :is(.theme-preview, .tile-name) {
+  opacity: 0.4;
+}
+
+.theme-tile .tile-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-preview {
+  position: relative;
+  display: block;
+  height: 64px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ink);
+}
+
+.theme-preview-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.theme-preview-card {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 52%;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: rgb(from var(--pane) r g b / 0.86);
+}
+
+.theme-preview-label {
+  width: 40%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+
+.theme-preview-line {
+  width: 78%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--text);
+  opacity: 0.85;
+}
+
 /* The needle is the dot and the wave together; in the boxed looks it
    dissolves into the pill's row, as in the overlay. */
 .mini-pill .needle {
@@ -643,8 +758,9 @@ body {
 
 /* While a screenshot is retaken the report steps aside; this small bar
    stays, solid ink so it reads over anything, and goes before the
-   picture is taken. */
-.problem-aim {
+   picture is taken. Doubled, so .panel's glass (later in this file)
+   cannot win. */
+.panel.problem-aim {
   position: fixed;
   left: 50%;
   bottom: 20px;
@@ -4721,6 +4837,7 @@ html[data-look]
     .share-dialog,
     .rail-checks,
     .wave-tile,
+    .theme-tile,
     .whats-new-body,
     .history,
     .btn,
@@ -4758,6 +4875,21 @@ html[data-look='solid'] body::before {
   background:
     radial-gradient(135% 90% at 50% 108%, var(--ink) 46%, var(--ink-clear) 82%),
     linear-gradient(180deg, var(--glow-top) 0%, var(--glow-mid) 38%, var(--ink) 92%), var(--ink);
+}
+
+/* A theme's painting (US-151) fills the window where the desktop or the
+   glow would show, under the theme's own ink sheet, so window text keeps
+   4.5 to 1 over the painting's brightest color (look.test.ts). The
+   canvas sits in <body> (ScenePainting.tsx), under this sheet. Until its
+   first frame lands (the first paint, a switch to a painted theme), the
+   window is the painting's own night, never the bare desktop under the
+   lighter sheet. */
+html[data-look][data-ground='scene'] body {
+  background: var(--scene-sky-mid);
+}
+
+html[data-look][data-ground='scene'] body::before {
+  background: var(--scene-sheet);
 }
 
 /* No rubber band past the page's ends: it would bare the material. */

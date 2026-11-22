@@ -5,10 +5,13 @@
 // their earn hints so the path is always legible.
 import type { EarnedAchievement } from './achievements'
 import type { ProgressReport } from './ranks'
+import { THEMES } from './themes'
 
 export interface UnlockRule {
   rank?: string
   achievement?: string
+  /** murmur Pro (US-151): checked where the license is known, not here. */
+  pro?: true
 }
 
 export interface CosmeticItem {
@@ -26,7 +29,6 @@ export interface CosmeticsFile {
   founderGold: string
   overlayStyles: CosmeticItem[]
   accents: CosmeticItem[]
-  uiThemes: CosmeticItem[]
 }
 
 /** Is one item unlocked for this user? Null rule means always. */
@@ -48,12 +50,17 @@ export function isUnlocked(
   if (item.unlock.achievement) {
     return earned.some((e) => e.id === item.unlock?.achievement)
   }
+  // A Pro theme has no belt to earn; the license gate is the wearer's
+  // (themes.ts wornLook), since this report never sees the license.
+  if (item.unlock.pro) return true
   return false
 }
 
 export interface CosmeticsReport {
   overlayStyles: Array<CosmeticItem & { unlocked: boolean }>
   accents: Array<CosmeticItem & { unlocked: boolean }>
+  /** The window's themes (shared/themes.json, US-151), each with whether
+   *  its belt is earned. */
   uiThemes: Array<CosmeticItem & { unlocked: boolean }>
   /** The belt fabric color for the current rank. A 10th degree belt is
    *  solid red per IBJJF; founder gold lives on the crown and in the
@@ -64,14 +71,15 @@ export interface CosmeticsReport {
 export function computeCosmetics(
   spec: CosmeticsFile,
   progress: ProgressReport,
-  earned: readonly EarnedAchievement[]
+  earned: readonly EarnedAchievement[],
+  themes: readonly CosmeticItem[] = THEMES
 ): CosmeticsReport {
-  const tag = (items: CosmeticItem[]) =>
+  const tag = <T extends CosmeticItem>(items: readonly T[]): Array<T & { unlocked: boolean }> =>
     items.map((item) => ({ ...item, unlocked: isUnlocked(item, progress, earned) }))
   return {
     overlayStyles: tag(spec.overlayStyles),
     accents: tag(spec.accents),
-    uiThemes: tag(spec.uiThemes),
+    uiThemes: tag(themes),
     beltColor: spec.beltColors[progress.rank.belt] ?? spec.beltColors.none
   }
 }

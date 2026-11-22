@@ -351,6 +351,28 @@ That is murmur's look on a Mac since November 2026: the window is dark glass, an
 - **Which computers get the glass?** Macs, for now. On Windows and Linux the window is solid with the gold glow. Glass on Windows 11 is built but switched off until it has been checked on real PCs.
 - **Does it change the pill?** No. The small pill that shows while you dictate keeps its own look.
 
+## How do I change murmur's theme?
+
+Open Settings, **Look**, and pick a tile under **Theme**. Each tile shows its theme in small; a locked tile is dimmed and says what earns it. The window changes at once, and the pick is kept after a restart.
+
+- **Night studio** is everyone's and the default.
+- **Morning mist** and **Moonlit** come with the blue belt. Moonlit is a painted theme: a navy night with a pale moon and red petals drifting past the cards.
+- More themes arrive with the other belts, and some are made for murmur Pro.
+
+The small pill that shows while you dictate keeps its own look in every theme.
+
+## What is Behind the cards?
+
+For a painted theme like Moonlit, Settings, Look, **Behind the cards** picks what fills the window: **Painting** (the default) shows the theme's painting, and **Desktop** shows the plain window in the theme's colors. That is your desktop through the glass where the window shows through (on a Mac), and otherwise (on Windows, or with Reduce transparency on) a solid window with a soft gold glow.
+
+## What do the glass levels do?
+
+Settings, Look, **Glass** sets how much the cards let through: **Soft**, **Clear**, or **Clearest**. The choice is part of murmur Pro; without Pro the glass is Clear. It only changes anything where your desktop shows through the window; where the window is solid (Windows for now, or Reduce transparency on), the row is greyed out and the cards keep their own ink. Every level keeps your words easy to read, held to a 4.5 to 1 contrast over even a white page behind the window. That is why Clearest lets the cards show more but never thins the window's own dark sheet.
+
+## Can I stop the painting from moving?
+
+Yes. Settings, Look, **Motion** has **Off**, **Slow**, **Normal** (the default), and **Lively**. A painting only moves while murmur's window is showing and in front, and it stays still whenever your system's Reduce motion is on (on a Mac: System Settings, Accessibility, Display, Reduce motion). Off, or Reduce motion, shows a still, finished painting.
+
 ## Can my accent color change the rest of the app?
 
 Yes. The accent you pick under Settings, Look (any earned belt color, or the special accents like ember and moonlight) also tints data emphasis in the GUI: the journey's painted gates (the words stroke and the tally marks). The default signal amber stays reserved for live recording states, so choosing it leaves the gates in your belt's own color. The 14-day chart on the analytics tab is painted in ink instead (rice dabs with today in gold) and does not follow the accent.

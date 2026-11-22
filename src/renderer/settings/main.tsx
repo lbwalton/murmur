@@ -5,6 +5,7 @@ import { App } from './App'
 import { Boundary, ROOT_OPTIONS } from './Boundary'
 import { asLook } from '../../shared/look'
 import { markScrollbars } from './scroller'
+import { wearFromAddress } from './themeWear'
 import './styles.css'
 
 // The window's look (US-150) rides in the address, so the first paint
@@ -15,6 +16,8 @@ const wear = (look: unknown): void => {
   if (known) document.documentElement.dataset.look = known
 }
 wear(new URLSearchParams(window.location.search).get('look'))
+// The theme (US-151) rides along, so the first paint is in it too.
+wearFromAddress(window.location.search)
 void window.murmur?.getLook?.()?.then(wear)
 window.murmur?.onLookChanged?.(wear)
 

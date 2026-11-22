@@ -9,6 +9,9 @@
   /* ground */
   --ink: #0f0e11;
   --panel: #17161b;
+  /* The panel's own color, which the look never swaps for glass: the
+     panes below are cut from it (US-151). Every theme sets both. */
+  --pane: #17161b;
   --panel-lift: #26242c;
   --panel-glass: rgba(23, 22, 27, 0.96);
   --panel-edge: rgba(236, 233, 228, 0.07);
@@ -61,20 +64,30 @@
      4.5 to 1. Where the system cannot show the desktop, the window is
      solid with a gold glow at 68% (0.42 and 0.23 at full strength),
      and cards keep their 85%. */
-  --glass-window: rgba(15, 14, 17, 0.5);
-  --glass-card: rgba(23, 22, 27, 0.62);
-  --glass-card-solid: rgba(23, 22, 27, 0.85);
+  /* The panes are cut from the theme's own ink and panel, so every theme
+     gets every glass level (US-151): Clear is 50% and 62%; the
+     data-glass blocks at the end of this file set Soft and Clearest. */
+  --glass-window-a: 0.5;
+  --glass-card-a: 0.62;
+  --glass-window: rgb(from var(--ink) r g b / var(--glass-window-a));
+  --glass-card: rgb(from var(--pane) r g b / var(--glass-card-a));
+  --glass-card-solid: rgb(from var(--pane) r g b / 0.85);
   --glass-edge: rgba(236, 233, 228, 0.1);
   --glass-light: rgba(236, 233, 228, 0.12);
   --glass-well: rgba(0, 0, 0, 0.28);
   --glass-well-edge: rgba(236, 233, 228, 0.08);
-  --ink-clear: rgba(15, 14, 17, 0);
+  --ink-clear: rgb(from var(--ink) r g b / 0);
   /* Helper text straight on the window (a page's date, a section's
      line) is cream: over a white page the glass is mid grey, and no
      grey keeps 4.5 to 1 on it. On a card, grey is 1 step brighter than
      the flat look's. */
   --text-dim-window: #ece9e4;
   --text-dim-surface: #a3a09a;
+  /* At Clearest a card lets more through, so its grey and red step up
+     to keep 4.5 to 1 (US-151). Each theme sets its own. */
+  --text-dim-surface-clearest: #b5b1aa;
+  --red-glass-clearest: #f8999c;
+  --ok-clearest: #8cbd76;
   /* Gold by role. Time back, the 1 card that celebrates, gets the
      strong tint, 30% across a diagonal, and so does the sidebar line
      you are on; the header of that day in your dictations gets a
@@ -87,7 +100,7 @@
   --tint-thread-to: rgba(217, 164, 65, 0.14);
   /* A gold card's title sits on a small ink tag (US-173): the theme's
      ink at 72%, edged in a faint gold. */
-  --tag-ink: rgba(15, 14, 17, 0.72);
+  --tag-ink: rgb(from var(--ink) r g b / 0.72);
   --tag-edge: rgba(217, 164, 65, 0.28);
   /* Red on glass: brighter than --red, which on a glass card over a
      white page reads 3.4 to 1. Still the 1 clean red. */
@@ -140,22 +153,84 @@
 }
 
 /* Unlockable theme: morning mist. Cooler ground, same signals. */
-:root[data-theme='mist'] {
+:root[data-theme='mist'],
+[data-theme-preview='mist'] {
   --ink: #10131a;
   --panel: #191d26;
+  --pane: #191d26;
   --panel-glass: rgba(25, 29, 38, 0.96);
   --panel-edge: rgba(226, 233, 240, 0.08);
   --text: #e6ebf0;
   --text-dim: #93a0ac;
-  /* The glass look (US-150) in mist: the same panes cut from mist's
-     own ground, mist's own cream and grey, and a red a hair brighter
-     still, to hold 4.5 to 1 on its lighter cards. */
-  --glass-window: rgba(16, 19, 26, 0.5);
-  --glass-card: rgba(25, 29, 38, 0.62);
-  --glass-card-solid: rgba(25, 29, 38, 0.85);
+  /* The glass look (US-150) in mist: the panes are cut from mist's own
+     ground (the :root rules do it), with mist's own cream and grey, and
+     a red a hair brighter still, to hold 4.5 to 1 on its lighter cards. */
   --red-glass: #f6878b;
-  --ink-clear: rgba(16, 19, 26, 0);
-  --tag-ink: rgba(16, 19, 26, 0.72);
   --text-dim-window: #e6ebf0;
   --text-dim-surface: #9da9b4;
+  --text-dim-surface-clearest: #adb8c3;
+  --red-glass-clearest: #fa9ca0;
+}
+
+/* A theme's tile in Settings, Look previews it with these, whatever the
+   window wears (US-151). Night studio's own colors, for its tile. */
+[data-theme-preview='ember'] {
+  --ink: #0f0e11;
+  --pane: #17161b;
+  --text: #ece9e4;
+}
+
+/* Moonlit (US-151, the first painted theme; US-174's blue belt theme):
+   a navy night, a pale moon, drifting red petals, a crack of blue
+   lightning, from LB's art references (described in words only; no
+   image is in the repo). The scene-* colors are the painting's
+   (scenes/moonlit.ts); scene-sheet is the ink laid over it so window
+   text reads, and scene-bright is the brightest color the painting
+   has (the moon's middle), which look.test.ts holds every text to. */
+:root[data-theme='moonlit'],
+[data-theme-preview='moonlit'] {
+  --ink: #0b111f;
+  --panel: #141b2b;
+  --pane: #141b2b;
+  --panel-glass: rgba(20, 27, 43, 0.96);
+  --panel-edge: rgba(226, 233, 240, 0.08);
+  --text: #e9edf2;
+  --text-dim: #97a3b2;
+  --red-glass: #f6878b;
+  --text-dim-window: #e9edf2;
+  --text-dim-surface: #a3afbc;
+  --text-dim-surface-clearest: #b3bdc9;
+  --red-glass-clearest: #fa9ca0;
+  --scene-sky-top: #0a1120;
+  --scene-sky-mid: #15233c;
+  --scene-sky-low: #1d2c48;
+  --scene-star: #c4cad6;
+  --scene-moon-glow: #d8cfb4;
+  --scene-moon-hi: #b4ab95;
+  --scene-moon-lo: #938a74;
+  --scene-moon-mottle: #7d7461;
+  --scene-cloud: #0b1221;
+  --scene-hill: #0b1322;
+  --scene-bolt: #9fb8e8;
+  --scene-petal: #c8402a;
+  --scene-petal-light: #e06a4f;
+  --scene-sheet: rgba(11, 17, 31, 0.45);
+  --scene-bright: #b4ab95;
+}
+
+/* Glass levels (US-151, murmur Pro; Clear, the :root values, is
+   everyone's). Named twice to outrank a theme's own block. Soft keeps
+   more ink; Clearest lets a card show more, with brighter grey, red and
+   green so each keeps 4.5 to 1. Clearest cannot thin the window's own sheet:
+   over a white page, page titles would fall under 4.5 to 1. */
+:root[data-glass='soft'][data-glass] {
+  --glass-window-a: 0.58;
+  --glass-card-a: 0.74;
+}
+
+:root[data-glass='clearest'][data-glass] {
+  --glass-card-a: 0.55;
+  --text-dim-surface: var(--text-dim-surface-clearest);
+  --red-glass: var(--red-glass-clearest);
+  --ok: var(--ok-clearest);
 }

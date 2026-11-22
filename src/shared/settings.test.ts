@@ -89,6 +89,26 @@ describe('mergeSettings', () => {
     expect(merged.overlay).toEqual({ style: 'pulse', look: 'bare', loopLevel: 20 })
   })
 
+  it('ships night studio with the painting, Clear glass and normal motion, and repairs unknown look choices (US-151)', () => {
+    expect(DEFAULT_SETTINGS.cosmetics).toMatchObject({ uiTheme: 'ember', ground: 'scene', glass: 'clear', motion: 'normal' })
+    const at = (cosmetics: Record<string, unknown>): Record<string, unknown> =>
+      mergeSettings(DEFAULT_SETTINGS, { cosmetics }).cosmetics as unknown as Record<string, unknown>
+    expect(at({ uiTheme: 'moonlit', ground: 'desktop', glass: 'clearest', motion: 'lively' })).toMatchObject({
+      uiTheme: 'moonlit',
+      ground: 'desktop',
+      glass: 'clearest',
+      motion: 'lively'
+    })
+    // A theme that no longer exists, or a choice outside its set, falls back.
+    expect(at({ uiTheme: 'gone', ground: 'sky', glass: 'opaque', motion: 'fast' })).toMatchObject({
+      uiTheme: 'ember',
+      ground: 'scene',
+      glass: 'clear',
+      motion: 'normal'
+    })
+    expect(at({ uiTheme: 7 }).uiTheme).toBe('ember')
+  })
+
   it('ships the loop level at 20 and snaps it to steps of 5 within 10 to 100', () => {
     expect(DEFAULT_SETTINGS.overlay.loopLevel).toBe(20)
     const at = (loopLevel: unknown): number =>
