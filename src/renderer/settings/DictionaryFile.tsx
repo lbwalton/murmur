@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Import and Export for Settings, Dictionary, Custom words (US-183).
-// The buttons are the last line of the list's box; the question and
-// its result sit under the box, on the same card. Import asks first, in
-// place, with what the file would add and change, and only a yes
-// touches the list. The main process reads the file and writes the
+// The buttons are the last line of the list's box, with a note under
+// them that says what a file needs and where the reader can go wrong;
+// the question and its result sit under the box, on the same card.
+// Import asks first, in place, with what the file would add and change,
+// and only a yes touches the list. The main process reads the file and writes the
 // list; this only asks and says what happened.
 import { useEffect, useRef, useState } from 'react'
 import {
   type DictionaryPick,
+  FILE_TIPS,
   exportedMessage,
   importQuestion,
   importedMessage,
@@ -95,22 +97,33 @@ export function useDictionaryFile(count: number): { buttons: React.JSX.Element; 
   // does: cancel hands focus back to it, and a disabled button cannot
   // take focus. Pressed again, it asks about another file.
   const buttons = (
-    <div className="well-file">
-      <button
-        ref={importRef}
-        type="button"
-        className="btn quiet-btn"
-        disabled={busy}
-        aria-controls={ask !== null ? 'dictionary-import-confirm' : undefined}
-        onClick={pick}
-      >
-        Import…
-      </button>
-      <button type="button" className="btn quiet-btn" disabled={busy || ask !== null || count === 0} onClick={save}>
-        Export…
-      </button>
-      <span className="well-file-note">{fileNote(count)}</span>
-    </div>
+    <>
+      <div className="well-file">
+        <button
+          ref={importRef}
+          type="button"
+          className="btn quiet-btn"
+          disabled={busy}
+          aria-controls={ask !== null ? 'dictionary-import-confirm' : undefined}
+          onClick={pick}
+        >
+          Import…
+        </button>
+        <button type="button" className="btn quiet-btn" disabled={busy || ask !== null || count === 0} onClick={save}>
+          Export…
+        </button>
+        <span className="well-file-note">{fileNote(count)}</span>
+      </div>
+      {/* The limits, said where the file is picked: closed until wanted. */}
+      <details className="well-file-tips">
+        <summary className="well-file-tips-summary">What a file needs, and what can go wrong</summary>
+        <ul>
+          {FILE_TIPS.map((tip) => (
+            <li key={tip}>{tip}</li>
+          ))}
+        </ul>
+      </details>
+    </>
   )
   const after = (
     <div className="well-file-after">

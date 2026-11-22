@@ -486,6 +486,18 @@ export function dictionaryFileText(entries: readonly unknown[], fileName: string
 
 const count = (n: number, one: string, many: string): string => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 
+/** What a file needs, and where the reader can go wrong: the note a
+ *  person opens beside Import, before they pick a file (LB, 2026-11-21:
+ *  the limits are said where the feature is used, never only in docs). */
+export const FILE_TIPS: readonly string[] = [
+  '1 line per word, in 2 columns: heard as, then written as, with a comma, a tab or a semicolon between them. For example: shivon,Siobhan',
+  'A word that holds a comma or semicolon, and a note that holds a comma, tab or semicolon, needs double quotes around it, or its line can split in the wrong place. A spreadsheet adds them when it saves as CSV, so never type them into a cell. In a text editor, type them yourself.',
+  'Keep every word and note on 1 line. A cell with a line break inside it is skipped, or can come in as stray words.',
+  'Accented names read right from a file saved as CSV UTF-8 or as Unicode text, and from plain CSV saved by Excel on a Windows set to English or a Western European language. From any other encoding they come out as wrong letters.',
+  `A file can be ${MAX_DICTIONARY_FILE_BYTES / 1_000_000} MB at most, a word ${MAX_ENTRY_CHARS} characters, and the dictionary ${MAX_DICTIONARY_ENTRIES.toLocaleString('en-US')} words. A word cannot hold a tab.`,
+  'murmur shows the first 3 new words and asks before it imports. If they are cut in the wrong place, cancel and fix the file. A mistake further down a long file does not show there, and an import has no undo, so look the file over first.'
+]
+
 /** A file name short enough for 1 line of a question. */
 export function shortName(name: string): string {
   return name.length > 40 ? `${name.slice(0, 37)}...` : name

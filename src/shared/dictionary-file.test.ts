@@ -4,6 +4,7 @@
 // out to a file.
 import { describe, expect, it } from 'vitest'
 import {
+  FILE_TIPS,
   MAX_DICTIONARY_ENTRIES,
   MAX_ENTRY_CHARS,
   type DictionaryPick,
@@ -530,5 +531,80 @@ describe('what the row says', () => {
   it('shortens a long file name to 1 line', () => {
     expect(shortName('names.csv')).toBe('names.csv')
     expect(shortName('n'.repeat(80))).toHaveLength(40)
+  })
+})
+
+describe('the note beside Import: what a file needs, and what can go wrong', () => {
+  const all = FILE_TIPS.join(' ')
+  const read = (text: string, ext = 'csv'): { entries: Array<{ from: string; to: string }>; unread: number } => {
+    const parsed = parseDictionaryFile(text, ext)
+    if (!parsed.ok) throw new Error('not read')
+    return parsed
+  }
+
+  it('is 6 lines, and names every limit a person can act on before they pick a file', () => {
+    expect(FILE_TIPS).toHaveLength(6)
+    for (const said of ['double quotes', 'comma or semicolon', 'never type them into a cell', 'line break', 'CSV UTF-8', 'Unicode text', 'Western European', 'first 3 new words', 'no undo']) {
+      expect(all).toContain(said)
+    }
+    expect(all).toContain(`a word ${MAX_ENTRY_CHARS} characters`)
+    expect(all).toContain(`the dictionary ${MAX_DICTIONARY_ENTRIES.toLocaleString('en-US')} words`)
+    expect(all).toContain('1 MB at most')
+  })
+
+  it('line 1 is true: 2 columns parted by a comma, a tab or a semicolon, and its example reads', () => {
+    const pair = [{ from: 'shivon', to: 'Siobhan' }]
+    expect(read('shivon,Siobhan').entries).toEqual(pair)
+    expect(read('shivon\tSiobhan').entries).toEqual(pair)
+    expect(read('shivon;Siobhan').entries).toEqual(pair)
+    expect(FILE_TIPS[0]).toContain('shivon,Siobhan')
+  })
+
+  it('line 2 is true: without quotes a line splits in the wrong place, and with them it reads', () => {
+    // A notes column of commas in a semicolon file: the comma wins.
+    const notes = read('shivon;Siobhan;a name, Irish\nkubernetties;Kubernetes;a tool, for servers')
+    expect(notes.entries[0]).toEqual({ from: 'shivon;Siobhan;a name', to: 'Irish' })
+    expect(read('shivon;Siobhan;"a name, Irish"\nkubernetties;Kubernetes;"a tool, for servers"').entries).toEqual([
+      { from: 'shivon', to: 'Siobhan' },
+      { from: 'kubernetties', to: 'Kubernetes' }
+    ])
+    // A word that holds a comma, in quotes, and a note that holds a tab.
+    expect(read('"smith, jon","Smith, Jon"').entries).toEqual([{ from: 'smith, jon', to: 'Smith, Jon' }])
+    expect(read('shivon,Siobhan,"a\tnote"').entries).toEqual([{ from: 'shivon', to: 'Siobhan' }])
+    // Quotes typed into a spreadsheet cell are doubled on save, and come in as part of the word.
+    expect(read('"""smith, jon""","""Smith, Jon"""').entries).toEqual([{ from: '"smith, jon"', to: '"Smith, Jon"' }])
+  })
+
+  it('lines 3 and 5 are true: a cell with a line break is skipped or leaves stray words, and no word holds a tab', () => {
+    const one = read('"one\ntwo",Written')
+    expect(one.entries).toEqual([])
+    expect(one.unread).toBe(2)
+    expect(read('"one\nstray\ntwo",Written').entries.some((entry) => entry.from === 'stray')).toBe(true)
+    const tab = read('"a\tb",Written')
+    expect(tab.entries).toEqual([])
+    expect(tab.unread).toBe(1)
+  })
+
+  it('line 4 is true: a Western European file reads right, and another encoding comes out as wrong letters', () => {
+    // Bytes from 0xA0 up only: below that, runtimes disagree on windows-1252.
+    const western = Buffer.from([0x6a, 0x6f, 0x73, 0x65, 0x2c, 0x4a, 0x6f, 0x73, 0xe9])
+    expect(read(decodeWordList(western)).entries).toEqual([{ from: 'jose', to: 'José' }])
+    // The same name list saved as Central European: 0xA3 is its Ł.
+    const central = Buffer.from([0x6c, 0x75, 0x6b, 0x61, 0x73, 0x7a, 0x2c, 0xa3, 0x75, 0x6b, 0x61, 0x73, 0x7a])
+    expect(read(decodeWordList(central)).entries).toEqual([{ from: 'lukasz', to: '£ukasz' }])
+  })
+
+  it('line 6 is true: the question shows 3 new words and no more, whatever the file holds', () => {
+    const file = ['a1,A1', 'b2,B2', 'c3,C3', 'd4;wrong,D4', 'e5,E5'].join('\n')
+    const plan = mergeDictionary([], read(file).entries)
+    expect(plan.added).toBe(5)
+    expect(plan.addedWords).toHaveLength(3)
+    expect(plan.addedWords.join(' ')).not.toContain('d4')
+  })
+
+  it('keeps the copy rules: no dashes between clauses, digits for numbers', () => {
+    expect(all).not.toMatch(/—|–|--| - /)
+    expect(all).not.toMatch(/\b(one|two|three)\b/i)
+    expect(all).not.toContain('Murmur')
   })
 })

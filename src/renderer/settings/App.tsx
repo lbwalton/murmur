@@ -1380,7 +1380,7 @@ export function App(): React.JSX.Element {
           <Section id="dictionary" title="Dictionary" sub="Words murmur should spell your way, and phrases that expand.">
             <GroupRow
               label="Custom words"
-              keywords="vocabulary spelling names replacements import export csv json file list backup"
+              keywords="vocabulary spelling names replacements import export csv json file list backup encoding quotes"
               desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
               after={wordsFile.after}
             >

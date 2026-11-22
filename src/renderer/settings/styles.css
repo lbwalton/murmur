@@ -3021,6 +3021,48 @@ textarea.entry-field {
   color: var(--text-dim);
 }
 
+/* What a file needs and where the reader can go wrong (US-183): 1
+   line under the buttons, opened by whoever is about to pick a file.
+   On the card, so its grey text keeps the card behind it. */
+.well-file-tips {
+  padding: 0 7px 7px 13px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* 1 block with the buttons above it: the hairline every other row of
+   a group's box gets would sit on the summary's own text. */
+.group-rows > .well-file-tips {
+  border-top: 0;
+}
+
+.well-file-tips-summary {
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+}
+
+.well-file-tips-summary::-webkit-details-marker {
+  display: none;
+}
+
+.well-file-tips-summary::after {
+  content: '▸';
+  margin-left: 8px;
+}
+
+details[open] > .well-file-tips-summary::after {
+  content: '▾';
+}
+
+.well-file-tips ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
 /* The import question and its result, under the box and on the same
    card, so their text keeps the card behind it. */
 .well-file-after > .ask-first {

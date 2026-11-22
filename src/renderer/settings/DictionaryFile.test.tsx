@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AskFirst } from './AskFirst'
 import { GroupRow } from './controls'
+import { FILE_TIPS } from '../../shared/dictionary-file'
 import { fileNote, useDictionaryFile } from './DictionaryFile'
 
 const app = readFileSync(join(__dirname, 'App.tsx'), 'utf8')
@@ -33,7 +34,7 @@ describe('Import and Export under Custom words', () => {
     expect(group.indexOf('<div className="well">')).toBeLessThan(group.indexOf('{wordsFile.buttons}'))
     expect(group.indexOf('{wordsFile.buttons}')).toBeLessThan(group.indexOf('</GroupRow>'))
     const keywords = /keywords="([^"]*)"/.exec(group)?.[1] ?? ''
-    for (const word of ['vocabulary', 'names', 'import', 'export', 'csv', 'json', 'backup']) {
+    for (const word of ['vocabulary', 'names', 'import', 'export', 'csv', 'json', 'backup', 'encoding', 'quotes']) {
       expect(keywords.split(' ')).toContain(word)
     }
   })
@@ -92,6 +93,20 @@ describe('Import and Export under Custom words', () => {
     expect(html).toMatch(/<p class="visually-hidden"[^>]*role="status"><\/p>/)
   })
 
+  it('says what a file needs and where the reader can go wrong, under the buttons and on the card', () => {
+    // The limits are said where the file is picked, never only in the
+    // docs (LB, 2026-11-21).
+    const html = render(3)
+    const tips = html.slice(html.indexOf('<details class="well-file-tips">'), html.indexOf('</details>'))
+    expect(tips).toContain('<summary class="well-file-tips-summary">What a file needs, and what can go wrong</summary>')
+    for (const tip of FILE_TIPS) expect(tips).toContain(`<li>${tip}</li>`)
+    expect(html.indexOf('Export…')).toBeLessThan(html.indexOf('well-file-tips'))
+    expect(html.indexOf('well-file-tips')).toBeLessThan(html.indexOf('well-file-after'))
+    // Closed until wanted, and there before the list holds a word.
+    expect(html).not.toMatch(/<details[^>]* open/)
+    expect(render(0)).toContain('<details class="well-file-tips">')
+  })
+
   it('counts the words beside the buttons', () => {
     expect(fileNote(0)).toBe('A CSV or JSON list: heard as, written as.')
     expect(fileNote(1)).toBe('1 word. A CSV or JSON list: heard as, written as.')
@@ -113,6 +128,14 @@ describe('AskFirst, for a question that deletes nothing', () => {
 
 describe('styles', () => {
   const css = readFileSync(join(__dirname, 'styles.css'), 'utf8')
+
+  it('keeps the file note grey on the card, with a marker that turns when it opens', () => {
+    expect(css).toMatch(/\.well-file-tips \{[^}]*color: var\(--text-dim\);/)
+    expect(css).toMatch(/\.well-file-tips-summary::after \{[^}]*content: '▸';/)
+    expect(css).toMatch(/details\[open\] > \.well-file-tips-summary::after \{[^}]*content: '▾';/)
+    // No hairline between the buttons and the note under them.
+    expect(css).toMatch(/\.group-rows > \.well-file-tips \{\s*border-top: 0;/)
+  })
 
   it('scrolls a long list in its box, so hundreds of words never run down the page', () => {
     expect(css).toMatch(/\.well-list \{[^}]*max-height: 416px;[^}]*overflow-y: auto;/)
