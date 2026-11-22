@@ -218,6 +218,110 @@
   --scene-bright: #b4ab95;
 }
 
+/* Great wave (US-174, the purple belt theme): an indigo sea, curling
+   crests with cream foam, a red sun and a far mountain, from LB's
+   woodblock references (described in words only). The swell rolls low,
+   under the cards; the foam is a muted cream, the painting's brightest
+   color (scenes/wave.ts). */
+:root[data-theme='wave'],
+[data-theme-preview='wave'] {
+  --ink: #0d1523;
+  --panel: #162131;
+  --pane: #162131;
+  --panel-glass: rgba(22, 33, 49, 0.96);
+  --panel-edge: rgba(226, 233, 240, 0.08);
+  --text: #e7ebee;
+  --text-dim: #94a4b1;
+  --red-glass: #f6878b;
+  --text-dim-window: #e7ebee;
+  --text-dim-surface: #a2b1bd;
+  --text-dim-surface-clearest: #b2bfca;
+  --red-glass-clearest: #fa9ca0;
+  --ok: #8bbb74;
+  --ok-clearest: #97c581;
+  --scene-sky-top: #111a2b;
+  --scene-sky-mid: #1b2a44;
+  --scene-sky-low: #1d2e48;
+  --scene-sun-glow: #c8402a;
+  --scene-sun: #c8402a;
+  --scene-mountain: #26354f;
+  --scene-snowcap: #e9e3d6;
+  --scene-wave-far: #14304a;
+  --scene-wave-mid: #18394f;
+  --scene-wave-low: #1f4a5a;
+  --scene-wave-near: #28606a;
+  --scene-foam: #d2cdc1;
+  --scene-mountain-far: #1f2c44;
+  --scene-sheet: rgba(13, 21, 35, 0.45);
+  --scene-bright: #afaeaa;
+}
+
+/* Ember (US-174, the brown belt theme; id fire, since ember is night
+   studio's id): a charcoal ground, a fire glow from below, flame ribbons
+   at the edges and rising sparks, from LB's fire references (described
+   in words only). The sparks are ember orange, never the live amber; the
+   hottest spark is the painting's brightest color (scenes/fire.ts). */
+:root[data-theme='fire'],
+[data-theme-preview='fire'] {
+  --ink: #120c0a;
+  --panel: #1d1512;
+  --pane: #1d1512;
+  --panel-glass: rgba(29, 21, 18, 0.96);
+  --panel-edge: rgba(241, 231, 221, 0.08);
+  --text: #f1e7dd;
+  --text-dim: #a69585;
+  --red-glass: #f6878b;
+  --text-dim-window: #f1e7dd;
+  --text-dim-surface: #b8a698;
+  --text-dim-surface-clearest: #c6b6a9;
+  --red-glass-clearest: #fa9ca0;
+  --scene-sky-top: #100b09;
+  --scene-sky-mid: #150e0b;
+  --scene-sky-low: #1c110c;
+  --scene-fire-glow: #e8582b;
+  --scene-fire-warm: #ff8c32;
+  --scene-ribbon-hot: #ffbe5a;
+  --scene-ribbon: #e8582b;
+  --scene-spark: #f88030;
+  --scene-spark-deep: #e8582b;
+  --scene-spark-hot: #f0b062;
+  --scene-sheet: rgba(18, 12, 10, 0.48);
+  --scene-bright: #dca15a;
+}
+
+/* Red storm (US-174, the black belt theme, the heaviest): near-black, a
+   dim red moon, slanting rain and a dark crimson sash, from LB's rain and
+   red-moon references (described in words only). The sash and the red
+   rain are crimson, so the error red still reads as an error; the sash
+   is the painting's brightest color (scenes/storm.ts). */
+:root[data-theme='storm'],
+[data-theme-preview='storm'] {
+  --ink: #0d0a0c;
+  --panel: #19151a;
+  --pane: #19151a;
+  --panel-glass: rgba(25, 21, 26, 0.96);
+  --panel-edge: rgba(236, 233, 228, 0.08);
+  --text: #ece9e4;
+  --text-dim: #9a968f;
+  --text-dim-window: #ece9e4;
+  --text-dim-surface: #a3a09a;
+  --text-dim-surface-clearest: #b5b1aa;
+  --scene-sky-top: #0a090b;
+  --scene-sky-mid: #100a0d;
+  --scene-sky-low: #170c0f;
+  --scene-moon-glow: #961c22;
+  --scene-moon: #841c20;
+  --scene-moon-hi: #be3c3c;
+  --scene-cloud: #0c090b;
+  --scene-ground: #080708;
+  --scene-sash: #b02a2f;
+  --scene-sash-deep: #5e1216;
+  --scene-rain: #cdc6ca;
+  --scene-rain-red: #a8323a;
+  --scene-sheet: rgba(13, 10, 12, 0.38);
+  --scene-bright: #b02a2f;
+}
+
 /* Glass levels (US-151, murmur Pro; Clear, the :root values, is
    everyone's). Named twice to outrank a theme's own block. Soft keeps
    more ink; Clearest lets a card show more, with brighter grey, red and

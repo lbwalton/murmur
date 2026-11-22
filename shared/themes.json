@@ -1,5 +1,5 @@
 {
-  "comment": "The window's themes (US-151). Each is 1 entry here and, when it has colors of its own, 1 :root[data-theme='<id>'] block in src/renderer/tokens.css (the single source of color). scene names a painting in src/renderer/settings/scenes/ drawn behind the cards; motion is what moves in it. unlock: null for everyone, {rank} for a belt, {pro: true} for murmur Pro. The id ember is night studio, kept from before themes had names; it is also the id of the ember red accent in cosmetics.json, a different item.",
+  "comment": "The window's themes (US-151). Each is 1 entry here and, when it has colors of its own, 1 :root[data-theme='<id>'] block in src/renderer/tokens.css (the single source of color). scene names a painting in src/renderer/settings/scenes/ drawn behind the cards; motion is what moves in it. unlock: null for everyone, {rank} for a belt, {pro: true} for murmur Pro. The id ember is night studio, kept from before themes had names; it is also the id of the ember red accent in cosmetics.json, a different item. So the brown belt theme named ember has the id fire.",
   "themes": [
     {
       "id": "ember",
@@ -28,6 +28,36 @@
       },
       "scene": "moonlit",
       "motion": "petals"
+    },
+    {
+      "id": "wave",
+      "name": "great wave",
+      "hint": "earn your purple belt",
+      "unlock": {
+        "rank": "purple"
+      },
+      "scene": "wave",
+      "motion": "swell"
+    },
+    {
+      "id": "fire",
+      "name": "ember",
+      "hint": "earn your brown belt",
+      "unlock": {
+        "rank": "brown"
+      },
+      "scene": "fire",
+      "motion": "sparks"
+    },
+    {
+      "id": "storm",
+      "name": "red storm",
+      "hint": "earn your black belt",
+      "unlock": {
+        "rank": "black"
+      },
+      "scene": "storm",
+      "motion": "rain"
     }
   ]
 }
