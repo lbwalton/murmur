@@ -17,6 +17,7 @@ import { type ProviderCatalog, costPer1kWords, providerForBaseUrl } from '../../
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { type OverlayLook, normalizeOverlayLook } from '../../shared/overlay-state'
 import { MAX_TYPING_WPM, MIN_TYPING_WPM } from '../../shared/timeback'
+import { type GlassLevel, type Ground, type Motion, themeById, wornLook } from '../../shared/themes'
 import { AnalyticsView } from './AnalyticsView'
 import { ApiKeys, pasteHint } from './ApiKeys'
 import { HomeView } from './HomeView'
@@ -42,6 +43,9 @@ import { type ProblemOpen, ProblemReport, sectionInView } from './ProblemReport'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
+import { ThemeTiles } from './ThemeTiles'
+import { SceneBackdrop } from './ScenePainting'
+import { wearTheme } from './themeWear'
 import { LoopLevelSlider } from './LoopLevelRow'
 import { Insignia, TabStroke } from './HeaderMarks'
 import { HeaderProMark, ProMark } from './ProMark'
@@ -463,9 +467,27 @@ export function App(): React.JSX.Element {
     })
   }, [arrival])
 
+  // What the window wears (US-151): the saved theme once its belt (and,
+  // for a Pro theme, the license) allows it, else night studio; glass
+  // other than Clear needs Pro. Until both are known the saved pick is
+  // trusted, as the first paint wore it from the address.
+  // The window's look (glass or solid), for the Glass row: levels only
+  // change anything where the desktop shows through.
+  const [windowLook, setWindowLook] = useState<string | undefined>(() => document.documentElement.dataset.look)
   useEffect(() => {
-    if (settings) document.documentElement.dataset.theme = settings.cosmetics.uiTheme
-  }, [settings])
+    const off = bridge().onLookChanged((look) => setWindowLook(look))
+    return off
+  }, [])
+  const worn = settings
+    ? wornLook(
+        settings.cosmetics,
+        cosmetics ? cosmetics.uiThemes.filter((t) => t.unlocked).map((t) => t.id) : null,
+        license ? license.pro : true
+      )
+    : null
+  useLayoutEffect(() => {
+    if (worn) wearTheme(worn)
+  }, [worn?.theme, worn?.glass, worn?.scene])
 
   // A base URL change resets what no longer holds: the sticky Custom
   // pick (whole-config actions land on real presets and the select
@@ -799,6 +821,7 @@ export function App(): React.JSX.Element {
       className="shell"
       style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
     >
+      {worn?.scene && <SceneBackdrop scene={worn.scene} theme={worn.theme} motion={worn.motion} />}
       <header className="masthead" ref={watchMasthead}>
         <p
           className={`micro-label wordmark${proLift !== null ? ' pro-lifting' : ''}`}
@@ -1616,37 +1639,87 @@ export function App(): React.JSX.Element {
                 </div>
               </Row>
 
-              <Row label="Theme" keywords="dark colors window" desc="The window itself. More arrive with rank.">
-                <div className="inline">
-                  {(() => {
-                    const chosen = cosmetics?.uiThemes.find((t) => t.id === settings.cosmetics.uiTheme)
-                    const p = chosen?.preview
-                    return p && p.length >= 2 ? (
-                      <span
-                        className="swatch"
-                        style={{ background: `linear-gradient(135deg, ${p[0]} 50%, ${p[1]} 50%)` }}
-                        title={chosen?.name}
-                      />
-                    ) : null
-                  })()}
-                  <select
-                    className="field"
-                    aria-label="Theme"
-                    value={settings.cosmetics.uiTheme}
-                    onChange={(e) =>
-                      void update({
-                        cosmetics: { ...settings.cosmetics, uiTheme: e.target.value }
-                      })
-                    }
-                  >
-                    {(cosmetics?.uiThemes ?? []).map((item) => (
-                      <option key={item.id} value={item.id} disabled={!item.unlocked}>
-                        {item.unlocked ? item.name : `${item.name} (locked: ${item.hint})`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <Row
+                label="Theme"
+                anchor="row-theme"
+                keywords="theme dark colors window scene painting moonlit mist night studio"
+                desc="The window's colors, and for some themes a painting behind the cards. Belts unlock more; locked themes show what earns them."
+                block
+              >
+                <ThemeTiles
+                  themes={cosmetics?.uiThemes ?? []}
+                  value={worn?.theme ?? settings.cosmetics.uiTheme}
+                  pro={license?.pro ?? false}
+                  proMark={proMark()}
+                  onPick={(uiTheme) => void update({ cosmetics: { ...settings.cosmetics, uiTheme } })}
+                />
               </Row>
+
+              {themeById(worn?.theme ?? '')?.scene && (
+                <Row
+                  label="Behind the cards"
+                  anchor="row-ground"
+                  keywords="ground scene painting desktop glass background"
+                  desc="The theme's painting, or the plain window in the theme's colors: your desktop through the glass where it shows through, otherwise solid with the gold glow."
+                >
+                  <Segmented<Ground>
+                    label="Behind the cards"
+                    value={settings.cosmetics.ground}
+                    options={[
+                      { value: 'scene', label: 'Painting' },
+                      { value: 'desktop', label: 'Desktop' }
+                    ]}
+                    onChange={(ground) => void update({ cosmetics: { ...settings.cosmetics, ground } })}
+                  />
+                </Row>
+              )}
+
+              <Row
+                label="Glass"
+                anchor="row-glass"
+                mark={license?.pro ? undefined : proMark()}
+                keywords="glass transparency clear soft clearest see through pro"
+                desc={
+                  !license?.pro
+                    ? 'murmur Pro: Soft, Clear, or Clearest. Without Pro the glass is Clear.'
+                    : windowLook === 'solid'
+                      ? 'Glass levels apply when your desktop shows through the window. Here the window is solid, so the cards keep their own ink.'
+                      : 'How much the cards let through. Every level keeps your words easy to read.'
+                }
+              >
+                <Segmented<GlassLevel>
+                  label="Glass"
+                  value={license?.pro ? settings.cosmetics.glass : 'clear'}
+                  disabled={!license?.pro || windowLook === 'solid'}
+                  options={[
+                    { value: 'soft', label: 'Soft' },
+                    { value: 'clear', label: 'Clear' },
+                    { value: 'clearest', label: 'Clearest' }
+                  ]}
+                  onChange={(glass) => void update({ cosmetics: { ...settings.cosmetics, glass } })}
+                />
+              </Row>
+
+              {themeById(worn?.theme ?? '')?.scene && (
+                <Row
+                  label="Motion"
+                  anchor="row-motion"
+                  keywords="motion animation movement petals still speed"
+                  desc="How fast the theme's painting moves. It only moves while murmur is in front, and stays still when your system asks for less motion."
+                >
+                  <Segmented<Motion>
+                    label="Motion"
+                    value={settings.cosmetics.motion}
+                    options={[
+                      { value: 'off', label: 'Off' },
+                      { value: 'slow', label: 'Slow' },
+                      { value: 'normal', label: 'Normal' },
+                      { value: 'lively', label: 'Lively' }
+                    ]}
+                    onChange={(motion) => void update({ cosmetics: { ...settings.cosmetics, motion } })}
+                  />
+                </Row>
+              )}
             </Group>
           </Section>
 

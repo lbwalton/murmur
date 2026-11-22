@@ -1,0 +1,33 @@
+{
+  "comment": "The window's themes (US-151). Each is 1 entry here and, when it has colors of its own, 1 :root[data-theme='<id>'] block in src/renderer/tokens.css (the single source of color). scene names a painting in src/renderer/settings/scenes/ drawn behind the cards; motion is what moves in it. unlock: null for everyone, {rank} for a belt, {pro: true} for murmur Pro. The id ember is night studio, kept from before themes had names; it is also the id of the ember red accent in cosmetics.json, a different item.",
+  "themes": [
+    {
+      "id": "ember",
+      "name": "night studio",
+      "hint": "the original",
+      "unlock": null,
+      "scene": null,
+      "motion": null
+    },
+    {
+      "id": "mist",
+      "name": "morning mist",
+      "hint": "earn your blue belt",
+      "unlock": {
+        "rank": "blue"
+      },
+      "scene": null,
+      "motion": null
+    },
+    {
+      "id": "moonlit",
+      "name": "moonlit",
+      "hint": "earn your blue belt",
+      "unlock": {
+        "rank": "blue"
+      },
+      "scene": "moonlit",
+      "motion": "petals"
+    }
+  ]
+}

@@ -361,6 +361,24 @@ export function readStatsHistory(): SessionEvent[] {
   return statsEvents()
 }
 
+/** What the belt has unlocked (the settings page's cosmetics, and since
+ *  US-151 the theme the murmur window opens in). */
+export async function cosmeticsReport(): Promise<import('../../shared/cosmetics').CosmeticsReport> {
+  const { computeCosmetics } = await import('../../shared/cosmetics')
+  const { computeProgress } = await import('../../shared/ranks')
+  const { evaluateAchievements } = await import('../../shared/achievements')
+  const { existsSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const cosmeticsSpec = (await import('../../../shared/cosmetics.json')).default
+  const ranksSpec = (await import('../../../shared/ranks.json')).default
+  const achievementDefs = (await import('../../../shared/achievements.json')).default
+  const events = statsEvents()
+  const founder = existsSync(join(app.getPath('userData'), 'founder'))
+  const progress = computeProgress(events, ranksSpec as never, { founder })
+  const earned = evaluateAchievements(events, achievementDefs as never)
+  return computeCosmetics(cosmeticsSpec as never, progress, earned)
+}
+
 export function initHistory(settingsWindow: () => BrowserWindow | null): void {
   getTargetWindow = settingsWindow
   // First, so held recordings still go when anything below fails.
@@ -487,21 +505,7 @@ export function initHistory(settingsWindow: () => BrowserWindow | null): void {
     return (defs as never as { achievements: unknown[] }).achievements
   })
 
-  ipc.handle('cosmetics:report', async () => {
-    const { computeCosmetics } = await import('../../shared/cosmetics')
-    const { computeProgress } = await import('../../shared/ranks')
-    const { evaluateAchievements } = await import('../../shared/achievements')
-    const { existsSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const cosmeticsSpec = (await import('../../../shared/cosmetics.json')).default
-    const ranksSpec = (await import('../../../shared/ranks.json')).default
-    const achievementDefs = (await import('../../../shared/achievements.json')).default
-    const events = statsEvents()
-    const founder = existsSync(join(app.getPath('userData'), 'founder'))
-    const progress = computeProgress(events, ranksSpec as never, { founder })
-    const earned = evaluateAchievements(events, achievementDefs as never)
-    return computeCosmetics(cosmeticsSpec as never, progress, earned)
-  })
+  ipc.handle('cosmetics:report', () => cosmeticsReport())
 
   ipc.handle('equivalents:line', async (_event, pick: unknown) => {
     const { equivalentLine } = await import('../../shared/equivalents')
