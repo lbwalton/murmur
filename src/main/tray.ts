@@ -5,6 +5,7 @@
 // follows live theme changes. Icons come from the generated set.
 import { join } from 'node:path'
 import { Menu, Tray, app, nativeImage, nativeTheme } from 'electron'
+import type { UpdateAction, UpdateMenuItem } from './updater-rules'
 
 let tray: Tray | null = null
 
@@ -36,6 +37,10 @@ export interface TrayHandlers {
   /** Hide words (US-148): flip it before screen sharing without opening
    *  the window. Gets the new value. */
   onToggleHideWords?: (on: boolean) => void
+  /** The update item (US-178): check, download, or restart to install. */
+  onUpdateAction?: (action: UpdateAction) => void
+  /** Report a problem (US-182): opens the report panel in the window. */
+  onReportProblem?: () => void
 }
 
 let trayHandlers: TrayHandlers | null = null
@@ -43,9 +48,11 @@ let inboxVisible = false
 let lastNoteVisible = false
 let handsFreeVisible = false
 let hideWordsOn = false
+let updateItem: UpdateMenuItem | null = null
 
 function buildMenu(): Menu {
   const handlers = trayHandlers
+  const update = updateItem
   if (!handlers) return Menu.buildFromTemplate([])
   // A locked take leads the menu: it is what the mic is doing now.
   const handsFree =
@@ -77,6 +84,23 @@ function buildMenu(): Menu {
         ]
       : []),
     { type: 'separator' as const },
+    // Report a problem sits with updates and Quit, the app's own items
+    // (US-182); the update item stays just above Quit.
+    ...(handlers.onReportProblem ? [{ label: 'Report a problem…', click: handlers.onReportProblem }] : []),
+    // Updates sit beside Quit, where people look for them (US-178).
+    ...(update && handlers.onUpdateAction
+      ? [
+          {
+            label: update.label,
+            enabled: update.action !== null,
+            // The action this menu was built with, even if the state
+            // moved on while the menu was open.
+            click: () => {
+              if (update.action) handlers.onUpdateAction?.(update.action)
+            }
+          }
+        ]
+      : []),
     { label: 'Quit murmur', click: handlers.onQuit }
   ])
 }
@@ -119,6 +143,13 @@ export function clickTrayHideWords(): boolean {
 /** Whether the menu's Hide words item is checked; the smoke check reads it. */
 export function trayHideWordsChecked(): boolean {
   return buildMenu().items.find((item) => item.label === 'Hide words')?.checked === true
+}
+
+/** Show the update item, or none (US-178); rebuilds only on a change. */
+export function setTrayUpdateItem(item: UpdateMenuItem | null): void {
+  if (item?.label === updateItem?.label && item?.action === updateItem?.action) return
+  updateItem = item
+  tray?.setContextMenu(buildMenu())
 }
 
 /** Show Stop hands-free and Discard while a take is locked. */

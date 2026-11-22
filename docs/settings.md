@@ -73,7 +73,7 @@ Turn on **Hide words**. Your dictated words stop showing in murmur's windows, an
 - **Copy and paste last keep working.** A copy button still copies the words, and your paste last shortcut still pastes them. What you paste shows in that app.
 - **Report is off while this is on,** because a report shows your words so you can check them before anything goes. The report button says so. Turn off Hide words to report a take.
 - **Try it, the practice box, is off** too, because what you dictate into it would show there.
-- **Notifications leave the words out.** A note receipt says where the note went, and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
+- **Notifications leave the words out.** A note receipt says where the note went (or that its sort could not finish), and a task reminder says how many tasks are open. Those already delivered are different. On a Mac, turning the switch on removes a waiting receipt or reminder from Notification Center. On Windows, it takes back only one murmur showed since it last started, so one from before a restart stays in Action Center until you clear it.
 
 It does not hide what lands in other apps, so a dictation still types into whatever you are sharing. It changes what shows, and nothing about what is saved: use [Keep history for](#how-long-is-my-history-kept-and-where) and [Encrypt saved words](#is-my-history-encrypted) for that. It sends nothing anywhere.
 
@@ -316,6 +316,10 @@ Quiet blips confirm what murmur is doing without you looking: a rising two-tone 
 
 Turn on Start at login under Settings, System, and installed builds register with your OS to open in the tray at login. Development builds deliberately skip registering.
 
+## Where do I report a problem?
+
+Under Settings, System, in the help group, next to Diagnostics: **Report a problem…** takes a screenshot of the page you are on and opens a panel where you say what happened, see every detail murmur adds, and send it as a GitHub issue or an email from your own browser or mail app. The same item is in the tray menu (the menu bar menu on a Mac). What goes, and what never does, is in [How do I report a problem?](troubleshooting.md#how-do-i-report-a-problem).
+
 ## What happens if murmur crashes?
 
 The error is written to a small rotating log in murmur's data folder under `logs/`, and the app relaunches itself exactly once. If the relaunched instance hits trouble too, it stays running in a visibly degraded state instead of looping, and the log has the story. Your dictation history and settings are untouched by any of this.
@@ -382,10 +386,23 @@ Almost always a macOS permission. The Test button on the Daily recap row (Settin
 Settings, System, **Updates** has 3 choices:
 
 - **Automatic**, the default. murmur checks every few hours, downloads quietly, and installs when you quit.
-- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click the notification, or Download in Settings.
+- **Ask first.** murmur checks and tells you when a version is ready. Nothing downloads until you click: the notification, Download or Check for updates in Settings, or the Download or Check for updates item in murmur's menu.
 - **Off.** murmur asks GitHub for nothing. Security fixes will not reach you, so check the [releases page](https://github.com/lbwalton/murmur/releases) yourself. On a Mac, an update that had already finished downloading still installs when you quit.
 
 The provider list has its own switch, because it is a separate request to GitHub. Both are explained on the [privacy page](https://murmurapp.app/privacy/).
+
+## How do I update murmur right now?
+
+Click the murmur icon in the menu bar on a Mac, or in the tray on Windows, and pick **Check for updates**. It sits just above Quit murmur. The same item is in the murmur menu at the top left of a Mac while the Settings window is in front, and as a **Check for updates** button under Settings, System, Updates.
+
+- **A newer version exists.** It downloads right away, with Ask first too, since the click is your ask. The item reads Downloading and the version until it is done; Settings, System, Updates shows how much is in.
+- **The download is done.** The item reads **Restart to update to** and the version. Click it, and murmur closes, installs the update, and opens again by itself about 15 seconds later. The item reads Restarting while it gets ready. Settings, System, Updates has the same button as **Restart now**, and clicking the update ready notification does the same.
+- **You already have the newest version.** A notification says so.
+- **The check fails.** A notification says so; check your internet connection and try again. Dictation keeps working either way.
+
+murmur never restarts in the middle of a take. If you are recording, your words are still on their way, or a hands-free take is locked, the item reads **Restart after this take**, and murmur restarts once the words land.
+
+With Updates set to Off, the item is hidden, so murmur still asks GitHub for nothing.
 
 ## Where do I see what changed in an update?
 

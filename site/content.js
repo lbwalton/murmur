@@ -188,7 +188,7 @@ function privacy(links, supportEmail) {
     description: 'The murmur apps have no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-18',
+    updated: '2026-11-21',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -223,7 +223,7 @@ function privacy(links, supportEmail) {
           ['Test connection.', ['It asks your provider for its list of models, with your key.']],
           [
             'Updates, on Mac and Windows.',
-            ['murmur checks GitHub for an update every few hours and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit. Settings has a switch for each: Updates can be Automatic, Ask first, or Off, and Off makes no update request at all.']
+            ['murmur checks GitHub for an update every few hours, and right away when you click Check for updates, and reads its list of providers from GitHub. Nothing about you or your dictations is sent; GitHub sees the request as it would any web visit. Settings has a switch for each: Updates can be Automatic, Ask first, or Off, and Off makes no update request at all.']
           ],
           ['The iPhone keyboard.', ['The murmur keyboard sends nothing anywhere. It hands your take to the murmur app on the phone and types only the words you dictated.']],
           ['Your notes, if their folder syncs.', ['Notes are files in the folder you pick. If that folder syncs, like iCloud Drive or a synced vault, the sync service carries them under its own terms.']],
@@ -235,7 +235,7 @@ function privacy(links, supportEmail) {
               '.'
             ]
           ],
-          ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address. Report this take shows you the whole email first, in your own mail app, and you can change or take out anything before you send it.']]
+          ['Help you ask for.', ['A diagnostics report or log leaves only when you send it yourself, and an email to support comes with your address. Report this take shows you the whole email first, in your own mail app, and you can change or take out anything before you send it. Report a problem works the same way: it shows you everything first, with a screenshot of murmur\'s own window and never your whole screen, then opens it in your own browser as a GitHub issue, which anyone can read, or in your mail app. Nothing goes until you press Submit or Send there.']]
         ]
       },
       {
@@ -258,7 +258,8 @@ function privacy(links, supportEmail) {
           ['Recordings waiting for a retry.', ['On your device, until the take succeeds or you discard it. With Keep history at 24 hours or Don\'t keep, they go after 24 hours, the next time murmur runs. At most 20 recordings wait at once, and the oldest go first.']],
           ['Purchase and license records.', ['10 years after purchase, for tax and business audits, then deleted. Stripe keeps its own copy under its own policy, and Apple does for iPhone purchases.']],
           ['Support email.', ['3 years after the last message, then cleared within about 30 days.']],
-          ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']]
+          ['A take you report.', ['90 days, then cleared within about 30 days. It becomes a test case only if you agree, rewritten without names or details.']],
+          ['A problem you report.', ['By email, 90 days, then cleared within about 30 days. As a GitHub issue, it is public and stays on GitHub, under GitHub\'s terms, and you can edit it there.']]
         ]
       },
       {

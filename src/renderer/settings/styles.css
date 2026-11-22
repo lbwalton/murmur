@@ -685,6 +685,96 @@ body {
   margin-top: 4px;
 }
 
+/* Report a problem (US-182): the report's own fields in the share card's
+   dialog, tall enough to read every word before it goes. */
+/* Doubled so it outranks .share-dialog, which comes later. */
+.share-dialog.problem-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  /* The card's pane over ink: under glass the page behind would show
+     through a form that is all text. */
+  background: linear-gradient(var(--panel), var(--panel)), var(--ink);
+  color-scheme: dark;
+}
+
+.problem-dialog .report-field {
+  margin-top: 12px;
+}
+
+.problem-dialog .report-field .micro-label {
+  display: block;
+  margin-bottom: 0;
+}
+
+.problem-block {
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+/* The picture as it will be pasted: the window over solid ink. */
+.problem-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  margin-top: 6px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  background: var(--ink);
+}
+
+.problem-note {
+  padding: 6px 0 0;
+}
+
+.problem-public {
+  color: var(--text);
+}
+
+.problem-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.problem-sent {
+  margin: 10px 0 4px;
+  padding: 4px 12px 10px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+}
+
+.problem-dialog .share-actions {
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* While a screenshot is retaken the report steps aside; this small bar
+   stays, solid ink so it reads over anything, and goes before the
+   picture is taken. */
+.problem-aim {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 60;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px 16px;
+  background: var(--ink);
+  font-size: 13px;
+}
+
+.problem-aim p {
+  margin: 0 0 4px;
+}
+
 /* The note receipt's Home row (US-082). */
 .last-note-row {
   display: flex;
@@ -1183,6 +1273,16 @@ button.health {
   max-width: 300px;
 }
 
+/* A field never grows past its row. A select sizes itself to its
+   longest option, and a Windows mic name can run 70 characters, so
+   without this the Microphone list spilled over the card (US-179,
+   issue #50).
+   The picked name cuts off with an ellipsis; the open list still shows
+   every name in full. */
+.row-control .field {
+  max-width: 100%;
+}
+
 .inline {
   display: flex;
   align-items: center;
@@ -1211,6 +1311,7 @@ select.field {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 26px;
+  text-overflow: ellipsis;
   background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
     linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
   background-position:

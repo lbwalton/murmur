@@ -1,10 +1,22 @@
 # Troubleshooting
 
-Short answers first, details after. If a problem is not listed here, open an issue at github.com/lbwalton/murmur/issues.
+Short answers first, details after. If a problem is not listed here, use **Report a problem** in murmur (see [How do I report a problem?](#how-do-i-report-a-problem)), or open an issue at github.com/lbwalton/murmur/issues.
 
 ## How do I send diagnostics when something goes wrong?
 
 Settings, System, Diagnostics, **Save report**. That writes one plain text file you can open and read before deciding to share it: the app version, your OS, whether the hotkey hook is running, a summary of your settings (counts of dictionary and expansion entries, never their contents), and the recent activity log. The log records what happened to each dictation (captured, no speech with the measured input level, transcription failure with its status, delivered or left on the clipboard) but never your words and never key material. Nothing is ever sent automatically: the report exists only where you save it and goes only where you send it. **Open log folder** shows the live log file itself.
+
+## How do I report a problem?
+
+Click the murmur icon in the menu bar on a Mac, or in the tray on Windows, and pick **Report a problem…**. It is also under Settings, System, **Report a problem**. A panel opens with a box for what happened, an optional box for what you expected, a screenshot of murmur's window, and the details murmur adds, all on screen and all yours to change. **Open on GitHub** opens a new issue in your browser with everything filled in. **Email it instead** opens a message to support@murmurapp.app in your mail app, for when you have no GitHub account. Nothing goes until you press Submit new issue or Send there: murmur itself sends nothing (added November 2026).
+
+**The screenshot** is of murmur's own window, never your whole screen, so murmur needs no Screen Recording permission. From Settings it shows the page you were on when you clicked. From the menu it shows the window if it was open; if it was closed, the panel says so. To take one, or a better one, press **Retake**: the panel steps aside, you go to what you want to show, and press **Take screenshot**. **Remove** leaves it out. With Hide words on, your words are hidden in the screenshot as they are on screen, and a screenshot taken before you turned Hide words on is removed. A link cannot carry a picture, so murmur copies it for you: on GitHub, click in the Screenshot box and press Cmd+V (Ctrl+V on Windows). In an email, paste it into the message, or attach it with **Save screenshot…**. Open on GitHub and Email it instead put the screenshot (or the report, when it is too long for a link) on your clipboard, in place of what was there, and the panel says so before you click.
+
+**The details** are only these: murmur's version, your system and its version (Mac or Windows, Intel or Apple silicon), the Electron and Chrome versions, the display scale, the window's size and zoom, whether the window is glass or solid (and why, when murmur knows), the page and Settings section you were on, your language, which provider each connection uses (a provider murmur knows, like Groq, by name; any other as custom endpoint) and its model, your formatting level and insert mode, whether hands-free is on, and whether the mic stays ready and follows the system default or one you picked. Then the last 30 lines of murmur's log, which says what happened to each dictation and never holds your words or keys. Before you see it, your home folder becomes ~, a web address keeps only a known provider's host (any other reads custom endpoint), mic names read [mic], note file names come out, and any line that could hold a name or a path is left out. Never included: your keys, base URLs, custom endpoint addresses, dictionary, expansions, mic names, or dictations. The screenshot is not filtered: it shows whatever was on screen, such as your dictated words, or masked keys and server addresses on Provider and keys, so check it too.
+
+**GitHub issues are public:** anyone can read them, and they stay up. Check the screenshot and the details first, and use email if you would rather not post in public. You can edit your issue on GitHub after you post it. We read every report. An emailed report is kept 90 days, then cleared within about 30 days, the same as a reported take.
+
+A link has a length limit (GitHub turns away a link past it), so murmur keeps links to 7,000 characters on a Mac and, to be safe, 2,000 on Windows, where a very long link has not been tested. A long report leaves out its oldest log lines first. If it is still too long, murmur copies the whole report and opens a short form, or a blank message, for you to paste it into, and the panel tells you before you click. Facts about GitHub's issue links were checked against GitHub's docs on 2026-11-21.
 
 ## What if Settings says "This section hit a problem"?
 
@@ -47,6 +59,12 @@ The audio never leaves your computer except to your own provider when you retry,
 ## How do I clear every recording waiting to retry?
 
 Click **discard all** at the top of **waiting to retry** on the home tab (it shows when two or more are waiting). murmur asks first, in place, with the count: for example, Discard all 8 recordings waiting to retry? **keep them** is selected, so pressing Enter or Escape leaves everything as it was; click the red **discard 8** to delete them. The audio is deleted from your computer and those takes can no longer be retried, so retry any you still want first. Only the recordings counted when the question opened are deleted, so one that fails while the question is open is kept. The home tab then says how many were discarded, and names any that could not be deleted (they stay listed).
+
+## Why did my note not sort, or sort only part of it?
+
+Your note is safe either way: a sort runs after the note is written to your inbox, and a sort that stops never removes or changes a word there. A notification beside the note receipt says "Sort did not finish" or "Sorted part of your note", with the note's time and the reason, and Settings, Notes, Last note says how many lines are left, an older note's included. Click Sort again there to send just those lines.
+
+The usual reason for a long note is the provider's size or rate limit: Groq's free plan allows 8,000 tokens a minute on its gpt-oss models (the Free Plan tab of Groq's rate limits page, verified 2026-11-21), and a long brain dump asks for more. murmur sends a long note in parts, splits a part the provider calls too large, and waits out a rate limit once per part, up to 2 minutes for the whole note; what is still left after that waits for Sort again. If it keeps stopping with http 429, wait a minute and click Sort again, or put the sort on its own provider under Settings, Notes, Sorting. The diagnostics log has the provider's own words for each refusal (`[sort] failed reason=http 413 ... said="..."`), and [Notes](./notes.md) explains every step.
 
 ## Does murmur work on a work network that inspects secure traffic, like Zscaler?
 

@@ -15,7 +15,9 @@ import {
   handsFreeDiscard,
   handsFreeLock,
   handsFreeStop,
-  initHandsFree
+  initHandsFree,
+  isHandsFreeLocked,
+  isParking
 } from './handsfree'
 import {
   captureHotkeyViaHook,
@@ -27,11 +29,12 @@ import {
 import { captureHotkeyFromWindow } from './hotkeys/capture'
 import { initFormatter } from './formatter'
 import { initHistory } from './history'
-import { initInsertion } from './insertion'
+import { clipboardRestorePending, initInsertion } from './insertion'
 import { RotatingLog } from './logging'
 import { holdPlainHttpHops, readTrustedHttpHostsFrom } from './net'
-import { initOverlay } from './overlay'
+import { getOverlayPhase, initOverlay } from './overlay'
 import { initPermissions } from './permissions'
+import { handProblemToWindow, initProblem, reportProblemFromTray } from './problem'
 import { initRecap } from './recap'
 import { initNotes, openTodayNote } from './notes'
 import { getLastNote, onLastNoteChanged, openLastNote, withdrawReceipt } from './notes/receipt'
@@ -41,7 +44,18 @@ import { initTranscribe } from './transcribe'
 import { getSettings, initSettings, onSettingsChanged, updateSettings } from './settings'
 import { isSmoke, registerSmokeCheck, runSmokeAndExit } from './smoke'
 import { devRendererUrl, watchWindow } from './window-watch'
-import { createTray, getTray, setTrayHideWords, setTrayInboxVisible, setTrayLastNoteVisible, clickTrayHideWords, trayHideWordsChecked } from './tray'
+import {
+  createTray,
+  getTray,
+  setTrayHideWords,
+  setTrayInboxVisible,
+  setTrayLastNoteVisible,
+  setTrayUpdateItem,
+  clickTrayHideWords,
+  trayHideWordsChecked,
+  trayMenuLabels
+} from './tray'
+import { type UpdateAction, type UpdateMenuItem, takeBusy } from './updater-rules'
 import { installHardening } from './hardening'
 import { reviveOnDeath } from './revive'
 import { refusedSwitch } from './hardening-rules'
@@ -223,6 +237,16 @@ async function addressFor(look: WindowLook): Promise<Record<string, string>> {
   }
 }
 
+/** Why the window is solid, in words a report can carry (US-182). */
+function solidReason(): string | null {
+  if (isolatedRun && !isSmoke && asLook(process.env.MURMUR_LOOK) === 'solid') return 'picked for a capture'
+  if (nativeTheme.prefersReducedTransparency) return 'Reduce transparency is on'
+  if (process.platform === 'win32') {
+    return process.env.MURMUR_WINDOWS_GLASS === '1' ? 'this Windows version has no glass' : 'glass is off on Windows for now'
+  }
+  return process.platform === 'darwin' ? null : 'this system has no glass'
+}
+
 function createSettingsWindow(): BrowserWindow {
   shownLook = currentLook()
   const win = new BrowserWindow({
@@ -317,6 +341,65 @@ function whenLoaded(win: BrowserWindow): Promise<void> {
   })
 }
 
+function runUpdateItem(action: UpdateAction | null): void {
+  if (action) void import('./updater').then((updater) => updater.runUpdateAction(action))
+}
+
+/** The Mac's menu bar menus. Minimal: macOS needs Edit roles for Cmd+V
+ *  in fields, and View holds the settings window's zoom (US-111);
+ *  everything else stays out so stray accelerators cannot surprise the
+ *  user. The murmur menu carries the update item when there is one. */
+function buildAppMenu(update: UpdateMenuItem | null): Menu {
+  return Menu.buildFromTemplate([
+    {
+      label: 'murmur',
+      submenu: [
+        { role: 'about' },
+        // The same update item as the tray (US-178).
+        ...(update
+          ? [{ label: update.label, enabled: update.action !== null, click: () => runUpdateItem(update.action) }]
+          : []),
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      // Not the zoom roles: those would zoom whichever page has
+      // focus and forget it at quit. These zoom the settings window
+      // and save the step.
+      label: 'View',
+      submenu: [
+        { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => stepSettingsZoom(settingsWindow, 'reset') },
+        { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => stepSettingsZoom(settingsWindow, 'in') },
+        // Cmd = is the key people press for zoom in; it answers too,
+        // without a second row in the menu.
+        {
+          label: 'Zoom In',
+          accelerator: 'CommandOrControl+=',
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => stepSettingsZoom(settingsWindow, 'in')
+        },
+        { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => stepSettingsZoom(settingsWindow, 'out') }
+      ]
+    },
+    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
+  ])
+}
+
 app.on('second-instance', () => {
   showSettingsWindow()
 })
@@ -349,55 +432,9 @@ app.whenReady().then(async () => {
   // window still shows normally; a Dock toggle setting lands later.
   if (process.platform === 'darwin' && app.dock) app.dock.hide()
 
-  // Minimal menu: macOS needs Edit roles for Cmd+V in fields, and View
-  // holds the settings window's zoom (US-111); everything else stays out
-  // so stray accelerators cannot surprise the user. Other platforms get
-  // no menu bar at all (the settings window catches Ctrl zoom itself).
-  if (process.platform === 'darwin') {
-    Menu.setApplicationMenu(
-      Menu.buildFromTemplate([
-        {
-          label: 'murmur',
-          submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'quit' }]
-        },
-        {
-          label: 'Edit',
-          submenu: [
-            { role: 'undo' },
-            { role: 'redo' },
-            { type: 'separator' },
-            { role: 'cut' },
-            { role: 'copy' },
-            { role: 'paste' },
-            { role: 'selectAll' }
-          ]
-        },
-        {
-          // Not the zoom roles: those would zoom whichever page has
-          // focus and forget it at quit. These zoom the settings window
-          // and save the step.
-          label: 'View',
-          submenu: [
-            { label: 'Actual Size', accelerator: 'CommandOrControl+0', click: () => stepSettingsZoom(settingsWindow, 'reset') },
-            { label: 'Zoom In', accelerator: 'CommandOrControl+Plus', click: () => stepSettingsZoom(settingsWindow, 'in') },
-            // Cmd = is the key people press for zoom in; it answers too,
-            // without a second row in the menu.
-            {
-              label: 'Zoom In',
-              accelerator: 'CommandOrControl+=',
-              visible: false,
-              acceleratorWorksWhenHidden: true,
-              click: () => stepSettingsZoom(settingsWindow, 'in')
-            },
-            { label: 'Zoom Out', accelerator: 'CommandOrControl+-', click: () => stepSettingsZoom(settingsWindow, 'out') }
-          ]
-        },
-        { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] }
-      ])
-    )
-  } else {
-    Menu.setApplicationMenu(null)
-  }
+  // Other platforms get no menu bar at all (the settings window catches
+  // Ctrl zoom itself).
+  Menu.setApplicationMenu(process.platform === 'darwin' ? buildAppMenu(null) : null)
 
   // First packaged launch inherits the dev profile (belts, history,
   // founder marker) so the journey continues unbroken; must run before
@@ -427,8 +464,19 @@ app.whenReady().then(async () => {
   }
   initAudio(() => settingsWindow)
   initOverlay()
-  const { initUpdater } = await import('./updater')
-  initUpdater()
+  const updater = await import('./updater')
+  updater.initUpdater({
+    busy: () =>
+      takeBusy({
+        phase: getOverlayPhase(),
+        handsFreeLocked: isHandsFreeLocked(),
+        parking: isParking(),
+        clipboardPending: clipboardRestorePending()
+      }),
+    beforeRestart: () => {
+      isQuitting = true
+    }
+  })
   const { initLicense } = await import('./license')
   initLicense()
   const { initInstallDate } = await import('./install')
@@ -452,6 +500,13 @@ app.whenReady().then(async () => {
   initTransform()
   const { initDiagnostics } = await import('./diagnostics')
   initDiagnostics(() => settingsWindow)
+  // Report a problem (US-182): a picture of this window, the details, and
+  // the person's own browser or mail app. murmur sends nothing itself.
+  initProblem({
+    settingsWindow: () => settingsWindow,
+    showSettingsWindow,
+    look: () => ({ look: shownLook, reason: shownLook === 'solid' ? solidReason() : null })
+  })
 
   // Hands-free (US-117) rides the dictation and note chords: a hold
   // works as before, a double-tap locks the take. Transform holds only.
@@ -538,12 +593,22 @@ app.whenReady().then(async () => {
   // Copy for the history view: sandboxed renderers route through main.
   // Report this take (US-130): the person's own mail app, to 1 address.
   // murmur sends nothing, and this cannot open anything else.
-  ipc.handle('report:mail', async (_event, body: unknown) => {
+  // Report a problem (US-182) sends its email the same way, under its own
+  // subject that starts murmur report too.
+  ipc.handle('report:mail', async (_event, body: unknown, kind: unknown) => {
     const { shell } = await import('electron')
     const { blankMailtoUrl, isReportMailto, mailtoUrl } = await import('../shared/report')
+    const subject = kind === 'problem' ? 'problem' : 'take'
     const text = boundedText(body, MAX_TEXT_CHARS)
-    const url = text !== null ? mailtoUrl(text) : blankMailtoUrl()
-    if (isReportMailto(url)) await shell.openExternal(url)
+    const url = text !== null ? mailtoUrl(text, subject) : blankMailtoUrl(subject)
+    if (!isReportMailto(url)) return false
+    // No mail app set up rejects; the page then copies the report instead.
+    try {
+      await shell.openExternal(url)
+      return true
+    } catch {
+      return false
+    }
   })
 
   ipc.handle('clipboard:copy', async (_event, text: unknown) => {
@@ -620,7 +685,35 @@ app.whenReady().then(async () => {
     onToggleHideWords: (on) => {
       const settings = updateSettings({ history: { hideWords: on } })
       if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('settings:pushed', settings)
+    },
+    onUpdateAction: (action) => updater.runUpdateAction(action),
+    // Report a problem… (US-182): a picture of the window if it is showing.
+    onReportProblem: () => {
+      void reportProblemFromTray()
     }
+  })
+
+  // The update item rides the tray and the Mac's murmur menu (US-178).
+  let shownUpdate: UpdateMenuItem | null = null
+  const syncUpdateItem = (): void => {
+    const item = updater.currentUpdateItem()
+    setTrayUpdateItem(item)
+    if (process.platform !== 'darwin') return
+    if (item?.label === shownUpdate?.label && item?.action === shownUpdate?.action) return
+    shownUpdate = item
+    Menu.setApplicationMenu(buildAppMenu(item))
+  }
+  updater.onUpdateOfferChanged(syncUpdateItem)
+  onSettingsChanged(syncUpdateItem)
+  syncUpdateItem()
+  registerSmokeCheck('trayUpdateItem', () => {
+    // The tray carries the item it is given, just above Quit, and drops
+    // it again; smoke has no live updater, so it shows none of its own.
+    setTrayUpdateItem({ label: 'Restart to update to 9.9.9', action: 'restart' })
+    const labels = trayMenuLabels()
+    const shown = labels[labels.length - 2] === 'Restart to update to 9.9.9'
+    setTrayUpdateItem(updater.currentUpdateItem())
+    return shown && updater.currentUpdateItem() === null && !trayMenuLabels().includes('Restart to update to 9.9.9')
   })
   setTrayHideWords(getSettings().history.hideWords)
   onSettingsChanged((s) => setTrayHideWords(s.history.hideWords))
@@ -964,6 +1057,78 @@ app.whenReady().then(async () => {
       return { rail: true, parts, hidden, back, title }
     })()`)) as { rail: boolean; parts?: boolean; hidden?: boolean; back?: boolean; title?: string } | null
     return probe !== null && probe.rail && probe.parts === true && probe.hidden === true && probe.back === true && probe.title === 'Home'
+  })
+
+  registerSmokeCheck('problemPanel', async () => {
+    // Report a problem (US-182) from its row in Settings, System: the
+    // panel opens with the details and log filled in from main, sending
+    // waits for what happened, and Cancel closes it. Smoke's window is
+    // hidden, so the panel says it has no screenshot. Registered after
+    // homeRail, which ends on the settings tab.
+    const win = settingsWindow
+    if (!win || win.isDestroyed()) return false
+    const probe = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const q = (name) => document.querySelector('[data-problem="' + name + '"]')
+      const open = q('open')
+      if (!open) return { open: false }
+      open.click()
+      let details = ''
+      for (let i = 0; i < 40 && details === ''; i++) {
+        await wait(100)
+        details = q('details')?.value ?? ''
+      }
+      const shown = q('panel')?.open === true
+      const log = q('log')?.value ?? ''
+      const noShot = q('no-shot') !== null
+      const waits = q('github')?.disabled === true && q('mail')?.disabled === true
+      const field = q('what')
+      const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set
+      setValue.call(field, 'smoke: the pill froze')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+      await wait(100)
+      const ready = q('github')?.disabled === false
+      q('cancel').click()
+      await wait(100)
+      return { open: true, shown, details, log, noShot, waits, ready, closed: q('panel') === null }
+    })()`)) as {
+      open: boolean
+      shown?: boolean
+      details?: string
+      log?: string
+      noShot?: boolean
+      waits?: boolean
+      ready?: boolean
+      closed?: boolean
+    }
+    const ok =
+      probe.open &&
+      probe.shown === true &&
+      (probe.details ?? '').startsWith(`murmur ${app.getVersion()} on `) &&
+      (probe.details ?? '').includes('Showing: Settings') &&
+      (probe.log ?? '').includes('[window:settings] did-finish-load') &&
+      probe.noShot === true &&
+      probe.waits === true &&
+      probe.ready === true &&
+      probe.closed === true
+    // The tray's way in: main leaves what it took (here, nothing, as for
+    // a closed window) and tells the page, which opens the panel saying
+    // how to add a picture.
+    handProblemToWindow(null, 'closed')
+    const tray = (await win.webContents.executeJavaScript(`(async () => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+      const q = (name) => document.querySelector('[data-problem="' + name + '"]')
+      for (let i = 0; i < 30 && !q('panel')?.open; i++) await wait(100)
+      const note = q('no-shot')?.textContent ?? ''
+      q('cancel')?.click()
+      await wait(100)
+      return { note, closed: q('panel') === null }
+    })()`)) as { note: string; closed: boolean }
+    const fromTray = tray.note.includes("murmur's window was closed") && tray.closed
+    if (!ok || !fromTray) {
+      console.error(`smoke problemPanel: ${JSON.stringify({ ...probe, details: probe.details?.slice(0, 120), log: probe.log?.length, tray })}`)
+    }
+    return ok && fromTray
   })
 
   registerSmokeCheck('settingsZoomSharp', async () => {
