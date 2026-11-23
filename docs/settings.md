@@ -402,6 +402,14 @@ The paintings never use the amber that means the mic is live or the red that mea
 
 The small pill that shows while you dictate keeps its own look in every theme.
 
+## Why does Rice paper look older as the day goes on?
+
+Rice paper wears with your day. Every dictation adds a stroke to today's painting on Wrap-up, and the paper ages along with it in 4 steps: it yellows and darkens, its burnt edges go deeper and fray, more tea stains bloom, 2 fold lines come in, and the vermilion drip runs further down. Today's painting is sized to a typical day for you, so the paper is at its most worn once today's painting is finished. The next day starts on fresh paper, and so does clearing your history.
+
+- **Do the cards change too?** A little. They age with the paper but less, so a card always stands out lighter than the paper behind it, and every word on it keeps a 4.5 to 1 contrast at every step.
+- **Does it move?** No. The paper changes only when it reaches its next step, so it looks the same with Reduce motion on.
+- **What about the tile in Look?** The Rice paper tile always shows fresh paper.
+
 ## What is Behind the cards?
 
 For a painted theme like Moonlit, Settings, Look, **Behind the cards** picks what fills the window: **Painting** (the default) shows the theme's painting, and **Desktop** shows the plain window in the theme's colors. That is your desktop through the glass where the window shows through (on a Mac), and otherwise (on Windows, or with Reduce transparency on) a solid window with a soft gold glow.

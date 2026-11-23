@@ -21,8 +21,12 @@ export function ScenePainting(props: {
   theme: string
   moving: boolean
   speed: number
+  /** How worn a painting that wears is (US-186), 0 fresh to 1; a tile
+   *  leaves it out and shows the theme fresh. */
+  wear?: number
   className: string
 }): React.JSX.Element {
+  const wear = props.wear ?? 0
   const ref = useRef<HTMLCanvasElement>(null)
   const clock = useRef(0)
   const states = useRef(new Map<string, unknown>())
@@ -49,7 +53,7 @@ export function ScenePainting(props: {
       still.width = canvas.width
       still.height = canvas.height
       fitTo(stillCtx)
-      painting.drawStill(stillCtx, state, palette)
+      painting.drawStill(stillCtx, state, palette, wear)
     }
     const size = (): void => {
       const dpr = canvasDpr()
@@ -111,7 +115,7 @@ export function ScenePainting(props: {
       sized.disconnect()
       density?.removeEventListener('change', onDensity)
     }
-  }, [props.scene, props.theme, props.moving, props.speed])
+  }, [props.scene, props.theme, props.moving, props.speed, wear])
 
   return <canvas ref={ref} className={props.className} aria-hidden="true" />
 }
@@ -153,7 +157,7 @@ export function useReducedMotion(): boolean {
 /** The worn theme's painting behind the whole window. It sits under the
  *  page's ink sheet (body::before, --scene-sheet), so it is placed in
  *  <body> itself, outside the page's own layers. */
-export function SceneBackdrop(props: { scene: string; theme: string; motion: Motion }): React.ReactPortal {
+export function SceneBackdrop(props: { scene: string; theme: string; motion: Motion; wear?: number }): React.ReactPortal {
   const front = useInFront()
   const reducedMotion = useReducedMotion()
   const moving = sceneMoves({ ...front, motion: props.motion, reducedMotion })
@@ -163,6 +167,7 @@ export function SceneBackdrop(props: { scene: string; theme: string; motion: Mot
       theme={props.theme}
       moving={moving}
       speed={motionSpeed(props.motion)}
+      wear={props.wear}
       className="scene-backdrop"
     />,
     document.body

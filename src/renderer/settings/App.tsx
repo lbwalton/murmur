@@ -46,7 +46,9 @@ import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
 import { ThemeTiles } from './ThemeTiles'
 import { SceneBackdrop } from './ScenePainting'
-import { wearTheme } from './themeWear'
+import { usePaperWear } from './usePaperWear'
+import { WEAR_STEPS } from '../../shared/paperWear'
+import { paintingWears, wearTheme } from './themeWear'
 import { LoopLevelSlider } from './LoopLevelRow'
 import { Insignia, TabStroke } from './HeaderMarks'
 import { HeaderProMark, ProMark } from './ProMark'
@@ -491,9 +493,11 @@ export function App(): React.JSX.Element {
         license ? license.pro : true
       )
     : null
+  // A paper theme wears through the day (US-186), with today's painting.
+  const paperWear = usePaperWear(paintingWears(worn?.scene))
   useLayoutEffect(() => {
-    if (worn) wearTheme(worn)
-  }, [worn?.theme, worn?.glass, worn?.scene])
+    if (worn) wearTheme(worn, paperWear)
+  }, [worn?.theme, worn?.glass, worn?.scene, paperWear])
   const wornTheme = themeById(worn?.theme ?? '')
 
   // A base URL change resets what no longer holds: the sticky Custom
@@ -828,7 +832,7 @@ export function App(): React.JSX.Element {
       className="shell"
       style={guiAccent ? ({ '--gui-accent': guiAccent } as React.CSSProperties) : undefined}
     >
-      {worn?.scene && <SceneBackdrop scene={worn.scene} theme={worn.theme} motion={worn.motion} />}
+      {worn?.scene && <SceneBackdrop scene={worn.scene} theme={worn.theme} motion={worn.motion} wear={paperWear / WEAR_STEPS} />}
       <header className="masthead" ref={watchMasthead}>
         <p
           className={`micro-label wordmark${proLift !== null ? ' pro-lifting' : ''}`}
