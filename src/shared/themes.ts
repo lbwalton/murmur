@@ -10,8 +10,13 @@ import type { CosmeticItem } from './cosmetics'
 export interface ThemeEntry extends CosmeticItem {
   /** The painting behind the cards, or null for a theme that is colors only. */
   scene: string | null
-  /** What moves in the painting (petals, rain, sparks), or null. */
+  /** What moves in the painting (petals, rain, sparks), or null for a
+   *  painting that stays still. */
   motion: string | null
+  /** Always solid (US-174, rice paper): the painting is the window's
+   *  ground, so the desktop never shows through and there is no glass
+   *  level to pick. */
+  solid?: boolean
 }
 
 export const THEMES: readonly ThemeEntry[] = (themesFile as { themes: ThemeEntry[] }).themes
@@ -66,18 +71,20 @@ export interface Worn {
  * has unlocked; null means not known yet (the first paint), when the
  * saved pick is trusted, since it could only be saved once earned.
  * A theme that is not earned, or needs Pro without it, is worn as night
- * studio, and glass other than Clear needs Pro.
+ * studio, and glass other than Clear needs Pro. A solid theme always wears
+ * its painting at Clear, and a painting that never moves wears motion off.
  */
 export function wornLook(choices: LookChoices, earned: readonly string[] | null, pro: boolean): Worn {
   const picked = themeById(choices.uiTheme)
   const allowed =
     picked !== undefined && (earned === null || earned.includes(picked.id)) && (!needsPro(picked) || pro)
   const theme = allowed ? picked : themeById(DEFAULT_THEME)
+  const solid = theme?.solid === true
   return {
     theme: theme?.id ?? DEFAULT_THEME,
-    scene: theme?.scene && choices.ground === 'scene' ? theme.scene : null,
-    glass: pro ? choices.glass : 'clear',
-    motion: choices.motion
+    scene: theme?.scene && (choices.ground === 'scene' || solid) ? theme.scene : null,
+    glass: pro && !solid ? choices.glass : 'clear',
+    motion: theme?.motion ? choices.motion : 'off'
   }
 }
 

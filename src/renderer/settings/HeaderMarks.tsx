@@ -51,7 +51,7 @@ export function TabStroke(props: { tab: string }): React.JSX.Element {
         const i1 = Math.max(1, Math.floor(Math.min(1, k) * (P.length - 1)))
         stroke(ctx, P, cachedBrush(seed, 12), {
           width: h * 0.62,
-          rgb: tokenColor('--brand', [217, 164, 65]),
+          rgb: tokenColor('--tab-mark', [217, 164, 65]),
           dry: 0.45,
           core: 0.5,
           ts: 0.08,

@@ -494,6 +494,7 @@ export function App(): React.JSX.Element {
   useLayoutEffect(() => {
     if (worn) wearTheme(worn)
   }, [worn?.theme, worn?.glass, worn?.scene])
+  const wornTheme = themeById(worn?.theme ?? '')
 
   // A base URL change resets what no longer holds: the sticky Custom
   // pick (whole-config actions land on real presets and the select
@@ -1654,7 +1655,7 @@ export function App(): React.JSX.Element {
               <Row
                 label="Theme"
                 anchor="row-theme"
-                keywords="theme dark colors window scene painting moonlit mist night studio"
+                keywords="theme dark light colors window scene painting night studio rice paper morning mist moonlit great wave ember red storm belt"
                 desc="The window's colors, and for some themes a painting behind the cards. Belts unlock more; locked themes show what earns them."
                 block
               >
@@ -1667,7 +1668,7 @@ export function App(): React.JSX.Element {
                 />
               </Row>
 
-              {themeById(worn?.theme ?? '')?.scene && (
+              {wornTheme?.scene && !wornTheme.solid && (
                 <Row
                   label="Behind the cards"
                   anchor="row-ground"
@@ -1692,7 +1693,9 @@ export function App(): React.JSX.Element {
                 mark={license?.pro ? undefined : proMark()}
                 keywords="glass transparency clear soft clearest see through pro"
                 desc={
-                  !license?.pro
+                  wornTheme?.solid
+                    ? `${wornTheme.name[0].toUpperCase()}${wornTheme.name.slice(1)} is paper all the way through, so it has no glass.${windowLook === 'solid' ? '' : ' Pick another theme to see through the window.'}`
+                    : !license?.pro
                     ? 'murmur Pro: Soft, Clear, or Clearest. Without Pro the glass is Clear.'
                     : windowLook === 'solid'
                       ? 'Glass levels apply when your desktop shows through the window. Here the window is solid, so the cards keep their own ink.'
@@ -1701,8 +1704,8 @@ export function App(): React.JSX.Element {
               >
                 <Segmented<GlassLevel>
                   label="Glass"
-                  value={license?.pro ? settings.cosmetics.glass : 'clear'}
-                  disabled={!license?.pro || windowLook === 'solid'}
+                  value={license?.pro && !wornTheme?.solid ? settings.cosmetics.glass : 'clear'}
+                  disabled={!license?.pro || windowLook === 'solid' || wornTheme?.solid === true}
                   options={[
                     { value: 'soft', label: 'Soft' },
                     { value: 'clear', label: 'Clear' },
@@ -1712,7 +1715,7 @@ export function App(): React.JSX.Element {
                 />
               </Row>
 
-              {themeById(worn?.theme ?? '')?.scene && (
+              {wornTheme?.scene && wornTheme.motion && (
                 <Row
                   label="Motion"
                   anchor="row-motion"

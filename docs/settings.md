@@ -391,8 +391,14 @@ That is murmur's look on a Mac since November 2026: the window is dark glass, an
 Open Settings, **Look**, and pick a tile under **Theme**. Each tile shows its theme in small; a locked tile is dimmed and says what earns it. The window changes at once, and the pick is kept after a restart.
 
 - **Night studio** is everyone's and the default.
+- **Rice paper** comes with the white belt: tea-stained paper with burnt edges, ink flecks in the corners and 1 vermilion drip. It is the 1 light theme, with ink text on paper, and it stays still.
 - **Morning mist** and **Moonlit** come with the blue belt. Moonlit is a painted theme: a navy night with a pale moon and red petals drifting past the cards.
-- More themes arrive with the other belts, and some are made for murmur Pro.
+- **Great wave** comes with the purple belt: an indigo sea with curling, foam-white crests, a red sun and a far mountain. The swell rolls slowly along the bottom.
+- **Ember** comes with the brown belt: a charcoal ground lit by a fire below, flame ribbons at the edges and sparks rising.
+- **Red storm** comes with the black belt, the heaviest: near-black, a dim red moon, slanting rain and a crimson sash stirring in the wind.
+- Each belt theme is for everyone who earns that belt, with or without murmur Pro. More themes are coming for murmur Pro.
+
+The paintings never use the amber that means the mic is live or the red that means something went wrong, so those still mean what they always have.
 
 The small pill that shows while you dictate keeps its own look in every theme.
 
@@ -400,13 +406,15 @@ The small pill that shows while you dictate keeps its own look in every theme.
 
 For a painted theme like Moonlit, Settings, Look, **Behind the cards** picks what fills the window: **Painting** (the default) shows the theme's painting, and **Desktop** shows the plain window in the theme's colors. That is your desktop through the glass where the window shows through (on a Mac), and otherwise (on Windows, or with Reduce transparency on) a solid window with a soft gold glow.
 
+Rice paper has no Behind the cards choice: the paper is the window itself, so it always shows.
+
 ## What do the glass levels do?
 
-Settings, Look, **Glass** sets how much the cards let through: **Soft**, **Clear**, or **Clearest**. The choice is part of murmur Pro; without Pro the glass is Clear. It only changes anything where your desktop shows through the window; where the window is solid (Windows for now, or Reduce transparency on), the row is greyed out and the cards keep their own ink. Every level keeps your words easy to read, held to a 4.5 to 1 contrast over even a white page behind the window. That is why Clearest lets the cards show more but never thins the window's own dark sheet.
+Settings, Look, **Glass** sets how much the cards let through: **Soft**, **Clear**, or **Clearest**. The choice is part of murmur Pro; without Pro the glass is Clear. It only changes anything where your desktop shows through the window; where the window is solid (Windows for now, or Reduce transparency on), the row is greyed out and the cards keep their own ink. Every level keeps your words easy to read, held to a 4.5 to 1 contrast over even a white page behind the window. That is why Clearest lets the cards show more but never thins the window's own dark sheet. Rice paper is paper all the way through, so it has no glass and the row is greyed out while you wear it.
 
 ## Can I stop the painting from moving?
 
-Yes. Settings, Look, **Motion** has **Off**, **Slow**, **Normal** (the default), and **Lively**. A painting only moves while murmur's window is showing and in front, and it stays still whenever your system's Reduce motion is on (on a Mac: System Settings, Accessibility, Display, Reduce motion). Off, or Reduce motion, shows a still, finished painting.
+Yes. Settings, Look, **Motion** has **Off**, **Slow**, **Normal** (the default), and **Lively**. A painting only moves while murmur's window is showing and in front, and it stays still whenever your system's Reduce motion is on (on a Mac: System Settings, Accessibility, Display, Reduce motion). Off, or Reduce motion, shows a still, finished painting. Rice paper never moves, so it has no Motion row.
 
 ## Can my accent color change the rest of the app?
 

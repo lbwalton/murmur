@@ -3,7 +3,8 @@
 // a dark hill line, a crack of blue lightning, and red petals drifting
 // down past the cards. Only the petals move. The moon is kept muted so
 // the theme's ink sheet holds every text at 4.5 to 1 (look.test.ts).
-import { type Rgb, rgba } from '../../brush'
+import { rgba } from '../../brush'
+import { glow, mod } from './paint'
 import { type Palette, SCENE_H, SCENE_W, type ThemeScene } from './space'
 
 interface Star {
@@ -52,16 +53,6 @@ const PEAKS = {
 const MOON_X = 455
 const MOON_Y = 95
 const MOON_R = 78
-
-const mod = (a: number, b: number): number => ((a % b) + b) % b
-
-function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, c: Rgb, alpha: number): void {
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r)
-  g.addColorStop(0, rgba(c, alpha))
-  g.addColorStop(1, rgba(c, 0))
-  ctx.fillStyle = g
-  ctx.fillRect(x - r, y - r, r * 2, r * 2)
-}
 
 export const moonlit: ThemeScene<MoonlitState> = {
   colors: Object.keys(PEAKS),

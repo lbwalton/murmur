@@ -52,9 +52,10 @@ export function WaveTiles(props: {
   useEffect(() => {
     if (!gridRef.current?.contains(document.activeElement)) setFocusAt(chosen)
   }, [chosen, props.styles.length])
-  // Signal amber from the tokens, for the default accent.
+  // The pill's own signal amber, for the default accent: the pill keeps
+  // night studio in every theme (US-174).
   const [amber] = useState(
-    () => getComputedStyle(document.documentElement).getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)'
+    () => getComputedStyle(document.documentElement).getPropertyValue('--pill-amber').trim() || 'rgb(240, 164, 75)'
   )
 
   // On screen: the grid is in view (and its tab is open), and the window

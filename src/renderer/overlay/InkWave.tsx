@@ -116,12 +116,12 @@ export function InkWave(props: {
     const cy = fy0 + fh / 2
 
     const C = {
-      amber: tokenColor('--amber', [240, 164, 75]),
-      gold: tokenColor('--brand', [217, 164, 65]),
-      red: tokenColor('--red', [229, 72, 77]),
-      text: tokenColor('--text', [236, 233, 228]),
-      dim: tokenColor('--text-dim', [154, 150, 143]),
-      ink: tokenColor('--ink', [15, 14, 17])
+      amber: tokenColor('--amber', [240, 164, 75], canvas),
+      gold: tokenColor('--brand', [217, 164, 65], canvas),
+      red: tokenColor('--red', [229, 72, 77], canvas),
+      text: tokenColor('--text', [236, 233, 228], canvas),
+      dim: tokenColor('--text-dim', [154, 150, 143], canvas),
+      ink: tokenColor('--ink', [15, 14, 17], canvas)
     }
     // Wet is the accent; dry is brand gold for the default, or the
     // custom accent a shade darker, the same pigment once it sets. Main
