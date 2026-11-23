@@ -262,8 +262,11 @@ function privacy(links, supportEmail) {
         // acts on a plain Escape and saves the shortcut you set, so the last
         // 3 sentences say that. The first sentence changed with them: on its
         // own, only when you ask it to, would now mislead a reader who stops
-        // there. Both wait on his yes. The answer goes live with the first
-        // deploy after the release that ships these 2 features.
+        // there. He said yes to both later that day, and to deleting the 2
+        // console lines that printed key codes while a shortcut was being
+        // set (src/main/hotkeys/quiet.test.ts keeps them out). The answer
+        // goes live with the first deploy after the release that ships
+        // these 2 features.
         q: 'Does murmur look at what I type in other apps?',
         a: [
           'On Mac and Windows, murmur reads your text only when you ask it to, and it listens for key presses only to catch your shortcuts. Transform and Fix a word copy the text you selected when you use their shortcut. Transform sends it to your provider with what you asked for and keeps the original in your history unless you turn that off, and Fix a word saves the word and the spelling you type to your dictionary. Learn from my fixes, on a Mac, is off until you turn it on: with it on, after murmur types a take it looks at that same text box for up to 1 minute to see whether you fix a word. That stays on your Mac: it never reads a box your Mac marks as a password, the text it reads is never saved or sent, and it keeps only the pair of words you fixed, for as long as your history setting keeps words. That pair joins your dictionary only when you press Add. Words in your dictionary go along with your takes as spelling hints for your providers. To hear your shortcuts, murmur is told when a key goes down or comes up in any app. It checks only whether that key belongs to a shortcut, or is Escape, which cancels a hands-free take. Of the keys it hears, murmur saves only the shortcuts you set, and it sends none.'

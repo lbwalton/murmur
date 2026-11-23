@@ -557,8 +557,7 @@ export function captureHotkeyViaHook(timeoutMs = 10_000): Promise<HookCaptureOut
 
     const timer = setTimeout(() => finish({ binding: null, reason: 'cancelled' }), timeoutMs)
 
-    const onDown = (e: { keycode: number; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }): void => {
-      console.log(`[capture:hook] down code=${e.keycode} flags=${Number(e.ctrlKey)}${Number(e.altKey)}${Number(e.shiftKey)}${Number(e.metaKey)}`)
+    const onDown = (e: { keycode: number }): void => {
       if (e.keycode === UiohookKey.Escape) {
         finish({ binding: null, reason: 'cancelled' })
         return
@@ -580,7 +579,6 @@ export function captureHotkeyViaHook(timeoutMs = 10_000): Promise<HookCaptureOut
     }
 
     const onUp = (e: { keycode: number }): void => {
-      console.log(`[capture:hook] up code=${e.keycode}`)
       const modifier = MODIFIER_BY_CODE.get(e.keycode)
       if (modifier && sawModifier) {
         // Releasing with no regular key pressed: that IS the combo.
