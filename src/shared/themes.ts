@@ -17,6 +17,9 @@ export interface ThemeEntry extends CosmeticItem {
    *  ground, so the desktop never shows through and there is no glass
    *  level to pick. */
   solid?: boolean
+  /** Wears through the day with today's painting (US-186, rice paper):
+   *  its painting and tokens.css say how at each step. */
+  wears?: boolean
 }
 
 export const THEMES: readonly ThemeEntry[] = (themesFile as { themes: ThemeEntry[] }).themes

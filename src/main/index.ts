@@ -221,17 +221,24 @@ function applyLook(win: BrowserWindow, look: WindowLook): void {
 }
 
 /** The settings window's address: its look, and the theme, glass, and
- *  ground it wears (US-151), by the shared wear rules. Anything that
- *  fails leaves the theme out, and the page wears night studio. */
+ *  ground it wears (US-151), by the shared wear rules, with how worn a
+ *  paper theme is today (US-186). Anything that fails leaves the theme
+ *  out, and the page wears night studio. */
 async function addressFor(look: WindowLook): Promise<Record<string, string>> {
   try {
-    const { wornLook } = await import('../shared/themes')
+    const { themeById, wornLook } = await import('../shared/themes')
     const { cosmeticsReport } = await import('./history')
     const { readLicenseStatus } = await import('./license')
     const cosmetics = getSettings().cosmetics
     const earned = (await cosmeticsReport()).uiThemes.filter((t) => t.unlocked).map((t) => t.id)
     const worn = wornLook(cosmetics, earned, readLicenseStatus().pro)
-    return { look, theme: worn.theme, glass: worn.glass, ground: worn.scene ? 'scene' : 'desktop' }
+    const address: Record<string, string> = { look, theme: worn.theme, glass: worn.glass, ground: worn.scene ? 'scene' : 'desktop' }
+    if (themeById(worn.theme)?.wears) {
+      const { paperWearToday } = await import('./paintings')
+      const wear = paperWearToday()
+      if (wear > 0) address.wear = String(wear)
+    }
+    return address
   } catch {
     return { look }
   }
