@@ -107,11 +107,12 @@ describe('reading colors', () => {
 })
 
 /** tokens.css as name to color: the :root block, with a theme's own
- *  block and a glass level's block laid over it when named (US-151).
+ *  block and a glass level's block laid over it when named (US-151),
+ *  and a paper theme's wear step over those (US-186).
  *  Values written as a var() or as a color cut from another token
  *  (rgb(from var(--ink) r g b / 0.5), the panes) are resolved the way
  *  the browser does. */
-function tokens(theme?: string, level: GlassLevel = 'clear'): Record<string, Rgba> {
+function tokens(theme?: string, level: GlassLevel = 'clear', wear = 0): Record<string, Rgba> {
   const css = src('renderer/tokens.css')
   const block = (start: string): string => {
     const from = css.indexOf(start)
@@ -122,6 +123,7 @@ function tokens(theme?: string, level: GlassLevel = 'clear'): Record<string, Rgb
   const parts = [block(':root {')]
   if (theme && theme !== 'ember') parts.push(block(`:root[data-theme='${theme}']`))
   if (level !== 'clear') parts.push(block(`:root[data-glass='${level}']`))
+  if (theme && wear > 0) parts.push(block(`:root[data-theme='${theme}']:where([data-wear='${wear}'])`))
   const raw: Record<string, string> = {}
   for (const part of parts) {
     for (const [, name, value] of part.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) raw[name] = value.trim()
@@ -145,6 +147,14 @@ function tokens(theme?: string, level: GlassLevel = 'clear'): Record<string, Rgb
     if (color) found[name] = color
   }
   return found
+}
+
+/** The wear steps tokens.css gives a theme (US-186): rice paper's 1 to
+ *  4, none for the rest (scenes.test.ts holds which). */
+function wearSteps(theme: string): number[] {
+  const css = src('renderer/tokens.css')
+  const at = new RegExp(`:root\\[data-theme='${theme}'\\]:where\\(\\[data-wear='(\\d+)'\\]\\)`, 'g')
+  return [...css.matchAll(at)].map((m) => Number(m[1]))
 }
 
 const FLOOR = 4.5
@@ -215,12 +225,18 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
   // at every glass level (US-151).
   // A solid theme (rice paper, US-174) is its painting all the way
   // through: no desktop or glow ever shows, and it is always worn at Clear
-  // (themes.ts wornLook), so only its painting is held, at Clear.
-  describe.each(THEMES.map((theme) => [theme.name, theme.id, theme.scene, theme.solid === true] as const))('in %s', (_name, id, scene, solid) => {
+  // (themes.ts wornLook), so only its painting is held, at Clear. Paper
+  // that wears through the day (US-186) is held at every step.
+  const looks = THEMES.flatMap((theme) =>
+    [0, ...wearSteps(theme.id)].map(
+      (wear) => [wear ? `${theme.name}, worn to step ${wear}` : theme.name, theme.id, theme.scene, theme.solid === true, wear] as const
+    )
+  )
+  describe.each(looks)('in %s', (_name, id, scene, solid, wear) => {
     const rgb = (c: Rgba): number[] => [c.r, c.g, c.b]
 
     it('has its own panes, cut from its own ground', () => {
-      const th = tokens(id)
+      const th = tokens(id, 'clear', wear)
       expect(rgb(th.pane)).toEqual(rgb(th.panel))
       expect(rgb(th['glass-window'])).toEqual(rgb(th.ink))
       expect(rgb(th['glass-card'])).toEqual(rgb(th.pane))
@@ -250,7 +266,7 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
     })
 
     describe.each(solid ? (['clear'] as const) : GLASS_LEVELS)('at %s glass', (level) => {
-      const th = tokens(id, level)
+      const th = tokens(id, level, wear)
 
       if (!solid) {
         it.each(pairs(th, stack(MATERIAL_OVER_WHITE, th['glass-window'])))('glass over a white page: %s keeps 4.5 to 1', (_pair, text, ground) => {
@@ -313,11 +329,14 @@ describe('text stays readable on the look, computed from the tokens (US-150)', (
     }
   })
 
-  it('keeps a focus ring at 3 to 1 on a card, on rice paper too (US-174)', () => {
+  it('keeps a focus ring at 3 to 1 on a card, on rice paper too (US-174), however worn (US-186)', () => {
     // Paper's card is nearly opaque, so its ring is held on the card itself.
-    const th = tokens('rice')
-    const card = stack(th['scene-sky-top'], th['scene-sheet'], th['glass-card'])
-    expect(contrast(stack(card, th['amber-soft']), card)).toBeGreaterThanOrEqual(3)
+    expect(wearSteps('rice')).toEqual([1, 2, 3, 4])
+    for (const wear of [0, ...wearSteps('rice')]) {
+      const th = tokens('rice', 'clear', wear)
+      const card = stack(th['scene-sky-top'], th['scene-sheet'], th['glass-card'])
+      expect(contrast(stack(card, th['amber-soft']), card), `step ${wear}`).toBeGreaterThanOrEqual(3)
+    }
   })
 
   it("keeps the pill's previews in the pill's own night studio colors, which no theme sets (US-174)", () => {

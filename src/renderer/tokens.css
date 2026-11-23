@@ -262,6 +262,85 @@
   --scene-dark: #382f22;
 }
 
+/* Rice paper wears through the day (US-186; LB's picks 2026-11-22): the
+   paper and its cards age together as today's painting fills, medium by
+   the time it is finished (shared/paperWear.ts), and a new day is fresh
+   paper again. Each step is its own color set, held by look.test.ts like
+   any theme. The paper ages faster than its cards, so a card always
+   stays lighter than the lightest paper behind it and the gap between
+   them grows through the day (scenes.test.ts), with its edge a shade
+   stronger each step. Ochre labels deepen a little to keep 4.5 to 1 on
+   the older cards; the gold card's ochre wash and its ink title tag are
+   laid over the card, so they age with it. Only the window wears these:
+   the selectors are on :root alone, so a theme tile stays fresh. The step
+   sits in :where(), so a block is no stronger than the theme's own: the
+   look's glass card (html[data-look][data-look] in styles.css) still
+   turns --panel into the see-through pane, and the grain shows through
+   the cards at every step. */
+:root[data-theme='rice']:where([data-wear='1']) {
+  --panel: #f6f0e4;
+  --pane: #f6f0e4;
+  --panel-lift: #fefaf1;
+  --panel-glass: rgba(246, 240, 228, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.13);
+  --glass-edge: rgba(33, 29, 20, 0.15);
+  --brand: #89591c;
+  --scene-sky-top: #e1d3b6;
+  --scene-sky-mid: #eadfc7;
+  --scene-paper-light: #f8f1e1;
+  --scene-burn: #5d3717;
+  --scene-dark: #382e1f;
+}
+
+:root[data-theme='rice']:where([data-wear='2']) {
+  --panel: #f5eedf;
+  --pane: #f5eedf;
+  --panel-lift: #fdf8ed;
+  --panel-glass: rgba(245, 238, 223, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.14);
+  --glass-edge: rgba(33, 29, 20, 0.16);
+  --brand: #87581b;
+  --scene-sky-top: #dbcbab;
+  --scene-sky-mid: #e6d9be;
+  --scene-paper-light: #f6eedb;
+  --scene-burn: #593515;
+  --scene-dark: #372c1d;
+}
+
+:root[data-theme='rice']:where([data-wear='3']) {
+  --panel: #f3ebdb;
+  --pane: #f3ebdb;
+  --panel-lift: #fbf6ea;
+  --panel-glass: rgba(243, 235, 219, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.15);
+  --glass-edge: rgba(33, 29, 20, 0.17);
+  --brand: #85571b;
+  --scene-sky-top: #d6c3a0;
+  --scene-sky-mid: #e2d3b5;
+  --scene-paper-light: #f4ead4;
+  --scene-burn: #563214;
+  --scene-dark: #372b1b;
+}
+
+:root[data-theme='rice']:where([data-wear='4']) {
+  --panel: #f1e8d6;
+  --pane: #f1e8d6;
+  --panel-lift: #faf4e6;
+  --panel-glass: rgba(241, 232, 214, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.16);
+  --glass-edge: rgba(33, 29, 20, 0.18);
+  --brand: #82551a;
+  --ok: #3d6a29;
+  --ok-clearest: #3d6a29;
+  --red-glass: #a7282d;
+  --red-glass-clearest: #a7282d;
+  --scene-sky-top: #d0bb95;
+  --scene-sky-mid: #decdab;
+  --scene-paper-light: #f2e7cd;
+  --scene-burn: #533012;
+  --scene-dark: #372919;
+}
+
 /* Unlockable theme: morning mist. Cooler ground, same signals. */
 :root[data-theme='mist'],
 [data-theme-preview='mist'] {
