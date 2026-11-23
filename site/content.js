@@ -255,11 +255,18 @@ function privacy(links, supportEmail) {
         // draft against the code then changed it: what Transform copies does
         // leave the device, Transform reads the selection when you finish
         // speaking, and Fix a word and the dictionary's hints are now named.
-        // The answer as it stands waits on his yes, and goes live with the
-        // first deploy after the release that ships these 2 features.
+        // He said yes to that answer the same day, and to a line about the
+        // key listener (src/main/hotkeys/index.ts). The line as he approved
+        // it said murmur "only checks whether that key is part of one of
+        // your shortcuts, and it never saves or sends a key"; the code also
+        // acts on a plain Escape and saves the shortcut you set, so the last
+        // 3 sentences say that. The first sentence changed with them: on its
+        // own, only when you ask it to, would now mislead a reader who stops
+        // there. Both wait on his yes. The answer goes live with the first
+        // deploy after the release that ships these 2 features.
         q: 'Does murmur look at what I type in other apps?',
         a: [
-          'On Mac and Windows, only when you ask it to. Transform and Fix a word copy the text you selected when you use their shortcut. Transform sends it to your provider with what you asked for and keeps the original in your history unless you turn that off, and Fix a word saves the word and the spelling you type to your dictionary. Learn from my fixes, on a Mac, is off until you turn it on: with it on, after murmur types a take it looks at that same text box for up to 1 minute to see whether you fix a word. That stays on your Mac: it never reads a box your Mac marks as a password, the text it reads is never saved or sent, and it keeps only the pair of words you fixed, for as long as your history setting keeps words. That pair joins your dictionary only when you press Add. Words in your dictionary go along with your takes as spelling hints for your providers.'
+          'On Mac and Windows, murmur reads your text only when you ask it to, and it listens for key presses only to catch your shortcuts. Transform and Fix a word copy the text you selected when you use their shortcut. Transform sends it to your provider with what you asked for and keeps the original in your history unless you turn that off, and Fix a word saves the word and the spelling you type to your dictionary. Learn from my fixes, on a Mac, is off until you turn it on: with it on, after murmur types a take it looks at that same text box for up to 1 minute to see whether you fix a word. That stays on your Mac: it never reads a box your Mac marks as a password, the text it reads is never saved or sent, and it keeps only the pair of words you fixed, for as long as your history setting keeps words. That pair joins your dictionary only when you press Add. Words in your dictionary go along with your takes as spelling hints for your providers. To hear your shortcuts, murmur is told when a key goes down or comes up in any app. It checks only whether that key belongs to a shortcut, or is Escape, which cancels a hands-free take. Of the keys it hears, murmur saves only the shortcuts you set, and it sends none.'
         ]
       },
       {

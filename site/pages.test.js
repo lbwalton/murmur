@@ -90,7 +90,7 @@ describe('the privacy page', () => {
     expect(item).toBeDefined()
     const said = plain(item.a)
     for (const fact of [
-      'On Mac and Windows, only when you ask it to',
+      'On Mac and Windows, murmur reads your text only when you ask it to, and it listens for key presses only to catch your shortcuts',
       'copy the text you selected when you use their shortcut',
       'Transform sends it to your provider with what you asked for',
       'keeps the original in your history unless you turn that off',
@@ -102,10 +102,25 @@ describe('the privacy page', () => {
       'only the pair of words you fixed',
       'for as long as your history setting keeps words',
       'That pair joins your dictionary only when you press Add',
-      'spelling hints for your providers'
+      'spelling hints for your providers',
+      // The key listener (src/main/hotkeys/index.ts): every key down and up
+      // in every app reaches it, it acts on shortcuts and a plain Escape,
+      // and the only key that is ever kept is a shortcut you set.
+      'murmur is told when a key goes down or comes up in any app',
+      'checks only whether that key belongs to a shortcut, or is Escape, which cancels a hands-free take',
+      'Of the keys it hears, murmur saves only the shortcuts you set, and it sends none'
     ]) {
       expect(said).toContain(fact)
     }
+    // The first sentence owns up to the keys, so a reader who stops there
+    // is not misled; the detail comes last, after the dictionary's.
+    expect(said.indexOf('listens for key presses')).toBeLessThan(said.indexOf('Transform and Fix a word'))
+    expect(said.indexOf('To hear your shortcuts')).toBeGreaterThan(said.indexOf('spelling hints for your providers'))
+    // Nothing says murmur never hears or keeps a key: the first draft of the
+    // line (it never saves or sends a key) is the wording this refuses.
+    const neverAKey = /(never|not|n.t) (\w+ (or|and|nor) )?(saves?|sends?|sees?|hears?|reads?|logs?|records?|stores?|keeps?) (a|any|your|the) (keys?|keystrokes?|key ?press(es)?)\b/i
+    expect('it never saves or sends a key').toMatch(neverAKey)
+    expect(said).not.toMatch(neverAKey)
     // 1 thing only is said to stay put, and it is learning, after Transform is done with.
     expect(said.match(/stays? on (your|this|the) /g)).toEqual(['stays on your '])
     const learning = said.indexOf('Learn from my fixes')
