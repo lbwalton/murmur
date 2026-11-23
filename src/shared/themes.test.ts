@@ -39,8 +39,18 @@ describe('the themes list (shared/themes.json, US-151)', () => {
       expect(body, theme.id).toMatch(/--scene-sheet: rgba\(/)
       // The window's ground until the painting's first frame (styles.css).
       expect(body, theme.id).toMatch(/--scene-sky-mid: #/)
-      expect(body, theme.id).toMatch(/--scene-bright: #/)
-      expect(theme.motion, theme.id).toBeTruthy()
+      // A dark painting names its brightest color, a light one (rice
+      // paper) its darkest: the extreme window text is held to.
+      expect(/--scene-bright: #/.test(body) !== /--scene-dark: #/.test(body), theme.id).toBe(true)
+    }
+  })
+
+  it('makes only a light painting solid, and lets every other painting move', () => {
+    for (const theme of THEMES.filter((t) => t.scene)) {
+      const from = tokensCss.indexOf(`:root[data-theme='${theme.id}']`)
+      const light = /--scene-dark: #/.test(tokensCss.slice(from, tokensCss.indexOf('\n}\n', from)))
+      expect(theme.solid === true, theme.id).toBe(light)
+      if (!theme.solid) expect(theme.motion, theme.id).toBeTruthy()
     }
   })
 })
@@ -71,6 +81,23 @@ describe('what the window wears', () => {
 
   it('keeps the glass at Clear without murmur Pro', () => {
     expect(wornLook(choices, ['moonlit'], false).glass).toBe('clear')
+  })
+
+  it('always wears rice paper on its paper, at Clear, still (US-174)', () => {
+    const paper = { uiTheme: 'rice', ground: 'desktop', glass: 'clearest', motion: 'lively' } as const
+    expect(themeById('rice')?.solid).toBe(true)
+    expect(wornLook(paper, ['ember', 'rice'], true)).toEqual({ theme: 'rice', scene: 'rice', glass: 'clear', motion: 'off' })
+    expect(sceneMoves({ visible: true, focused: true, motion: wornLook(paper, null, true).motion, reducedMotion: false })).toBe(false)
+  })
+
+  it('wears each belt theme from its own belt, Pro or not (US-174)', () => {
+    const at = (id: string): string | undefined => themeById(id)?.unlock?.rank
+    expect([at('rice'), at('moonlit'), at('wave'), at('fire'), at('storm')]).toEqual(['white', 'blue', 'purple', 'brown', 'black'])
+    for (const id of ['rice', 'moonlit', 'wave', 'fire', 'storm']) {
+      const theme = themeById(id)
+      expect(theme && needsPro(theme), id).toBe(false)
+      expect(wornLook({ ...choices, uiTheme: id, glass: 'clear' }, [id], false).theme, id).toBe(id)
+    }
   })
 
   it('wears night studio for a Pro theme without murmur Pro', () => {

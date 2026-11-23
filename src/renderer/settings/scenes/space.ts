@@ -16,6 +16,15 @@ export interface ThemeScene<S = unknown> {
    *  opaque). look.test.ts holds every token at its peak, laid over the
    *  scene's lightest sky, at or under the theme's --scene-bright. */
   peaks: Readonly<Record<string, number>>
+  /** The opaque fills other colors are painted over, when there are more
+   *  than the scene-sky tokens (a sea under its foam). The peak test lays
+   *  every color over the lightest of them (the darkest, for a light
+   *  painting). */
+  grounds?: readonly string[]
+  /** Colors that really land on one another, bottom first, each at its
+   *  alpha (a spark over its own halo over the fire's glow). The peak test
+   *  holds each whole stack, over the same ground, as it holds 1 color. */
+  stacks?: ReadonlyArray<ReadonlyArray<readonly [string, number]>>
   init(rand: () => number): S
   /** Everything that never moves, drawn once per size, scale and palette
    *  into a layer the page keeps. */

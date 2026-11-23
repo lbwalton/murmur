@@ -5,13 +5,21 @@
 // (the scene-* tokens), read from the element the canvas sits under, so
 // a tile can preview a theme the window is not wearing.
 import { mulberry, parseColor } from '../../brush'
+import { fire } from './fire'
 import { moonlit } from './moonlit'
+import { rice } from './rice'
+import { storm } from './storm'
+import { wave } from './wave'
 import { type Palette, SCENE_H, SCENE_W, type ThemeScene } from './space'
 
 export { SCENE_H, SCENE_W, type Palette, type ThemeScene } from './space'
 
 export const THEME_SCENES: Record<string, ThemeScene<never>> = {
-  moonlit: moonlit as ThemeScene<never>
+  rice: rice as ThemeScene<never>,
+  moonlit: moonlit as ThemeScene<never>,
+  wave: wave as ThemeScene<never>,
+  fire: fire as ThemeScene<never>,
+  storm: storm as ThemeScene<never>
 }
 
 /** The theme's paint, read where the canvas is (a tile reads its preview

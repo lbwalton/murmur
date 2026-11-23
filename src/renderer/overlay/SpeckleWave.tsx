@@ -59,8 +59,9 @@ export function SpeckleWave(props: SpeckleWaveProps): React.JSX.Element {
     const fieldH = height - 2 * fy0
 
     // Colors come from the design tokens, never hardcoded: the canvas
-    // reads the same variables the stylesheets consume.
-    const styles = getComputedStyle(document.documentElement)
+    // reads the same variables the stylesheets consume, where it sits, so
+    // a preview in Settings wears the pill's own colors (US-174).
+    const styles = getComputedStyle(canvas)
     const amber = props.accent ?? (styles.getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)')
     const cream = styles.getPropertyValue('--text').trim() || 'rgb(236, 233, 228)'
 
