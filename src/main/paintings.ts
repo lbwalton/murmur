@@ -15,6 +15,7 @@ import { ipc } from './ipc'
 import type { SessionEvent } from '../shared/history'
 import { type PaintingBook, asRecord, isDayKey, shiftDay, syncPaintings } from '../shared/painting'
 import { dayKey } from '../shared/history'
+import { todaysWear } from '../shared/paperWear'
 import type { RankSpec } from '../shared/ranks'
 import ranksSpec from '../../shared/ranks.json'
 import { isSmoke, registerSmokeCheck } from './smoke'
@@ -103,7 +104,24 @@ export function clearPaintings(): void {
   }
 }
 
+/** The log, as initPaintings was given it. */
+let readLog: (() => SessionEvent[]) | null = null
+
+/** Today's paper wear step (US-186), for the settings window's address,
+ *  so worn paper opens worn rather than fresh for a moment. 0 before the
+ *  book can be read; never throws. */
+export function paperWearToday(): number {
+  try {
+    if (readLog) syncPaintingsWith(readLog())
+    return todaysWear(load().days, dayKey(Date.now()))
+  } catch (error) {
+    console.error('[murmur] paintings: wear failed:', error)
+    return 0
+  }
+}
+
 export function initPaintings(readEvents: () => SessionEvent[]): void {
+  readLog = readEvents
   // Today and the four weeks before it, synced first so today's newest
   // take is in it.
   ipc.handle('paintings:list', () => {
@@ -144,6 +162,9 @@ export function initPaintings(readEvents: () => SessionEvent[]): void {
     const reread = readStore(file).days[day]
     const recorded = s.days[day]?.words.join(',') === '12,30,7' && JSON.stringify(reread) === JSON.stringify(s.days[day])
     const privateOk = !onDisk.includes('smoke painting probe') && !onDisk.includes('Smoke painting probe')
+    // Paper wears with the day's painting (US-186): with no typical day
+    // the painting is 6 strokes, so 3 takes are half of it, step 2.
+    const worn = s.days[day]?.target === 6 && todaysWear(s.days, day) === 2
     writeFileSync(file, '{ not json')
     const rebuilt = readStore(file)
     const keptAside = existsSync(`${file}.bad`) && Object.keys(rebuilt.days).length === 0
@@ -152,6 +173,6 @@ export function initPaintings(readEvents: () => SessionEvent[]): void {
     const cleared = Object.keys(readStore(file).days).length === 0
     rmSync(file, { force: true })
     rmSync(`${file}.bad`, { force: true })
-    return recorded && privateOk && keptAside && cleared
+    return recorded && privateOk && worn && keptAside && cleared
   })
 }

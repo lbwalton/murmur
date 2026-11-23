@@ -25,10 +25,18 @@ export interface ThemeScene<S = unknown> {
    *  alpha (a spark over its own halo over the fire's glow). The peak test
    *  holds each whole stack, over the same ground, as it holds 1 color. */
   stacks?: ReadonlyArray<ReadonlyArray<readonly [string, number]>>
+  /** A painting that wears through the day (rice paper, US-186): its
+   *  peaks and stacks at a wear from 0 (fresh, the same as peaks and
+   *  stacks) to 1 (the most a day wears it). The peak tests hold every
+   *  wear step with its own colors (tokens.css, data-wear). */
+  worn?: {
+    peaks(wear: number): Readonly<Record<string, number>>
+    stacks(wear: number): ReadonlyArray<ReadonlyArray<readonly [string, number]>>
+  }
   init(rand: () => number): S
-  /** Everything that never moves, drawn once per size, scale and palette
-   *  into a layer the page keeps. */
-  drawStill(ctx: CanvasRenderingContext2D, state: S, palette: Palette): void
+  /** Everything that never moves, drawn once per size, scale, palette
+   *  and wear (0 when left out) into a layer the page keeps. */
+  drawStill(ctx: CanvasRenderingContext2D, state: S, palette: Palette, wear?: number): void
   /** What moves, drawn over the still layer each frame. tMs is how far the
    *  motion has run (0 for the still frame); dtSec is the step since the
    *  last frame. */

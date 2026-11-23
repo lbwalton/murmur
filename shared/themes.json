@@ -18,7 +18,8 @@
       },
       "scene": "rice",
       "motion": null,
-      "solid": true
+      "solid": true,
+      "wears": true
     },
     {
       "id": "mist",
