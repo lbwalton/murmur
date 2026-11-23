@@ -149,6 +149,21 @@ body {
   opacity: 0.4;
 }
 
+/* The pill keeps night studio in every theme (US-174): its previews
+   here wear the pill's own colors, whatever the window's theme. */
+.mini-pill,
+.loop-tile-wrap {
+  --ink: var(--pill-ink);
+  --text: var(--pill-text);
+  --text-dim: var(--pill-dim);
+  --amber: var(--pill-amber);
+  --brand: var(--pill-brand);
+  --red: var(--pill-red);
+  --panel-edge: var(--pill-edge);
+  --panel-glass: var(--pill-glass);
+  --cream-25: var(--pill-dot);
+}
+
 .mini-pill {
   display: flex;
   align-items: center;
@@ -695,7 +710,7 @@ body {
   /* The card's pane over ink: under glass the page behind would show
      through a form that is all text. */
   background: linear-gradient(var(--panel), var(--panel)), var(--ink);
-  color-scheme: dark;
+  color-scheme: var(--scheme);
 }
 
 .problem-dialog .report-field {
@@ -1345,6 +1360,7 @@ select.field {
 .capture-live {
   border-color: var(--amber);
   color: var(--amber);
+  background: var(--field-live);
 }
 
 .btn {
@@ -5103,7 +5119,7 @@ html[data-look] :is(.home-timeback, .panel-strong, .running-strip) .micro-label 
   padding: 3px 8px 3px 9px;
   border-radius: 6px;
   font-weight: 500;
-  color: var(--brand);
+  color: var(--tag-text);
   background: var(--tag-ink);
   box-shadow: inset 0 0 0 1px var(--tag-edge);
 }

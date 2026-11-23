@@ -58,9 +58,9 @@ export function parseColor(value: string | null | undefined): Rgb | null {
 }
 
 /** A design token as a color, so no color lives in this file. */
-export function tokenColor(name: string, fallback: Rgb): Rgb {
+export function tokenColor(name: string, fallback: Rgb, from?: Element | null): Rgb {
   if (typeof document === 'undefined') return fallback
-  return parseColor(getComputedStyle(document.documentElement).getPropertyValue(name)) ?? fallback
+  return parseColor(getComputedStyle(from ?? document.documentElement).getPropertyValue(name)) ?? fallback
 }
 
 /** The pixel ratio a canvas paints at: the screen's density times the

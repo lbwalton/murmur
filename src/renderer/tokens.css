@@ -102,6 +102,12 @@
      ink at 72%, edged in a faint gold. */
   --tag-ink: rgb(from var(--ink) r g b / 0.72);
   --tag-edge: rgba(217, 164, 65, 0.28);
+  /* The title's words on that tag: brand gold, except where a theme's
+     tag is not ink-dark (rice paper, US-174). */
+  --tag-text: var(--brand);
+  /* The brushed mark under the tab you are on (TabStroke): gold, except
+     on rice paper, where it is vermilion (US-174). */
+  --tab-mark: var(--brand);
   /* Red on glass: brighter than --red, which on a glass card over a
      white page reads 3.4 to 1. Still the 1 clean red. */
   --red-glass: #f47a7e;
@@ -150,6 +156,110 @@
      outline. LB picked this over a hard outline and a smoke cloud
      from a live preview, 2026-09-25. */
   --ink-edge: rgba(15, 14, 17, 0.55);
+
+  /* The pill's own colors (US-174). The overlay pill keeps night studio
+     in every theme, so its previews in Settings (the waveform tiles, the
+     loop tile) wear these, which no theme sets; each equals the night
+     studio token it is named for (look.test.ts). */
+  --pill-ink: #0f0e11;
+  --pill-text: #ece9e4;
+  --pill-dim: #9a968f;
+  --pill-amber: #f0a44b;
+  --pill-brand: #d9a441;
+  --pill-red: #e5484d;
+  --pill-edge: rgba(236, 233, 228, 0.07);
+  --pill-dot: rgba(236, 233, 228, 0.25);
+  --pill-glass: rgba(23, 22, 27, 0.96);
+
+  /* A hotkey field while it listens for keys: amber words on its
+     ground (US-174: lighter than the paper on rice paper, so the amber
+     reads). Native controls in a dialog follow --scheme. */
+  --field-live: var(--ink);
+  --scheme: dark;
+}
+
+/* Rice paper (US-174, the white belt theme, the calmest): tea-stained
+   paper, burnt edges, ink flecks and 1 vermilion drip, from LB's
+   parchment and ink-wash references (described in words only). The 1
+   light theme, which LB chose by keeping it: the paper is the window's
+   ground (themes.json solid), so it has no glass and no Desktop ground,
+   while the window frame stays dark to the system. Ink text, labels in
+   ochre, the tab mark in vermilion; its gold card is a deeper ochre wash
+   with ink text, and the card's title tag is ink with pale gold words.
+   Every token that assumes a dark ground is turned over here: the cream
+   hairlines and lifts become ink at the same strength, and the paint's
+   chalk (--rice) becomes ink on paper. scene-dark is the painting's
+   darkest color (an ink fleck), which look.test.ts holds window text to
+   under the thin paper sheet (scenes/rice.ts). */
+:root[data-theme='rice'],
+[data-theme-preview='rice'] {
+  --ink: #ece3cc;
+  --panel: #f8f3e8;
+  --pane: #f8f3e8;
+  --panel-lift: #fffcf4;
+  --panel-glass: rgba(248, 243, 232, 0.96);
+  --panel-edge: rgba(33, 29, 20, 0.12);
+  --text: #211d14;
+  --text-dim: #5e5546;
+  --cream-06: rgba(33, 29, 20, 0.06);
+  --cream-14: rgba(33, 29, 20, 0.12);
+  --cream-22: rgba(33, 29, 20, 0.2);
+  --cream-25: rgba(33, 29, 20, 0.22);
+  --cream-35: rgba(33, 29, 20, 0.32);
+  --cream-55: rgba(33, 29, 20, 0.5);
+  --cream-60: rgba(33, 29, 20, 0.55);
+  --brand: #8a5a1c;
+  --brand-edge: rgba(138, 90, 28, 0.5);
+  --brand-edge-strong: rgba(138, 90, 28, 0.72);
+  --brand-glow: rgba(176, 125, 42, 0.8);
+  --brand-glow-fade: rgba(176, 125, 42, 0.5);
+  --tab-mark: #c4461f;
+  --fog-highlight: rgba(255, 255, 255, 0.55);
+  --fog-test: rgba(33, 29, 20, 0.07);
+  --fog-test-hover: rgba(33, 29, 20, 0.11);
+  --fog-test-sheen: rgba(255, 255, 255, 0.6);
+  --fog-ask: rgba(176, 125, 42, 0.12);
+  --fog-ask-glow: rgba(176, 125, 42, 0.16);
+  --fog-ask-glow-peak: rgba(176, 125, 42, 0.36);
+  --glass-card-a: 0.9;
+  --glass-edge: rgba(33, 29, 20, 0.14);
+  --glass-light: rgba(255, 255, 255, 0.6);
+  --glass-well: rgba(33, 29, 20, 0.05);
+  --glass-well-edge: rgba(33, 29, 20, 0.1);
+  --text-dim-window: #211d14;
+  --text-dim-surface: #5e5546;
+  --text-dim-surface-clearest: #5e5546;
+  --tint-strong-from: rgba(176, 125, 42, 0.32);
+  --tint-strong-to: rgba(176, 125, 42, 0.18);
+  --tint-thread-from: rgba(176, 125, 42, 0.24);
+  --tint-thread-to: rgba(176, 125, 42, 0.11);
+  --tag-ink: rgba(33, 29, 20, 0.88);
+  --tag-edge: rgba(176, 125, 42, 0.45);
+  --tag-text: #f0d9a0;
+  --red-glass: #a8282d;
+  --red-glass-clearest: #a8282d;
+  --red-wash: rgba(168, 40, 45, 0.08);
+  --red-edge: rgba(168, 40, 45, 0.35);
+  --ok: #3d6b29;
+  --ok-clearest: #3d6b29;
+  --ok-edge: rgba(61, 107, 41, 0.4);
+  --amber: #a85a00;
+  --amber-soft: rgba(168, 90, 0, 0.85);
+  --field-live: #fffcf4;
+  --scheme: light;
+  --smoke: #bfb08f;
+  --rice: #3a3328;
+  --heat-invert-bg: #fffcf4;
+  --scene-sky-top: #e6dbc1;
+  --scene-sky-mid: #efe6d2;
+  --scene-paper-light: #faf5e8;
+  --scene-stain: #8a5c2c;
+  --scene-burn: #603a18;
+  --scene-wash: #2e2a24;
+  --scene-fleck: #211d14;
+  --scene-drip: #c4461f;
+  --scene-sheet: rgba(248, 243, 232, 0.45);
+  --scene-dark: #382f22;
 }
 
 /* Unlockable theme: morning mist. Cooler ground, same signals. */
@@ -216,6 +326,110 @@
   --scene-petal-light: #e06a4f;
   --scene-sheet: rgba(11, 17, 31, 0.45);
   --scene-bright: #b4ab95;
+}
+
+/* Great wave (US-174, the purple belt theme): an indigo sea, curling
+   crests with cream foam, a red sun and a far mountain, from LB's
+   woodblock references (described in words only). The swell rolls low,
+   under the cards; the foam is a muted cream, the painting's brightest
+   color (scenes/wave.ts). */
+:root[data-theme='wave'],
+[data-theme-preview='wave'] {
+  --ink: #0d1523;
+  --panel: #162131;
+  --pane: #162131;
+  --panel-glass: rgba(22, 33, 49, 0.96);
+  --panel-edge: rgba(226, 233, 240, 0.08);
+  --text: #e7ebee;
+  --text-dim: #94a4b1;
+  --red-glass: #f6878b;
+  --text-dim-window: #e7ebee;
+  --text-dim-surface: #a2b1bd;
+  --text-dim-surface-clearest: #b2bfca;
+  --red-glass-clearest: #fa9ca0;
+  --ok: #8bbb74;
+  --ok-clearest: #97c581;
+  --scene-sky-top: #111a2b;
+  --scene-sky-mid: #1b2a44;
+  --scene-sky-low: #1d2e48;
+  --scene-sun-glow: #c8402a;
+  --scene-sun: #c8402a;
+  --scene-mountain: #26354f;
+  --scene-snowcap: #e9e3d6;
+  --scene-wave-far: #14304a;
+  --scene-wave-mid: #18394f;
+  --scene-wave-low: #1f4a5a;
+  --scene-wave-near: #28606a;
+  --scene-foam: #b6b2a8;
+  --scene-mountain-far: #1f2c44;
+  --scene-sheet: rgba(13, 21, 35, 0.45);
+  --scene-bright: #a8aaa2;
+}
+
+/* Ember (US-174, the brown belt theme; id fire, since ember is night
+   studio's id): a charcoal ground, a fire glow from below, flame ribbons
+   at the edges and rising sparks, from LB's fire references (described
+   in words only). The sparks are ember orange, never the live amber; the
+   hottest spark is the painting's brightest color (scenes/fire.ts). */
+:root[data-theme='fire'],
+[data-theme-preview='fire'] {
+  --ink: #120c0a;
+  --panel: #1d1512;
+  --pane: #1d1512;
+  --panel-glass: rgba(29, 21, 18, 0.96);
+  --panel-edge: rgba(241, 231, 221, 0.08);
+  --text: #f1e7dd;
+  --text-dim: #a69585;
+  --red-glass: #f6878b;
+  --text-dim-window: #f1e7dd;
+  --text-dim-surface: #b8a698;
+  --text-dim-surface-clearest: #c6b6a9;
+  --red-glass-clearest: #fa9ca0;
+  --scene-sky-top: #100b09;
+  --scene-sky-mid: #150e0b;
+  --scene-sky-low: #1c110c;
+  --scene-fire-glow: #e8582b;
+  --scene-fire-warm: #ff8c32;
+  --scene-ribbon-hot: #ffbe5a;
+  --scene-ribbon: #e8582b;
+  --scene-spark: #f88030;
+  --scene-spark-deep: #e8582b;
+  --scene-spark-hot: #f0b062;
+  --scene-sheet: rgba(18, 12, 10, 0.5);
+  --scene-bright: #eeae60;
+}
+
+/* Red storm (US-174, the black belt theme, the heaviest): near-black, a
+   dim red moon, slanting rain and a dark crimson sash, from LB's rain and
+   red-moon references (described in words only). The sash and the red
+   rain are crimson, so the error red still reads as an error; the sash
+   is the painting's brightest color (scenes/storm.ts). */
+:root[data-theme='storm'],
+[data-theme-preview='storm'] {
+  --ink: #0d0a0c;
+  --panel: #19151a;
+  --pane: #19151a;
+  --panel-glass: rgba(25, 21, 26, 0.96);
+  --panel-edge: rgba(236, 233, 228, 0.08);
+  --text: #ece9e4;
+  --text-dim: #9a968f;
+  --text-dim-window: #ece9e4;
+  --text-dim-surface: #a3a09a;
+  --text-dim-surface-clearest: #b5b1aa;
+  --scene-sky-top: #0a090b;
+  --scene-sky-mid: #100a0d;
+  --scene-sky-low: #170c0f;
+  --scene-moon-glow: #961c22;
+  --scene-moon: #841c20;
+  --scene-moon-hi: #be3c3c;
+  --scene-cloud: #0c090b;
+  --scene-ground: #080708;
+  --scene-sash: #b02a2f;
+  --scene-sash-deep: #5e1216;
+  --scene-rain: #cdc6ca;
+  --scene-rain-red: #a8323a;
+  --scene-sheet: rgba(13, 10, 12, 0.38);
+  --scene-bright: #b02a2f;
 }
 
 /* Glass levels (US-151, murmur Pro; Clear, the :root values, is

@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (125/183 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (126/183 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -127,6 +127,7 @@
 - [x] **US-171** The repo never names its owner
 - [x] **US-172** Every checkout link fills in FOUNDERS while the founders window is open
 - [x] **US-173** Titles on gold cards wear an ink tag
+- [x] **US-174** 5 belt themes
 - [x] **US-177** Your level reads like your other numbers
 - [x] **US-178** Update now from the menu
 
@@ -187,7 +188,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-159** Pro: color the fog
 - [ ] **US-169** The website counts download clicks, never who
 - [ ] **US-170** The business model is written down, and the license is stated right
-- [ ] **US-174** 5 belt themes
 - [ ] **US-175** Pro themes: Sakura wind, Snowfall, Lantern river
 - [ ] **US-176** Day and night: a theme that follows your clock
 - [ ] **US-181** A spoken task stays 1 item: no lone fillers, topic leads, or half clauses as checkboxes

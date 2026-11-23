@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import cosmetics from '../../../shared/cosmetics.json'
-import { ROAD, daysPerMark, drawFrom, journeyColors, rankX, sealPaint, youX } from './journeyPaint'
+import { ROAD, daysPerMark, drawFrom, journeyColors, needsRim, rankX, sealPaint, youX } from './journeyPaint'
 
 describe('the road', () => {
   const n = 31
@@ -76,5 +78,32 @@ describe('the seal in a belt', () => {
   it('splits the coral belts into their two colors', () => {
     expect(sealPaint('coral-black', c)).toEqual([c.belts['coral-black'], sealPaint('black', c)])
     expect(sealPaint('coral-white', c)).toEqual([c.belts['coral-black'], c.rice])
+  })
+})
+
+describe('a belt on a light ground (US-174)', () => {
+  // Every theme's ground, read from tokens.css: the night studio :root and
+  // each theme's own block.
+  const css = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8')
+  const inks = [...css.matchAll(/^\s*--ink: (#[0-9a-f]{6});/gm)].map((m) => m[1])
+  const hex = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number]
+  const belts = (cosmetics as { beltColors: Record<string, string> }).beltColors
+  const light = inks.filter((ink) => hex(ink).reduce((a, b) => a + b, 0) > 3 * 128)
+  const dark = inks.filter((ink) => !light.includes(ink))
+
+  it('reads 1 light ground (rice paper) and the dark ones', () => {
+    expect(light).toHaveLength(1)
+    expect(dark.length).toBeGreaterThanOrEqual(6)
+  })
+
+  it('gives only a white belt on paper an ink rim', () => {
+    expect(needsRim(hex(belts.white), hex(light[0]))).toBe(true)
+    for (const belt of ['blue', 'purple', 'brown', 'black']) expect(needsRim(hex(belts[belt]), hex(light[0])), belt).toBe(false)
+  })
+
+  it('leaves every belt on every dark ground as it was, the black belt too', () => {
+    for (const ink of dark) {
+      for (const [belt, color] of Object.entries(belts)) expect(needsRim(hex(color), hex(ink)), `${belt} on ${ink}`).toBe(false)
+    }
   })
 })

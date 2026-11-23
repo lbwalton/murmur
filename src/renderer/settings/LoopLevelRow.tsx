@@ -33,10 +33,10 @@ function LoopTile(props: {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const levelRef = useRef(STILL_LEVEL)
-  // Signal amber from the tokens, for the default accent, as the
+  // The pill's own signal amber, for the default accent, as the
   // waveform tiles read it.
   const [amber] = useState(
-    () => getComputedStyle(document.documentElement).getPropertyValue('--amber').trim() || 'rgb(240, 164, 75)'
+    () => getComputedStyle(document.documentElement).getPropertyValue('--pill-amber').trim() || 'rgb(240, 164, 75)'
   )
   // Zooming the window changes the pixel ratio; repaint at the new one
   // so the tile stays sharp (US-111). The mini pill remounts too, so
@@ -104,7 +104,7 @@ function LoopTile(props: {
       const b = ringBrush(props.look)
       stroke(paintCtx, P, cachedBrush(b.seed, 26), {
         width: b.width,
-        rgb: tokenColor('--amber', [240, 164, 75]),
+        rgb: tokenColor('--pill-amber', [240, 164, 75]),
         dry: 0.3,
         alpha: props.level / 100,
         i1: P.length - 1,
