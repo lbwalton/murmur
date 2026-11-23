@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest'
 
 // The privacy page says that of the keys murmur hears, it saves only the
 // shortcuts you set, and sends none. The key listener hears every key in
-// every app, so it writes nothing about a key: a line with a key code in
-// it would be a record of typing wherever that output is kept. Adding a
-// line here means checking it against that promise first.
-describe('the key listener writes no key to the console or the log', () => {
+// every app, so the files in this folder never write a key code: no
+// console, no process streams, and 1 line in the app log that holds only
+// flags. This reads those files and nothing else; what the rest of the
+// app logs about a take is outside it. Adding a line here means checking
+// it against that promise first.
+describe('the key listener files never write a key code', () => {
   const files = readdirSync(__dirname).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
   const sources = files.map((file) => ({ file, source: readFileSync(join(__dirname, file), 'utf8') }))
 
@@ -23,12 +25,17 @@ describe('the key listener writes no key to the console or the log', () => {
   })
 
   it('writes 1 line to the app log, the boot line, and it holds only true or false', () => {
-    const calls = sources.flatMap(({ file, source }) =>
-      [...source.matchAll(/\bwriteAppLog\(\s*([^)]*)/g)].map((m) => ({ file, arg: m[1] }))
-    )
-    expect(calls).toHaveLength(1)
-    expect(calls[0].file).toBe('index.ts')
-    expect(calls[0].arg).toContain('[hotkeys] hookStarted=')
-    expect(calls[0].arg).not.toMatch(/keycode|rawcode|\be\./)
+    const callers = sources.flatMap(({ file, source }) => [...source.matchAll(/\bwriteAppLog\(/g)].map(() => file))
+    expect(callers).toEqual(['index.ts'])
+    // The whole call is 1 template literal, with nothing joined on after it.
+    const index = sources.find((s) => s.file === 'index.ts')?.source ?? ''
+    const line = index.match(/\bwriteAppLog\(\s*(`[^`]*`)\s*\)/)?.[1] ?? ''
+    expect(line).toContain('[hotkeys] hookStarted=')
+    // Every value in the line is a flag: the hook started, or a shortcut parsed.
+    const values = [...line.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1])
+    expect(values.length).toBeGreaterThan(0)
+    for (const value of values) {
+      expect(value).toMatch(/^(hookStarted|binding !== null|\w+BindingValid\(\))$/)
+    }
   })
 })
