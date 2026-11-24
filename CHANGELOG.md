@@ -2,6 +2,10 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
+## 0.1.20 (unreleased)
+
+- Import and export your dictionary: under the list in Settings, Dictionary, Custom words, Import… adds a whole list of names from a CSV or JSON file, and Export… saves your list to a file, to keep or to carry to another computer. Import shows you first what it would add and which spellings it would change, and nothing changes until you say so. A long list scrolls in its box, and with a long list each take sends your provider the words you just said first.
+
 ## 0.1.19 (2026-11-21)
 
 - Report a problem: click the murmur icon in the menu bar (the tray on Windows) and pick Report a problem…, or find it under Settings, System. murmur takes a screenshot of its own window and fills in what we need to help: your version, your system, your providers and models, and recent log lines, with your name, folder paths, unknown web addresses, and mic names left out. You see every word before it goes. Open on GitHub opens a filled-in issue in your browser (paste the screenshot with Cmd+V, Ctrl+V on Windows), and Email it instead opens a message to support@murmurapp.app in your mail app. Nothing goes anywhere unless you send it.

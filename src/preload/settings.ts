@@ -125,6 +125,18 @@ const api = {
   openReleases: (): Promise<void> => ipcRenderer.invoke('updates:openReleases'),
   saveDiagnostics: (): Promise<boolean> => ipcRenderer.invoke('diag:save'),
   openLogFolder: (): Promise<void> => ipcRenderer.invoke('diag:openLogs'),
+  // The dictionary as a file (US-183). The pick answers with counts; the
+  // file's words stay in the main process until importDictionary.
+  pickDictionaryFile: (): Promise<import('../shared/dictionary-file').DictionaryPick> => {
+    return ipcRenderer.invoke('dictionary:pick')
+  },
+  importDictionary: (token: string): Promise<import('../shared/dictionary-file').DictionaryImported> => {
+    return ipcRenderer.invoke('dictionary:import', token)
+  },
+  dropDictionaryImport: (): Promise<void> => ipcRenderer.invoke('dictionary:drop'),
+  exportDictionary: (): Promise<import('../shared/dictionary-file').DictionaryExported> => {
+    return ipcRenderer.invoke('dictionary:export')
+  },
   testPolishProvider: (): Promise<ProviderTestResult> => ipcRenderer.invoke('provider:testPolish'),
   setKeyFor: (baseUrl: string, key: string): Promise<KeyStatus> => {
     return ipcRenderer.invoke('apikey:setFor', baseUrl, key)

@@ -25,6 +25,7 @@ import { PageTitle } from './PageTitle'
 import { focusPageScroller, markScrollbars, pageScroller } from './scroller'
 import { JourneyView } from './JourneyView'
 import { TryBox } from './HideWords'
+import { useDictionaryFile } from './DictionaryFile'
 import { HistorySettings } from './HistorySettings'
 import { WizardView } from './WizardView'
 import { WrapUpView } from './WrapUpView'
@@ -591,6 +592,10 @@ export function App(): React.JSX.Element {
       setPasteCapturing(false)
     }
   }
+
+  // Import and Export for Custom words (US-183). A hook, so it runs
+  // before the first settings arrive.
+  const wordsFile = useDictionaryFile(settings?.dictionary.length ?? 0)
 
   if (!settings) return <main className="shell" />
 
@@ -1403,36 +1408,43 @@ export function App(): React.JSX.Element {
           <Section id="dictionary" title="Dictionary" sub="Words murmur should spell your way, and phrases that expand.">
             <GroupRow
               label="Custom words"
-              keywords="vocabulary spelling names replacements"
+              keywords="vocabulary spelling names replacements import export csv json file list backup encoding quotes"
               desc="Names and terms the speech model misspells. Heard becomes written, whole words only, exactly your casing."
+              after={wordsFile.after}
             >
               <div className="well">
-                {settings.dictionary.map((entry, i) => (
-                  <div className="well-item" key={i}>
-                    <span className="well-pair">
-                      {String(entry.from ?? '')}
-                      <span className="well-arrow">→</span>
-                      {String(entry.to ?? '')}
-                    </span>
-                    <div className="well-actions">
-                      <button
-                        className="btn btn-remove"
-                        aria-label={`Remove ${String(entry.from ?? '')}`}
-                        onClick={() =>
-                          void update({ dictionary: settings.dictionary.filter((_, j) => j !== i) })
-                        }
-                      >
-                        Remove
-                      </button>
+                {/* An imported list can run to hundreds of words (US-183),
+                    so the words scroll in their box and the add row stays
+                    in reach under them. */}
+                <div className="well-list">
+                  {settings.dictionary.map((entry, i) => (
+                    <div className="well-item" key={i}>
+                      <span className="well-pair">
+                        {String(entry.from ?? '')}
+                        <span className="well-arrow">→</span>
+                        {String(entry.to ?? '')}
+                      </span>
+                      <div className="well-actions">
+                        <button
+                          className="btn btn-remove"
+                          aria-label={`Remove ${String(entry.from ?? '')}`}
+                          onClick={() =>
+                            void update({ dictionary: settings.dictionary.filter((_, j) => j !== i) })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
                 <PairAdd
                   placeholderLeft="heard as…"
                   placeholderRight="written as…"
                   onAdd={(from, to) => void update({ dictionary: [...settings.dictionary, { from, to }] })}
                 />
               </div>
+              {wordsFile.buttons}
             </GroupRow>
 
             <GroupRow
