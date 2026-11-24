@@ -2,8 +2,12 @@
 
 All user-facing changes, newest first, in plain language. Each release's section doubles as its GitHub release notes, and the app shows your current version's section on the home tab under what's new.
 
-## 0.1.20 (unreleased)
+## 0.1.20 (2026-11-24)
 
+- Themes: choose a theme under Settings, Look. Night studio stays everyone's default, and your belts earn the rest: Rice paper comes with the white belt, Morning mist and Moonlit with blue, Great wave with purple, Ember with brown, and Red storm with black. A locked tile says what earns it, and each belt theme is yours once you earn that belt, with or without murmur Pro.
+- Paintings that move: Moonlit's petals drift, Great wave's swell rolls, Ember's sparks rise, and Red storm's rain falls. While you wear one, Settings, Look has 2 more rows: Motion sets Off, Slow, Normal, or Lively, and Behind the cards swaps the painting for the plain window in the theme's colors. A painting holds still whenever your system's Reduce motion is on.
+- Glass levels, with murmur Pro: where your desktop shows through the window (on a Mac), Glass under Settings, Look sets how much the cards let through: Soft, Clear, or Clearest. Without Pro the glass is Clear.
+- Rice paper wears with your day: as your dictations fill in today's painting, the paper ages in 4 steps. It yellows and darkens, its burnt edges deepen, and more tea stains bloom. The cards age less, so your words stay easy to read, and the next day starts on fresh paper.
 - Import and export your dictionary: under the list in Settings, Dictionary, Custom words, Import… adds a whole list of names from a CSV or JSON file, and Export… saves your list to a file, to keep or to carry to another computer. Import shows you first what it would add and which spellings it would change, and nothing changes until you say so. A long list scrolls in its box, and with a long list each take sends your provider the words you just said first.
 - Fix a word: select a word murmur got wrong in any app, press your Fix a word shortcut, and type how it should be written. murmur fixes it there and saves the pair to your dictionary. Set the shortcut under Settings, Dictionary, Keep it current.
 - Learn from my fixes, on a Mac: off until you turn it on under Settings, Dictionary, Keep it current. murmur looks at the text box it just typed into for up to 1 minute, on your computer only, and when it sees you make the same spelling fix in 2 takes it suggests the pair. Nothing joins your dictionary until you press Add.
