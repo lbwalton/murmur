@@ -40,6 +40,7 @@ import { MicRow } from './MicRow'
 import { ShortcutsSection } from './Shortcuts'
 import { NotesPanel } from './NotesPanel'
 import { type ProblemOpen, ProblemReport, sectionInView } from './ProblemReport'
+import { KeepCurrentRows } from './LearnPanel'
 import { TransformPanel } from './TransformPanel'
 import { type RailSection, SettingsRail } from './SettingsRail'
 import { WaveTiles } from './WaveTiles'
@@ -376,6 +377,11 @@ export function App(): React.JSX.Element {
     // The recap notification lands on the wrap-up page.
     const unNav = bridge().onNavigate((target) => {
       if (target === 'wrapup') setPage('wrapup')
+      // A suggestion's notification lands on the suggestions (US-185).
+      if (target === 'dictionary') {
+        setPage('setup')
+        requestAnimationFrame(() => requestAnimationFrame(() => jumpToRow('row-learn-fixes', { tone: 'glow' })))
+      }
     })
     void bridge().appVersion().then(setVersion)
     void bridge().getCatalog().then(setCatalog)
@@ -1446,6 +1452,12 @@ export function App(): React.JSX.Element {
               </div>
               {wordsFile.buttons}
             </GroupRow>
+
+            {/* The 2 ways a word murmur keeps getting wrong reaches the
+                list above (US-184, US-185; LB, 2026-11-21). */}
+            <Group id="keep-current" title="Keep it current">
+              <KeepCurrentRows settings={settings} hotkeys={hotkeys} onUpdate={update} onRefresh={refresh} />
+            </Group>
 
             <GroupRow
               label="Expansions"

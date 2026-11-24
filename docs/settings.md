@@ -35,11 +35,11 @@ Settings most people never touch sit in a group that folds from its heading and 
 
 Under Settings, Shortcuts (added November 2026). It lists every key combo murmur listens for in 1 place, in 2 groups.
 
-**yours to set** has the 4 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, and Transform. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform), so a change in either place shows in both, and the also under link on each row jumps to it there. The link runs both ways: each shortcut's row in its own section has an also under Shortcuts link that jumps back to the full list. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
+**yours to set** has the 5 shortcuts you choose: Dictation (your main hotkey), Paste last dictation, Note, Transform, and Fix a word. Click a combo and press a new one to change it; Clear removes it, and Reset puts the dictation shortcut back to its default. Each is the same setting its own section shows (Dictation, Notes, Transform, Dictionary), so a change in either place shows in both, and the also under link on each row jumps to it there. The link runs both ways: each shortcut's row in its own section has an also under Shortcuts link that jumps back to the full list. If murmur turns a combo down, the row says why: a single letter would fire while typing, a combo that contains your dictation hotkey would start a recording, and 2 shortcuts cannot share a combo. A saved shortcut that has stopped listening says so on its row.
 
 **built in** lists the keys you cannot change: tapping the dictation or note shortcut twice for hands-free (when Double-tap for hands-free is on), Esc to cancel a hands-free take, and the zoom keys (Cmd +, Cmd −, Cmd 0 on a Mac; Ctrl on Windows).
 
-Searching shortcut, hotkey, or chord in Settings lists all 4 of your shortcuts.
+Searching shortcut, hotkey, or chord in Settings lists all 5 of your shortcuts.
 
 ## How long is my history kept, and where?
 
@@ -234,6 +234,31 @@ Under the list in Settings, Dictionary, Custom words, **Import…** adds a whole
 - **Export.** Pick CSV for a spreadsheet, or JSON, in the save window: a file named with .json at the end is JSON, and any other name is CSV. An exported file imports back as the same list, except a word you typed that is longer than 120 characters or holds a tab, which import leaves out. In a CSV, a word that starts with =, +, - or @ is saved with ' in front so a spreadsheet never runs it as a formula, and murmur takes the ' off again on import.
 - **It stays on your computer.** murmur reads the file you pick and writes the file you name, and sends neither anywhere. Your words still go to your provider as spelling hints with your takes, as before. With a long list, the words in the take you just said go first, and each take carries about 2,000 characters of hints at most. A list from someone else becomes hints too, so import lists you trust.
 
+## How do I fix a word murmur keeps getting wrong?
+
+Use **Fix a word** (added November 2026). Select the wrong word in any app, press your Fix a word shortcut, and type how it should be written. murmur pastes the right spelling over it and saves the pair to your dictionary, so the word comes out right from then on.
+
+- **Set the shortcut first.** Under Settings, Dictionary, Keep it current, click the box beside Fix a word and press a combo. It is off until you set one; a modifier plus an F-key is safest. It also lists under Settings, Shortcuts.
+- **What you see.** A small panel opens by your pointer with the word you selected and a box to type in, with the word already there and selected. Type the spelling and press Enter. Esc, a click anywhere else, or starting a dictation closes it and changes nothing.
+- **What it takes.** A word or a short phrase on 1 line, 80 characters at most. With nothing selected the pill says select a word first, with more than that it says select 1 word or a short phrase, and nothing opens.
+- **What gets saved.** The pair, heard as and written as, in Custom words. If the word came from your newest dictation and cleanup had changed it, murmur saves the words the speech model heard, since those are what the dictionary matches. A word you already have takes the new spelling. murmur saves whatever you type, everyday words included, and a dictionary word changes that word in every later take: so check the spelling before you press Enter.
+- **If the word does not change.** With Insert set to copy only, or when murmur cannot press paste, the spelling waits on your clipboard and the pill says saved, paste to fix. murmur cannot see whether an app took a paste: in an app that ignores it the pill still says fixed and saved, the pair is saved, and that 1 word is yours to fix by hand.
+- **It stays on your computer.** murmur reads the selection the way Transform does, by pressing copy for you, and puts your clipboard back before the panel opens. Nothing is sent anywhere. Your dictionary words still go to your providers as spelling hints with your takes, as before.
+
+On Windows the panel takes the keyboard as any window does. If it cannot, the pill says could not open the fix box; and if the fix lands beside the word, tell us through Report a problem.
+
+## Can murmur learn the words I keep correcting?
+
+Yes, on a Mac, with **Learn from my fixes** (added November 2026). It is off until you turn it on, under Settings, Dictionary, Keep it current. With it on, murmur notices when you fix a word it typed, and when it sees you make the same fix in 2 takes it suggests the pair. Nothing joins your dictionary until you press Add.
+
+- **What it looks at.** After murmur types a take, it looks at that same text box, and no other, about once a second for up to 1 minute. It stops sooner when you click into another box or app (it reads the box 1 last time as you leave), or when the text around murmur's words changes. Once most of murmur's words are gone, because you sent the message or cleared the box, it stops for good and never reads what you type next. It reads through the Accessibility permission murmur already holds for pasting, the one screen readers use, so it asks for nothing new.
+- **What it never does.** It never reads a box your Mac marks as a password. It never follows a take that was only copied or saved, only one that was pasted. It does not record your keys. It never adds a word by itself. And it sends nothing anywhere: the looking and the counting both happen on your computer.
+- **What it keeps.** From the box, murmur takes no text at all except changes: where 1 to 3 of its own words are gone and 1 to 3 words stand in their place, it takes those few words (40 characters a side at most, about as long as the words they replaced, and never a changed number). The words that stayed, anything you added without replacing a word of murmur's, and everything before, after and between never leave the small helper that reads the box, and are gone when it stops. murmur checks whether each change is a spelling and forgets the ones that are not. What it keeps is the fix: the pair of words, and how many takes showed it. Those wait in a file on your computer that follows your history settings: sealed when Encrypt saved words is on, forgotten on the Keep history for schedule, emptied by Clear all, and deleted when you turn Learn from my fixes off. With Keep history for set to keep no text, murmur keeps no fixes, so it has nothing to suggest.
+- **What counts as a fix.** A name or term of 1 to 3 words changed to another of 1 to 3 words, while at least 3 words and most of the take stay as they were, where the new spelling shows it is a name or a term: a capital letter in the middle of a sentence or inside the word, a digit, or a mark inside it (Siobhan, GitHub, GPT-4, node.js), or a name written small on purpose (Burma for murmur). Words you add or delete, a different word altogether (meeting for lunch), a plain lowercase word in place of another, a changed number, a day or a month (Tuesday for Thursday), everyday words (their for there), and a word at the very start of a sentence are not suggested: a dictionary rule changes that word in every later take. murmur judges this from the letters, so 2 names that look alike can still reach you as a suggestion, which is why it asks and never adds.
+- **Suggestions.** A fix seen in 2 takes shows under Suggested words with Add and Not this, and murmur sends 1 quiet notification, which never holds the words themselves. Add puts the pair in Custom words, and from then on murmur writes that word this way in every take. Not this means murmur stops asking about that pair, for as long as your history setting remembers it. With Hide words on, the suggestions hide their words.
+- **Where it cannot see.** Windows, for now. A take of fewer than 4 words. A name murmur got so wrong that the 2 spellings share few letters (eefa for Aoife). An app that changes what was pasted (curly quotes, for one) or does not show its text to accessibility. A box that holds the same sentence twice, or more than 200,000 characters. The last word of a take when you go on typing after it. A plain lowercase word. Most terminals. Text you fix after a minute, or after clicking somewhere else first. For those, use Fix a word.
+- **A word about hints.** A pair you add becomes a dictionary word, and dictionary words go to your providers as spelling hints with your takes, so add the suggestions you want there.
+
 ## How do text expansions work?
 
 An expansion turns a spoken trigger phrase into a saved snippet: say "insert my email" and your address appears; say "sign off" and your closing lines appear. Add pairs in Settings, Dictionary, Expansions. Triggers match after formatting, so they work naturally mid-sentence and next to punctuation. Snippets insert exactly as written, line breaks and casing included, and a snippet's own content never triggers another expansion. When two triggers could match at the same spot, the longer one wins.
@@ -313,7 +338,7 @@ Two rules keep the number truthful. A take where you held the key while thinking
 | Permission | Why murmur needs it |
 | --- | --- |
 | Microphone | Recording your dictation. Requested automatically on first use |
-| Accessibility | Pressing Cmd+V for you, so text lands at your cursor |
+| Accessibility | Pressing Cmd+V for you, so text lands at your cursor, and Cmd+C for Transform and Fix a word, which read the text you selected. With Learn from my fixes turned on, also reading the text box murmur just typed into, for up to 1 minute, to see a word you fix |
 | Input monitoring | Hearing the hotkey while other apps are focused. After granting, quit and reopen murmur |
 
 The macOS permissions group under Settings, System shows live status and deep-links each missing one into System Settings; a missing one also appears on the Finish setup card. murmur never uses these for anything beyond the stated purpose; the code is open source and auditable.
@@ -340,7 +365,7 @@ Three guards. Before upload: if the recording contains under about a fifth of a 
 
 ## Where does my data live?
 
-Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest, and by default so are the words in your history. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. murmur has no servers of its own.
+Settings, history, and analytics live in your platform's application data folder, locally. The API key is encrypted at rest, and by default so are the words in your history. Audio goes only to the provider you configured, only when there is speech, and failed uploads are kept in a local `recovery/` folder so nothing is lost. With Learn from my fixes on, the fixes being counted wait in `learned-fixes.json` there, under the same rules as your history. murmur has no servers of its own.
 
 ## What is the "getting active" grid on the analytics page?
 

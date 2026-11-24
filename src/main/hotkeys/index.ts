@@ -43,6 +43,10 @@ let pasteBinding: ParsedBinding | null = null
 // paste must land once per press, so the chord latches until its key
 // comes back up.
 let pasteChordHeld = false
+// The fix a word chord (US-184): a press, like paste last, that asks
+// how the selected word should be written.
+let fixBinding: ParsedBinding | null = null
+let fixChordHeld = false
 // The note chord is a second dictation trigger with its own machine
 // and dispatcher, so hold and toggle behave exactly like the main
 // hotkey; the dictation module decides who owns a live session.
@@ -94,19 +98,25 @@ function chordProblem(bindingString: string, takenStrings: string[]): ChordProbl
  */
 export function pasteBindingProblem(bindingString: string): ChordProblem {
   const s = getSettings()
-  return chordProblem(bindingString, [s.notes.binding, s.transform.binding])
+  return chordProblem(bindingString, [s.notes.binding, s.transform.binding, s.learn.fixBinding])
 }
 
 /** Same rules for the note chord, checked against the other chords. */
 export function noteBindingProblem(bindingString: string): ChordProblem {
   const s = getSettings()
-  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.transform.binding])
+  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.transform.binding, s.learn.fixBinding])
 }
 
 /** Same rules for the transform chord, checked against the other chords. */
 export function transformBindingProblem(bindingString: string): ChordProblem {
   const s = getSettings()
-  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.notes.binding])
+  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.notes.binding, s.learn.fixBinding])
+}
+
+/** Same rules for the fix a word chord, checked against the other chords. */
+export function fixBindingProblem(bindingString: string): ChordProblem {
+  const s = getSettings()
+  return chordProblem(bindingString, [s.hotkey.pasteLastBinding, s.notes.binding, s.transform.binding])
 }
 
 /**
@@ -141,6 +151,8 @@ export interface HotkeyCallbacks extends DictationCallbacks {
   lock?: () => void
   discard?: () => void
   pasteLast?: () => void
+  /** The fix a word chord was pressed. */
+  fixWord?: () => void
   /** The note chord's start and stop: a dictation whose words go to a file. */
   note?: DictationCallbacks & { lock?: () => void; discard?: () => void }
   /** The transform chord's start and stop: a take that edits the selection. */
@@ -161,7 +173,8 @@ function chordsKey(settings: Settings): string {
     settings.hotkey.binding,
     settings.hotkey.pasteLastBinding,
     settings.notes.binding,
-    settings.transform.binding
+    settings.transform.binding,
+    settings.learn.fixBinding
   ])
 }
 let appliedChords = ''
@@ -246,6 +259,14 @@ function apply(settings: Settings, callbacks: HotkeyCallbacks): void {
         : new ToggleMachine(callbacks.transform)
     transformDispatcher = new HotkeyDispatcher(transformBinding, transformMachine, MODIFIER_CODES)
   }
+  // Checked last, so a hand-edited duplicate disarms this chord and
+  // never 1 of the older ones.
+  fixBinding = armChord(
+    settings.learn.fixBinding,
+    parsed,
+    [pasteBinding, noteBinding, transformBinding].filter((b): b is ParsedBinding => b !== null)
+  )
+  fixChordHeld = false
 }
 
 export interface HotkeysStatus {
@@ -259,6 +280,8 @@ export interface HotkeysStatus {
   noteBindingValid: boolean
   /** Same truth for the transform chord. */
   transformBindingValid: boolean
+  /** Same truth for the fix a word chord. */
+  fixBindingValid: boolean
 }
 
 function pasteBindingValid(): boolean {
@@ -271,6 +294,10 @@ function noteBindingValid(): boolean {
 
 function transformBindingValid(): boolean {
   return getSettings().transform.binding === '' || transformBinding !== null
+}
+
+function fixBindingValid(): boolean {
+  return getSettings().learn.fixBinding === '' || fixBinding !== null
 }
 
 export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
@@ -293,6 +320,12 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
         callbacks.pasteLast?.()
       }
     }
+    if (fixBinding && matchesEvent(fixBinding, event)) {
+      if (!fixChordHeld) {
+        fixChordHeld = true
+        callbacks.fixWord?.()
+      }
+    }
   }
   onKeyUp = (event) => {
     heldModifiers.delete(event.keycode)
@@ -301,6 +334,7 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
     noteDispatcher?.keyup(event)
     transformDispatcher?.keyup(event)
     if (pasteBinding && event.keycode === pasteBinding.code) pasteChordHeld = false
+    if (fixBinding && event.keycode === fixBinding.code) fixChordHeld = false
   }
   uIOhook.on('keydown', onKeyDown)
   uIOhook.on('keyup', onKeyUp)
@@ -319,7 +353,7 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
   void import('../window-watch')
     .then(({ writeAppLog }) => {
       writeAppLog(
-        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()} noteBindingValid=${noteBindingValid()} transformBindingValid=${transformBindingValid()}`
+        `[hotkeys] hookStarted=${hookStarted} bindingValid=${binding !== null} pasteBindingValid=${pasteBindingValid()} noteBindingValid=${noteBindingValid()} transformBindingValid=${transformBindingValid()} fixBindingValid=${fixBindingValid()}`
       )
     })
     .catch(() => undefined)
@@ -395,6 +429,55 @@ export function initHotkeys(callbacks: HotkeyCallbacks): HotkeysStatus {
     }
   })
 
+  registerSmokeCheck('fixChord', async () => {
+    // The fix a word chord (US-184) arms under the shared rules: a
+    // valid chord arms and fires once per press, however long it is
+    // held; the other chords refuse its keys and it refuses theirs; a
+    // duplicate of another chord stays disarmed; and clearing it
+    // disarms it.
+    const { updateSettings } = await import('../settings')
+    const before = getSettings()
+    const fired = callbacks.fixWord
+    let presses = 0
+    callbacks.fixWord = () => {
+      presses += 1
+    }
+    try {
+      updateSettings({
+        hotkey: { pasteLastBinding: 'Ctrl+Shift+F17' },
+        notes: { binding: 'Ctrl+Shift+F18' },
+        transform: { binding: 'Ctrl+Shift+F16' },
+        learn: { fixBinding: 'Ctrl+Shift+F15' }
+      })
+      const armed = fixBinding?.code === keyMap.f15 && fixBindingValid()
+      const press = { keycode: keyMap.f15 as number, ctrlKey: true, shiftKey: true, altKey: false, metaKey: false }
+      onKeyDown?.(press)
+      onKeyDown?.(press)
+      onKeyUp?.(press)
+      onKeyDown?.(press)
+      onKeyUp?.(press)
+      const once = presses === 2
+      const guarded =
+        noteBindingProblem('Ctrl+Shift+F15') === 'collides' &&
+        pasteBindingProblem('Ctrl+Shift+F15') === 'collides' &&
+        transformBindingProblem('Ctrl+Shift+F15') === 'collides'
+      const problem = fixBindingProblem('Ctrl+Shift+F16') === 'collides' && fixBindingProblem('Ctrl+Shift+F14') === null
+      updateSettings({ learn: { fixBinding: 'Ctrl+Shift+F18' } })
+      const refused = fixBinding === null && !fixBindingValid() && noteBinding !== null
+      updateSettings({ learn: { fixBinding: '' } })
+      const cleared = fixBinding === null && fixBindingValid()
+      return armed && once && guarded && problem && refused && cleared
+    } finally {
+      callbacks.fixWord = fired
+      updateSettings({
+        hotkey: { pasteLastBinding: before.hotkey.pasteLastBinding },
+        notes: { binding: before.notes.binding },
+        transform: { binding: before.transform.binding },
+        learn: { fixBinding: before.learn.fixBinding }
+      })
+    }
+  })
+
   return status()
 }
 
@@ -404,7 +487,8 @@ function status(): HotkeysStatus {
     bindingValid: binding !== null,
     pasteBindingValid: pasteBindingValid(),
     noteBindingValid: noteBindingValid(),
-    transformBindingValid: transformBindingValid()
+    transformBindingValid: transformBindingValid(),
+    fixBindingValid: fixBindingValid()
   }
 }
 
@@ -473,8 +557,7 @@ export function captureHotkeyViaHook(timeoutMs = 10_000): Promise<HookCaptureOut
 
     const timer = setTimeout(() => finish({ binding: null, reason: 'cancelled' }), timeoutMs)
 
-    const onDown = (e: { keycode: number; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }): void => {
-      console.log(`[capture:hook] down code=${e.keycode} flags=${Number(e.ctrlKey)}${Number(e.altKey)}${Number(e.shiftKey)}${Number(e.metaKey)}`)
+    const onDown = (e: { keycode: number }): void => {
       if (e.keycode === UiohookKey.Escape) {
         finish({ binding: null, reason: 'cancelled' })
         return
@@ -496,7 +579,6 @@ export function captureHotkeyViaHook(timeoutMs = 10_000): Promise<HookCaptureOut
     }
 
     const onUp = (e: { keycode: number }): void => {
-      console.log(`[capture:hook] up code=${e.keycode}`)
       const modifier = MODIFIER_BY_CODE.get(e.keycode)
       if (modifier && sawModifier) {
         // Releasing with no regular key pressed: that IS the combo.

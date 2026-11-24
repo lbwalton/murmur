@@ -18,7 +18,8 @@ export default defineConfig({
         input: {
           settings: resolve(__dirname, 'src/preload/settings.ts'),
           overlay: resolve(__dirname, 'src/preload/overlay.ts'),
-          audio: resolve(__dirname, 'src/preload/audio.ts')
+          audio: resolve(__dirname, 'src/preload/audio.ts'),
+          fix: resolve(__dirname, 'src/preload/fix.ts')
         },
         output: {
           format: 'cjs',
@@ -35,7 +36,8 @@ export default defineConfig({
         input: {
           settings: resolve(__dirname, 'src/renderer/settings/index.html'),
           overlay: resolve(__dirname, 'src/renderer/overlay/index.html'),
-          audio: resolve(__dirname, 'src/renderer/audio/index.html')
+          audio: resolve(__dirname, 'src/renderer/audio/index.html'),
+          fix: resolve(__dirname, 'src/renderer/fix/index.html')
         }
       }
     }

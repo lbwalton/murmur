@@ -1,0 +1,79 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* The fix a word panel (US-184). Night studio, solid: the panel floats
+   over any app, so it keeps its own ground and never shows the page
+   behind it through its text. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+}
+
+.fix {
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--cream-14);
+  border-radius: 12px;
+}
+
+.fix-label {
+  margin: 0 0 8px;
+  font: 10px/1 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.fix-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fix-heard {
+  flex: 0 1 auto;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  color: var(--text);
+}
+
+.fix-arrow {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.fix-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  font: inherit;
+  font-family: 'Cascadia Mono', 'SF Mono', ui-monospace, monospace;
+  color: var(--text);
+  background: var(--ink);
+  border: 1px solid var(--cream-22);
+  border-radius: 7px;
+  outline: none;
+}
+
+.fix-input:focus-visible {
+  border-color: var(--brand);
+}
+
+.fix-help {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}

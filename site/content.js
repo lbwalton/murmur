@@ -188,7 +188,7 @@ function privacy(links, supportEmail) {
     description: 'The murmur apps have no server, no account, and no analytics. Your voice goes only to the provider you choose, with your own key. What leaves each device, and why.',
     h1: 'murmur collects nothing.',
     lede: 'murmur is made by Eze Media LLC, which runs no server for the apps and receives nothing from them on its own. Your voice goes only to the transcription provider you chose, under your own key. Here is what leaves your device, and why.',
-    updated: '2026-11-21',
+    updated: '2026-11-22',
     summary: [
       ['What murmur collects.', ['Nothing from the apps. Your voice and words go only to the provider you chose, under your own key.']],
       ['How long records are kept.', ['Your history stays on your device for as long as you set. Purchase records are kept 10 years, and support email 3 years. Every period is listed below.']],
@@ -248,6 +248,28 @@ function privacy(links, supportEmail) {
         q: 'Is the microphone always on?',
         a: [
           "The microphone stays ready while murmur runs on Mac and Windows, so your first word is not cut off. The last 300 milliseconds are held in memory and constantly replaced. Nothing is saved or sent until you press your hotkey, and when you do, that short moment becomes the start of your take. To have no mic stream between takes, choose Open the mic only when I press under Settings, Microphone."
+        ]
+      },
+      {
+        // US-185. LB approved a draft of this answer 2026-11-22. Checking the
+        // draft against the code then changed it: what Transform copies does
+        // leave the device, Transform reads the selection when you finish
+        // speaking, and Fix a word and the dictionary's hints are now named.
+        // He said yes to that answer the same day, and to a line about the
+        // key listener (src/main/hotkeys/index.ts). The line as he approved
+        // it said murmur "only checks whether that key is part of one of
+        // your shortcuts, and it never saves or sends a key"; the code also
+        // acts on a plain Escape and saves the shortcut you set, so the last
+        // 3 sentences say that. The first sentence changed with them: on its
+        // own, only when you ask it to, would now mislead a reader who stops
+        // there. He said yes to both later that day, and to deleting the 2
+        // console lines that printed key codes while a shortcut was being
+        // set (src/main/hotkeys/quiet.test.ts keeps them out). The answer
+        // goes live with the first deploy after the release that ships
+        // these 2 features.
+        q: 'Does murmur look at what I type in other apps?',
+        a: [
+          'On Mac and Windows, murmur reads your text only when you ask it to, and it listens for key presses only to catch your shortcuts. Transform and Fix a word copy the text you selected when you use their shortcut. Transform sends it to your provider with what you asked for and keeps the original in your history unless you turn that off, and Fix a word saves the word and the spelling you type to your dictionary. Learn from my fixes, on a Mac, is off until you turn it on: with it on, after murmur types a take it looks at that same text box for up to 1 minute to see whether you fix a word. That stays on your Mac: it never reads a box your Mac marks as a password, the text it reads is never saved or sent, and it keeps only the pair of words you fixed, for as long as your history setting keeps words. That pair joins your dictionary only when you press Add. Words in your dictionary go along with your takes as spelling hints for your providers. To hear your shortcuts, murmur is told when a key goes down or comes up in any app. It checks only whether that key belongs to a shortcut, or is Escape, which cancels a hands-free take. Of the keys it hears, murmur saves only the shortcuts you set, and it sends none.'
         ]
       },
       {

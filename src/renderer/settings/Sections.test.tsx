@@ -88,7 +88,9 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
   it('groups each section the way LB approved on 2026-11-11', () => {
     expect(groupsOf('provider')).toEqual(['speech', 'cleanup', 'keys', 'cost'])
     expect(groupsOf('dictation')).toEqual(['hotkey', 'microphone', 'formatting', 'landing', 'Try it'])
-    expect(groupsOf('dictionary')).toEqual(['Custom words', 'Expansions'])
+    // Keep it current joined on 2026-11-21, when LB asked for fix a word
+    // and learning from fixes (US-184, US-185).
+    expect(groupsOf('dictionary')).toEqual(['Custom words', 'keep-current', 'Expansions'])
     expect(groupsOf('timeback')).toEqual(['timeback'])
     expect(groupsOf('history')).toEqual(['history'])
     expect(groupsOf('look')).toEqual(['look'])
@@ -192,7 +194,7 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
     expect(app).not.toContain('under Advanced')
   })
 
-  it('finds all 4 shortcuts when you search shortcut, hotkey or chord (LB, 2026-11-11)', () => {
+  it('finds all 5 shortcuts when you search shortcut, hotkey or chord (LB, 2026-11-11)', () => {
     const keywords = (source: string, anchorOrLabel: string): string => {
       const at = source.indexOf(anchorOrLabel)
       return /keywords="([^"]+)"/.exec(source.slice(at))?.[1] ?? ''
@@ -201,7 +203,8 @@ describe('every Settings section is grouped, with rows in a well (US-155)', () =
       keywords(app, 'anchor="row-hotkey"'),
       keywords(app, 'label="Paste last dictation"'),
       keywords(notes, 'anchor="row-note-chord"'),
-      keywords(transform, 'anchor="row-transform-chord"')
+      keywords(transform, 'anchor="row-transform-chord"'),
+      keywords(read('LearnPanel.tsx'), 'anchor="row-fix-word-chord"')
     ]
     for (const words of rows) {
       // Hotkey's own label carries the word hotkey.

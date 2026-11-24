@@ -22,7 +22,8 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn(),
   playCue: vi.fn(),
   recordSession: vi.fn(),
-  logWords: vi.fn()
+  logWords: vi.fn(),
+  watchTake: vi.fn()
 }))
 
 vi.mock('electron', () => ({ clipboard: { writeText: mocks.clipboardWrite } }))
@@ -78,6 +79,7 @@ vi.mock('./transcribe', () => ({
 vi.mock('./transform', () => ({ TRANSFORM_NO_CONNECTION_HINT: 'x', performTransform: mocks.performTransform }))
 vi.mock('./smoke', () => ({ isSmoke: false, registerSmokeCheck: vi.fn() }))
 vi.mock('./hotkeys', () => ({ waitForModifiersReleased: async () => true }))
+vi.mock('./learn', () => ({ watchTake: mocks.watchTake }))
 const appLog = vi.hoisted(() => vi.fn())
 vi.mock('./window-watch', () => ({ writeAppLog: appLog }))
 vi.mock('./retry', () => ({ releaseHeldTake: mocks.releaseHeldTake }))
@@ -398,5 +400,39 @@ describe('a retry', () => {
     expect(await deliverRetried({ ...retried(), kind: 'note' }, 'hello there')).toMatchObject({ ok: true, heldAt: 123, location: 'history' })
     stage.logFails = true
     expect(await deliverRetried({ ...retried(), kind: 'note' }, 'hello there')).toMatchObject({ ok: false })
+  })
+})
+
+describe('Learn from my fixes follows only a take that was pasted (US-185)', () => {
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 25))
+
+  it('hands a pasted take to the watcher, with what was heard and what was typed', async () => {
+    expect(await take('dictation')).toBe('delivered')
+    await vi.waitFor(() => expect(mocks.watchTake).toHaveBeenCalledTimes(1))
+    expect(mocks.watchTake).toHaveBeenCalledWith({ raw: expect.any(String), final: expect.any(String) })
+  })
+
+  it('never hands it a take that was copied, saved, a note, a Transform, or one whose paste failed', async () => {
+    stage.insert = 'copied'
+    await take('dictation')
+    stage.insert = 'error'
+    await take('dictation')
+    stage.insert = new Error('clipboard refused')
+    await take('dictation')
+    stage.insert = 'inserted'
+    // Saved for paste last (hands-free): no paste, so no box to follow.
+    await take('dictation', { save: 'silence' })
+    stage.noteSaved = { ok: true, relative: 'inbox.md', location: 'folder' }
+    await take('note')
+    await take('transform')
+    await settle()
+    expect(mocks.watchTake).not.toHaveBeenCalled()
+  })
+
+  it('never hands it a retried take or a paste last', async () => {
+    await deliverRetried({ kind: 'dictation', startedAt: 1, loggedAt: undefined } as Parameters<typeof deliverRetried>[0], 'hello there')
+    await pasteLastDictation()
+    await settle()
+    expect(mocks.watchTake).not.toHaveBeenCalled()
   })
 })

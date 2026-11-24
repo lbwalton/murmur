@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>murmur fix a word</title>
+  </head>
+  <body>
+    <form id="fix" class="fix" autocomplete="off">
+      <p class="fix-label micro-label" id="fix-label">fix a word: type how it is written</p>
+      <div class="fix-row">
+        <span class="fix-heard" id="fix-heard"></span>
+        <span class="fix-arrow" aria-hidden="true">→</span>
+        <input
+          id="fix-written"
+          class="fix-input"
+          type="text"
+          maxlength="80"
+          spellcheck="false"
+          autocapitalize="off"
+          autocorrect="off"
+          aria-labelledby="fix-label fix-heard"
+          aria-describedby="fix-help"
+        />
+      </div>
+      <p class="fix-help" id="fix-help">Enter saves it and fixes the word. Esc closes.</p>
+    </form>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

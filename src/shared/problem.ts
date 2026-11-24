@@ -292,11 +292,14 @@ const KNOWN_TAGS = new Set([
   'audio',
   'catalog',
   'dictation',
+  'dictionary',
+  'fix',
   'hands-free',
   'hardening',
   'history',
   'hotkeys',
   'ipc',
+  'learn',
   'look',
   'notes',
   'overlay',
@@ -374,7 +377,7 @@ export function scrubLogLine(line: string, ctx: ScrubContext): string | null {
     const [, tag, text] = tagged
     if (tag.startsWith('window:')) {
       const name = tag.slice('window:'.length)
-      if (!/^(settings|audio|overlay)$/.test(name)) return null
+      if (!/^(settings|audio|overlay|fix)$/.test(name)) return null
       const renderer = /^renderer-error \S+ (.*)$/.exec(text)
       const preload = /^preload-error path=.*? error=(.*)$/.exec(text)
       const failed = /^did-fail-load code=(-?\d+) desc=(\S*)/.exec(text)

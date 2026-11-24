@@ -3205,6 +3205,41 @@ details[open] > .well-file-tips-summary::after {
   margin: 12px 2px 0;
 }
 
+/* Suggested words (US-185): each fix murmur saw more than once, with
+   its 2 answers. The pair reads as it does in Custom words. */
+.suggest-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suggest-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.suggest-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.suggest-text .well-pair {
+  overflow-wrap: anywhere;
+}
+
+.suggest-seen,
+.suggest-hidden {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* A snippet can span lines (sign-offs); the box grows with it. */
 textarea.well-multiline {
   field-sizing: content;

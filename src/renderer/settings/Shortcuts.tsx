@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // The Shortcuts section of settings (US-164): every key combo murmur
-// listens for on 1 screen. The 4 you can set are the same settings
-// their own sections show (Dictation, Notes, Transform), so a change
+// listens for on 1 screen. The 5 you can set are the same settings
+// their own sections show (Dictation, Notes, Transform, Dictionary), so a change
 // in either place is a change in both; the built-in keys are listed to
 // read, not to set (LB's pick, 2026-11-11).
 import { useState } from 'react'
@@ -11,7 +11,7 @@ import { Group, Row, Section, jumpToRow } from './controls'
 
 const bridge = (): SettingsApi => window.murmur
 
-export type ShortcutKind = 'dictation' | 'pasteLast' | 'note' | 'transform'
+export type ShortcutKind = 'dictation' | 'pasteLast' | 'note' | 'transform' | 'fix'
 
 export interface Shortcut {
   kind: ShortcutKind
@@ -27,7 +27,7 @@ export interface Shortcut {
   home: { anchor: string; name: string }
 }
 
-/** The 4 shortcuts a person can set, in the order they are used. */
+/** The 5 shortcuts a person can set, in the order they are used. */
 export function shortcutsOf(settings: Settings, hotkeys: HotkeysStatus | null): Shortcut[] {
   const off = (binding: string, valid: boolean | undefined): boolean => binding !== '' && valid === false
   return [
@@ -66,6 +66,15 @@ export function shortcutsOf(settings: Settings, hotkeys: HotkeysStatus | null): 
       binding: settings.transform.binding,
       disarmed: off(settings.transform.binding, hotkeys?.transformBindingValid),
       home: { anchor: 'row-transform-chord', name: 'Transform' }
+    },
+    {
+      kind: 'fix',
+      slug: 'fix-word',
+      label: 'Fix a word',
+      desc: 'Select a word murmur got wrong, press it, and type how it should be written.',
+      binding: settings.learn.fixBinding,
+      disarmed: off(settings.learn.fixBinding, hotkeys?.fixBindingValid),
+      home: { anchor: 'row-fix-word-chord', name: 'Dictionary' }
     }
   ]
 }
@@ -88,6 +97,7 @@ export function clearedShortcut(kind: ShortcutKind): Partial<Settings> {
   if (kind === 'dictation') return { hotkey: { binding: DEFAULT_SETTINGS.hotkey.binding } as Settings['hotkey'] }
   if (kind === 'pasteLast') return { hotkey: { pasteLastBinding: '' } as Settings['hotkey'] }
   if (kind === 'note') return { notes: { binding: '' } as Settings['notes'] }
+  if (kind === 'fix') return { learn: { fixBinding: '' } as Settings['learn'] }
   return { transform: { binding: '' } as Settings['transform'] }
 }
 

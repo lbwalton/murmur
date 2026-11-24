@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { AUDIO_SENDS, boundedText, channelAllowed, pageRole } from './ipc-rules'
+import { AUDIO_SENDS, FIX_SENDS, boundedText, channelAllowed, pageRole } from './ipc-rules'
 
 const bases = { rendererRoot: 'file:///Applications/murmur.app/Contents/Resources/app.asar/out/renderer' }
 const page = (name: string): string => `${bases.rendererRoot}/${name}/index.html`
@@ -13,6 +13,7 @@ describe('pageRole', () => {
     expect(pageRole(page('settings'), bases)).toBe('settings')
     expect(pageRole(page('audio'), bases)).toBe('audio')
     expect(pageRole(page('overlay'), bases)).toBe('overlay')
+    expect(pageRole(page('fix'), bases)).toBe('fix')
   })
 
   it('accepts the query the audio page loads with', () => {
@@ -82,6 +83,18 @@ describe('channelAllowed', () => {
     expect(channelAllowed('audio', 'apikey:set')).toBe(false)
     expect(channelAllowed('overlay', 'settings:get')).toBe(false)
   })
+
+  it('keeps the fix a word panel to its 2 answers, and those answers to it (US-184)', () => {
+    expect(channelAllowed('fix', 'fix:save')).toBe(true)
+    expect(channelAllowed('fix', 'fix:cancel')).toBe(true)
+    expect(channelAllowed('fix', 'settings:get')).toBe(false)
+    expect(channelAllowed('fix', 'settings:update')).toBe(false)
+    expect(channelAllowed('fix', 'apikey:set')).toBe(false)
+    expect(channelAllowed('fix', 'audio:result')).toBe(false)
+    expect(channelAllowed('settings', 'fix:save')).toBe(false)
+    expect(channelAllowed('audio', 'fix:save')).toBe(false)
+    expect(channelAllowed('overlay', 'fix:save')).toBe(false)
+  })
 })
 
 describe('the preloads', () => {
@@ -101,6 +114,12 @@ describe('the preloads', () => {
   it('never send an audio channel from settings, and nothing from the overlay', () => {
     expect(sends('settings.ts').filter((channel) => AUDIO_SENDS.includes(channel))).toEqual([])
     expect(sends('overlay.ts')).toEqual([])
+  })
+
+  it('match the list of what the fix a word panel may send, which no other window sends', () => {
+    expect(sends('fix.ts').sort()).toEqual([...FIX_SENDS].sort())
+    expect(sends('settings.ts').filter((channel) => FIX_SENDS.includes(channel))).toEqual([])
+    expect(sends('audio.ts').filter((channel) => FIX_SENDS.includes(channel))).toEqual([])
   })
 })
 
