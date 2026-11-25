@@ -16,7 +16,7 @@ const bridge = (): SettingsApi => window.murmur
 
 /** What Learn from my fixes does, said before it is turned on. Every
  *  clause is a promise the watcher keeps (src/main/learn). */
-export const LEARN_DESC = `Off until you turn it on. After murmur types a take, it looks at that same text box for up to ${LEARN_WATCH_SECONDS / 60} minute, on this computer, to see whether you fix a word. On a Mac that uses the Accessibility permission murmur already has. A fix you make in ${LEARN_REPEATS} takes shows here as a suggestion, and only your yes adds it. murmur never reads a box your Mac marks as a password. The text it reads is never saved or sent: only the pair of words you fixed is kept, on this computer, for as long as your history setting keeps words.`
+export const LEARN_DESC = `Off until you turn it on. After murmur types a take, it looks at the active text box in the app in front, normally the box it just typed into, for up to ${LEARN_WATCH_SECONDS / 60} minute, on this computer, to see whether you fix a word. On a Mac that uses the Accessibility permission murmur already has. A fix you make in ${LEARN_REPEATS} takes shows here as a suggestion, and only your yes adds it. murmur never reads a box your Mac marks as a password. The text it reads is never saved or sent: only the pair of words you fixed is kept, on this computer, for as long as your history setting keeps words.`
 
 export const LEARN_MAC_ONLY = 'On a Mac only, for now. Fix a word works here today.'
 export const LEARN_KEEPS_NOTHING = 'Keep history for is set to keep no text, so murmur keeps no fixes to count.'

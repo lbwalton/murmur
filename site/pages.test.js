@@ -96,7 +96,7 @@ describe('the privacy page', () => {
       'keeps the original in your history unless you turn that off',
       'Fix a word saves the word and the spelling you type to your dictionary',
       'off until you turn it on',
-      'that same text box for up to 1 minute',
+      'the active text box in the app in front, normally the box it just typed into, for up to 1 minute',
       'never reads a box your Mac marks as a password',
       'never saved or sent',
       'only the pair of words you fixed',

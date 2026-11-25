@@ -56,7 +56,7 @@ describe('Keep it current, under Custom words', () => {
     expect(html).toContain(LEARN_DESC)
     for (const said of [
       'Off until you turn it on',
-      'that same text box',
+      'the active text box in the app in front, normally the box it just typed into',
       'up to 1 minute',
       'on this computer',
       'in 2 takes',
