@@ -1,6 +1,6 @@
 # murmur Roadmap
 
-> Generated from prd.json (127/188 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
+> Generated from prd.json (127/189 stories verified). Do not edit by hand: change prd.json, then run `npm run roadmap`.
 
 ## Done and verified
 
@@ -198,5 +198,6 @@ Automated criteria pass; the remaining step is a human loop noted in prd.json an
 - [ ] **US-183** Import and export the dictionary
 - [ ] **US-184** Fix a word: select it, press a chord, type the spelling
 - [ ] **US-185** Learn from my fixes: murmur suggests the words you keep correcting
+- [ ] **US-189** Fix a word: warn on shortcuts that edit text, open at once, paste only over the word
 - [ ] **US-187** Learn from my fixes: add a fix on its own after a number of takes you pick
 - [ ] **US-188** Learn from my fixes follows a floating window, not the app behind it
